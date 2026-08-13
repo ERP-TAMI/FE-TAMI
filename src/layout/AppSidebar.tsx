@@ -13,12 +13,8 @@ const navItems: NavItem[] = [
   { name: "Dashboard", path: "/dashboard", icon: <GridIcon /> },
   { name: "BOM", path: "/bom", icon: <BoxCubeIcon /> },
   { name: "Purchase Orders", path: "/po", icon: <ListIcon /> },
-  {
-    name: "Materials",
-    path: "/masters/materials",
-    icon: <PageIcon />,
-  },
-  { name: "Users", path: "/admin/users", icon: <UserCircleIcon /> },
+  { name: "Master data", path: "/masters", icon: <PageIcon /> },
+  { name: "Administration", path: "/admin", icon: <UserCircleIcon /> },
   { name: "Audit log", path: "/audit-log", icon: <ListIcon /> },
 ];
 

@@ -21,7 +21,9 @@ export default function App() {
           <Route path="dashboard" element={<DashboardPage />} />
           <Route path="bom" element={<BomPage />} />
           <Route path="po" element={<PoPage />} />
+          <Route path="masters" element={<Navigate to="/masters/materials" replace />} />
           <Route path="masters/materials" element={<MaterialsPage />} />
+          <Route path="admin" element={<Navigate to="/admin/users" replace />} />
           <Route path="admin/users" element={<UsersPage />} />
           <Route path="audit-log" element={<AuditLogPage />} />
         </Route>

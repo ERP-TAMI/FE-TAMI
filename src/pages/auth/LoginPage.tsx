@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { Button, Input } from "@/components/shared";
 import PageMeta from "@/components/shared/PageMeta";
 
 export default function LoginPage() {
@@ -19,32 +20,11 @@ export default function LoginPage() {
             </p>
           </div>
           <form className="space-y-5" onSubmit={(event) => event.preventDefault()}>
-            <label className="block">
-              <span className="text-theme-sm mb-2 block font-medium text-gray-700 dark:text-gray-300">
-                Email
-              </span>
-              <input
-                type="email"
-                placeholder="you@example.com"
-                className="text-theme-sm focus:border-brand-500 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-200 bg-transparent px-4 text-gray-900 transition outline-none focus:ring-3 dark:border-gray-700 dark:text-white"
-              />
-            </label>
-            <label className="block">
-              <span className="text-theme-sm mb-2 block font-medium text-gray-700 dark:text-gray-300">
-                Password
-              </span>
-              <input
-                type="password"
-                placeholder="Enter your password"
-                className="text-theme-sm focus:border-brand-500 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-200 bg-transparent px-4 text-gray-900 transition outline-none focus:ring-3 dark:border-gray-700 dark:text-white"
-              />
-            </label>
-            <button
-              type="submit"
-              className="bg-brand-500 text-theme-sm hover:bg-brand-600 focus:ring-brand-500/30 h-11 w-full rounded-lg px-4 font-medium text-white transition focus:ring-3 focus:outline-none"
-            >
+            <Input label="Email" type="email" placeholder="you@example.com" />
+            <Input label="Password" type="password" placeholder="Enter your password" />
+            <Button type="submit" className="w-full">
               Sign in
-            </button>
+            </Button>
           </form>
           <p className="text-theme-sm mt-6 text-center text-gray-500 dark:text-gray-400">
             New project foundation?{" "}

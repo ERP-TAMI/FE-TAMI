@@ -35,4 +35,18 @@ describe("application routes", () => {
 
     expect(screen.getByRole("heading", { name: "Welcome back" })).toBeTruthy();
   });
+
+  it("redirects the masters entry route to materials", () => {
+    window.history.pushState({}, "", "/masters");
+    renderApp();
+
+    expect(screen.getByRole("heading", { name: "Materials" })).toBeTruthy();
+  });
+
+  it("redirects the admin entry route to users", () => {
+    window.history.pushState({}, "", "/admin");
+    renderApp();
+
+    expect(screen.getByRole("heading", { name: "Users" })).toBeTruthy();
+  });
 });
