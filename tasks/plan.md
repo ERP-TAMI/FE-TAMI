@@ -24,33 +24,33 @@ the existing ERP frontend and the TailAdmin source repository unchanged.
 
 - [x] Copy the TailAdmin React baseline into `FE-TAMI` without its `.git`
   directory.
-- [ ] Replace demo application routes with the required ERP route skeleton.
-- [ ] Add the requested folder structure and page placeholders.
+- [x] Replace demo application routes with the required ERP route skeleton.
+- [x] Add the requested folder structure and page placeholders.
 
 ### Phase 2: Tooling and Runtime Boundaries
 
-- [ ] Pin and install the required runtime and test dependencies.
-- [ ] Configure strict TypeScript, Vite aliases, env parsing, Axios, and Query
+- [x] Pin and install the required runtime and test dependencies.
+- [x] Configure strict TypeScript, Vite aliases, env parsing, Axios, and Query
   Client providers.
-- [ ] Configure `.env.example`, ESLint, Prettier, Vitest, and `.gitignore`.
-- [ ] Initialize the new local Git repository.
+- [x] Configure `.env.example`, ESLint, Prettier, Vitest, and `.gitignore`.
+- [x] Initialize the new local Git repository.
 
 ### Checkpoint: Foundation
 
-- [ ] The app mounts without console errors.
-- [ ] Required routes render through the retained TailAdmin layout.
-- [ ] No old project files are changed.
+- [x] The app mounts without console errors.
+- [x] Required routes render through the retained TailAdmin layout.
+- [x] No old project files are changed.
 
 ### Phase 3: Verification
 
-- [ ] Run typecheck, lint, focused tests, full tests, and production build.
-- [ ] Run the dev-server smoke check.
-- [ ] Run npm audit and record the result.
+- [x] Run typecheck, lint, focused tests, full tests, and production build.
+- [x] Run the dev-server smoke check.
+- [x] Run npm audit and record the result.
 
 ### Checkpoint: Complete
 
-- [ ] All FE-INIT-001 acceptance criteria pass.
-- [ ] Working tree contains only intentional FE-TAMI changes.
+- [x] All FE-INIT-001 acceptance criteria pass.
+- [x] Working tree contains only intentional FE-TAMI changes.
 
 ## Risks and Mitigations
 
