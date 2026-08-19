@@ -1,4 +1,5 @@
 import { cleanup, render, screen } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "@/App";
 import { ThemeProvider } from "@/context/ThemeContext";
@@ -14,10 +15,13 @@ beforeEach(() => {
 });
 
 function renderApp() {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
-    <ThemeProvider>
-      <App />
-    </ThemeProvider>,
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider>
+        <App />
+      </ThemeProvider>
+    </QueryClientProvider>,
   );
 }
 
@@ -41,6 +45,13 @@ describe("application routes", () => {
     renderApp();
 
     expect(screen.getByRole("heading", { name: "Materials" })).toBeTruthy();
+  });
+
+  it("renders the material groups management route", () => {
+    window.history.pushState({}, "", "/masters/material-groups");
+    renderApp();
+
+    expect(screen.getByRole("heading", { name: "Material groups" })).toBeTruthy();
   });
 
   it("redirects the admin entry route to users", () => {
