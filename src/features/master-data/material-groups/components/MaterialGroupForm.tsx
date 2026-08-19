@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { Button, Input, Modal } from "@/components/shared";
+import { Alert, Button, Input, Modal } from "@/components/shared";
 import type { MaterialGroup, MaterialGroupInput } from "../types/material-group.types";
 
 const schema = z.object({
@@ -42,6 +42,7 @@ export function MaterialGroupForm({
     if (serverError?.toLowerCase().includes("name")) setError("name", { message: serverError });
     if (serverError?.toLowerCase().includes("code")) setError("code", { message: serverError });
   }, [serverError, setError]);
+  const hasFieldError = Boolean(serverError && /(?:name|code)/i.test(serverError));
 
   const closeWithWarning = () => {
     if (!formState.isDirty || window.confirm("Discard unsaved material group changes?")) onClose();
@@ -69,6 +70,7 @@ export function MaterialGroupForm({
       }
     >
       <form id="material-group-form" className="space-y-5" onSubmit={handleSubmit(submit)} noValidate>
+        {serverError && !hasFieldError && <Alert variant="error" title="Unable to save material group">{serverError}</Alert>}
         <Input
           label="Code"
           error={formState.errors.code?.message}

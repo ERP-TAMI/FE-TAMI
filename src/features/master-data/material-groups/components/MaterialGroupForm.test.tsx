@@ -52,4 +52,18 @@ describe("MaterialGroupForm", () => {
     );
     expect(await screen.findByText("Material group name already exists")).toBeTruthy();
   });
+
+  it("shows a general submission error when the API error does not belong to a field", async () => {
+    render(
+      <MaterialGroupForm
+        mode="create"
+        isSubmitting={false}
+        serverError="Cannot reach the Backend API."
+        onClose={vi.fn()}
+        onSubmit={vi.fn()}
+      />,
+    );
+
+    expect((await screen.findByRole("alert")).textContent).toContain("Cannot reach the Backend API.");
+  });
 });

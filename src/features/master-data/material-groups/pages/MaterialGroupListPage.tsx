@@ -16,12 +16,12 @@ import type { MaterialGroup, MaterialGroupInput, MaterialGroupStatus } from "../
 
 type Dialog = { type: "status" | "delete"; materialGroup: MaterialGroup } | undefined;
 
-function getErrorMessage(error: unknown): string {
+function getErrorMessage(error: unknown, fallback: string): string {
   if (axios.isAxiosError(error)) {
     const message = error.response?.data?.message;
-    return typeof message === "string" ? message : "Unable to save material group.";
+    return typeof message === "string" ? message : fallback;
   }
-  return "Unable to save material group.";
+  return fallback;
 }
 
 export default function MaterialGroupListPage() {
@@ -77,7 +77,7 @@ export default function MaterialGroupListPage() {
       }
       setDialog(undefined);
     } catch (error) {
-      setToast(getErrorMessage(error));
+      setToast(getErrorMessage(error, "Unable to update material group."));
     }
   };
 
@@ -97,11 +97,11 @@ export default function MaterialGroupListPage() {
         <div className="max-w-xs"><Select label="Status filter" value={status ?? ""} onChange={(event) => setStatus((event.target.value || undefined) as MaterialGroupStatus | undefined)} options={[{ label: "All statuses", value: "" }, { label: "Active", value: "active" }, { label: "Inactive", value: "inactive" }]} /></div>
 
         {list.isLoading && <div aria-busy="true" aria-label="Loading material groups" className="space-y-3">{[1, 2, 3].map((item) => <div key={item} className="h-14 animate-pulse rounded-xl bg-gray-100 dark:bg-gray-800" />)}</div>}
-        {list.isError && <Alert variant="error" title="Unable to load material groups">{getErrorMessage(list.error)} <Button variant="ghost" size="sm" onClick={() => void list.refetch()}>Retry</Button></Alert>}
+        {list.isError && <Alert variant="error" title="Unable to load material groups">{getErrorMessage(list.error, "Cannot reach the Backend API. Check that Erp-BE is running and the API URL is configured correctly.")} <Button variant="ghost" size="sm" onClick={() => void list.refetch()}>Retry</Button></Alert>}
         {list.data && <MaterialGroupTable materialGroups={list.data} onEdit={setEditing} onStatus={(materialGroup) => setDialog({ type: "status", materialGroup })} onDelete={(materialGroup) => setDialog({ type: "delete", materialGroup })} />}
       </section>
 
-      {editing && <MaterialGroupForm mode={editing === "create" ? "create" : "edit"} materialGroup={editing === "create" ? undefined : editing} isSubmitting={create.isPending || update.isPending} serverError={serverError ? getErrorMessage(serverError) : undefined} onClose={closeForm} onSubmit={(input) => void saveForm(input)} onDirtyChange={setIsDirty} />}
+      {editing && <MaterialGroupForm mode={editing === "create" ? "create" : "edit"} materialGroup={editing === "create" ? undefined : editing} isSubmitting={create.isPending || update.isPending} serverError={serverError ? getErrorMessage(serverError, "Cannot reach the Backend API. Check that Erp-BE is running and the API URL is configured correctly.") : undefined} onClose={closeForm} onSubmit={(input) => void saveForm(input)} onDirtyChange={setIsDirty} />}
       {dialog && <MaterialGroupConfirmDialog action={dialog.type} materialGroup={dialog.materialGroup} isSubmitting={mutation} onClose={() => setDialog(undefined)} onConfirm={() => void confirmDialog()} />}
       <Toast open={Boolean(toast)} message={toast} onClose={() => setToast("")} />
     </>
