@@ -5,6 +5,7 @@ import PageMeta from "@/components/shared/PageMeta";
 import { useMaterialGroup, useMaterialGroups } from "../../material-groups/hooks/useMaterialGroups";
 import { MaterialForm } from "../components/MaterialForm";
 import { MaterialStatusConfirmDialog } from "../components/MaterialStatusConfirmDialog";
+import { MaterialSizeManager } from "../components/MaterialSizeManager";
 import { MaterialTable } from "../components/MaterialTable";
 import { useActiveUnits } from "../hooks/useUnits";
 import {
@@ -29,6 +30,7 @@ function message(error: unknown, fallback: string): string {
 export default function MaterialListPage() {
   const [editing, setEditing] = useState<Material | "create" | undefined>();
   const [statusDialog, setStatusDialog] = useState<Material>();
+  const [sizeMaterial, setSizeMaterial] = useState<Material>();
   const [search, setSearch] = useState("");
   const [materialGroupId, setMaterialGroupId] = useState<string>();
   const [status, setStatus] = useState<MaterialStatus | undefined>();
@@ -180,7 +182,12 @@ export default function MaterialListPage() {
           </Alert>
         )}
         {list.data && (
-          <MaterialTable materials={list.data} onEdit={setEditing} onStatus={setStatusDialog} />
+          <MaterialTable
+            materials={list.data}
+            onEdit={setEditing}
+            onStatus={setStatusDialog}
+            onManageSizes={setSizeMaterial}
+          />
         )}
       </section>
       {editing && (
@@ -204,6 +211,9 @@ export default function MaterialListPage() {
           onClose={() => setStatusDialog(undefined)}
           onConfirm={() => void confirmStatus()}
         />
+      )}
+      {sizeMaterial && (
+        <MaterialSizeManager material={sizeMaterial} onClose={() => setSizeMaterial(undefined)} />
       )}
       <Toast open={Boolean(toast)} message={toast} onClose={() => setToast("")} />
     </>
