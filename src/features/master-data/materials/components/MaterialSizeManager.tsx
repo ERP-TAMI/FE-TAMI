@@ -35,10 +35,24 @@ export function MaterialSizeManager({
   const [toast, setToast] = useState("");
   const saveError = create.error ?? update.error;
 
+  const resetSaveState = () => {
+    create.reset();
+    update.reset();
+  };
+  const openCreateForm = () => {
+    resetSaveState();
+    setEditing("create");
+  };
+  const openEditForm = (size: MaterialSize) => {
+    resetSaveState();
+    setEditing(size);
+  };
+
   const closeManager = () => {
     if (!isDirty || window.confirm("Discard unsaved size changes?")) onClose();
   };
   const closeForm = () => {
+    resetSaveState();
     setEditing(undefined);
     setIsDirty(false);
   };
@@ -81,7 +95,7 @@ export function MaterialSizeManager({
             <p className="text-theme-sm text-gray-500 dark:text-gray-400">
               {material.materialCode} · Size-level cost and stock details
             </p>
-            {!editing && <Button onClick={() => setEditing("create")}>Add size</Button>}
+            {!editing && <Button onClick={openCreateForm}>Add size</Button>}
           </div>
           {editing && (
             <MaterialSizeForm
@@ -139,7 +153,7 @@ export function MaterialSizeManager({
                   header: "Actions",
                   render: (size) => (
                     <div className="flex gap-2">
-                      <Button variant="ghost" size="sm" onClick={() => setEditing(size)}>
+                      <Button variant="ghost" size="sm" onClick={() => openEditForm(size)}>
                         Edit
                       </Button>
                       <Button variant="outline" size="sm" onClick={() => setStatusSize(size)}>
