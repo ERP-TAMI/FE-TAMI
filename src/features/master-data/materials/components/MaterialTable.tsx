@@ -5,10 +5,12 @@ export function MaterialTable({
   materials,
   onEdit,
   onStatus,
+  onManageSizes,
 }: {
   materials: Material[];
   onEdit: (material: Material) => void;
   onStatus: (material: Material) => void;
+  onManageSizes: (material: Material) => void;
 }) {
   return (
     <Table
@@ -60,6 +62,9 @@ export function MaterialTable({
               </Button>
               <Button variant="outline" size="sm" onClick={() => onStatus(material)}>
                 {material.status === "active" ? "Deactivate" : "Activate"}
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => onManageSizes(material)}>
+                Manage sizes
               </Button>
             </div>
           ),
