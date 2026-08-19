@@ -3,7 +3,7 @@ import AppLayout from "@/layout/AppLayout";
 import { ScrollToTop } from "@/components/shared/ScrollToTop";
 import LoginPage from "@/pages/auth/LoginPage";
 import DashboardPage from "@/pages/Dashboard/DashboardPage";
-import BomPage from "@/pages/bom/BomPage";
+import BomPage from "@/features/bom/pages/BomPage";
 import PoPage from "@/pages/po/PoPage";
 import MaterialsPage from "@/pages/masters/MaterialsPage";
 import MaterialGroupListPage from "@/features/master-data/material-groups/pages/MaterialGroupListPage";
