@@ -16,6 +16,7 @@ describe("MaterialForm", () => {
             status: "active",
           },
         ]}
+        activeUnits={[]}
         isSubmitting={false}
         onClose={vi.fn()}
         onSubmit={vi.fn()}
@@ -34,6 +35,13 @@ describe("MaterialForm", () => {
           materialCode: "COTTON",
           materialName: "Cotton",
           materialGroupId: "8a1c44f1-cd02-444c-8a4a-c2f74066fd5f",
+          defaultUnitId: "8a1c44f1-cd02-444c-8a4a-c2f74066fd5e",
+          defaultYieldPct: 0,
+          lastUnitCost: 0,
+          currentStock: 0,
+          lowStockThreshold: 10,
+          materialGroup: null,
+          defaultUnit: null,
           status: "active",
         }}
         activeGroups={[]}
@@ -44,6 +52,7 @@ describe("MaterialForm", () => {
           displayOrder: 0,
           status: "inactive",
         }}
+        activeUnits={[]}
         isSubmitting={false}
         onClose={vi.fn()}
         onSubmit={vi.fn()}
