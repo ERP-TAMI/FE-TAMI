@@ -1,0 +1,30 @@
+import { fireEvent, render, screen } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
+import { MaterialGroupTable } from "./MaterialGroupTable";
+import type { MaterialGroup } from "../types/material-group.types";
+
+const materialGroup: MaterialGroup = {
+  id: "e41a0a7d-28b1-4d78-9c26-b017f5c5f890",
+  code: "STEEL",
+  name: "Steel",
+  displayOrder: 10,
+  status: "active",
+};
+
+describe("MaterialGroupTable", () => {
+  it("renders an empty state", () => {
+    render(<MaterialGroupTable materialGroups={[]} onEdit={vi.fn()} onStatus={vi.fn()} onDelete={vi.fn()} />);
+
+    expect(screen.getByText("No material groups match this filter.")).not.toBeNull();
+  });
+
+  it("renders a row and only runs its action after the user clicks", () => {
+    const onStatus = vi.fn();
+    render(<MaterialGroupTable materialGroups={[materialGroup]} onEdit={vi.fn()} onStatus={onStatus} onDelete={vi.fn()} />);
+
+    expect(screen.getByText("STEEL")).not.toBeNull();
+    expect(onStatus).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Deactivate" }));
+    expect(onStatus).toHaveBeenCalledWith(materialGroup);
+  });
+});
