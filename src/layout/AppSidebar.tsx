@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { NavLink } from "react-router-dom";
-import { BoxCubeIcon, GridIcon, ListIcon, PageIcon, UserCircleIcon } from "@/icons";
+import { BoxCubeIcon, GridIcon, ListIcon, PageIcon, TableIcon, UserCircleIcon } from "@/icons";
 import { useSidebar } from "@/context/SidebarContext";
 
 type NavItem = {
@@ -13,6 +13,7 @@ const navItems: NavItem[] = [
   { name: "Dashboard", path: "/dashboard", icon: <GridIcon /> },
   { name: "BOM", path: "/bom", icon: <BoxCubeIcon /> },
   { name: "Purchase Orders", path: "/po", icon: <ListIcon /> },
+  { name: "Materials", path: "/masters/materials", icon: <TableIcon /> },
   { name: "Material groups", path: "/masters/material-groups", icon: <PageIcon /> },
   { name: "Administration", path: "/admin", icon: <UserCircleIcon /> },
   { name: "Audit log", path: "/audit-log", icon: <ListIcon /> },

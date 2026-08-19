@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "@/App";
@@ -52,6 +52,17 @@ describe("application routes", () => {
     renderApp();
 
     expect(screen.getByRole("heading", { name: "Material groups" })).toBeTruthy();
+  });
+
+  it("provides sidebar navigation from material groups to materials", () => {
+    window.history.pushState({}, "", "/masters/material-groups");
+    renderApp();
+
+    const materialsLink = screen.getByRole("link", { name: "Materials" });
+    expect(materialsLink.getAttribute("href")).toBe("/masters/materials");
+
+    fireEvent.click(materialsLink);
+    expect(screen.getByRole("heading", { name: "Materials" })).toBeTruthy();
   });
 
   it("redirects the admin entry route to users", () => {
