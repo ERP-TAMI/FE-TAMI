@@ -4,7 +4,18 @@ import { materialGroupKeys } from "../api/material-group.keys";
 import type { MaterialGroupInput, MaterialGroupStatus } from "../types/material-group.types";
 
 export function useMaterialGroups(status?: MaterialGroupStatus) {
-  return useQuery({ queryKey: materialGroupKeys.list(status), queryFn: () => materialGroupApi.list(status) });
+  return useQuery({
+    queryKey: materialGroupKeys.list(status),
+    queryFn: () => materialGroupApi.list(status),
+  });
+}
+
+export function useMaterialGroup(id?: string) {
+  return useQuery({
+    queryKey: [...materialGroupKeys.all, "detail", id],
+    queryFn: () => materialGroupApi.get(id!),
+    enabled: Boolean(id),
+  });
 }
 
 function useInvalidateMaterialGroups() {
@@ -20,7 +31,8 @@ export function useCreateMaterialGroup() {
 export function useUpdateMaterialGroup() {
   const invalidate = useInvalidateMaterialGroups();
   return useMutation({
-    mutationFn: ({ id, input }: { id: string; input: Partial<MaterialGroupInput> }) => materialGroupApi.update(id, input),
+    mutationFn: ({ id, input }: { id: string; input: Partial<MaterialGroupInput> }) =>
+      materialGroupApi.update(id, input),
     onSuccess: invalidate,
   });
 }
@@ -28,7 +40,8 @@ export function useUpdateMaterialGroup() {
 export function useUpdateMaterialGroupStatus() {
   const invalidate = useInvalidateMaterialGroups();
   return useMutation({
-    mutationFn: ({ id, status }: { id: string; status: MaterialGroupStatus }) => materialGroupApi.updateStatus(id, status),
+    mutationFn: ({ id, status }: { id: string; status: MaterialGroupStatus }) =>
+      materialGroupApi.updateStatus(id, status),
     onSuccess: invalidate,
   });
 }

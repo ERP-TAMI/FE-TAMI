@@ -1,11 +1,5 @@
-import { PlaceholderPage } from "@/components/shared/PlaceholderPage";
+import MaterialListPage from "@/features/master-data/materials/pages/MaterialListPage";
 
 export default function MaterialsPage() {
-  return (
-    <PlaceholderPage
-      module="Master data"
-      title="Materials"
-      description="Material master-data workflows will be defined and implemented in a dedicated feature task."
-    />
-  );
+  return <MaterialListPage />;
 }
