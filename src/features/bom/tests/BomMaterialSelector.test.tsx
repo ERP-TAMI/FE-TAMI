@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { BomMaterialSelector } from "./BomMaterialSelector";
+import { BomMaterialSelector } from "../components/BomMaterialSelector";
 
 const addLine = vi.fn();
 const refetch = vi.fn();

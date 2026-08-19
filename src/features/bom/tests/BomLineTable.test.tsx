@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { BomLineTable } from "./BomLineTable";
+import { BomLineTable } from "../components/BomLineTable";
 
 describe("BomLineTable", () => {
   it("renders the snapshots returned by the API", () => {
