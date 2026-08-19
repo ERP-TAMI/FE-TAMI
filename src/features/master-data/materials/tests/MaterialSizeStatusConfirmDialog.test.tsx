@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { MaterialSizeStatusConfirmDialog } from "./MaterialSizeStatusConfirmDialog";
+import { MaterialSizeStatusConfirmDialog } from "../components/MaterialSizeStatusConfirmDialog";
 
 const size = {
   id: "33b27a8c-d43d-46f6-a3c4-e40ae72ef3e8",

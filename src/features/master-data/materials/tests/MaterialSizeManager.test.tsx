@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { MaterialSizeManager } from "./MaterialSizeManager";
+import { MaterialSizeManager } from "../components/MaterialSizeManager";
 
 const createReset = vi.fn();
 const updateReset = vi.fn();

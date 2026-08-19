@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { MaterialSizeForm } from "./MaterialSizeForm";
+import { MaterialSizeForm } from "../components/MaterialSizeForm";
 
 describe("MaterialSizeForm", () => {
   afterEach(cleanup);
