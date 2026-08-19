@@ -112,8 +112,8 @@ export default function MaterialListPage() {
         </div>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
           <Input
-            aria-label="Search materials"
-            placeholder="Search code or name"
+            label="Search code or name"
+            placeholder="Enter code or name"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
           />
