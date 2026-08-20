@@ -8,6 +8,8 @@ import PoPage from "@/pages/po/PoPage";
 import MaterialsPage from "@/pages/masters/MaterialsPage";
 import MaterialGroupListPage from "@/features/master-data/material-groups/pages/MaterialGroupListPage";
 import UsersPage from "@/pages/admin/UsersPage";
+import StyleListPage from "@/pages/styles/StyleListPage";
+import StyleDetailPage from "@/pages/styles/StyleDetailPage";
 import AuditLogPage from "@/pages/audit/AuditLogPage";
 import NotFoundPage from "@/pages/NotFoundPage";
 
@@ -20,6 +22,8 @@ export default function App() {
         <Route element={<AppLayout />}>
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="dashboard" element={<DashboardPage />} />
+          <Route path="styles" element={<StyleListPage />} />
+          <Route path="styles/:id" element={<StyleDetailPage />} />
           <Route path="bom" element={<BomPage />} />
           <Route path="po" element={<PoPage />} />
           <Route path="masters" element={<Navigate to="/masters/materials" replace />} />
