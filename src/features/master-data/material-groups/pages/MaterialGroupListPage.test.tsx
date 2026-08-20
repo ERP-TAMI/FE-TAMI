@@ -78,6 +78,62 @@ describe("MaterialGroupListPage", () => {
     expect(screen.getByText("No material groups match this filter.")).toBeTruthy();
   });
 
+  it("creates a material group from the list screen", async () => {
+    hooks.create.mutateAsync.mockResolvedValue({
+      ...materialGroup,
+      name: "Accessories",
+      displayOrder: 3,
+    });
+    hooks.useMaterialGroups.mockReturnValue({
+      isLoading: false,
+      isError: false,
+      data: [],
+      error: null,
+      refetch: vi.fn(),
+    });
+
+    render(<MaterialGroupListPage />);
+    fireEvent.click(screen.getByRole("button", { name: "Create material group" }));
+    fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Accessories" } });
+    fireEvent.change(screen.getByLabelText("Display order"), { target: { value: "3" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save material group" }));
+
+    await waitFor(() => {
+      expect(hooks.create.mutateAsync).toHaveBeenCalledWith({
+        name: "Accessories",
+        displayOrder: 3,
+      });
+    });
+  });
+
+  it("edits a material group from the list screen", async () => {
+    hooks.update.mutateAsync.mockResolvedValue({
+      ...materialGroup,
+      name: "Main fabric",
+      displayOrder: 2,
+    });
+    hooks.useMaterialGroups.mockReturnValue({
+      isLoading: false,
+      isError: false,
+      data: [materialGroup],
+      error: null,
+      refetch: vi.fn(),
+    });
+
+    render(<MaterialGroupListPage />);
+    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+    fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Main fabric" } });
+    fireEvent.change(screen.getByLabelText("Display order"), { target: { value: "2" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save material group" }));
+
+    await waitFor(() => {
+      expect(hooks.update.mutateAsync).toHaveBeenCalledWith({
+        id: materialGroup.id,
+        input: { name: "Main fabric", displayOrder: 2 },
+      });
+    });
+  });
+
   it("changes status only after confirmation", async () => {
     hooks.updateStatus.mutateAsync.mockResolvedValue({
       ...materialGroup,
