@@ -4,6 +4,7 @@ import type { Style, StyleStatus } from "@/types/style";
 import { stylesApi } from "@/features/styles/api/stylesApi";
 import { StyleStatusBadge } from "./StyleStatusBadge";
 import { StyleFormModal } from "./StyleFormModal";
+import { StyleImagePlaceholder } from "./components/StyleImagePlaceholder";
 
 export default function StyleDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -48,170 +49,204 @@ export default function StyleDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="p-6">
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 w-1/3 rounded bg-gray-200 dark:bg-gray-800"></div>
-          <div className="h-40 w-full rounded bg-gray-200 dark:bg-gray-800"></div>
-        </div>
+      <div className="space-y-4 animate-pulse">
+        <div className="h-6 w-1/4 rounded bg-gray-200 dark:bg-gray-800" />
+        <div className="h-48 w-full rounded-xl bg-gray-100 dark:bg-gray-800/60" />
       </div>
     );
   }
 
   if (error || !style) {
     return (
-      <div className="p-6">
-        <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-center text-red-800 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-300">
-          <h3 className="text-lg font-bold">Lỗi không tìm thấy dữ liệu</h3>
-          <p className="mt-2 text-sm">{error || "Mẫu Fit không tồn tại."}</p>
-          <button
-            onClick={() => navigate("/styles")}
-            className="mt-4 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
-          >
-            ← Quay lại danh sách
-          </button>
-        </div>
+      <div className="rounded-xl border border-red-200 bg-red-50/50 p-6 text-center text-xs text-red-700 dark:border-red-900/40 dark:bg-red-950/20 dark:text-red-300">
+        <h3 className="font-semibold text-sm">Không tìm thấy mẫu Fit</h3>
+        <p className="mt-1">{error || "Mẫu Fit không tồn tại."}</p>
+        <button
+          onClick={() => navigate("/styles")}
+          className="mt-4 rounded-md bg-red-600 px-3.5 py-1.5 text-xs font-medium text-white hover:bg-red-700 transition-colors"
+        >
+          Quay lại danh sách
+        </button>
       </div>
     );
   }
 
+  const workflowSteps: { key: StyleStatus; label: string }[] = [
+    { key: "draft", label: "Draft" },
+    { key: "approved", label: "Approved" },
+    { key: "active", label: "Active" },
+  ];
+
+  const currentStepIndex = workflowSteps.findIndex((s) => s.key === style.status);
+
   return (
-    <div className="p-6 space-y-6">
-      {/* Top Header Navigation */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <div className="flex items-center gap-3">
-            <Link
-              to="/styles"
-              className="text-sm font-medium text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-            >
-              ← Danh sách mẫu Fit
-            </Link>
-            <span className="text-gray-300">/</span>
-            <span className="text-sm font-semibold text-gray-900 dark:text-white">
-              {style.styleCode}
-            </span>
-          </div>
-          <h1 className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">
-            {style.styleName}
-          </h1>
-        </div>
+    <div className="space-y-6">
+      {/* Minimal Breadcrumb & Page Title */}
+      <div>
+        <nav className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400 mb-1">
+          <Link to="/dashboard" className="hover:text-gray-900 dark:hover:text-white transition-colors">
+            Dashboard
+          </Link>
+          <span>/</span>
+          <Link to="/styles" className="hover:text-gray-900 dark:hover:text-white transition-colors">
+            Mẫu Fit
+          </Link>
+          <span>/</span>
+          <span className="font-mono font-medium text-gray-900 dark:text-white">
+            {style.styleCode}
+          </span>
+        </nav>
 
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => setIsEditModalOpen(true)}
-            className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
-          >
-            Chỉnh sửa
-          </button>
-        </div>
-      </div>
-
-      {/* Detail Content Card */}
-      <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-          {/* Main Info */}
-          <div className="space-y-4">
-            <div>
-              <label className="text-xs font-semibold uppercase tracking-wider text-gray-400">
-                Mã mẫu (Style Code)
-              </label>
-              <p className="mt-1 text-lg font-mono font-bold text-gray-900 dark:text-white">
-                {style.styleCode}
-              </p>
+        {/* Style Identity Header */}
+        <div className="mt-3 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex items-start gap-4">
+            <div className="w-16 shrink-0">
+              <StyleImagePlaceholder styleCode={style.styleCode} />
             </div>
-
             <div>
-              <label className="text-xs font-semibold uppercase tracking-wider text-gray-400">
-                Tên mẫu Fit
-              </label>
-              <p className="mt-1 text-base text-gray-800 dark:text-gray-200">
-                {style.styleName}
-              </p>
-            </div>
-
-            <div>
-              <label className="text-xs font-semibold uppercase tracking-wider text-gray-400">
-                Nhóm mẫu (Category)
-              </label>
-              <p className="mt-1 text-base text-gray-800 dark:text-gray-200">
-                {style.category || "— chưa phân nhóm —"}
-              </p>
-            </div>
-
-            <div>
-              <label className="text-xs font-semibold uppercase tracking-wider text-gray-400">
-                Trạng thái hiện tại
-              </label>
-              <div className="mt-1 flex items-center gap-3">
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-xl font-semibold tracking-tight text-gray-900 dark:text-white">
+                  {style.styleName}
+                </h1>
                 <StyleStatusBadge status={style.status} />
               </div>
+              <p className="mt-1 font-mono text-xs text-gray-500 dark:text-gray-400">
+                {style.styleCode} {style.category ? `• ${style.category}` : ""}
+              </p>
             </div>
           </div>
 
-          {/* Additional Meta Info & Status Transitions */}
-          <div className="space-y-4 border-t border-gray-100 pt-4 md:border-t-0 md:border-l md:border-gray-100 md:pl-6 md:pt-0 dark:border-gray-800">
-            <div>
-              <label className="text-xs font-semibold uppercase tracking-wider text-gray-400">
-                Mô tả mẫu Fit
-              </label>
-              <p className="mt-1 text-sm whitespace-pre-wrap text-gray-600 dark:text-gray-400">
-                {style.description || "Không có mô tả."}
-              </p>
-            </div>
-
-            <div>
-              <label className="text-xs font-semibold uppercase tracking-wider text-gray-400">
-                Ảnh mẫu (Base Image Version ID)
-              </label>
-              <p className="mt-1 text-sm font-mono text-gray-600 dark:text-gray-400">
-                {style.baseImageVersionId || "Chưa có ảnh mẫu đính kèm"}
-              </p>
-            </div>
-
-            <div className="pt-4 border-t border-gray-200 dark:border-gray-800">
-              <label className="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">
-                Cập nhật nhanh trạng thái
-              </label>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  disabled={style.status === "draft" || isUpdatingStatus}
-                  onClick={() => handleStatusChange("draft")}
-                  className={`px-3 py-1.5 text-xs font-medium rounded-lg border ${
-                    style.status === "draft"
-                      ? "bg-amber-100 text-amber-800 border-amber-300"
-                      : "border-gray-300 text-gray-700 hover:bg-gray-100"
-                  }`}
-                >
-                  DRAFT
-                </button>
-                <button
-                  disabled={style.status === "approved" || isUpdatingStatus}
-                  onClick={() => handleStatusChange("approved")}
-                  className={`px-3 py-1.5 text-xs font-medium rounded-lg border ${
-                    style.status === "approved"
-                      ? "bg-blue-100 text-blue-800 border-blue-300"
-                      : "border-gray-300 text-gray-700 hover:bg-gray-100"
-                  }`}
-                >
-                  APPROVED
-                </button>
-                <button
-                  disabled={style.status === "active" || isUpdatingStatus}
-                  onClick={() => handleStatusChange("active")}
-                  className={`px-3 py-1.5 text-xs font-medium rounded-lg border ${
-                    style.status === "active"
-                      ? "bg-emerald-100 text-emerald-800 border-emerald-300"
-                      : "border-gray-300 text-gray-700 hover:bg-gray-100"
-                  }`}
-                >
-                  ACTIVE
-                </button>
-              </div>
-            </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setIsEditModalOpen(true)}
+              className="rounded-lg border border-gray-300 px-3.5 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800 transition-colors"
+            >
+              Chỉnh sửa
+            </button>
           </div>
         </div>
       </div>
 
+      {/* Status Workflow Progress Step */}
+      <div className="rounded-xl border border-gray-200/80 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
+        <span className="text-[11px] font-medium uppercase tracking-wider text-gray-400">
+          Status Workflow
+        </span>
+        <div className="mt-4 flex items-center justify-between max-w-lg">
+          {workflowSteps.map((step, idx) => {
+            const isActive = style.status === step.key;
+            const isCompleted = idx <= currentStepIndex;
+
+            return (
+              <div key={step.key} className="flex flex-1 items-center">
+                {/* Step Node */}
+                <button
+                  disabled={isUpdatingStatus}
+                  onClick={() => handleStatusChange(step.key)}
+                  className={`group relative flex items-center gap-2 transition-colors ${
+                    isActive
+                      ? "text-blue-600 dark:text-blue-400 font-semibold"
+                      : isCompleted
+                        ? "text-gray-900 dark:text-white font-medium"
+                        : "text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                  }`}
+                >
+                  <span
+                    className={`h-2.5 w-2.5 rounded-full transition-colors ${
+                      isActive
+                        ? "bg-blue-600 ring-4 ring-blue-500/20"
+                        : isCompleted
+                          ? "bg-gray-900 dark:bg-white"
+                          : "bg-gray-300 dark:bg-gray-700"
+                    }`}
+                  />
+                  <span className="text-xs">{step.label}</span>
+                </button>
+
+                {/* Connector Line */}
+                {idx < workflowSteps.length - 1 && (
+                  <div
+                    className={`mx-3 h-[1px] flex-1 transition-colors ${
+                      idx < currentStepIndex
+                        ? "bg-gray-900 dark:bg-white"
+                        : "bg-gray-200 dark:bg-gray-800"
+                    }`}
+                  />
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Detail Information - Description List Style */}
+      <div className="rounded-xl border border-gray-200/80 bg-white p-5 dark:border-gray-800 dark:bg-gray-900 space-y-6">
+        <div>
+          <h3 className="text-xs font-medium uppercase tracking-wider text-gray-400">
+            Thông tin mẫu fit
+          </h3>
+          <dl className="mt-3 divide-y divide-gray-100 dark:divide-gray-800 text-xs">
+            <div className="flex py-2.5">
+              <dt className="w-1/3 text-gray-500 dark:text-gray-400">Mã mẫu</dt>
+              <dd className="w-2/3 font-mono font-medium text-gray-900 dark:text-white">
+                {style.styleCode}
+              </dd>
+            </div>
+            <div className="flex py-2.5">
+              <dt className="w-1/3 text-gray-500 dark:text-gray-400">Tên mẫu</dt>
+              <dd className="w-2/3 font-medium text-gray-900 dark:text-white">
+                {style.styleName}
+              </dd>
+            </div>
+            <div className="flex py-2.5">
+              <dt className="w-1/3 text-gray-500 dark:text-gray-400">Nhóm mẫu</dt>
+              <dd className="w-2/3 text-gray-900 dark:text-white">
+                {style.category || "—"}
+              </dd>
+            </div>
+            <div className="flex py-2.5">
+              <dt className="w-1/3 text-gray-500 dark:text-gray-400">Trạng thái</dt>
+              <dd className="w-2/3">
+                <StyleStatusBadge status={style.status} />
+              </dd>
+            </div>
+            <div className="flex py-2.5">
+              <dt className="w-1/3 text-gray-500 dark:text-gray-400">Mô tả đặc điểm</dt>
+              <dd className="w-2/3 text-gray-900 dark:text-white whitespace-pre-wrap">
+                {style.description || "Chưa có mô tả chi tiết."}
+              </dd>
+            </div>
+          </dl>
+        </div>
+
+        <div>
+          <h3 className="text-xs font-medium uppercase tracking-wider text-gray-400 border-t border-gray-100 pt-5 dark:border-gray-800">
+            Thông tin hệ thống
+          </h3>
+          <dl className="mt-3 divide-y divide-gray-100 dark:divide-gray-800 text-xs">
+            <div className="flex py-2.5">
+              <dt className="w-1/3 text-gray-500 dark:text-gray-400">Thời gian tạo</dt>
+              <dd className="w-2/3 text-gray-900 dark:text-white">
+                {new Date(style.createdAt).toLocaleString("vi-VN")}
+              </dd>
+            </div>
+            <div className="flex py-2.5">
+              <dt className="w-1/3 text-gray-500 dark:text-gray-400">Cập nhật gần nhất</dt>
+              <dd className="w-2/3 text-gray-900 dark:text-white">
+                {new Date(style.updatedAt).toLocaleString("vi-VN")}
+              </dd>
+            </div>
+            <div className="flex py-2.5">
+              <dt className="w-1/3 text-gray-500 dark:text-gray-400">Row Version</dt>
+              <dd className="w-2/3 font-mono text-gray-900 dark:text-white">
+                v{style.rowVersion}
+              </dd>
+            </div>
+          </dl>
+        </div>
+      </div>
+
+      {/* Edit Form Modal */}
       <StyleFormModal
         isOpen={isEditModalOpen}
         onClose={() => setIsEditModalOpen(false)}
