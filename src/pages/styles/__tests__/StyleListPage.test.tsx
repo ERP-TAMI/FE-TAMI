@@ -47,7 +47,7 @@ describe("StyleListPage", () => {
       </BrowserRouter>,
     );
 
-    expect(screen.getByText("Danh sách Mẫu Fit (Styles)")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Mẫu Fit", level: 1 })).toBeTruthy();
 
     await waitFor(() => {
       expect(screen.getByText("FIT-2026-001")).toBeTruthy();
@@ -82,7 +82,7 @@ describe("StyleListPage", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText("⚠️ Lỗi tải dữ liệu")).toBeTruthy();
+      expect(screen.getByText("⚠️ Không thể tải dữ liệu")).toBeTruthy();
     });
   });
 });
