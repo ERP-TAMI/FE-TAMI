@@ -67,9 +67,9 @@ export function MaterialGroupTable({
         {
           key: "actions",
           header: "Thao tác",
-          align: "right",
+          align: "center",
           render: (group) => (
-            <div className="flex items-center justify-end gap-1">
+            <div className="flex items-center justify-center gap-1">
               <Button variant="ghost" size="sm" onClick={() => onEdit(group)}>
                 Sửa
               </Button>
