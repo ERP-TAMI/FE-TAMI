@@ -33,7 +33,7 @@ export function StyleFormModal({ isOpen, onClose, onSuccess, styleToEdit }: Prop
       setStyleName(styleToEdit.styleName);
       setDescription(styleToEdit.description || "");
       setCategory(styleToEdit.category || "");
-      setStatus(styleToEdit.status);
+      setStatus(styleToEdit.status === "active" ? "active" : "draft");
     } else {
       setStyleCode("");
       setStyleName("");
@@ -166,7 +166,7 @@ export function StyleFormModal({ isOpen, onClose, onSuccess, styleToEdit }: Prop
                   if (codeError) setCodeError(null);
                 }}
                 placeholder="STY-000248"
-                className={`mt-1 h-10 w-full rounded-lg border px-3 font-mono text-xs text-gray-900 dark:text-white dark:bg-gray-800 transition-colors focus:outline-none focus:ring-2 ${
+                className={`mt-1 h-10 w-full rounded-lg border px-3 font-mono text-sm text-gray-900 dark:text-white dark:bg-gray-800 transition-colors focus:outline-none focus:ring-2 ${
                   codeError
                     ? "border-red-500 focus:border-red-500 focus:ring-red-500/20"
                     : "border-gray-300 focus:border-blue-500 focus:ring-blue-500/20 dark:border-gray-700"
@@ -190,7 +190,7 @@ export function StyleFormModal({ isOpen, onClose, onSuccess, styleToEdit }: Prop
                 value={styleName}
                 onChange={(e) => setStyleName(e.target.value)}
                 placeholder="VD: Oversized Tee Classic"
-                className="mt-1 h-10 w-full rounded-lg border border-gray-300 px-3 text-xs text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-white transition-colors"
+                className="mt-1 h-10 w-full rounded-lg border border-gray-300 px-3 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-white transition-colors"
               />
             </div>
 
@@ -205,7 +205,7 @@ export function StyleFormModal({ isOpen, onClose, onSuccess, styleToEdit }: Prop
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
                   placeholder="VD: Áo thun"
-                  className="mt-1 h-10 w-full rounded-lg border border-gray-300 px-3 text-xs text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-white transition-colors"
+                  className="mt-1 h-10 w-full rounded-lg border border-gray-300 px-3 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-white transition-colors"
                 />
               </div>
 
@@ -217,11 +217,10 @@ export function StyleFormModal({ isOpen, onClose, onSuccess, styleToEdit }: Prop
                 <select
                   value={status}
                   onChange={(e) => setStatus(e.target.value as StyleStatus)}
-                  className="mt-1 h-10 w-full rounded-lg border border-gray-300 px-3 text-xs text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-white transition-colors"
+                  className="mt-1 h-10 w-full rounded-lg border border-gray-300 px-3 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-white transition-colors"
                 >
-                  <option value="draft">Draft</option>
-                  <option value="approved">Approved</option>
-                  <option value="active">Active</option>
+                  <option value="draft">Nháp (Draft)</option>
+                  <option value="active">Hoạt động (Active)</option>
                 </select>
               </div>
             </div>
@@ -236,7 +235,7 @@ export function StyleFormModal({ isOpen, onClose, onSuccess, styleToEdit }: Prop
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Nhập thông tin đặc điểm chi tiết của mẫu Fit..."
-                className="mt-1 w-full rounded-lg border border-gray-300 p-3 text-xs text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-white transition-colors"
+                className="mt-1 w-full rounded-lg border border-gray-300 p-3 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-white transition-colors"
               />
             </div>
 

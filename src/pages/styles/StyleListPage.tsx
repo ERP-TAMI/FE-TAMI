@@ -2,9 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import type { Style, StyleStatus, StyleQueryFilter } from "@/types/style";
 import { stylesApi } from "@/features/styles/api/stylesApi";
-import { StyleStatusBadge } from "./StyleStatusBadge";
 import { StyleFormModal } from "./StyleFormModal";
-import { StyleStatStrip } from "./components/StyleStatStrip";
 import { StyleImagePlaceholder } from "./components/StyleImagePlaceholder";
 
 type ViewMode = "table" | "grid";
@@ -15,6 +13,9 @@ export default function StyleListPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Status toggle in-progress ID
+  const [togglingId, setTogglingId] = useState<string | null>(null);
 
   // View Mode state
   const [viewMode, setViewMode] = useState<ViewMode>("table");
@@ -76,6 +77,22 @@ export default function StyleListPage() {
     }
   };
 
+  // Toggle switch status handler (Draft <-> Active)
+  const handleToggleStatus = async (style: Style) => {
+    const newStatus: StyleStatus = style.status === "active" ? "draft" : "active";
+    try {
+      setTogglingId(style.id);
+      await stylesApi.updateStyle(style.id, { status: newStatus });
+      setStyles((prev) =>
+        prev.map((item) => (item.id === style.id ? { ...item, status: newStatus } : item))
+      );
+    } catch (err: any) {
+      alert(err.response?.data?.message || "Đổi trạng thái thất bại.");
+    } finally {
+      setTogglingId(null);
+    }
+  };
+
   const handleClearFilters = () => {
     setSearch("");
     setCategory("");
@@ -84,6 +101,10 @@ export default function StyleListPage() {
   };
 
   const isFiltering = search.trim() !== "" || category.trim() !== "" || status !== "";
+
+  // Stat counts for minimal header display
+  const activeCount = styles.filter((s) => s.status === "active").length;
+  const draftCount = styles.filter((s) => s.status !== "active").length;
 
   return (
     <div className="space-y-6">
@@ -98,12 +119,21 @@ export default function StyleListPage() {
             <span>/</span>
             <span className="font-medium text-gray-900 dark:text-white">Mẫu Fit</span>
           </nav>
-          <h1 className="text-2xl font-semibold tracking-tight text-gray-900 dark:text-white">
-            Mẫu Fit
-          </h1>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-            Quản lý và theo dõi các mẫu fit trong hệ thống
-          </p>
+
+          {/* Title & Small Inline Summary */}
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
+              Mẫu Fit
+            </h1>
+            {/* Small Compact Stat Badge */}
+            <div className="flex items-center gap-2 text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800/80 px-2.5 py-1 rounded-full border border-gray-200/80 dark:border-gray-700/80">
+              <span>{total} mẫu</span>
+              <span>•</span>
+              <span className="text-emerald-600 dark:text-emerald-400">{activeCount} hoạt động</span>
+              <span>•</span>
+              <span className="text-amber-600 dark:text-amber-400">{draftCount} nháp</span>
+            </div>
+          </div>
         </div>
 
         {/* Primary Action Button */}
@@ -116,9 +146,6 @@ export default function StyleListPage() {
           </button>
         </div>
       </div>
-
-      {/* Stat Summary Strip */}
-      <StyleStatStrip styles={styles} totalCount={total} />
 
       {/* Enterprise Toolbar */}
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -168,27 +195,30 @@ export default function StyleListPage() {
           )}
         </div>
 
-        {/* Right Controls: Status Filter & View Switcher */}
+        {/* Right Controls: Status Filter (Draft vs Active) & View Switcher */}
         <div className="flex items-center gap-3">
           {/* Status Segmented Filter */}
           <div className="flex items-center rounded-lg border border-gray-200 bg-gray-50/80 p-0.5 dark:border-gray-800 dark:bg-gray-900">
-            {(["", "draft", "approved", "active"] as const).map((st) => {
-              const label = st === "" ? "Tất cả" : st.charAt(0).toUpperCase() + st.slice(1);
-              const isSelected = status === st;
+            {[
+              { key: "", label: "Tất cả" },
+              { key: "draft", label: "Nháp" },
+              { key: "active", label: "Hoạt động" },
+            ].map((st) => {
+              const isSelected = status === st.key;
               return (
                 <button
-                  key={st}
+                  key={st.key}
                   onClick={() => {
-                    setStatus(st as StyleStatus | "");
+                    setStatus(st.key as StyleStatus | "");
                     setPage(1);
                   }}
-                  className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                  className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${
                     isSelected
                       ? "bg-white text-blue-600 shadow-xs dark:bg-gray-800 dark:text-blue-400"
                       : "text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
                   }`}
                 >
-                  {label}
+                  {st.label}
                 </button>
               );
             })}
@@ -238,7 +268,7 @@ export default function StyleListPage() {
       {isLoading && !error && (
         <div className="space-y-2">
           {[1, 2, 3, 4, 5].map((i) => (
-            <div key={i} className="h-12 w-full animate-pulse rounded-lg bg-gray-100 dark:bg-gray-800/60" />
+            <div key={i} className="h-14 w-full animate-pulse rounded-lg bg-gray-100 dark:bg-gray-800/60" />
           ))}
         </div>
       )}
@@ -265,50 +295,90 @@ export default function StyleListPage() {
       {!isLoading && !error && styles.length > 0 && (
         <>
           {viewMode === "table" ? (
-            /* LINEAR / STRIPE MODERN TABLE VIEW */
-            <div className="overflow-hidden rounded-xl border border-gray-200/80 bg-white dark:border-gray-800 dark:bg-gray-900">
+            /* LINEAR / STRIPE CLEAR READABLE ENTERPRISE TABLE VIEW */
+            <div className="overflow-hidden rounded-xl border border-gray-200/80 bg-white shadow-xs dark:border-gray-800 dark:bg-gray-900">
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs text-gray-600 dark:text-gray-300">
-                  <thead className="border-b border-gray-100 bg-gray-50/50 text-[11px] font-medium uppercase tracking-wider text-gray-400 dark:border-gray-800 dark:bg-gray-900/50">
+                <table className="w-full text-left text-sm text-gray-700 dark:text-gray-200">
+                  <thead className="border-b border-gray-200 bg-gray-50/80 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:border-gray-800 dark:bg-gray-800/80 dark:text-gray-400">
                     <tr>
-                      <th className="px-4 py-3 font-medium">Mã mẫu</th>
-                      <th className="px-4 py-3 font-medium">Tên mẫu</th>
-                      <th className="px-4 py-3 font-medium">Nhóm</th>
-                      <th className="px-4 py-3 font-medium">Trạng thái</th>
-                      <th className="px-4 py-3 font-medium">Ngày tạo</th>
-                      <th className="px-4 py-3 font-medium text-right">Actions</th>
+                      <th className="px-5 py-3.5 font-semibold">Mã mẫu</th>
+                      <th className="px-5 py-3.5 font-semibold">Tên mẫu</th>
+                      <th className="px-5 py-3.5 font-semibold">Nhóm</th>
+                      <th className="px-5 py-3.5 font-semibold">Trạng thái</th>
+                      <th className="px-5 py-3.5 font-semibold">Ngày tạo</th>
+                      <th className="px-5 py-3.5 font-semibold text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
                     {styles.map((style) => (
                       <tr
                         key={style.id}
-                        className="group h-14 hover:bg-gray-50/60 dark:hover:bg-gray-800/40 transition-colors"
+                        className="group h-16 hover:bg-gray-50/80 dark:hover:bg-gray-800/50 transition-colors"
                       >
-                        <td className="px-4 py-3">
+                        {/* Mã mẫu */}
+                        <td className="px-5 py-4">
                           <Link
                             to={`/styles/${style.id}`}
-                            className="font-mono text-xs font-medium text-blue-600 hover:underline dark:text-blue-400"
+                            className="font-mono text-sm font-semibold text-blue-600 hover:underline dark:text-blue-400"
                           >
                             {style.styleCode}
                           </Link>
                         </td>
-                        <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">
+
+                        {/* Tên mẫu */}
+                        <td className="px-5 py-4 text-sm font-medium text-gray-900 dark:text-white">
                           {style.styleName}
                         </td>
-                        <td className="px-4 py-3 text-gray-500 dark:text-gray-400">
+
+                        {/* Nhóm mẫu */}
+                        <td className="px-5 py-4 text-sm text-gray-600 dark:text-gray-300">
                           {style.category || "—"}
                         </td>
-                        <td className="px-4 py-3">
-                          <StyleStatusBadge status={style.status} />
+
+                        {/* Trạng thái - Nút Cần Gạt (Toggle Switch) */}
+                        <td className="px-5 py-4">
+                          <div className="flex items-center gap-2.5">
+                            <button
+                              type="button"
+                              onClick={() => handleToggleStatus(style)}
+                              disabled={togglingId === style.id}
+                              className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                                style.status === "active" ? "bg-emerald-500" : "bg-gray-300 dark:bg-gray-700"
+                              } ${togglingId === style.id ? "opacity-50" : ""}`}
+                              title={
+                                style.status === "active"
+                                  ? "Đang Hoạt động (Bấm để chuyển thành Nháp)"
+                                  : "Đang Nháp (Bấm để chuyển thành Hoạt động)"
+                              }
+                            >
+                              <span
+                                className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-xs ring-0 transition duration-200 ease-in-out ${
+                                  style.status === "active" ? "translate-x-4" : "translate-x-0"
+                                }`}
+                              />
+                            </button>
+                            <span
+                              className={`text-xs font-medium ${
+                                style.status === "active"
+                                  ? "text-emerald-700 dark:text-emerald-400"
+                                  : "text-gray-500 dark:text-gray-400"
+                              }`}
+                            >
+                              {style.status === "active" ? "Hoạt động" : "Nháp"}
+                            </span>
+                          </div>
                         </td>
-                        <td className="px-4 py-3 text-gray-400 dark:text-gray-500">
+
+                        {/* Ngày tạo */}
+                        <td className="px-5 py-4 text-xs text-gray-500 dark:text-gray-400">
                           {new Date(style.createdAt).toLocaleDateString("vi-VN")}
                         </td>
-                        <td className="px-4 py-3 text-right space-x-3">
+
+                        {/* Actions */}
+                        <td className="px-5 py-4 text-right space-x-3">
                           <Link
                             to={`/styles/${style.id}`}
-                            className="text-xs font-medium text-gray-600 hover:text-blue-600 dark:text-gray-400 dark:hover:text-blue-400 transition-colors"
+                            className="text-xs font-medium text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
                           >
                             Xem
                           </Link>
@@ -332,12 +402,12 @@ export default function StyleListPage() {
               </div>
             </div>
           ) : (
-            /* PRODUCT CATALOG GRID VIEW */
+            /* PRODUCT CATALOG GRID VIEW WITH TOGGLE SWITCH */
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
               {styles.map((style) => (
                 <div
                   key={style.id}
-                  className="group relative flex flex-col justify-between overflow-hidden rounded-xl border border-gray-200/80 bg-white p-3 transition-all duration-200 hover:border-gray-300 dark:border-gray-800 dark:bg-gray-900 dark:hover:border-gray-700"
+                  className="group relative flex flex-col justify-between overflow-hidden rounded-xl border border-gray-200/80 bg-white p-3.5 transition-all duration-200 hover:border-gray-300 dark:border-gray-800 dark:bg-gray-900 dark:hover:border-gray-700"
                 >
                   <div>
                     {/* Image Area */}
@@ -346,17 +416,36 @@ export default function StyleListPage() {
                     </div>
 
                     {/* Metadata */}
-                    <div className="mt-3 space-y-1">
+                    <div className="mt-3 space-y-1.5">
                       <div className="flex items-center justify-between">
-                        <span className="font-mono text-xs font-medium text-blue-600 dark:text-blue-400">
+                        <span className="font-mono text-sm font-semibold text-blue-600 dark:text-blue-400">
                           {style.styleCode}
                         </span>
-                        <StyleStatusBadge status={style.status} showDot={true} />
+                        {/* Toggle Switch */}
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => handleToggleStatus(style)}
+                            disabled={togglingId === style.id}
+                            className={`relative inline-flex h-4 w-7 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
+                              style.status === "active" ? "bg-emerald-500" : "bg-gray-300 dark:bg-gray-700"
+                            }`}
+                          >
+                            <span
+                              className={`pointer-events-none inline-block h-3 w-3 transform rounded-full bg-white shadow-xs ring-0 transition duration-200 ease-in-out ${
+                                style.status === "active" ? "translate-x-3" : "translate-x-0"
+                              }`}
+                            />
+                          </button>
+                          <span className="text-[11px] font-medium text-gray-500">
+                            {style.status === "active" ? "Active" : "Draft"}
+                          </span>
+                        </div>
                       </div>
-                      <h4 className="text-xs font-medium text-gray-900 dark:text-white line-clamp-1">
+                      <h4 className="text-sm font-medium text-gray-900 dark:text-white line-clamp-1">
                         {style.styleName}
                       </h4>
-                      <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
                         {style.category || "Chưa phân nhóm"}
                       </p>
                     </div>
@@ -367,7 +456,7 @@ export default function StyleListPage() {
                     <span className="text-[11px] text-gray-400">
                       {new Date(style.createdAt).toLocaleDateString("vi-VN")}
                     </span>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2.5">
                       <Link
                         to={`/styles/${style.id}`}
                         className="text-xs font-medium text-blue-600 hover:underline dark:text-blue-400"
