@@ -42,9 +42,9 @@ export default function StyleListPage() {
         limit,
       };
       const res = await stylesApi.getStyles(filter);
-      setStyles(res.data);
-      setTotal(res.meta.total);
-      setTotalPages(res.meta.totalPages);
+      setStyles(res?.data ?? []);
+      setTotal(res?.meta?.total ?? 0);
+      setTotalPages(res?.meta?.totalPages ?? 1);
     } catch (err: any) {
       setError(err.response?.data?.message || "Không thể tải danh sách mẫu Fit. Vui lòng thử lại.");
     } finally {
