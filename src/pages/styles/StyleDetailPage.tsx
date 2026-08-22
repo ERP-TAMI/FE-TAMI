@@ -5,6 +5,7 @@ import { stylesApi } from "@/features/styles/api/stylesApi";
 import { StyleStatusBadge } from "./StyleStatusBadge";
 import { StyleFormModal } from "./StyleFormModal";
 import { StyleImagePlaceholder } from "./components/StyleImagePlaceholder";
+import { getErrorMessage } from "./utils/getErrorMessage";
 
 export default function StyleDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -15,11 +16,37 @@ export default function StyleDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const [statusError, setStatusError] = useState<string | null>(null);
 
   // Image Upload / Paste state
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Ảnh chọn/dán/kéo-thả chỉ là preview cục bộ (chưa upload lên hệ thống). Mỗi lần
+  // đổi ảnh phải revoke blob URL cũ để tránh rò bộ nhớ, và revoke luôn khi rời trang.
+  const setLocalImage = useCallback((file: File) => {
+    setImageUrl((prev) => {
+      if (prev?.startsWith("blob:")) URL.revokeObjectURL(prev);
+      return URL.createObjectURL(file);
+    });
+  }, []);
+
+  const clearLocalImage = useCallback(() => {
+    setImageUrl((prev) => {
+      if (prev?.startsWith("blob:")) URL.revokeObjectURL(prev);
+      return null;
+    });
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      setImageUrl((prev) => {
+        if (prev?.startsWith("blob:")) URL.revokeObjectURL(prev);
+        return prev;
+      });
+    };
+  }, []);
 
   const fetchStyleDetail = async () => {
     if (!id) return;
@@ -31,8 +58,8 @@ export default function StyleDetailPage() {
       if (data.baseImageVersionId) {
         setImageUrl(data.baseImageVersionId);
       }
-    } catch (err: any) {
-      setError(err.response?.data?.message || "Không thể tải thông tin mẫu Fit.");
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, "Không thể tải thông tin mẫu Fit."));
     } finally {
       setIsLoading(false);
     }
@@ -51,12 +78,11 @@ export default function StyleDetailPage() {
       if (items[i].type.indexOf("image") !== -1) {
         const file = items[i].getAsFile();
         if (file) {
-          const localUrl = URL.createObjectURL(file);
-          setImageUrl(localUrl);
+          setLocalImage(file);
         }
       }
     }
-  }, []);
+  }, [setLocalImage]);
 
   useEffect(() => {
     window.addEventListener("paste", handlePaste);
@@ -68,8 +94,7 @@ export default function StyleDetailPage() {
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const localUrl = URL.createObjectURL(file);
-      setImageUrl(localUrl);
+      setLocalImage(file);
     }
   };
 
@@ -78,8 +103,7 @@ export default function StyleDetailPage() {
     setIsDragging(false);
     const file = e.dataTransfer.files?.[0];
     if (file && file.type.startsWith("image/")) {
-      const localUrl = URL.createObjectURL(file);
-      setImageUrl(localUrl);
+      setLocalImage(file);
     }
   };
 
@@ -93,15 +117,18 @@ export default function StyleDetailPage() {
     setIsDragging(false);
   };
 
+  // Mẫu Fit đang "Đã duyệt" phải đổi trạng thái qua biểu mẫu Sửa để tránh vô tình
+  // ghi đè trạng thái duyệt bằng nút gạt 2 chiều.
   const handleToggleStatus = async () => {
-    if (!style) return;
+    if (!style || style.status === "approved") return;
     const newStatus: StyleStatus = style.status === "active" ? "draft" : "active";
     try {
       setIsUpdatingStatus(true);
+      setStatusError(null);
       const updated = await stylesApi.updateStyle(style.id, { status: newStatus });
       setStyle(updated);
-    } catch (err: any) {
-      alert(err.response?.data?.message || "Cập nhật trạng thái thất bại");
+    } catch (err: unknown) {
+      setStatusError(getErrorMessage(err, "Cập nhật trạng thái thất bại."));
     } finally {
       setIsUpdatingStatus(false);
     }
@@ -148,6 +175,18 @@ export default function StyleDetailPage() {
         </span>
       </nav>
 
+      {statusError && (
+        <div className="flex items-center justify-between rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-300">
+          <span>{statusError}</span>
+          <button
+            onClick={() => setStatusError(null)}
+            className="ml-2 font-bold text-red-500 hover:text-red-700"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       {/* Product Style Record Layout (Left 5 Cols Image, Right 7 Cols Info) */}
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-12 items-start">
         {/* Left Column: Product Photo Visual Focus (5 cols) */}
@@ -170,7 +209,7 @@ export default function StyleDetailPage() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => setImageUrl(null)}
+                    onClick={clearLocalImage}
                     className="rounded-lg bg-white/90 px-3 py-1.5 text-xs font-medium text-red-600 shadow-sm hover:bg-white backdrop-blur-xs dark:bg-gray-900/90 dark:text-red-400 dark:hover:bg-gray-900 transition-colors"
                   >
                     Xóa
@@ -242,11 +281,23 @@ export default function StyleDetailPage() {
                 <button
                   type="button"
                   onClick={handleToggleStatus}
-                  disabled={isUpdatingStatus}
-                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                    style.status === "active" ? "bg-emerald-500" : "bg-gray-300 dark:bg-gray-700"
+                  disabled={isUpdatingStatus || style.status === "approved"}
+                  className={`relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                    style.status === "approved" ? "cursor-not-allowed" : "cursor-pointer"
+                  } ${
+                    style.status === "active"
+                      ? "bg-emerald-500"
+                      : style.status === "approved"
+                        ? "bg-blue-400"
+                        : "bg-gray-300 dark:bg-gray-700"
                   }`}
-                  title={style.status === "active" ? "Đang Hoạt động (Bấm để chuyển về Nháp)" : "Đang Nháp (Bấm để kích hoạt)"}
+                  title={
+                    style.status === "approved"
+                      ? "Đã duyệt — đổi trạng thái qua nút Chỉnh sửa"
+                      : style.status === "active"
+                        ? "Đang Hoạt động (Bấm để chuyển về Nháp)"
+                        : "Đang Nháp (Bấm để kích hoạt)"
+                  }
                 >
                   <span
                     className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-xs ring-0 transition duration-200 ease-in-out ${

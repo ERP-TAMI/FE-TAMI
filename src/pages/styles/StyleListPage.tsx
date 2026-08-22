@@ -5,6 +5,8 @@ import { stylesApi } from "@/features/styles/api/stylesApi";
 import { StyleFormModal } from "./StyleFormModal";
 import { StyleImagePlaceholder } from "./components/StyleImagePlaceholder";
 import { DeleteConfirmDialog } from "./DeleteConfirmDialog";
+import { StyleStatusBadge } from "./StyleStatusBadge";
+import { getErrorMessage } from "./utils/getErrorMessage";
 import { TableIcon, GridIcon, EyeIcon, PencilIcon, TrashBinIcon } from "@/icons";
 
 type ViewMode = "table" | "grid";
@@ -55,8 +57,8 @@ export default function StyleListPage() {
       setStyles(res?.data ?? []);
       setTotal(res?.meta?.total ?? 0);
       setTotalPages(res?.meta?.totalPages ?? 1);
-    } catch (err: any) {
-      setError(err.response?.data?.message || "Không thể tải danh sách mẫu Fit. Vui lòng thử lại.");
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, "Không thể tải danh sách mẫu Fit. Vui lòng thử lại."));
     } finally {
       setIsLoading(false);
     }
@@ -88,15 +90,17 @@ export default function StyleListPage() {
       await stylesApi.deleteStyle(styleToDelete.id);
       setStyleToDelete(null);
       fetchStyles();
-    } catch (err: any) {
-      setActionError(err.response?.data?.message || "Xóa mẫu Fit thất bại. Vui lòng thử lại.");
+    } catch (err: unknown) {
+      setActionError(getErrorMessage(err, "Xóa mẫu Fit thất bại. Vui lòng thử lại."));
     } finally {
       setIsDeleting(false);
     }
   };
 
-  // Toggle switch status handler (Draft <-> Active)
+  // Toggle switch status handler (Draft <-> Active). Mẫu Fit đang "Đã duyệt" phải
+  // đổi trạng thái qua biểu mẫu sửa để tránh vô tình ghi đè trạng thái duyệt.
   const handleToggleStatus = async (style: Style) => {
+    if (style.status === "approved") return;
     const newStatus: StyleStatus = style.status === "active" ? "draft" : "active";
     try {
       setTogglingId(style.id);
@@ -105,8 +109,8 @@ export default function StyleListPage() {
       setStyles((prev) =>
         prev.map((item) => (item.id === style.id ? { ...item, status: newStatus } : item))
       );
-    } catch (err: any) {
-      setActionError(err.response?.data?.message || "Đổi trạng thái thất bại.");
+    } catch (err: unknown) {
+      setActionError(getErrorMessage(err, "Đổi trạng thái thất bại."));
     } finally {
       setTogglingId(null);
     }
@@ -123,7 +127,8 @@ export default function StyleListPage() {
 
   // Stat counts for minimal header display
   const activeCount = styles.filter((s) => s.status === "active").length;
-  const draftCount = styles.filter((s) => s.status !== "active").length;
+  const approvedCount = styles.filter((s) => s.status === "approved").length;
+  const draftCount = styles.filter((s) => s.status === "draft").length;
 
   return (
     <div className="space-y-6">
@@ -149,6 +154,8 @@ export default function StyleListPage() {
               <span>{total} mẫu</span>
               <span>•</span>
               <span className="text-emerald-600 dark:text-emerald-400">{activeCount} hoạt động</span>
+              <span>•</span>
+              <span className="text-blue-600 dark:text-blue-400">{approvedCount} đã duyệt</span>
               <span>•</span>
               <span className="text-amber-600 dark:text-amber-400">{draftCount} nháp</span>
             </div>
@@ -371,20 +378,28 @@ export default function StyleListPage() {
                           {style.category || "—"}
                         </td>
 
-                        {/* Trạng thái - Nút Cần Gạt */}
+                        {/* Trạng thái - Nút Cần Gạt (chỉ bật/tắt Nháp <-> Hoạt động; mẫu Đã duyệt phải đổi qua biểu mẫu sửa) */}
                         <td className="w-[17%] px-5 py-4">
                           <div className="flex items-center gap-2.5">
                             <button
                               type="button"
                               onClick={() => handleToggleStatus(style)}
-                              disabled={togglingId === style.id}
-                              className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                                style.status === "active" ? "bg-emerald-500" : "bg-gray-300 dark:bg-gray-700"
+                              disabled={togglingId === style.id || style.status === "approved"}
+                              className={`relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                                style.status === "approved" ? "cursor-not-allowed" : "cursor-pointer"
+                              } ${
+                                style.status === "active"
+                                  ? "bg-emerald-500"
+                                  : style.status === "approved"
+                                    ? "bg-blue-400"
+                                    : "bg-gray-300 dark:bg-gray-700"
                               } ${togglingId === style.id ? "opacity-50" : ""}`}
                               title={
-                                style.status === "active"
-                                  ? "Đang Hoạt động (Bấm để chuyển thành Nháp)"
-                                  : "Đang Nháp (Bấm để chuyển thành Hoạt động)"
+                                style.status === "approved"
+                                  ? "Đã duyệt — đổi trạng thái qua biểu mẫu Sửa"
+                                  : style.status === "active"
+                                    ? "Đang Hoạt động (Bấm để chuyển thành Nháp)"
+                                    : "Đang Nháp (Bấm để chuyển thành Hoạt động)"
                               }
                             >
                               <span
@@ -393,15 +408,7 @@ export default function StyleListPage() {
                                 }`}
                               />
                             </button>
-                            <span
-                              className={`inline-block w-20 shrink-0 text-xs font-semibold ${
-                                style.status === "active"
-                                  ? "text-emerald-700 dark:text-emerald-400"
-                                  : "text-gray-500 dark:text-gray-400"
-                              }`}
-                            >
-                              {style.status === "active" ? "Hoạt động" : "Nháp"}
-                            </span>
+                            <StyleStatusBadge status={style.status} showDot={false} />
                           </div>
                         </td>
 
@@ -470,14 +477,21 @@ export default function StyleListPage() {
                         <span className="font-mono text-sm font-semibold text-blue-600 dark:text-blue-400">
                           {style.styleCode}
                         </span>
-                        {/* Toggle Switch */}
+                        {/* Toggle Switch (mẫu Đã duyệt phải đổi qua biểu mẫu sửa) */}
                         <div className="flex items-center gap-1.5">
                           <button
                             type="button"
                             onClick={() => handleToggleStatus(style)}
-                            disabled={togglingId === style.id}
-                            className={`relative inline-flex h-4 w-7 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
-                              style.status === "active" ? "bg-emerald-500" : "bg-gray-300 dark:bg-gray-700"
+                            disabled={togglingId === style.id || style.status === "approved"}
+                            title={style.status === "approved" ? "Đã duyệt — đổi trạng thái qua biểu mẫu Sửa" : undefined}
+                            className={`relative inline-flex h-4 w-7 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
+                              style.status === "approved" ? "cursor-not-allowed" : "cursor-pointer"
+                            } ${
+                              style.status === "active"
+                                ? "bg-emerald-500"
+                                : style.status === "approved"
+                                  ? "bg-blue-400"
+                                  : "bg-gray-300 dark:bg-gray-700"
                             }`}
                           >
                             <span
@@ -486,9 +500,7 @@ export default function StyleListPage() {
                               }`}
                             />
                           </button>
-                          <span className="text-[11px] font-medium text-gray-500">
-                            {style.status === "active" ? "Active" : "Draft"}
-                          </span>
+                          <StyleStatusBadge status={style.status} showDot={false} />
                         </div>
                       </div>
                       <h4 className="text-sm font-medium text-gray-900 dark:text-white line-clamp-1">

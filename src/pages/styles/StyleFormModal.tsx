@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
+import axios from "axios";
 import type { Style, StyleStatus, CreateStylePayload, UpdateStylePayload } from "@/types/style";
 import { stylesApi } from "@/features/styles/api/stylesApi";
 import { UnsavedChangesDialog } from "./UnsavedChangesDialog";
+import { getErrorMessage } from "./utils/getErrorMessage";
 
 interface Props {
   isOpen: boolean;
@@ -33,7 +35,7 @@ export function StyleFormModal({ isOpen, onClose, onSuccess, styleToEdit }: Prop
       setStyleName(styleToEdit.styleName);
       setDescription(styleToEdit.description || "");
       setCategory(styleToEdit.category || "");
-      setStatus(styleToEdit.status === "active" ? "active" : "draft");
+      setStatus(styleToEdit.status);
     } else {
       setStyleCode("");
       setStyleName("");
@@ -51,7 +53,10 @@ export function StyleFormModal({ isOpen, onClose, onSuccess, styleToEdit }: Prop
       description !== (styleToEdit.description || "") ||
       category !== (styleToEdit.category || "") ||
       status !== styleToEdit.status
-    : styleCode.trim() !== "" || styleName.trim() !== "" || description.trim() !== "";
+    : styleCode.trim() !== "" ||
+      styleName.trim() !== "" ||
+      description.trim() !== "" ||
+      category.trim() !== "";
 
   const handleRequestClose = () => {
     if (isDirty) {
@@ -101,19 +106,12 @@ export function StyleFormModal({ isOpen, onClose, onSuccess, styleToEdit }: Prop
       }
       onSuccess();
       onClose();
-    } catch (err: any) {
-      const statusResponse = err.response?.status;
-      const serverMessage = err.response?.data?.message;
-
-      // Handle 409 Conflict (Duplicate style code) inline
-      if (statusResponse === 409 || (typeof serverMessage === "string" && serverMessage.includes("tồn tại"))) {
+    } catch (err: unknown) {
+      const isConflict = axios.isAxiosError(err) && err.response?.status === 409;
+      if (isConflict) {
         setCodeError("Mã mẫu này đã tồn tại trong hệ thống.");
-      } else if (Array.isArray(serverMessage)) {
-        setGeneralError(serverMessage.join(", "));
-      } else if (typeof serverMessage === "string") {
-        setGeneralError(serverMessage);
       } else {
-        setGeneralError("Có lỗi xảy ra khi lưu thông tin mẫu Fit.");
+        setGeneralError(getErrorMessage(err, "Có lỗi xảy ra khi lưu thông tin mẫu Fit."));
       }
     } finally {
       setIsSubmitting(false);
@@ -155,10 +153,11 @@ export function StyleFormModal({ isOpen, onClose, onSuccess, styleToEdit }: Prop
           <form onSubmit={handleSubmit} className="mt-4 space-y-4">
             {/* Style Code Field */}
             <div>
-              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">
+              <label htmlFor="style-code" className="block text-xs font-medium text-gray-700 dark:text-gray-300">
                 Mã mẫu <span className="text-red-500">*</span>
               </label>
               <input
+                id="style-code"
                 type="text"
                 value={styleCode}
                 onChange={(e) => {
@@ -182,10 +181,11 @@ export function StyleFormModal({ isOpen, onClose, onSuccess, styleToEdit }: Prop
 
             {/* Style Name Field */}
             <div>
-              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">
+              <label htmlFor="style-name" className="block text-xs font-medium text-gray-700 dark:text-gray-300">
                 Tên mẫu <span className="text-red-500">*</span>
               </label>
               <input
+                id="style-name"
                 type="text"
                 value={styleName}
                 onChange={(e) => setStyleName(e.target.value)}
@@ -197,10 +197,11 @@ export function StyleFormModal({ isOpen, onClose, onSuccess, styleToEdit }: Prop
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               {/* Category Field */}
               <div>
-                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">
+                <label htmlFor="style-category" className="block text-xs font-medium text-gray-700 dark:text-gray-300">
                   Dòng sản phẩm
                 </label>
                 <input
+                  id="style-category"
                   type="text"
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
@@ -211,26 +212,29 @@ export function StyleFormModal({ isOpen, onClose, onSuccess, styleToEdit }: Prop
 
               {/* Status Field */}
               <div>
-                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">
+                <label htmlFor="style-status" className="block text-xs font-medium text-gray-700 dark:text-gray-300">
                   Trạng thái
                 </label>
                 <select
+                  id="style-status"
                   value={status}
                   onChange={(e) => setStatus(e.target.value as StyleStatus)}
                   className="mt-1 h-10 w-full rounded-lg border border-gray-300 px-3 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-white transition-colors"
                 >
-                  <option value="draft">Nháp (Draft)</option>
-                  <option value="active">Hoạt động (Active)</option>
+                  <option value="draft">Nháp</option>
+                  <option value="approved">Đã duyệt</option>
+                  <option value="active">Hoạt động</option>
                 </select>
               </div>
             </div>
 
             {/* Description Field */}
             <div>
-              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">
+              <label htmlFor="style-description" className="block text-xs font-medium text-gray-700 dark:text-gray-300">
                 Mô tả
               </label>
               <textarea
+                id="style-description"
                 rows={3}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
