@@ -4,6 +4,7 @@ import type { Style, StyleStatus, StyleQueryFilter } from "@/types/style";
 import { stylesApi } from "@/features/styles/api/stylesApi";
 import { StyleFormModal } from "./StyleFormModal";
 import { StyleImagePlaceholder } from "./components/StyleImagePlaceholder";
+import { DeleteConfirmDialog } from "./DeleteConfirmDialog";
 
 type ViewMode = "table" | "grid";
 
@@ -13,6 +14,9 @@ export default function StyleListPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Toast / Action error state
+  const [actionError, setActionError] = useState<string | null>(null);
 
   // Status toggle in-progress ID
   const [togglingId, setTogglingId] = useState<string | null>(null);
@@ -30,6 +34,10 @@ export default function StyleListPage() {
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingStyle, setEditingStyle] = useState<Style | null>(null);
+
+  // Delete Confirm Dialog state
+  const [styleToDelete, setStyleToDelete] = useState<Style | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const fetchStyles = useCallback(async () => {
     try {
@@ -67,13 +75,22 @@ export default function StyleListPage() {
     setIsModalOpen(true);
   };
 
-  const handleDelete = async (style: Style) => {
-    if (!window.confirm(`Bạn có chắc chắn muốn xóa mẫu Fit "${style.styleCode}"?`)) return;
+  const handleRequestDelete = (style: Style) => {
+    setStyleToDelete(style);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!styleToDelete) return;
     try {
-      await stylesApi.deleteStyle(style.id);
+      setIsDeleting(true);
+      setActionError(null);
+      await stylesApi.deleteStyle(styleToDelete.id);
+      setStyleToDelete(null);
       fetchStyles();
     } catch (err: any) {
-      alert(err.response?.data?.message || "Xóa mẫu Fit thất bại.");
+      setActionError(err.response?.data?.message || "Xóa mẫu Fit thất bại. Vui lòng thử lại.");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -82,12 +99,13 @@ export default function StyleListPage() {
     const newStatus: StyleStatus = style.status === "active" ? "draft" : "active";
     try {
       setTogglingId(style.id);
+      setActionError(null);
       await stylesApi.updateStyle(style.id, { status: newStatus });
       setStyles((prev) =>
         prev.map((item) => (item.id === style.id ? { ...item, status: newStatus } : item))
       );
     } catch (err: any) {
-      alert(err.response?.data?.message || "Đổi trạng thái thất bại.");
+      setActionError(err.response?.data?.message || "Đổi trạng thái thất bại.");
     } finally {
       setTogglingId(null);
     }
@@ -146,6 +164,19 @@ export default function StyleListPage() {
           </button>
         </div>
       </div>
+
+      {/* Action Error Banner */}
+      {actionError && (
+        <div className="flex items-center justify-between rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-300">
+          <span>{actionError}</span>
+          <button
+            onClick={() => setActionError(null)}
+            className="ml-2 font-bold text-red-500 hover:text-red-700"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* Enterprise Toolbar */}
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -389,7 +420,7 @@ export default function StyleListPage() {
                             Sửa
                           </button>
                           <button
-                            onClick={() => handleDelete(style)}
+                            onClick={() => handleRequestDelete(style)}
                             className="text-xs font-medium text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
                           >
                             Xóa
@@ -469,6 +500,12 @@ export default function StyleListPage() {
                       >
                         Sửa
                       </button>
+                      <button
+                        onClick={() => handleRequestDelete(style)}
+                        className="text-xs font-medium text-gray-400 hover:text-red-600 dark:hover:text-red-400"
+                      >
+                        Xóa
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -510,6 +547,16 @@ export default function StyleListPage() {
         onClose={() => setIsModalOpen(false)}
         onSuccess={fetchStyles}
         styleToEdit={editingStyle}
+      />
+
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmDialog
+        isOpen={!!styleToDelete}
+        styleCode={styleToDelete?.styleCode}
+        styleName={styleToDelete?.styleName}
+        isDeleting={isDeleting}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setStyleToDelete(null)}
       />
     </div>
   );
