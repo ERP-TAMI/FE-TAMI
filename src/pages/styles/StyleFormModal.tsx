@@ -198,7 +198,7 @@ export function StyleFormModal({ isOpen, onClose, onSuccess, styleToEdit }: Prop
               {/* Category Field */}
               <div>
                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">
-                  Nhóm mẫu
+                  Dòng sản phẩm
                 </label>
                 <input
                   type="text"

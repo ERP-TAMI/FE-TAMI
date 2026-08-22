@@ -118,12 +118,12 @@ export default function StyleDetailPage() {
 
   if (error || !style) {
     return (
-      <div className="rounded-xl border border-red-200 bg-red-50/50 p-6 text-center text-xs text-red-700 dark:border-red-900/40 dark:bg-red-950/20 dark:text-red-300">
-        <h3 className="font-semibold text-sm">Không tìm thấy mẫu Fit</h3>
+      <div className="rounded-xl border border-red-200 bg-red-50/50 p-6 text-center text-sm text-red-700 dark:border-red-900/40 dark:bg-red-950/20 dark:text-red-300">
+        <h3 className="font-semibold text-base">Không tìm thấy mẫu Fit</h3>
         <p className="mt-1">{error || "Mẫu Fit không tồn tại."}</p>
         <button
           onClick={() => navigate("/styles")}
-          className="mt-4 rounded-md bg-red-600 px-3.5 py-1.5 text-xs font-medium text-white hover:bg-red-700 transition-colors"
+          className="mt-4 rounded-md bg-red-600 px-4 py-2 text-xs font-medium text-white hover:bg-red-700 transition-colors"
         >
           Quay lại danh sách
         </button>
@@ -152,7 +152,7 @@ export default function StyleDetailPage() {
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-12 items-start">
         {/* Left Column: Product Photo Visual Focus (5 cols) */}
         <div className="lg:col-span-5 space-y-3">
-          <div className="overflow-hidden rounded-2xl border border-gray-200/80 bg-white p-3 shadow-xs dark:border-gray-800 dark:bg-gray-900">
+          <div className="overflow-hidden rounded-2xl border border-gray-200/80 bg-white p-3.5 shadow-xs dark:border-gray-800 dark:bg-gray-900">
             {imageUrl ? (
               <div className="relative overflow-hidden rounded-xl bg-gray-50 dark:bg-gray-800">
                 <img
@@ -190,10 +190,10 @@ export default function StyleDetailPage() {
                 }`}
               >
                 <StyleImagePlaceholder styleCode={style.styleCode} className="h-32 w-32 text-gray-300 dark:text-gray-600 mb-3" />
-                <p className="text-xs font-semibold text-gray-700 dark:text-gray-200">
+                <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">
                   Tải ảnh mẫu hoặc Dán trực tiếp (Ctrl+V)
                 </p>
-                <p className="mt-1 text-[11px] text-gray-400 dark:text-gray-500">
+                <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">
                   Kéo thả file ảnh hoặc bấm để chọn
                 </p>
               </div>
@@ -209,27 +209,27 @@ export default function StyleDetailPage() {
           />
         </div>
 
-        {/* Right Column: Style Information & Controls (7 cols) */}
+        {/* Right Column: Style Information & Controls (7 cols) - Enlarged & Clear Typography */}
         <div className="lg:col-span-7 space-y-6">
           {/* Header Identity Block */}
-          <div className="space-y-3 pb-6 border-b border-gray-100 dark:border-gray-800">
+          <div className="space-y-3 pb-6 border-b border-gray-200/80 dark:border-gray-800">
             {/* Title & Single Primary Status Badge */}
             <div className="flex items-start justify-between gap-4">
               <div>
                 <div className="flex items-center gap-3">
-                  <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
+                  <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
                     {style.styleName}
                   </h1>
                   <StyleStatusBadge status={style.status} />
                 </div>
-                <div className="mt-1 flex items-center gap-2">
-                  <span className="font-mono text-sm font-semibold text-blue-600 dark:text-blue-400">
+                <div className="mt-2 flex items-center gap-3">
+                  <span className="font-mono text-base font-bold text-blue-600 dark:text-blue-400">
                     {style.styleCode}
                   </span>
                   {style.category && (
                     <>
                       <span className="text-gray-300 dark:text-gray-700">•</span>
-                      <span className="text-sm font-medium text-gray-600 dark:text-gray-300">
+                      <span className="text-base font-medium text-gray-600 dark:text-gray-300">
                         {style.category}
                       </span>
                     </>
@@ -238,7 +238,7 @@ export default function StyleDetailPage() {
               </div>
 
               {/* Top Actions: Single Status Toggle & Edit Button */}
-              <div className="flex items-center gap-2.5">
+              <div className="flex items-center gap-3">
                 <button
                   type="button"
                   onClick={handleToggleStatus}
@@ -257,7 +257,7 @@ export default function StyleDetailPage() {
 
                 <button
                   onClick={() => setIsEditModalOpen(true)}
-                  className="rounded-lg border border-gray-300 px-3.5 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800 transition-colors"
+                  className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700 transition-colors shadow-xs"
                 >
                   Chỉnh sửa
                 </button>
@@ -265,33 +265,33 @@ export default function StyleDetailPage() {
             </div>
           </div>
 
-          {/* Details Section */}
+          {/* Details Section with Enlarged Clear Typography */}
           <div className="space-y-4">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400">
-              Thông tin chi tiết
+            <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400">
+              Thông tin chi tiết mẫu fit
             </h3>
-            <dl className="divide-y divide-gray-100 dark:divide-gray-800 text-sm">
-              <div className="flex py-3">
-                <dt className="w-1/3 text-gray-500 dark:text-gray-400">Mã mẫu Fit</dt>
-                <dd className="w-2/3 font-mono font-semibold text-blue-600 dark:text-blue-400">
+            <dl className="divide-y divide-gray-100 dark:divide-gray-800">
+              <div className="flex py-4">
+                <dt className="w-1/3 text-sm font-semibold text-gray-500 dark:text-gray-400">Mã mẫu Fit</dt>
+                <dd className="w-2/3 font-mono text-base font-bold text-blue-600 dark:text-blue-400">
                   {style.styleCode}
                 </dd>
               </div>
-              <div className="flex py-3">
-                <dt className="w-1/3 text-gray-500 dark:text-gray-400">Tên mẫu Fit</dt>
-                <dd className="w-2/3 font-medium text-gray-900 dark:text-white">
+              <div className="flex py-4">
+                <dt className="w-1/3 text-sm font-semibold text-gray-500 dark:text-gray-400">Tên mẫu Fit</dt>
+                <dd className="w-2/3 text-base font-semibold text-gray-900 dark:text-white">
                   {style.styleName}
                 </dd>
               </div>
-              <div className="flex py-3">
-                <dt className="w-1/3 text-gray-500 dark:text-gray-400">Nhóm mẫu</dt>
-                <dd className="w-2/3 text-gray-900 dark:text-white">
+              <div className="flex py-4">
+                <dt className="w-1/3 text-sm font-semibold text-gray-500 dark:text-gray-400">Dòng sản phẩm</dt>
+                <dd className="w-2/3 text-base font-medium text-gray-900 dark:text-white">
                   {style.category || "—"}
                 </dd>
               </div>
-              <div className="flex py-3">
-                <dt className="w-1/3 text-gray-500 dark:text-gray-400">Mô tả đặc điểm</dt>
-                <dd className="w-2/3 text-gray-900 dark:text-white whitespace-pre-wrap">
+              <div className="flex py-4">
+                <dt className="w-1/3 text-sm font-semibold text-gray-500 dark:text-gray-400">Mô tả đặc điểm</dt>
+                <dd className="w-2/3 text-base font-medium text-gray-900 dark:text-white whitespace-pre-wrap leading-relaxed">
                   {style.description || "Chưa có mô tả chi tiết."}
                 </dd>
               </div>
@@ -300,7 +300,7 @@ export default function StyleDetailPage() {
 
           {/* Quiet Technical Metadata Footer */}
           <div className="pt-6 border-t border-gray-100 dark:border-gray-800">
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-gray-400 dark:text-gray-500">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-400 dark:text-gray-500 font-medium">
               <span>Tạo lúc: {new Date(style.createdAt).toLocaleString("vi-VN")}</span>
               <span>•</span>
               <span>Cập nhật: {new Date(style.updatedAt).toLocaleString("vi-VN")}</span>

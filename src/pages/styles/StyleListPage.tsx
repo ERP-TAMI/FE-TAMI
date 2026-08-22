@@ -5,6 +5,7 @@ import { stylesApi } from "@/features/styles/api/stylesApi";
 import { StyleFormModal } from "./StyleFormModal";
 import { StyleImagePlaceholder } from "./components/StyleImagePlaceholder";
 import { DeleteConfirmDialog } from "./DeleteConfirmDialog";
+import { TableIcon, GridIcon, EyeIcon, PencilIcon, TrashBinIcon } from "@/icons";
 
 type ViewMode = "table" | "grid";
 
@@ -180,10 +181,10 @@ export default function StyleListPage() {
 
       {/* Enterprise Toolbar */}
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        {/* Left Controls: Search & Category */}
-        <div className="flex flex-1 flex-col gap-2.5 sm:flex-row sm:items-center">
+        {/* Left Controls: Search, Category & Status Filter side-by-side */}
+        <div className="flex flex-1 flex-wrap items-center gap-2.5">
           {/* Search Box */}
-          <div className="relative flex-1 max-w-sm">
+          <div className="relative min-w-[220px] flex-1 max-w-sm">
             <input
               type="text"
               value={search}
@@ -212,23 +213,11 @@ export default function StyleListPage() {
               setCategory(e.target.value);
               setPage(1);
             }}
-            placeholder="Nhóm mẫu..."
+            placeholder="Dòng sản phẩm..."
             className="h-10 w-36 rounded-lg border border-gray-200 bg-white px-3 text-xs text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-800 dark:bg-gray-900 dark:text-white transition-colors"
           />
 
-          {isFiltering && (
-            <button
-              onClick={handleClearFilters}
-              className="h-10 px-3 text-xs font-medium text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition-colors"
-            >
-              Xóa bộ lọc
-            </button>
-          )}
-        </div>
-
-        {/* Right Controls: Status Filter (Draft vs Active) & View Switcher */}
-        <div className="flex items-center gap-3">
-          {/* Status Segmented Filter */}
+          {/* Status Segmented Filter (Moved to Left next to Category) */}
           <div className="flex items-center rounded-lg border border-gray-200 bg-gray-50/80 p-0.5 dark:border-gray-800 dark:bg-gray-900">
             {[
               { key: "", label: "Tất cả" },
@@ -245,7 +234,7 @@ export default function StyleListPage() {
                   }}
                   className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${
                     isSelected
-                      ? "bg-white text-blue-600 shadow-xs dark:bg-gray-800 dark:text-blue-400"
+                      ? "bg-white text-blue-600 shadow-xs dark:bg-gray-800 dark:text-blue-400 font-semibold"
                       : "text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
                   }`}
                 >
@@ -255,27 +244,42 @@ export default function StyleListPage() {
             })}
           </div>
 
-          {/* View Mode Switcher */}
+          {isFiltering && (
+            <button
+              onClick={handleClearFilters}
+              className="h-10 px-3 text-xs font-medium text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition-colors"
+            >
+              Xóa bộ lọc
+            </button>
+          )}
+        </div>
+
+        {/* Right Controls: View Switcher with Icons (TableIcon & GridIcon) */}
+        <div className="flex items-center gap-3">
           <div className="flex items-center rounded-lg border border-gray-200 bg-gray-50/80 p-0.5 dark:border-gray-800 dark:bg-gray-900">
             <button
               onClick={() => setViewMode("table")}
-              className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+              className={`flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors ${
                 viewMode === "table"
-                  ? "bg-white text-gray-900 shadow-xs dark:bg-gray-800 dark:text-white"
+                  ? "bg-white text-gray-900 shadow-xs dark:bg-gray-800 dark:text-white font-semibold"
                   : "text-gray-500 hover:text-gray-900 dark:text-gray-400"
               }`}
+              title="Xem dạng Bảng (Table)"
             >
-              Table
+              <TableIcon className="h-4 w-4" />
+              <span>Bảng</span>
             </button>
             <button
               onClick={() => setViewMode("grid")}
-              className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+              className={`flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors ${
                 viewMode === "grid"
-                  ? "bg-white text-gray-900 shadow-xs dark:bg-gray-800 dark:text-white"
+                  ? "bg-white text-gray-900 shadow-xs dark:bg-gray-800 dark:text-white font-semibold"
                   : "text-gray-500 hover:text-gray-900 dark:text-gray-400"
               }`}
+              title="Xem dạng Thẻ (Grid)"
             >
-              Grid
+              <GridIcon className="h-4 w-4" />
+              <span>Thẻ</span>
             </button>
           </div>
         </div>
@@ -326,18 +330,18 @@ export default function StyleListPage() {
       {!isLoading && !error && styles.length > 0 && (
         <>
           {viewMode === "table" ? (
-            /* LINEAR / STRIPE CLEAR READABLE ENTERPRISE TABLE VIEW */
+            /* PERFECTLY BALANCED TABLE FIXED LAYOUT */
             <div className="overflow-hidden rounded-xl border border-gray-200/80 bg-white shadow-xs dark:border-gray-800 dark:bg-gray-900">
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm text-gray-700 dark:text-gray-200">
+                <table className="w-full table-fixed text-left text-sm text-gray-700 dark:text-gray-200">
                   <thead className="border-b border-gray-200 bg-gray-50/80 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:border-gray-800 dark:bg-gray-800/80 dark:text-gray-400">
                     <tr>
-                      <th className="px-5 py-3.5 font-semibold">Mã mẫu</th>
-                      <th className="px-5 py-3.5 font-semibold">Tên mẫu</th>
-                      <th className="px-5 py-3.5 font-semibold">Nhóm</th>
-                      <th className="px-5 py-3.5 font-semibold">Trạng thái</th>
-                      <th className="px-5 py-3.5 font-semibold">Ngày tạo</th>
-                      <th className="px-5 py-3.5 font-semibold text-right">Actions</th>
+                      <th className="w-[15%] px-5 py-3.5 font-semibold">Mã mẫu</th>
+                      <th className="w-[21%] px-5 py-3.5 font-semibold">Tên mẫu</th>
+                      <th className="w-[17%] px-5 py-3.5 font-semibold">Dòng sản phẩm</th>
+                      <th className="w-[17%] px-5 py-3.5 font-semibold">Trạng thái</th>
+                      <th className="w-[14%] px-5 py-3.5 font-semibold">Ngày tạo</th>
+                      <th className="w-[16%] px-5 py-3.5 font-semibold text-right">Thao tác</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
@@ -347,7 +351,7 @@ export default function StyleListPage() {
                         className="group h-16 hover:bg-gray-50/80 dark:hover:bg-gray-800/50 transition-colors"
                       >
                         {/* Mã mẫu */}
-                        <td className="px-5 py-4">
+                        <td className="w-[15%] px-5 py-4">
                           <Link
                             to={`/styles/${style.id}`}
                             className="font-mono text-sm font-semibold text-blue-600 hover:underline dark:text-blue-400"
@@ -357,17 +361,17 @@ export default function StyleListPage() {
                         </td>
 
                         {/* Tên mẫu */}
-                        <td className="px-5 py-4 text-sm font-medium text-gray-900 dark:text-white">
+                        <td className="w-[21%] px-5 py-4 text-sm font-medium text-gray-900 dark:text-white truncate">
                           {style.styleName}
                         </td>
 
-                        {/* Nhóm mẫu */}
-                        <td className="px-5 py-4 text-sm text-gray-600 dark:text-gray-300">
+                        {/* Dòng sản phẩm */}
+                        <td className="w-[17%] px-5 py-4 text-sm text-gray-600 dark:text-gray-300 truncate">
                           {style.category || "—"}
                         </td>
 
-                        {/* Trạng thái - Nút Cần Gạt (Toggle Switch) */}
-                        <td className="px-5 py-4">
+                        {/* Trạng thái - Nút Cần Gạt */}
+                        <td className="w-[17%] px-5 py-4">
                           <div className="flex items-center gap-2.5">
                             <button
                               type="button"
@@ -389,7 +393,7 @@ export default function StyleListPage() {
                               />
                             </button>
                             <span
-                              className={`text-xs font-medium ${
+                              className={`inline-block w-20 shrink-0 text-xs font-semibold ${
                                 style.status === "active"
                                   ? "text-emerald-700 dark:text-emerald-400"
                                   : "text-gray-500 dark:text-gray-400"
@@ -401,30 +405,43 @@ export default function StyleListPage() {
                         </td>
 
                         {/* Ngày tạo */}
-                        <td className="px-5 py-4 text-xs text-gray-500 dark:text-gray-400">
+                        <td className="w-[14%] px-5 py-4 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
                           {new Date(style.createdAt).toLocaleDateString("vi-VN")}
                         </td>
 
-                        {/* Actions */}
-                        <td className="px-5 py-4 text-right space-x-3">
-                          <Link
-                            to={`/styles/${style.id}`}
-                            className="text-xs font-medium text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
-                          >
-                            Xem
-                          </Link>
-                          <button
-                            onClick={() => handleOpenEditModal(style)}
-                            className="text-xs font-medium text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition-colors"
-                          >
-                            Sửa
-                          </button>
-                          <button
-                            onClick={() => handleRequestDelete(style)}
-                            className="text-xs font-medium text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
-                          >
-                            Xóa
-                          </button>
+                        {/* Thao tác (Actions) */}
+                        <td className="w-[16%] px-5 py-4 text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            {/* Xem */}
+                            <Link
+                              to={`/styles/${style.id}`}
+                              className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50/60 px-2.5 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100 dark:border-blue-900/40 dark:bg-blue-950/40 dark:text-blue-300 dark:hover:bg-blue-900/60 transition-colors"
+                              title="Xem chi tiết"
+                            >
+                              <EyeIcon className="h-3.5 w-3.5" />
+                              <span>Xem</span>
+                            </Link>
+
+                            {/* Sửa */}
+                            <button
+                              onClick={() => handleOpenEditModal(style)}
+                              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700 transition-colors"
+                              title="Chỉnh sửa"
+                            >
+                              <PencilIcon className="h-3.5 w-3.5" />
+                              <span>Sửa</span>
+                            </button>
+
+                            {/* Xóa */}
+                            <button
+                              onClick={() => handleRequestDelete(style)}
+                              className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50/60 px-2.5 py-1 text-xs font-medium text-red-600 hover:bg-red-100 dark:border-red-900/40 dark:bg-red-950/40 dark:text-red-300 dark:hover:bg-red-900/60 transition-colors"
+                              title="Xóa mẫu Fit"
+                            >
+                              <TrashBinIcon className="h-3.5 w-3.5" />
+                              <span>Xóa</span>
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -433,7 +450,7 @@ export default function StyleListPage() {
               </div>
             </div>
           ) : (
-            /* PRODUCT CATALOG GRID VIEW WITH TOGGLE SWITCH */
+            /* PRODUCT CATALOG GRID VIEW */
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
               {styles.map((style) => (
                 <div
@@ -487,24 +504,20 @@ export default function StyleListPage() {
                     <span className="text-[11px] text-gray-400">
                       {new Date(style.createdAt).toLocaleDateString("vi-VN")}
                     </span>
-                    <div className="flex items-center gap-2.5">
+                    <div className="flex items-center gap-2">
                       <Link
                         to={`/styles/${style.id}`}
-                        className="text-xs font-medium text-blue-600 hover:underline dark:text-blue-400"
+                        className="inline-flex items-center gap-1 rounded-md border border-blue-200 bg-blue-50/60 px-2 py-0.5 text-xs font-medium text-blue-700 hover:bg-blue-100 dark:border-blue-900/40 dark:bg-blue-950/40 dark:text-blue-300"
                       >
-                        Chi tiết
+                        <EyeIcon className="h-3 w-3" />
+                        <span>Xem</span>
                       </Link>
                       <button
                         onClick={() => handleOpenEditModal(style)}
-                        className="text-xs font-medium text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
+                        className="inline-flex items-center gap-1 rounded-md border border-gray-300 bg-white px-2 py-0.5 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
                       >
-                        Sửa
-                      </button>
-                      <button
-                        onClick={() => handleRequestDelete(style)}
-                        className="text-xs font-medium text-gray-400 hover:text-red-600 dark:hover:text-red-400"
-                      >
-                        Xóa
+                        <PencilIcon className="h-3 w-3" />
+                        <span>Sửa</span>
                       </button>
                     </div>
                   </div>
