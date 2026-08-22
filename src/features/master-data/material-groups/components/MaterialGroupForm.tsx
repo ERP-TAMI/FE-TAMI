@@ -8,12 +8,12 @@ const schema = z.object({
   name: z
     .string()
     .trim()
-    .min(1, "Name is required")
-    .max(150, "Name must be 150 characters or fewer"),
+    .min(1, "Tên nhóm là bắt buộc")
+    .max(150, "Tên nhóm không được vượt quá 150 ký tự"),
   displayOrder: z
     .number()
-    .int("Display order must be an integer")
-    .min(0, "Display order cannot be negative"),
+    .int("Thứ tự hiển thị phải là số nguyên")
+    .min(0, "Thứ tự hiển thị không được âm"),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -48,12 +48,13 @@ export function MaterialGroupForm({
 
   useEffect(() => onDirtyChange?.(formState.isDirty), [formState.isDirty, onDirtyChange]);
   useEffect(() => {
-    if (serverError?.toLowerCase().includes("name")) setError("name", { message: serverError });
+    if (/name|tên nhóm/i.test(serverError ?? "")) setError("name", { message: serverError });
   }, [serverError, setError]);
-  const hasFieldError = Boolean(serverError && /name/i.test(serverError));
+  const hasFieldError = Boolean(serverError && /name|tên nhóm/i.test(serverError));
 
   const closeWithWarning = () => {
-    if (!formState.isDirty || window.confirm("Discard unsaved material group changes?")) onClose();
+    if (!formState.isDirty || window.confirm("Bạn có muốn hủy các thay đổi chưa lưu không?"))
+      onClose();
   };
 
   const submit = (values: FormValues) => {
@@ -69,15 +70,16 @@ export function MaterialGroupForm({
   return (
     <Modal
       open
-      title={mode === "create" ? "Create material group" : "Edit material group"}
+      title={mode === "create" ? "Tạo nhóm vật tư" : "Chỉnh sửa nhóm vật tư"}
+      closeLabel="Đóng biểu mẫu"
       onClose={closeWithWarning}
       footer={
         <>
           <Button variant="outline" onClick={closeWithWarning}>
-            Cancel
+            Hủy
           </Button>
           <Button form="material-group-form" type="submit" loading={isSubmitting}>
-            Save material group
+            Lưu nhóm vật tư
           </Button>
         </>
       }
@@ -89,16 +91,22 @@ export function MaterialGroupForm({
         noValidate
       >
         {serverError && !hasFieldError && (
-          <Alert variant="error" title="Unable to save material group">
+          <Alert variant="error" title="Không thể lưu nhóm vật tư">
             {serverError}
           </Alert>
         )}
-        <Input label="Name" error={formState.errors.name?.message} {...register("name")} />
         <Input
-          label="Display order"
+          label="Tên nhóm"
+          placeholder="Ví dụ: Vải chính, Phụ liệu"
+          error={formState.errors.name?.message}
+          {...register("name")}
+        />
+        <Input
+          label="Thứ tự hiển thị"
           type="number"
           min="0"
           step="1"
+          hint="Số nhỏ hơn sẽ được hiển thị trước."
           error={formState.errors.displayOrder?.message}
           {...register("displayOrder", { valueAsNumber: true })}
         />

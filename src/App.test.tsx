@@ -63,7 +63,7 @@ describe("application routes", () => {
     window.history.pushState({}, "", "/masters/material-groups");
     renderApp();
 
-    expect(screen.getByRole("heading", { name: "Material groups" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Nhóm vật tư" })).toBeTruthy();
   });
 
   it("redirects the admin entry route to users", () => {

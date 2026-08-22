@@ -18,36 +18,68 @@ export function MaterialGroupTable({
     <Table
       rows={materialGroups}
       getRowKey={(materialGroup) => materialGroup.id}
-      emptyMessage="No material groups match this filter."
+      emptyMessage="Không tìm thấy nhóm vật tư phù hợp."
       columns={[
         {
-          key: "name",
-          header: "Name",
-          render: (group) => <span className="font-medium">{group.name}</span>,
+          key: "code",
+          header: "Mã nhóm",
+          render: (group) => (
+            <span className="text-brand-600 dark:text-brand-400 font-medium" title={group.code}>
+              {group.code}
+            </span>
+          ),
         },
-        { key: "displayOrder", header: "Order", render: (group) => group.displayOrder },
+        {
+          key: "name",
+          header: "Tên nhóm",
+          render: (group) => (
+            <span className="font-medium text-gray-900 dark:text-white">{group.name}</span>
+          ),
+        },
+        {
+          key: "displayOrder",
+          header: "Thứ tự",
+          render: (group) => group.displayOrder,
+        },
         {
           key: "status",
-          header: "Status",
+          header: "Trạng thái",
           render: (group) => (
-            <span className={group.status === "active" ? "text-success-600" : "text-gray-500"}>
-              {group.status === "active" ? "Active" : "Inactive"}
+            <span
+              className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${
+                group.status === "active"
+                  ? "bg-success-50 text-success-700 dark:bg-success-500/15 dark:text-success-400"
+                  : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300"
+              }`}
+            >
+              <span
+                aria-hidden="true"
+                className={`h-1.5 w-1.5 rounded-full ${
+                  group.status === "active" ? "bg-success-500" : "bg-gray-400"
+                }`}
+              />
+              {group.status === "active" ? "Đang hoạt động" : "Ngừng hoạt động"}
             </span>
           ),
         },
         {
           key: "actions",
-          header: "Actions",
+          header: "Thao tác",
           render: (group) => (
-            <div className="flex gap-2">
+            <div className="flex items-center gap-1">
               <Button variant="ghost" size="sm" onClick={() => onEdit(group)}>
-                Edit
+                Sửa
               </Button>
-              <Button variant="outline" size="sm" onClick={() => onStatus(group)}>
-                {group.status === "active" ? "Deactivate" : "Activate"}
+              <Button variant="ghost" size="sm" onClick={() => onStatus(group)}>
+                {group.status === "active" ? "Ngừng hoạt động" : "Kích hoạt"}
               </Button>
-              <Button variant="danger" size="sm" onClick={() => onDelete(group)}>
-                Delete
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-error-600 hover:bg-error-50 dark:text-error-400 dark:hover:bg-error-500/10"
+                onClick={() => onDelete(group)}
+              >
+                Xóa
               </Button>
             </div>
           ),

@@ -44,7 +44,7 @@ describe("MaterialGroupListPage", () => {
 
     render(<MaterialGroupListPage />);
 
-    expect(screen.getByLabelText("Loading material groups")).toBeTruthy();
+    expect(screen.getByLabelText("Đang tải danh sách nhóm vật tư")).toBeTruthy();
   });
 
   it("renders an API error and retries on request", () => {
@@ -58,9 +58,9 @@ describe("MaterialGroupListPage", () => {
     });
 
     render(<MaterialGroupListPage />);
-    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    fireEvent.click(screen.getByRole("button", { name: "Thử lại" }));
 
-    expect(screen.getByText(/Cannot reach the Backend API/)).toBeTruthy();
+    expect(screen.getByText(/Không thể kết nối đến máy chủ/)).toBeTruthy();
     expect(refetch).toHaveBeenCalledTimes(1);
   });
 
@@ -75,7 +75,7 @@ describe("MaterialGroupListPage", () => {
 
     render(<MaterialGroupListPage />);
 
-    expect(screen.getByText("No material groups match this filter.")).toBeTruthy();
+    expect(screen.getByText("Không tìm thấy nhóm vật tư phù hợp.")).toBeTruthy();
   });
 
   it("creates a material group from the list screen", async () => {
@@ -93,10 +93,10 @@ describe("MaterialGroupListPage", () => {
     });
 
     render(<MaterialGroupListPage />);
-    fireEvent.click(screen.getByRole("button", { name: "Create material group" }));
-    fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Accessories" } });
-    fireEvent.change(screen.getByLabelText("Display order"), { target: { value: "3" } });
-    fireEvent.click(screen.getByRole("button", { name: "Save material group" }));
+    fireEvent.click(screen.getByRole("button", { name: "Tạo nhóm vật tư mới" }));
+    fireEvent.change(screen.getByLabelText("Tên nhóm"), { target: { value: "Accessories" } });
+    fireEvent.change(screen.getByLabelText("Thứ tự hiển thị"), { target: { value: "3" } });
+    fireEvent.click(screen.getByRole("button", { name: "Lưu nhóm vật tư" }));
 
     await waitFor(() => {
       expect(hooks.create.mutateAsync).toHaveBeenCalledWith({
@@ -121,10 +121,10 @@ describe("MaterialGroupListPage", () => {
     });
 
     render(<MaterialGroupListPage />);
-    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
-    fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Main fabric" } });
-    fireEvent.change(screen.getByLabelText("Display order"), { target: { value: "2" } });
-    fireEvent.click(screen.getByRole("button", { name: "Save material group" }));
+    fireEvent.click(screen.getByRole("button", { name: "Sửa" }));
+    fireEvent.change(screen.getByLabelText("Tên nhóm"), { target: { value: "Main fabric" } });
+    fireEvent.change(screen.getByLabelText("Thứ tự hiển thị"), { target: { value: "2" } });
+    fireEvent.click(screen.getByRole("button", { name: "Lưu nhóm vật tư" }));
 
     await waitFor(() => {
       expect(hooks.update.mutateAsync).toHaveBeenCalledWith({
@@ -148,10 +148,14 @@ describe("MaterialGroupListPage", () => {
     });
 
     render(<MaterialGroupListPage />);
-    fireEvent.click(screen.getByRole("button", { name: "Deactivate" }));
+    fireEvent.click(
+      within(screen.getByRole("table")).getByRole("button", { name: "Ngừng hoạt động" }),
+    );
 
     expect(hooks.updateStatus.mutateAsync).not.toHaveBeenCalled();
-    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Deactivate" }));
+    fireEvent.click(
+      within(screen.getByRole("dialog")).getByRole("button", { name: "Ngừng hoạt động" }),
+    );
 
     await waitFor(() => {
       expect(hooks.updateStatus.mutateAsync).toHaveBeenCalledWith({
@@ -159,5 +163,37 @@ describe("MaterialGroupListPage", () => {
         status: "inactive",
       });
     });
+  });
+
+  it("hiển thị tổng quan và tìm kiếm nhóm vật tư theo mã hoặc tên", () => {
+    hooks.useMaterialGroups.mockReturnValue({
+      isLoading: false,
+      isError: false,
+      data: [
+        materialGroup,
+        {
+          ...materialGroup,
+          id: "24b7062b-24d7-411d-8466-f3f2bbdd735e",
+          code: "ACC",
+          name: "Phụ liệu",
+          status: "inactive",
+        },
+      ],
+      error: null,
+      refetch: vi.fn(),
+    });
+
+    render(<MaterialGroupListPage />);
+
+    expect(within(screen.getByLabelText("Tổng số nhóm vật tư")).getByText("2")).toBeTruthy();
+    expect(within(screen.getByLabelText("Nhóm đang hoạt động")).getByText("1")).toBeTruthy();
+    expect(within(screen.getByLabelText("Nhóm ngừng hoạt động")).getByText("1")).toBeTruthy();
+
+    fireEvent.change(screen.getByLabelText("Tìm kiếm nhóm vật tư"), {
+      target: { value: "ACC" },
+    });
+
+    expect(screen.getByText("Phụ liệu")).toBeTruthy();
+    expect(screen.queryByText("Fabric")).toBeNull();
   });
 });

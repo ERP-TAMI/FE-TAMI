@@ -22,7 +22,7 @@ describe("MaterialGroupTable", () => {
       />,
     );
 
-    expect(screen.getByText("No material groups match this filter.")).not.toBeNull();
+    expect(screen.getByText("Không tìm thấy nhóm vật tư phù hợp.")).not.toBeNull();
   });
 
   it("renders a row and only runs its action after the user clicks", () => {
@@ -38,7 +38,7 @@ describe("MaterialGroupTable", () => {
 
     expect(screen.getByText("Steel")).not.toBeNull();
     expect(onStatus).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "Deactivate" }));
+    fireEvent.click(screen.getByRole("button", { name: "Ngừng hoạt động" }));
     expect(onStatus).toHaveBeenCalledWith(materialGroup);
   });
 });

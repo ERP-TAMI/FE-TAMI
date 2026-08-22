@@ -5,10 +5,18 @@ export type ModalProps = {
   title: string;
   children: ReactNode;
   footer?: ReactNode;
+  closeLabel?: string;
   onClose: () => void;
 };
 
-export function Modal({ open, title, children, footer, onClose }: ModalProps) {
+export function Modal({
+  open,
+  title,
+  children,
+  footer,
+  closeLabel = "Close modal",
+  onClose,
+}: ModalProps) {
   useEffect(() => {
     if (!open) return undefined;
 
@@ -29,7 +37,7 @@ export function Modal({ open, title, children, footer, onClose }: ModalProps) {
     >
       <button
         type="button"
-        aria-label="Close modal"
+        aria-label={closeLabel}
         className="absolute inset-0 cursor-default bg-gray-950/50"
         onClick={onClose}
       />
@@ -48,7 +56,7 @@ export function Modal({ open, title, children, footer, onClose }: ModalProps) {
           </h2>
           <button
             type="button"
-            aria-label="Close modal"
+            aria-label={closeLabel}
             className="text-theme-xl leading-none text-gray-400 hover:text-gray-700 dark:hover:text-white"
             onClick={onClose}
           >

@@ -16,10 +16,10 @@ describe("MaterialGroupForm", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Save material group" }));
+    fireEvent.click(screen.getByRole("button", { name: "Lưu nhóm vật tư" }));
 
     expect(onSubmit).not.toHaveBeenCalled();
-    expect(await screen.findByText("Name is required")).toBeTruthy();
+    expect(await screen.findByText("Tên nhóm là bắt buộc")).toBeTruthy();
   });
 
   it("submits the documented fields and displays a server duplicate-name error", async () => {
@@ -33,8 +33,8 @@ describe("MaterialGroupForm", () => {
       />,
     );
 
-    fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Fabric" } });
-    fireEvent.click(screen.getByRole("button", { name: "Save material group" }));
+    fireEvent.change(screen.getByLabelText("Tên nhóm"), { target: { value: "Fabric" } });
+    fireEvent.click(screen.getByRole("button", { name: "Lưu nhóm vật tư" }));
 
     await waitFor(() => {
       expect(onSubmit).toHaveBeenCalledWith({ name: "Fabric", displayOrder: 0 });
@@ -78,12 +78,12 @@ describe("MaterialGroupForm", () => {
       />,
     );
 
-    fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Fabric" } });
-    fireEvent.change(screen.getByLabelText("Display order"), { target: { value: "-1" } });
-    fireEvent.click(screen.getByRole("button", { name: "Save material group" }));
+    fireEvent.change(screen.getByLabelText("Tên nhóm"), { target: { value: "Fabric" } });
+    fireEvent.change(screen.getByLabelText("Thứ tự hiển thị"), { target: { value: "-1" } });
+    fireEvent.click(screen.getByRole("button", { name: "Lưu nhóm vật tư" }));
 
     expect(onSubmit).not.toHaveBeenCalled();
-    expect(await screen.findByText("Display order cannot be negative")).toBeTruthy();
+    expect(await screen.findByText("Thứ tự hiển thị không được âm")).toBeTruthy();
   });
 
   it("warns before closing a dirty form", () => {
@@ -93,10 +93,10 @@ describe("MaterialGroupForm", () => {
       <MaterialGroupForm mode="create" isSubmitting={false} onClose={onClose} onSubmit={vi.fn()} />,
     );
 
-    fireEvent.change(screen.getByLabelText("Name"), { target: { value: "Fabric" } });
-    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    fireEvent.change(screen.getByLabelText("Tên nhóm"), { target: { value: "Fabric" } });
+    fireEvent.click(screen.getByRole("button", { name: "Hủy" }));
 
-    expect(confirm).toHaveBeenCalledWith("Discard unsaved material group changes?");
+    expect(confirm).toHaveBeenCalledWith("Bạn có muốn hủy các thay đổi chưa lưu không?");
     expect(onClose).not.toHaveBeenCalled();
     confirm.mockRestore();
   });

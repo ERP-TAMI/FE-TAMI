@@ -14,7 +14,7 @@ const navItems: NavItem[] = [
   { name: "BOM", path: "/bom", icon: <BoxCubeIcon /> },
   { name: "Purchase Orders", path: "/po", icon: <ListIcon /> },
   { name: "Materials", path: "/masters/materials", icon: <PageIcon /> },
-  { name: "Material groups", path: "/masters/material-groups", icon: <PageIcon /> },
+  { name: "Nhóm vật tư", path: "/masters/material-groups", icon: <PageIcon /> },
   { name: "Administration", path: "/admin", icon: <UserCircleIcon /> },
   { name: "Audit log", path: "/audit-log", icon: <ListIcon /> },
 ];

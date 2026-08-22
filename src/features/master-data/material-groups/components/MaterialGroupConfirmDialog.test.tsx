@@ -25,7 +25,7 @@ describe("MaterialGroupConfirmDialog", () => {
     );
 
     expect(onConfirm).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+    fireEvent.click(screen.getByRole("button", { name: "Xóa" }));
     expect(onConfirm).toHaveBeenCalledTimes(1);
   });
 });
