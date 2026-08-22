@@ -8,15 +8,6 @@ export function useMaterialGroupListView(materialGroups: MaterialGroup[]) {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
 
-  const overview = useMemo(
-    () => ({
-      total: materialGroups.length,
-      active: materialGroups.filter((group) => group.status === "active").length,
-      inactive: materialGroups.filter((group) => group.status === "inactive").length,
-    }),
-    [materialGroups],
-  );
-
   const filteredMaterialGroups = useMemo(() => {
     const keyword = search.trim().toLocaleLowerCase("vi");
     return materialGroups.filter((group) => {
@@ -46,7 +37,6 @@ export function useMaterialGroupListView(materialGroups: MaterialGroup[]) {
     pageSize,
     totalPages,
     totalItems: filteredMaterialGroups.length,
-    overview,
     paginatedMaterialGroups,
     setPage,
     setSearch: (value: string) => {

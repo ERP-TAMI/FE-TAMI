@@ -4,7 +4,6 @@ import { Alert, Button, Toast } from "@/components/shared";
 import PageMeta from "@/components/shared/PageMeta";
 import { MaterialGroupConfirmDialog } from "../components/MaterialGroupConfirmDialog";
 import { MaterialGroupForm } from "../components/MaterialGroupForm";
-import { MaterialGroupOverview } from "../components/MaterialGroupOverview";
 import { MaterialGroupPagination } from "../components/MaterialGroupPagination";
 import { MaterialGroupPageHeader } from "../components/MaterialGroupPageHeader";
 import { MaterialGroupTable } from "../components/MaterialGroupTable";
@@ -110,10 +109,8 @@ export default function MaterialGroupListPage() {
   return (
     <>
       <PageMeta title="Nhóm vật tư | TAMI ERP" description="Quản lý danh mục nhóm vật tư" />
-      <section aria-labelledby="page-title" className="space-y-6">
+      <section aria-labelledby="page-title" className="space-y-4">
         <MaterialGroupPageHeader onCreate={() => setEditing("create")} />
-
-        <MaterialGroupOverview {...listView.overview} />
 
         <div className="shadow-theme-xs overflow-visible rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
           <MaterialGroupToolbar

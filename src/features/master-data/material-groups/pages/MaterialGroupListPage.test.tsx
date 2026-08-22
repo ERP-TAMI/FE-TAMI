@@ -165,7 +165,7 @@ describe("MaterialGroupListPage", () => {
     });
   });
 
-  it("hiển thị tổng quan và tìm kiếm nhóm vật tư theo mã hoặc tên", () => {
+  it("ưu tiên danh sách và tìm kiếm nhóm vật tư theo mã hoặc tên", () => {
     hooks.useMaterialGroups.mockReturnValue({
       isLoading: false,
       isError: false,
@@ -185,9 +185,8 @@ describe("MaterialGroupListPage", () => {
 
     render(<MaterialGroupListPage />);
 
-    expect(within(screen.getByLabelText("Tổng số nhóm vật tư")).getByText("2")).toBeTruthy();
-    expect(within(screen.getByLabelText("Nhóm đang hoạt động")).getByText("1")).toBeTruthy();
-    expect(within(screen.getByLabelText("Nhóm ngừng hoạt động")).getByText("1")).toBeTruthy();
+    expect(screen.queryByLabelText("Tổng quan nhóm vật tư")).toBeNull();
+    expect(screen.getByRole("heading", { name: "Danh sách nhóm vật tư" })).toBeTruthy();
 
     fireEvent.change(screen.getByLabelText("Tìm kiếm nhóm vật tư"), {
       target: { value: "ACC" },
