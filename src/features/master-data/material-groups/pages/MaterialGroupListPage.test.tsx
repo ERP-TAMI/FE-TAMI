@@ -121,8 +121,7 @@ describe("MaterialGroupListPage", () => {
     });
 
     render(<MaterialGroupListPage />);
-    fireEvent.click(screen.getByRole("button", { name: "Mở thao tác cho nhóm Fabric" }));
-    fireEvent.click(screen.getByRole("menuitem", { name: "Sửa" }));
+    fireEvent.click(screen.getByRole("button", { name: "Sửa" }));
     fireEvent.change(screen.getByLabelText("Tên nhóm"), { target: { value: "Main fabric" } });
     fireEvent.change(screen.getByLabelText("Thứ tự hiển thị"), { target: { value: "2" } });
     fireEvent.click(screen.getByRole("button", { name: "Lưu nhóm vật tư" }));
@@ -149,8 +148,9 @@ describe("MaterialGroupListPage", () => {
     });
 
     render(<MaterialGroupListPage />);
-    fireEvent.click(screen.getByRole("button", { name: "Mở thao tác cho nhóm Fabric" }));
-    fireEvent.click(screen.getByRole("menuitem", { name: "Ngừng hoạt động" }));
+    fireEvent.click(
+      within(screen.getByRole("table")).getByRole("button", { name: "Ngừng hoạt động" }),
+    );
 
     expect(hooks.updateStatus.mutateAsync).not.toHaveBeenCalled();
     fireEvent.click(
@@ -187,6 +187,11 @@ describe("MaterialGroupListPage", () => {
 
     expect(screen.queryByLabelText("Tổng quan nhóm vật tư")).toBeNull();
     expect(screen.getByRole("heading", { name: "Danh sách nhóm vật tư" })).toBeTruthy();
+    expect(
+      screen.queryByText("Quản lý và sắp xếp các nhóm dùng để phân loại vật tư trong hệ thống."),
+    ).toBeNull();
+    expect(screen.queryByText("Tìm kiếm, lọc và quản lý các nhóm vật tư hiện có.")).toBeNull();
+    expect(screen.queryByRole("group", { name: "Lọc theo trạng thái" })).toBeNull();
 
     fireEvent.change(screen.getByLabelText("Tìm kiếm nhóm vật tư"), {
       target: { value: "ACC" },

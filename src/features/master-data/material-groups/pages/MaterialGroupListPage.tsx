@@ -113,12 +113,7 @@ export default function MaterialGroupListPage() {
         <MaterialGroupPageHeader onCreate={() => setEditing("create")} />
 
         <div className="shadow-theme-xs overflow-visible rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
-          <MaterialGroupToolbar
-            search={listView.search}
-            status={listView.status}
-            onSearchChange={listView.setSearch}
-            onStatusChange={listView.setStatus}
-          />
+          <MaterialGroupToolbar search={listView.search} onSearchChange={listView.setSearch} />
 
           {list.isLoading && (
             <div

@@ -1,24 +1,22 @@
 import { useEffect, useMemo, useState } from "react";
-import type { MaterialGroup, MaterialGroupStatus } from "../types/material-group.types";
+import type { MaterialGroup } from "../types/material-group.types";
 
 const pageSize = 5;
 
 export function useMaterialGroupListView(materialGroups: MaterialGroup[]) {
-  const [status, setStatus] = useState<MaterialGroupStatus | undefined>();
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
 
   const filteredMaterialGroups = useMemo(() => {
     const keyword = search.trim().toLocaleLowerCase("vi");
     return materialGroups.filter((group) => {
-      const matchesStatus = !status || group.status === status;
       const matchesSearch =
         !keyword ||
         group.code.toLocaleLowerCase("vi").includes(keyword) ||
         group.name.toLocaleLowerCase("vi").includes(keyword);
-      return matchesStatus && matchesSearch;
+      return matchesSearch;
     });
-  }, [materialGroups, search, status]);
+  }, [materialGroups, search]);
 
   const totalPages = Math.max(1, Math.ceil(filteredMaterialGroups.length / pageSize));
   const paginatedMaterialGroups = useMemo(() => {
@@ -32,7 +30,6 @@ export function useMaterialGroupListView(materialGroups: MaterialGroup[]) {
 
   return {
     search,
-    status,
     page,
     pageSize,
     totalPages,
@@ -41,10 +38,6 @@ export function useMaterialGroupListView(materialGroups: MaterialGroup[]) {
     setPage,
     setSearch: (value: string) => {
       setSearch(value);
-      setPage(1);
-    },
-    setStatus: (value?: MaterialGroupStatus) => {
-      setStatus(value);
       setPage(1);
     },
   };
