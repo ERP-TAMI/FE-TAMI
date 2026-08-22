@@ -49,4 +49,24 @@ describe("MaterialGroupTable", () => {
     fireEvent.click(screen.getByRole("button", { name: "Ngừng hoạt động" }));
     expect(onStatus).toHaveBeenCalledWith(materialGroup);
   });
+
+  it("keeps long codes and names inside their columns", () => {
+    const longGroup = {
+      ...materialGroup,
+      code: "MG-1D42638C2CAF4F03AFC79285B7C47AD99",
+      name: "Nhóm vật tư có tên rất dài",
+    };
+
+    render(
+      <MaterialGroupTable
+        materialGroups={[longGroup]}
+        onEdit={vi.fn()}
+        onStatus={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByTitle(longGroup.code).className).toContain("truncate");
+    expect(screen.getByTitle(longGroup.name).className).toContain("truncate");
+  });
 });

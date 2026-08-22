@@ -26,7 +26,10 @@ export function MaterialGroupTable({
           header: "Mã nhóm",
           width: "standard",
           render: (group) => (
-            <span className="text-brand-600 dark:text-brand-400 font-medium" title={group.code}>
+            <span
+              className="text-brand-600 dark:text-brand-400 block w-full truncate font-medium"
+              title={group.code}
+            >
               {group.code}
             </span>
           ),
@@ -36,7 +39,12 @@ export function MaterialGroupTable({
           header: "Tên nhóm",
           width: "standard",
           render: (group) => (
-            <span className="font-medium text-gray-900 dark:text-white">{group.name}</span>
+            <span
+              className="block w-full truncate font-medium text-gray-900 dark:text-white"
+              title={group.name}
+            >
+              {group.name}
+            </span>
           ),
         },
         {
