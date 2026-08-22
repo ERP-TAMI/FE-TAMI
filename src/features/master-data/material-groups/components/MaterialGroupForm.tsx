@@ -1,8 +1,10 @@
 import { useEffect } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { Alert, Button, Input, Modal } from "@/components/shared";
 import type { MaterialGroup, MaterialGroupInput } from "../types/material-group.types";
+import type { MaterialGroupError } from "../utils/material-group-error";
 
 const schema = z.object({
   name: z
@@ -22,7 +24,7 @@ type MaterialGroupFormProps = {
   mode: "create" | "edit";
   materialGroup?: MaterialGroup;
   isSubmitting: boolean;
-  serverError?: string;
+  serverError?: MaterialGroupError;
   onClose: () => void;
   onSubmit: (input: MaterialGroupInput) => void;
   onDirtyChange?: (isDirty: boolean) => void;
@@ -37,7 +39,8 @@ export function MaterialGroupForm({
   onSubmit,
   onDirtyChange,
 }: MaterialGroupFormProps) {
-  const { register, handleSubmit, setError, formState } = useForm<FormValues>({
+  const { register, handleSubmit, formState } = useForm<FormValues>({
+    resolver: zodResolver(schema),
     defaultValues: materialGroup
       ? {
           name: materialGroup.name,
@@ -47,24 +50,13 @@ export function MaterialGroupForm({
   });
 
   useEffect(() => onDirtyChange?.(formState.isDirty), [formState.isDirty, onDirtyChange]);
-  useEffect(() => {
-    if (/name|tên nhóm/i.test(serverError ?? "")) setError("name", { message: serverError });
-  }, [serverError, setError]);
-  const hasFieldError = Boolean(serverError && /name|tên nhóm/i.test(serverError));
-
   const closeWithWarning = () => {
     if (!formState.isDirty || window.confirm("Bạn có muốn hủy các thay đổi chưa lưu không?"))
       onClose();
   };
 
   const submit = (values: FormValues) => {
-    const result = schema.safeParse(values);
-    if (!result.success) {
-      for (const issue of result.error.issues)
-        setError(issue.path[0] as keyof FormValues, { message: issue.message });
-      return;
-    }
-    onSubmit(result.data);
+    onSubmit(values);
   };
 
   return (
@@ -90,9 +82,9 @@ export function MaterialGroupForm({
         onSubmit={handleSubmit(submit)}
         noValidate
       >
-        {serverError && !hasFieldError && (
+        {serverError && (
           <Alert variant="error" title="Không thể lưu nhóm vật tư">
-            {serverError}
+            {serverError.message}
           </Alert>
         )}
         <Input

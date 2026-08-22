@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import type { MaterialGroup } from "../types/material-group.types";
 
 const pageSize = 5;
@@ -19,18 +19,15 @@ export function useMaterialGroupListView(materialGroups: MaterialGroup[]) {
   }, [materialGroups, search]);
 
   const totalPages = Math.max(1, Math.ceil(filteredMaterialGroups.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
   const paginatedMaterialGroups = useMemo(() => {
-    const startIndex = (page - 1) * pageSize;
+    const startIndex = (currentPage - 1) * pageSize;
     return filteredMaterialGroups.slice(startIndex, startIndex + pageSize);
-  }, [filteredMaterialGroups, page]);
-
-  useEffect(() => {
-    if (page > totalPages) setPage(totalPages);
-  }, [page, totalPages]);
+  }, [currentPage, filteredMaterialGroups]);
 
   return {
     search,
-    page,
+    page: currentPage,
     pageSize,
     totalPages,
     totalItems: filteredMaterialGroups.length,

@@ -14,7 +14,7 @@ export function Modal({
   title,
   children,
   footer,
-  closeLabel = "Close modal",
+  closeLabel = "Đóng hộp thoại",
   onClose,
 }: ModalProps) {
   useEffect(() => {

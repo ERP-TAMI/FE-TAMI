@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
 import { Alert, Button, Toast } from "@/components/shared";
 import PageMeta from "@/components/shared/PageMeta";
 import { MaterialGroupConfirmDialog } from "../components/MaterialGroupConfirmDialog";
@@ -21,28 +20,10 @@ import type {
   MaterialGroupInput,
   MaterialGroupStatus,
 } from "../types/material-group.types";
+import { getMaterialGroupError } from "../utils/material-group-error";
 
 type Dialog = { type: "status" | "delete"; materialGroup: MaterialGroup } | undefined;
 const emptyMaterialGroups: MaterialGroup[] = [];
-
-function getErrorMessage(error: unknown, fallback: string): string {
-  if (axios.isAxiosError(error)) {
-    const message = error.response?.data?.message;
-    if (typeof message !== "string") return fallback;
-
-    const translations: Record<string, string> = {
-      "Material group name already exists": "Tên nhóm vật tư đã tồn tại.",
-      "Material group code or name already exists": "Mã hoặc tên nhóm vật tư đã tồn tại.",
-      "Material group not found": "Không tìm thấy nhóm vật tư.",
-      "Material group cannot be deleted because materials reference it":
-        "Không thể xóa nhóm vì đang được vật tư tham chiếu.",
-      "Material group cannot be deleted because it is referenced by business data":
-        "Không thể xóa nhóm vì đang được dữ liệu nghiệp vụ tham chiếu.",
-    };
-    return translations[message] ?? message;
-  }
-  return fallback;
-}
 
 export default function MaterialGroupListPage() {
   const [editing, setEditing] = useState<MaterialGroup | "create" | undefined>();
@@ -102,7 +83,11 @@ export default function MaterialGroupListPage() {
       }
       setDialog(undefined);
     } catch (error) {
-      setToast(getErrorMessage(error, "Không thể cập nhật nhóm vật tư."));
+      const fallback =
+        dialog.type === "delete"
+          ? "Không thể xóa nhóm vật tư."
+          : "Không thể đổi trạng thái nhóm vật tư.";
+      setToast(getMaterialGroupError(error, fallback).message);
     }
   };
 
@@ -132,10 +117,12 @@ export default function MaterialGroupListPage() {
           {list.isError && (
             <div className="p-6">
               <Alert variant="error" title="Không thể tải danh sách nhóm vật tư">
-                {getErrorMessage(
-                  list.error,
-                  "Không thể kết nối đến máy chủ. Vui lòng kiểm tra Backend và thử lại.",
-                )}{" "}
+                {
+                  getMaterialGroupError(
+                    list.error,
+                    "Không thể kết nối đến máy chủ. Vui lòng kiểm tra Backend và thử lại.",
+                  ).message
+                }{" "}
                 <Button variant="ghost" size="sm" onClick={() => void list.refetch()}>
                   Thử lại
                 </Button>
@@ -169,10 +156,7 @@ export default function MaterialGroupListPage() {
           isSubmitting={create.isPending || update.isPending}
           serverError={
             serverError
-              ? getErrorMessage(
-                  serverError,
-                  "Không thể kết nối đến máy chủ. Vui lòng kiểm tra Backend và thử lại.",
-                )
+              ? getMaterialGroupError(serverError, "Không thể lưu nhóm vật tư. Vui lòng thử lại.")
               : undefined
           }
           onClose={closeForm}

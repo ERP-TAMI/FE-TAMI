@@ -43,6 +43,8 @@ describe("application routes", () => {
 
     expect(screen.getByRole("heading", { name: "Dashboard" })).toBeTruthy();
     expect(screen.getByRole("complementary", { name: "Primary navigation" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Vật tư" })).toBeTruthy();
+    expect(screen.queryByRole("link", { name: "Materials" })).toBeNull();
   });
 
   it("renders the public login route", () => {

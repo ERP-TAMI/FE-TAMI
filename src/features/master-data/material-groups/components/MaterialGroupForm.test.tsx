@@ -22,7 +22,7 @@ describe("MaterialGroupForm", () => {
     expect(await screen.findByText("Tên nhóm là bắt buộc")).toBeTruthy();
   });
 
-  it("submits the documented fields and displays a server duplicate-name error", async () => {
+  it("submits the documented fields and displays a coded conflict error", async () => {
     const onSubmit = vi.fn();
     const { rerender } = render(
       <MaterialGroupForm
@@ -43,12 +43,15 @@ describe("MaterialGroupForm", () => {
       <MaterialGroupForm
         mode="create"
         isSubmitting={false}
-        serverError="Material group name already exists"
+        serverError={{
+          code: "CONFLICT",
+          message: "Không thể lưu vì dữ liệu nhóm vật tư bị trùng.",
+        }}
         onClose={vi.fn()}
         onSubmit={onSubmit}
       />,
     );
-    expect(await screen.findByText("Material group name already exists")).toBeTruthy();
+    expect(await screen.findByText("Không thể lưu vì dữ liệu nhóm vật tư bị trùng.")).toBeTruthy();
   });
 
   it("shows a general submission error when the API error does not belong to a field", async () => {
@@ -56,15 +59,33 @@ describe("MaterialGroupForm", () => {
       <MaterialGroupForm
         mode="create"
         isSubmitting={false}
-        serverError="Cannot reach the Backend API."
+        serverError={{ code: "UNKNOWN", message: "Không thể lưu nhóm vật tư." }}
+        onClose={vi.fn()}
+        onSubmit={vi.fn()}
+      />,
+    );
+
+    expect((await screen.findByRole("alert")).textContent).toContain("Không thể lưu nhóm vật tư.");
+  });
+
+  it("does not guess a field from a generic error message", async () => {
+    render(
+      <MaterialGroupForm
+        mode="create"
+        isSubmitting={false}
+        serverError={{
+          code: "CONFLICT",
+          message: "Mã hoặc tên nhóm vật tư đã tồn tại.",
+        }}
         onClose={vi.fn()}
         onSubmit={vi.fn()}
       />,
     );
 
     expect((await screen.findByRole("alert")).textContent).toContain(
-      "Cannot reach the Backend API.",
+      "Mã hoặc tên nhóm vật tư đã tồn tại.",
     );
+    expect(screen.getByLabelText("Tên nhóm").getAttribute("aria-invalid")).not.toBe("true");
   });
 
   it("rejects a negative display order", async () => {

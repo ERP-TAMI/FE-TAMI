@@ -20,7 +20,7 @@ export function Table<T>({
   columns,
   rows,
   getRowKey,
-  emptyMessage = "No records found.",
+  emptyMessage = "Không có dữ liệu.",
   embedded = false,
 }: TableProps<T>) {
   return (

@@ -7,7 +7,7 @@ export type ToastProps = {
   onClose: () => void;
 };
 
-export function Toast({ open, message, closeLabel = "Close notification", onClose }: ToastProps) {
+export function Toast({ open, message, closeLabel = "Đóng thông báo", onClose }: ToastProps) {
   if (!open) return null;
 
   return (
