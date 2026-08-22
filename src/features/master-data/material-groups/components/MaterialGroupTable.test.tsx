@@ -37,6 +37,14 @@ describe("MaterialGroupTable", () => {
     );
 
     expect(screen.getByText("Steel")).not.toBeNull();
+    const columns = screen.getByText("Steel").closest("table")?.querySelectorAll("col");
+    expect(Array.from(columns ?? []).map((column) => column.className)).toEqual([
+      "w-1/6",
+      "w-1/6",
+      "w-1/6",
+      "w-1/6",
+      "w-1/3",
+    ]);
     expect(onStatus).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Ngừng hoạt động" }));
     expect(onStatus).toHaveBeenCalledWith(materialGroup);

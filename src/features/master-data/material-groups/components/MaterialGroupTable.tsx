@@ -24,6 +24,7 @@ export function MaterialGroupTable({
         {
           key: "code",
           header: "Mã nhóm",
+          width: "standard",
           render: (group) => (
             <span className="text-brand-600 dark:text-brand-400 font-medium" title={group.code}>
               {group.code}
@@ -33,6 +34,7 @@ export function MaterialGroupTable({
         {
           key: "name",
           header: "Tên nhóm",
+          width: "standard",
           render: (group) => (
             <span className="font-medium text-gray-900 dark:text-white">{group.name}</span>
           ),
@@ -40,12 +42,14 @@ export function MaterialGroupTable({
         {
           key: "displayOrder",
           header: "Thứ tự",
+          width: "standard",
           align: "center",
           render: (group) => group.displayOrder,
         },
         {
           key: "status",
           header: "Trạng thái",
+          width: "standard",
           render: (group) => (
             <span
               className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${
@@ -67,6 +71,7 @@ export function MaterialGroupTable({
         {
           key: "actions",
           header: "Thao tác",
+          width: "wide",
           align: "center",
           render: (group) => (
             <div className="flex items-center justify-center gap-1">

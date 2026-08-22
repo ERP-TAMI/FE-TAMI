@@ -5,6 +5,7 @@ export type TableColumn<T> = {
   header: string;
   render?: (row: T) => ReactNode;
   align?: "left" | "center" | "right";
+  width?: "standard" | "wide";
 };
 
 export type TableProps<T> = {
@@ -30,7 +31,21 @@ export function Table<T>({
           : "overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-800"
       }
     >
-      <table className="w-full min-w-3xl divide-y divide-gray-200 dark:divide-gray-800">
+      <table className="w-full min-w-3xl table-fixed divide-y divide-gray-200 dark:divide-gray-800">
+        <colgroup>
+          {columns.map((column) => (
+            <col
+              key={column.key}
+              className={
+                column.width === "wide"
+                  ? "w-1/3"
+                  : column.width === "standard"
+                    ? "w-1/6"
+                    : undefined
+              }
+            />
+          ))}
+        </colgroup>
         <thead className="bg-white dark:bg-gray-900">
           <tr>
             {columns.map((column) => (
