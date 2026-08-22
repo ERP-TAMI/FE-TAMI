@@ -4,6 +4,7 @@ export type TableColumn<T> = {
   key: string;
   header: string;
   render?: (row: T) => ReactNode;
+  align?: "left" | "center" | "right";
 };
 
 export type TableProps<T> = {
@@ -11,6 +12,7 @@ export type TableProps<T> = {
   rows: T[];
   getRowKey: (row: T, index: number) => string | number;
   emptyMessage?: string;
+  embedded?: boolean;
 };
 
 export function Table<T>({
@@ -18,17 +20,30 @@ export function Table<T>({
   rows,
   getRowKey,
   emptyMessage = "No records found.",
+  embedded = false,
 }: TableProps<T>) {
   return (
-    <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-800">
-      <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-800">
-        <thead className="bg-gray-50 dark:bg-white/[0.03]">
+    <div
+      className={
+        embedded
+          ? "overflow-x-auto"
+          : "overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-800"
+      }
+    >
+      <table className="w-full min-w-3xl divide-y divide-gray-200 dark:divide-gray-800">
+        <thead className="bg-white dark:bg-gray-900">
           <tr>
             {columns.map((column) => (
               <th
                 key={column.key}
                 scope="col"
-                className="text-theme-xs px-4 py-3 text-left font-semibold tracking-wider text-gray-500 uppercase dark:text-gray-400"
+                className={`text-theme-sm px-6 py-4 font-medium text-gray-500 dark:text-gray-400 ${
+                  column.align === "right"
+                    ? "text-right"
+                    : column.align === "center"
+                      ? "text-center"
+                      : "text-left"
+                }`}
               >
                 {column.header}
               </th>
@@ -54,7 +69,13 @@ export function Table<T>({
                 {columns.map((column) => (
                   <td
                     key={column.key}
-                    className="text-theme-sm px-4 py-3 whitespace-nowrap text-gray-700 dark:text-gray-300"
+                    className={`text-theme-sm px-6 py-4 whitespace-nowrap text-gray-700 dark:text-gray-300 ${
+                      column.align === "right"
+                        ? "text-right"
+                        : column.align === "center"
+                          ? "text-center"
+                          : "text-left"
+                    }`}
                   >
                     {column.render ? column.render(row) : null}
                   </td>

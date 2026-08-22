@@ -38,7 +38,9 @@ describe("MaterialGroupTable", () => {
 
     expect(screen.getByText("Steel")).not.toBeNull();
     expect(onStatus).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "Ngừng hoạt động" }));
+    fireEvent.click(screen.getByRole("button", { name: "Mở thao tác cho nhóm Steel" }));
+    expect(screen.getByRole("menu", { name: "Thao tác cho nhóm Steel" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("menuitem", { name: "Ngừng hoạt động" }));
     expect(onStatus).toHaveBeenCalledWith(materialGroup);
   });
 });

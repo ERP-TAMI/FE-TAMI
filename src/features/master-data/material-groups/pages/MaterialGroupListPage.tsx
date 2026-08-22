@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import axios from "axios";
 import { Alert, Button, Toast } from "@/components/shared";
 import PageMeta from "@/components/shared/PageMeta";
 import { MaterialGroupConfirmDialog } from "../components/MaterialGroupConfirmDialog";
 import { MaterialGroupForm } from "../components/MaterialGroupForm";
 import { MaterialGroupOverview } from "../components/MaterialGroupOverview";
+import { MaterialGroupPagination } from "../components/MaterialGroupPagination";
 import { MaterialGroupPageHeader } from "../components/MaterialGroupPageHeader";
 import { MaterialGroupTable } from "../components/MaterialGroupTable";
 import { MaterialGroupToolbar } from "../components/MaterialGroupToolbar";
@@ -15,6 +16,7 @@ import {
   useUpdateMaterialGroup,
   useUpdateMaterialGroupStatus,
 } from "../hooks/useMaterialGroups";
+import { useMaterialGroupListView } from "../hooks/useMaterialGroupListView";
 import type {
   MaterialGroup,
   MaterialGroupInput,
@@ -44,8 +46,6 @@ function getErrorMessage(error: unknown, fallback: string): string {
 }
 
 export default function MaterialGroupListPage() {
-  const [status, setStatus] = useState<MaterialGroupStatus | undefined>();
-  const [search, setSearch] = useState("");
   const [editing, setEditing] = useState<MaterialGroup | "create" | undefined>();
   const [dialog, setDialog] = useState<Dialog>();
   const [toast, setToast] = useState("");
@@ -59,25 +59,7 @@ export default function MaterialGroupListPage() {
     create.isPending || update.isPending || updateStatus.isPending || remove.isPending;
   const serverError = create.error ?? update.error;
   const materialGroups = list.data ?? emptyMaterialGroups;
-  const overview = useMemo(
-    () => ({
-      total: materialGroups.length,
-      active: materialGroups.filter((group) => group.status === "active").length,
-      inactive: materialGroups.filter((group) => group.status === "inactive").length,
-    }),
-    [materialGroups],
-  );
-  const filteredMaterialGroups = useMemo(() => {
-    const keyword = search.trim().toLocaleLowerCase("vi");
-    return materialGroups.filter((group) => {
-      const matchesStatus = !status || group.status === status;
-      const matchesSearch =
-        !keyword ||
-        group.code.toLocaleLowerCase("vi").includes(keyword) ||
-        group.name.toLocaleLowerCase("vi").includes(keyword);
-      return matchesStatus && matchesSearch;
-    });
-  }, [materialGroups, search, status]);
+  const listView = useMaterialGroupListView(materialGroups);
 
   useEffect(() => {
     const warnBeforeUnload = (event: BeforeUnloadEvent) => {
@@ -131,49 +113,61 @@ export default function MaterialGroupListPage() {
       <section aria-labelledby="page-title" className="space-y-6">
         <MaterialGroupPageHeader onCreate={() => setEditing("create")} />
 
-        <MaterialGroupOverview {...overview} />
+        <MaterialGroupOverview {...listView.overview} />
 
-        <MaterialGroupToolbar
-          search={search}
-          status={status}
-          onSearchChange={setSearch}
-          onStatusChange={setStatus}
-        />
+        <div className="shadow-theme-xs overflow-visible rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
+          <MaterialGroupToolbar
+            search={listView.search}
+            status={listView.status}
+            onSearchChange={listView.setSearch}
+            onStatusChange={listView.setStatus}
+          />
 
-        {list.isLoading && (
-          <div aria-busy="true" aria-label="Đang tải danh sách nhóm vật tư" className="space-y-3">
-            {[1, 2, 3].map((item) => (
-              <div
-                key={item}
-                className="h-14 animate-pulse rounded-xl bg-gray-100 dark:bg-gray-800"
+          {list.isLoading && (
+            <div
+              aria-busy="true"
+              aria-label="Đang tải danh sách nhóm vật tư"
+              className="space-y-3 p-6"
+            >
+              {[1, 2, 3].map((item) => (
+                <div
+                  key={item}
+                  className="h-14 animate-pulse rounded-lg bg-gray-100 dark:bg-gray-800"
+                />
+              ))}
+            </div>
+          )}
+          {list.isError && (
+            <div className="p-6">
+              <Alert variant="error" title="Không thể tải danh sách nhóm vật tư">
+                {getErrorMessage(
+                  list.error,
+                  "Không thể kết nối đến máy chủ. Vui lòng kiểm tra Backend và thử lại.",
+                )}{" "}
+                <Button variant="ghost" size="sm" onClick={() => void list.refetch()}>
+                  Thử lại
+                </Button>
+              </Alert>
+            </div>
+          )}
+          {list.data && (
+            <>
+              <MaterialGroupTable
+                materialGroups={listView.paginatedMaterialGroups}
+                onEdit={setEditing}
+                onStatus={(materialGroup) => setDialog({ type: "status", materialGroup })}
+                onDelete={(materialGroup) => setDialog({ type: "delete", materialGroup })}
               />
-            ))}
-          </div>
-        )}
-        {list.isError && (
-          <Alert variant="error" title="Không thể tải danh sách nhóm vật tư">
-            {getErrorMessage(
-              list.error,
-              "Không thể kết nối đến máy chủ. Vui lòng kiểm tra Backend và thử lại.",
-            )}{" "}
-            <Button variant="ghost" size="sm" onClick={() => void list.refetch()}>
-              Thử lại
-            </Button>
-          </Alert>
-        )}
-        {list.data && (
-          <div className="space-y-3">
-            <MaterialGroupTable
-              materialGroups={filteredMaterialGroups}
-              onEdit={setEditing}
-              onStatus={(materialGroup) => setDialog({ type: "status", materialGroup })}
-              onDelete={(materialGroup) => setDialog({ type: "delete", materialGroup })}
-            />
-            <p className="text-theme-xs text-gray-500 dark:text-gray-400">
-              Hiển thị {filteredMaterialGroups.length}/{materialGroups.length} nhóm vật tư
-            </p>
-          </div>
-        )}
+              <MaterialGroupPagination
+                page={listView.page}
+                pageSize={listView.pageSize}
+                totalItems={listView.totalItems}
+                totalPages={listView.totalPages}
+                onPageChange={listView.setPage}
+              />
+            </>
+          )}
+        </div>
       </section>
 
       {editing && (

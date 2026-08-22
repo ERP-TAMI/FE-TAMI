@@ -1,4 +1,5 @@
-import { Button, Table } from "@/components/shared";
+import { Table } from "@/components/shared";
+import { MaterialGroupActionMenu } from "./MaterialGroupActionMenu";
 import type { MaterialGroup } from "../types/material-group.types";
 
 type MaterialGroupTableProps = {
@@ -16,6 +17,7 @@ export function MaterialGroupTable({
 }: MaterialGroupTableProps) {
   return (
     <Table
+      embedded
       rows={materialGroups}
       getRowKey={(materialGroup) => materialGroup.id}
       emptyMessage="Không tìm thấy nhóm vật tư phù hợp."
@@ -39,6 +41,7 @@ export function MaterialGroupTable({
         {
           key: "displayOrder",
           header: "Thứ tự",
+          align: "center",
           render: (group) => group.displayOrder,
         },
         {
@@ -65,23 +68,14 @@ export function MaterialGroupTable({
         {
           key: "actions",
           header: "Thao tác",
+          align: "right",
           render: (group) => (
-            <div className="flex items-center gap-1">
-              <Button variant="ghost" size="sm" onClick={() => onEdit(group)}>
-                Sửa
-              </Button>
-              <Button variant="ghost" size="sm" onClick={() => onStatus(group)}>
-                {group.status === "active" ? "Ngừng hoạt động" : "Kích hoạt"}
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-error-600 hover:bg-error-50 dark:text-error-400 dark:hover:bg-error-500/10"
-                onClick={() => onDelete(group)}
-              >
-                Xóa
-              </Button>
-            </div>
+            <MaterialGroupActionMenu
+              materialGroup={group}
+              onEdit={onEdit}
+              onStatus={onStatus}
+              onDelete={onDelete}
+            />
           ),
         },
       ]}

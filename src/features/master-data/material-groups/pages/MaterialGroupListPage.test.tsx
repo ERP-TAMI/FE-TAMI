@@ -121,7 +121,8 @@ describe("MaterialGroupListPage", () => {
     });
 
     render(<MaterialGroupListPage />);
-    fireEvent.click(screen.getByRole("button", { name: "Sửa" }));
+    fireEvent.click(screen.getByRole("button", { name: "Mở thao tác cho nhóm Fabric" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Sửa" }));
     fireEvent.change(screen.getByLabelText("Tên nhóm"), { target: { value: "Main fabric" } });
     fireEvent.change(screen.getByLabelText("Thứ tự hiển thị"), { target: { value: "2" } });
     fireEvent.click(screen.getByRole("button", { name: "Lưu nhóm vật tư" }));
@@ -148,9 +149,8 @@ describe("MaterialGroupListPage", () => {
     });
 
     render(<MaterialGroupListPage />);
-    fireEvent.click(
-      within(screen.getByRole("table")).getByRole("button", { name: "Ngừng hoạt động" }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: "Mở thao tác cho nhóm Fabric" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Ngừng hoạt động" }));
 
     expect(hooks.updateStatus.mutateAsync).not.toHaveBeenCalled();
     fireEvent.click(
@@ -195,5 +195,37 @@ describe("MaterialGroupListPage", () => {
 
     expect(screen.getByText("Phụ liệu")).toBeTruthy();
     expect(screen.queryByText("Fabric")).toBeNull();
+  });
+
+  it("phân trang danh sách và quay lại trang đầu khi tìm kiếm", () => {
+    const materialGroups = Array.from({ length: 6 }, (_, index) => ({
+      ...materialGroup,
+      id: `e41a0a7d-28b1-4d78-9c26-b017f5c5f8${index}`,
+      code: `GROUP-${index + 1}`,
+      name: `Nhóm vật tư ${index + 1}`,
+      displayOrder: index + 1,
+    }));
+    hooks.useMaterialGroups.mockReturnValue({
+      isLoading: false,
+      isError: false,
+      data: materialGroups,
+      error: null,
+      refetch: vi.fn(),
+    });
+
+    render(<MaterialGroupListPage />);
+
+    expect(screen.getByText("Hiển thị 1–5 trên 6 nhóm vật tư")).toBeTruthy();
+    expect(screen.queryByText("Nhóm vật tư 6")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Trang sau" }));
+    expect(screen.getByText("Nhóm vật tư 6")).toBeTruthy();
+    expect(screen.queryByText("Nhóm vật tư 1")).toBeNull();
+
+    fireEvent.change(screen.getByLabelText("Tìm kiếm nhóm vật tư"), {
+      target: { value: "GROUP-1" },
+    });
+    expect(screen.getByText("Nhóm vật tư 1")).toBeTruthy();
+    expect(screen.getByText("Hiển thị 1–1 trên 1 nhóm vật tư")).toBeTruthy();
   });
 });
