@@ -341,7 +341,7 @@ export default function StyleListPage() {
                       <th className="w-[17%] px-5 py-3.5 font-semibold">Dòng sản phẩm</th>
                       <th className="w-[17%] px-5 py-3.5 font-semibold">Trạng thái</th>
                       <th className="w-[14%] px-5 py-3.5 font-semibold">Ngày tạo</th>
-                      <th className="w-[16%] px-5 py-3.5 font-semibold text-right">Thao tác</th>
+                      <th className="w-[16%] px-5 py-3.5 font-semibold text-center">Thao tác</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
@@ -350,11 +350,12 @@ export default function StyleListPage() {
                         key={style.id}
                         className="group h-16 hover:bg-gray-50/80 dark:hover:bg-gray-800/50 transition-colors"
                       >
-                        {/* Mã mẫu */}
-                        <td className="w-[15%] px-5 py-4">
+                        {/* Mã mẫu (thêm truncate và title để không bao giờ bị tràn sang cột Tên mẫu khi mã quá dài) */}
+                        <td className="w-[15%] px-5 py-4 truncate">
                           <Link
                             to={`/styles/${style.id}`}
-                            className="font-mono text-sm font-semibold text-blue-600 hover:underline dark:text-blue-400"
+                            title={style.styleCode}
+                            className="font-mono text-sm font-semibold text-blue-600 hover:underline dark:text-blue-400 truncate block max-w-full"
                           >
                             {style.styleCode}
                           </Link>
@@ -409,16 +410,16 @@ export default function StyleListPage() {
                           {new Date(style.createdAt).toLocaleDateString("vi-VN")}
                         </td>
 
-                        {/* Thao tác (Actions) */}
-                        <td className="w-[16%] px-5 py-4 text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            {/* Xem */}
+                        {/* Thao tác (Actions) - Căn giữa tiêu đề và các nút bấm */}
+                        <td className="w-[16%] px-5 py-4 text-center">
+                          <div className="flex items-center justify-center gap-2">
+                            {/* Xem với EyeIcon */}
                             <Link
                               to={`/styles/${style.id}`}
                               className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50/60 px-2.5 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100 dark:border-blue-900/40 dark:bg-blue-950/40 dark:text-blue-300 dark:hover:bg-blue-900/60 transition-colors"
                               title="Xem chi tiết"
                             >
-                              <EyeIcon className="h-3.5 w-3.5" />
+                              <EyeIcon className="h-3.5 w-3.5 shrink-0" />
                               <span>Xem</span>
                             </Link>
 
