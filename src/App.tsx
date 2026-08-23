@@ -1,4 +1,4 @@
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Outlet, Route, Routes } from "react-router-dom";
 import AppLayout from "@/layout/AppLayout";
 import { ScrollToTop } from "@/components/shared/ScrollToTop";
 import { ProtectedRoute } from "@/routes/ProtectedRoute";
@@ -15,6 +15,12 @@ import StyleDetailPage from "@/pages/styles/StyleDetailPage";
 import AuditLogPage from "@/pages/audit/AuditLogPage";
 import NotFoundPage from "@/pages/NotFoundPage";
 
+// TODO(S2-AUTH): re-enable once the other in-progress feature screens are
+// done, so their own testing/dev flow isn't blocked by a login requirement.
+// Login/session code (LoginPage, authStore, refresh, logout) all stays fully
+// wired and testable — this only pauses the forced redirect.
+const AUTH_GUARD_ENABLED = false;
+
 export default function App() {
   const status = useAuthBootstrap();
 
@@ -26,7 +32,7 @@ export default function App() {
           path="/login"
           element={status === "authenticated" ? <Navigate to="/dashboard" replace /> : <LoginPage />}
         />
-        <Route element={<ProtectedRoute />}>
+        <Route element={AUTH_GUARD_ENABLED ? <ProtectedRoute /> : <Outlet />}>
           <Route element={<AppLayout />}>
             <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="dashboard" element={<DashboardPage />} />

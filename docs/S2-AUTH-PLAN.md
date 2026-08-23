@@ -1,7 +1,9 @@
 # S2-AUTH: Kế hoạch triển khai Authentication & Authorization (Frontend)
 
 ## Status
-S2-AUTH-04: code xong, test đầy đủ (unit/component + tích hợp thật với BE qua Vite proxy), PR đang mở (https://github.com/ERP-TAMI/FE-TAMI/pull/15). S2-AUTH-05 (phần FE) chưa bắt đầu.
+S2-AUTH-04: code xong, test đầy đủ (unit/component + Playwright thật với BE qua Vite proxy), PR đang mở (https://github.com/ERP-TAMI/FE-TAMI/pull/15). S2-AUTH-05 (phần FE) chưa bắt đầu.
+
+> ⚠️ **Route guard tạm thời tắt** (theo yêu cầu, để không chặn các tính năng khác đang được code song song): `AUTH_GUARD_ENABLED = false` trong `src/App.tsx`. Toàn bộ code login/session (LoginPage, authStore, refresh, logout, header) vẫn hoạt động đầy đủ và test được — chỉ tạm dừng việc **ép** chuyển hướng người chưa đăng nhập về `/login`. Test liên quan (`App.test.tsx`, `e2e/auth.spec.ts`) đã `skip` kèm ghi chú, logic guard vẫn được test đầy đủ qua `ProtectedRoute.test.tsx`. **Cần đổi lại `true` sau khi các tính năng khác code xong**, rồi un-skip 2 test đã skip.
 
 ## Scope
 Tài liệu này lên kế hoạch cho 2 nhánh việc thuộc repo `FE-TAMI`:
