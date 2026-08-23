@@ -7,8 +7,3 @@ export type MaterialGroup = {
 };
 
 export type MaterialGroupInput = Pick<MaterialGroup, "name">;
-
-export type MaterialGroupError = {
-  code: string;
-  message: string;
-};

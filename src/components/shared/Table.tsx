@@ -5,16 +5,25 @@ export type TableColumn<T> = {
   header: string;
   render?: (row: T) => ReactNode;
   align?: "left" | "center" | "right";
-  width?: "standard" | "wide";
+  /** Tailwind width utility for the column, e.g. "w-[16%]". Omit to share remaining space evenly. */
+  width?: string;
 };
 
 export type TableProps<T> = {
   columns: TableColumn<T>[];
   rows: T[];
   getRowKey: (row: T, index: number) => string | number;
-  emptyMessage?: string;
+  emptyMessage?: ReactNode;
   embedded?: boolean;
+  loading?: boolean;
+  loadingRowCount?: number;
 };
+
+function alignClass(align?: "left" | "center" | "right") {
+  if (align === "right") return "text-right";
+  if (align === "center") return "text-center";
+  return "text-left";
+}
 
 export function Table<T>({
   columns,
@@ -22,6 +31,8 @@ export function Table<T>({
   getRowKey,
   emptyMessage = "Không có dữ liệu.",
   embedded = false,
+  loading = false,
+  loadingRowCount = 5,
 }: TableProps<T>) {
   return (
     <div
@@ -31,42 +42,32 @@ export function Table<T>({
           : "overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-800"
       }
     >
-      <table className="w-full min-w-3xl table-fixed divide-y divide-gray-200 dark:divide-gray-800">
-        <colgroup>
-          {columns.map((column) => (
-            <col
-              key={column.key}
-              className={
-                column.width === "wide"
-                  ? "w-1/3"
-                  : column.width === "standard"
-                    ? "w-1/6"
-                    : undefined
-              }
-            />
-          ))}
-        </colgroup>
-        <thead className="bg-white dark:bg-gray-900">
+      <table className="text-theme-sm w-full table-fixed text-left text-gray-700 dark:text-gray-200">
+        <thead className="text-theme-xs border-b border-gray-200 bg-gray-50/80 font-semibold tracking-wider text-gray-500 uppercase dark:border-gray-800 dark:bg-gray-800/80 dark:text-gray-400">
           <tr>
             {columns.map((column) => (
               <th
                 key={column.key}
                 scope="col"
-                className={`text-theme-sm px-6 py-4 font-medium text-gray-500 dark:text-gray-400 ${
-                  column.align === "right"
-                    ? "text-right"
-                    : column.align === "center"
-                      ? "text-center"
-                      : "text-left"
-                }`}
+                className={`px-5 py-3.5 font-semibold ${column.width ?? ""} ${alignClass(column.align)}`}
               >
                 {column.header}
               </th>
             ))}
           </tr>
         </thead>
-        <tbody className="divide-y divide-gray-200 bg-white dark:divide-gray-800 dark:bg-gray-900">
-          {rows.length === 0 ? (
+        <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+          {loading ? (
+            Array.from({ length: loadingRowCount }, (_, index) => (
+              <tr key={`skeleton-${index}`} className="h-16">
+                {columns.map((column) => (
+                  <td key={column.key} className="px-5 py-4">
+                    <div className="h-4 w-full max-w-40 animate-pulse rounded bg-gray-100 dark:bg-gray-800" />
+                  </td>
+                ))}
+              </tr>
+            ))
+          ) : rows.length === 0 ? (
             <tr>
               <td
                 colSpan={columns.length}
@@ -79,19 +80,10 @@ export function Table<T>({
             rows.map((row, index) => (
               <tr
                 key={getRowKey(row, index)}
-                className="hover:bg-gray-50 dark:hover:bg-white/[0.03]"
+                className="group h-16 transition-colors hover:bg-gray-50/80 dark:hover:bg-gray-800/50"
               >
                 {columns.map((column) => (
-                  <td
-                    key={column.key}
-                    className={`text-theme-sm px-6 py-4 whitespace-nowrap text-gray-700 dark:text-gray-300 ${
-                      column.align === "right"
-                        ? "text-right"
-                        : column.align === "center"
-                          ? "text-center"
-                          : "text-left"
-                    }`}
-                  >
+                  <td key={column.key} className={`px-5 py-4 ${alignClass(column.align)}`}>
                     {column.render ? column.render(row) : null}
                   </td>
                 ))}

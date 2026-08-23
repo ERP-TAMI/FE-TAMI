@@ -40,9 +40,9 @@ describe("MaterialGroupTable", () => {
     const headers = screen.getByRole("columnheader", { name: "Tên nhóm" }).closest("tr")
       ?.children;
     expect(Array.from(headers ?? []).map((header) => header.className)).toEqual([
-      "w-[45%] px-5 py-3.5 font-semibold",
-      "w-[25%] px-5 py-3.5 font-semibold",
-      "w-[30%] px-5 py-3.5 text-center font-semibold",
+      "px-5 py-3.5 font-semibold w-[45%] text-left",
+      "px-5 py-3.5 font-semibold w-[25%] text-left",
+      "px-5 py-3.5 font-semibold w-[30%] text-center",
     ]);
 
     expect(onToggleStatus).not.toHaveBeenCalled();
