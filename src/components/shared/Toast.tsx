@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Button } from "@/components/shared/Button";
 
 type ToastVariant = "neutral" | "success" | "error";
@@ -6,6 +7,8 @@ export type ToastProps = {
   open: boolean;
   message: string;
   variant?: ToastVariant;
+  /** Milliseconds before the toast auto-dismisses. Set to 0 to disable. */
+  duration?: number;
   closeLabel?: string;
   onClose: () => void;
 };
@@ -22,9 +25,16 @@ export function Toast({
   open,
   message,
   variant = "neutral",
+  duration = 3000,
   closeLabel = "Đóng thông báo",
   onClose,
 }: ToastProps) {
+  useEffect(() => {
+    if (!open || duration <= 0) return undefined;
+    const timer = setTimeout(onClose, duration);
+    return () => clearTimeout(timer);
+  }, [open, message, duration, onClose]);
+
   if (!open) return null;
 
   return (

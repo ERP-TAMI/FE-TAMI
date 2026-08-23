@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { BrowserRouter } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { PageHeader } from "./PageHeader";
@@ -45,5 +45,22 @@ describe("PageHeader", () => {
     );
     expect(screen.getByText("3 mẫu")).toBeTruthy();
     expect(screen.getByText("2 hoạt động")).toBeTruthy();
+  });
+
+  it("styles every non-last crumb the same way, whether it links or not", () => {
+    renderWithRouter(
+      <PageHeader
+        breadcrumb={[{ label: "Danh mục" }, { label: "Nhóm vật tư" }]}
+        title="Nhóm vật tư"
+      />,
+    );
+
+    const nav = screen.getByRole("navigation");
+    const firstCrumb = within(nav).getByText("Danh mục");
+    const lastCrumb = within(nav).getByText("Nhóm vật tư");
+
+    expect(firstCrumb.className).not.toContain("font-medium");
+    expect(lastCrumb.getAttribute("aria-current")).toBe("page");
+    expect(firstCrumb.getAttribute("aria-current")).toBeNull();
   });
 });

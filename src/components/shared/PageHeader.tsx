@@ -47,17 +47,16 @@ export function PageHeader({ breadcrumb, title, stats, action }: PageHeaderProps
           return (
             <span key={item.label} className="flex items-center gap-2">
               {index > 0 && <span aria-hidden="true">/</span>}
-              {item.to && !isLast ? (
+              {isLast ? (
+                <span aria-current="page" className="font-medium text-gray-700 dark:text-gray-200">
+                  {item.label}
+                </span>
+              ) : item.to ? (
                 <Link to={item.to} className="hover:text-gray-700 dark:hover:text-gray-200">
                   {item.label}
                 </Link>
               ) : (
-                <span
-                  aria-current={isLast ? "page" : undefined}
-                  className="font-medium text-gray-700 dark:text-gray-200"
-                >
-                  {item.label}
-                </span>
+                <span>{item.label}</span>
               )}
             </span>
           );

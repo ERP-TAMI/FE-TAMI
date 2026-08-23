@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 
 type ToastVariant = "success" | "error";
 
@@ -10,11 +10,11 @@ type ToastState = {
 export function useToast() {
   const [toast, setToast] = useState<ToastState | null>(null);
 
-  const showToast = (message: string, variant: ToastVariant = "success") => {
+  const showToast = useCallback((message: string, variant: ToastVariant = "success") => {
     setToast({ message, variant });
-  };
+  }, []);
 
-  const hideToast = () => setToast(null);
+  const hideToast = useCallback(() => setToast(null), []);
 
   return { toast, showToast, hideToast };
 }

@@ -8,11 +8,7 @@ type MaterialGroupToolbarProps = {
 export function MaterialGroupToolbar({ search, onSearchChange }: MaterialGroupToolbarProps) {
   return (
     <header className="border-b border-gray-200 bg-gray-50 px-4 py-5 sm:px-6 dark:border-gray-800 dark:bg-white/[0.03]">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-          Danh sách nhóm vật tư
-        </h2>
-
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-end">
         <div className="relative w-full lg:w-96">
           <span className="pointer-events-none absolute top-1/2 left-3.5 z-10 -translate-y-1/2 text-gray-400">
             <svg

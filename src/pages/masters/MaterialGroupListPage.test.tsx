@@ -193,7 +193,7 @@ describe("MaterialGroupListPage", () => {
     render(<MaterialGroupListPage />);
 
     expect(screen.queryByLabelText("Tổng quan nhóm vật tư")).toBeNull();
-    expect(screen.getByRole("heading", { name: "Danh sách nhóm vật tư" })).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "Danh sách nhóm vật tư" })).toBeNull();
     expect(
       screen.queryByText("Quản lý và sắp xếp các nhóm dùng để phân loại vật tư trong hệ thống."),
     ).toBeNull();
