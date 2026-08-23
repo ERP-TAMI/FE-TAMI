@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { materialApi } from "@/api/material.api";
 import { materialKeys, unitKeys } from "@/api/material.keys";
-import { unitApi } from "@/api/unit.api";
+import { unitApi, type UnitInput } from "@/api/unit.api";
 import type {
   MaterialFilters,
   MaterialInput,
@@ -18,6 +18,43 @@ export function useMaterials(filters: MaterialFilters) {
 
 export function useActiveUnits() {
   return useQuery({ queryKey: unitKeys.list("active"), queryFn: () => unitApi.list("active") });
+}
+
+export function useUnits(status?: MaterialStatus) {
+  return useQuery({ queryKey: unitKeys.list(status), queryFn: () => unitApi.list(status) });
+}
+
+function useInvalidateUnits() {
+  const queryClient = useQueryClient();
+  return () => queryClient.invalidateQueries({ queryKey: unitKeys.all });
+}
+
+export function useCreateUnit() {
+  const invalidate = useInvalidateUnits();
+  return useMutation({ mutationFn: unitApi.create, onSuccess: invalidate });
+}
+
+export function useUpdateUnit() {
+  const invalidate = useInvalidateUnits();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: Partial<UnitInput> }) =>
+      unitApi.update(id, input),
+    onSuccess: invalidate,
+  });
+}
+
+export function useUpdateUnitStatus() {
+  const invalidate = useInvalidateUnits();
+  return useMutation({
+    mutationFn: ({ id, status }: { id: string; status: MaterialStatus }) =>
+      unitApi.updateStatus(id, status),
+    onSuccess: invalidate,
+  });
+}
+
+export function useDeleteUnit() {
+  const invalidate = useInvalidateUnits();
+  return useMutation({ mutationFn: unitApi.remove, onSuccess: invalidate });
 }
 
 function useInvalidateMaterials() {

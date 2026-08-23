@@ -12,9 +12,7 @@ describe("unitApi", () => {
       data: [
         {
           id: "0a989bfe-fb34-489c-b5fe-30f74a1dc09d",
-          code: "M",
           name: "Mét",
-          decimalScale: 4,
           status: "active",
         },
       ],

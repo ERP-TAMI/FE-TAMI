@@ -33,6 +33,7 @@ const navItems: NavItem[] = [
     children: [
       { name: "Vật tư", path: "/masters/materials" },
       { name: "Nhóm vật tư", path: "/masters/material-groups" },
+      { name: "Đơn vị tính", path: "/masters/units" },
     ],
   },
   { name: "Administration", path: "/admin", icon: <UserCircleIcon /> },
