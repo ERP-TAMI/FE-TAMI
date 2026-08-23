@@ -1,9 +1,11 @@
 # S2-AUTH: Kế hoạch triển khai Authentication & Authorization (Frontend)
 
 ## Status
-S2-AUTH-04 đã merge vào dev (#15). S2-AUTH-05 (phần FE): code xong (thêm test kiểm tra không lộ token/mật khẩu qua browser storage bằng Playwright), báo cáo test tại `docs/S2-AUTH-05-FE-TEST-REPORT.md`, PR đang mở.
+S2-AUTH-04 (#15) và S2-AUTH-05 (#16) đã merge vào dev.
 
-> ⚠️ **Route guard tạm thời tắt** (theo yêu cầu, để không chặn các tính năng khác đang được code song song): `AUTH_GUARD_ENABLED = false` trong `src/App.tsx`. Toàn bộ code login/session (LoginPage, authStore, refresh, logout, header) vẫn hoạt động đầy đủ và test được — chỉ tạm dừng việc **ép** chuyển hướng người chưa đăng nhập về `/login`. Test liên quan (`App.test.tsx`, `e2e/auth.spec.ts`) đã `skip` kèm ghi chú, logic guard vẫn được test đầy đủ qua `ProtectedRoute.test.tsx`. **Cần đổi lại `true` sau khi các tính năng khác code xong**, rồi un-skip 2 test đã skip.
+> ✅ **Route guard đã bật lại (2026-08-23, hotfix `fix/Nguyen-enable-auth-guard`):** `AUTH_GUARD_ENABLED = true` trong `src/App.tsx`. Người chưa đăng nhập vào bất kỳ trang nào trong shell đều bị chuyển về `/login`. 2 test trước đó `skip` (`App.test.tsx`, `e2e/auth.spec.ts`) đã un-skip và pass lại bình thường. Nhắc: khi bật guard, mọi tính năng khác trong `AppLayout` (BOM, PO, master-data, admin...) đều **cần đăng nhập thật** để test/dùng được — nếu tài khoản test bị khoá/hết hạn, dùng lại bảng 6 tài khoản `@tami.test` / mật khẩu `123456` ở `Erp-BE/docs/S2-AUTH-05-BE-TEST-REPORT.md`.
+>
+> Lịch sử: guard từng bị tắt tạm ở S2-AUTH-04 để không chặn các tính năng khác đang code song song (S2-AUTH-03 khoá API thật ở BE cũng bị hoãn cùng lý do đó) — nay đã bật lại theo yêu cầu ngày 2026-08-23. S2-AUTH-03 (BE) **vẫn đang hoãn**, cần làm sớm để guard FE có ý nghĩa bảo mật thật (hiện guard FE chỉ chặn UX, các API nghiệp vụ ở BE vẫn chưa yêu cầu quyền thật).
 
 ## Scope
 Tài liệu này lên kế hoạch cho 2 nhánh việc thuộc repo `FE-TAMI`:

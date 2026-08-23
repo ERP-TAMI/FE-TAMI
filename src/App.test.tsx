@@ -85,11 +85,7 @@ describe("application routes", () => {
     expect(screen.getByRole("heading", { name: "Đăng nhập" })).toBeTruthy();
   });
 
-  // Skipped while AUTH_GUARD_ENABLED = false in App.tsx (temporary, per
-  // request, until other in-progress feature screens are done). The guard
-  // itself is still fully covered by ProtectedRoute.test.tsx — re-enable
-  // this once the flag flips back.
-  it.skip("redirects an unauthenticated visitor from a protected route to /login", () => {
+  it("redirects an unauthenticated visitor from a protected route to /login", () => {
     window.history.pushState({}, "", "/masters/material-groups");
     renderApp();
 
