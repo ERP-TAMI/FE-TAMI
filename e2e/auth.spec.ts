@@ -51,6 +51,35 @@ test.describe("Authentication flow (real browser, real BE)", () => {
     // false (see App.tsx). Covered by ProtectedRoute.test.tsx regardless.
   });
 
+  test("never persists the password, access token, or refresh token in browser storage", async ({
+    page,
+    context,
+  }) => {
+    await page.goto("/login");
+    await page.getByLabel("Email").fill(SA.email);
+    await page.getByLabel("Mật khẩu").fill(SA.password);
+    await page.getByRole("button", { name: "Đăng nhập" }).click();
+    await expect(page).toHaveURL(/\/dashboard$/);
+
+    const storageDump = await page.evaluate(() => ({
+      local: { ...window.localStorage },
+      session: { ...window.sessionStorage },
+    }));
+    const serialized = JSON.stringify(storageDump);
+    expect(serialized).not.toContain(SA.password);
+    expect(serialized).not.toContain("eyJ"); // base64url JWT header prefix ("{"a...)
+
+    // The refresh token cookie must be httpOnly (invisible to page.evaluate's
+    // document.cookie) and must never appear in localStorage/sessionStorage.
+    expect(await page.evaluate(() => document.cookie)).not.toContain("refresh_token");
+    const cookies = await context.cookies();
+    const refreshCookie = cookies.find((cookie) => cookie.name === "refresh_token");
+    expect(refreshCookie?.httpOnly).toBe(true);
+    expect(refreshCookie?.sameSite).toBe("Lax");
+
+    await page.getByRole("button", { name: "Đăng xuất" }).click();
+  });
+
   test("sends an already-authenticated visitor away from /login", async ({ page }) => {
     await page.goto("/login");
     await page.getByLabel("Email").fill(SA.email);
