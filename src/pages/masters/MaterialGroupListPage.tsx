@@ -77,9 +77,7 @@ export default function MaterialGroupListPage() {
       materialGroup.status === "active" ? "inactive" : "active";
     try {
       await updateStatus.mutateAsync({ id: materialGroup.id, status: nextStatus });
-      showToast(
-        nextStatus === "active" ? "Đã kích hoạt nhóm vật tư." : "Đã ngừng hoạt động nhóm vật tư.",
-      );
+      showToast(nextStatus === "active" ? "Đã bật nhóm vật tư." : "Đã tắt nhóm vật tư.");
     } catch (error) {
       showToast(getApiError(error, "Không thể đổi trạng thái nhóm vật tư.").message, "error");
     }
@@ -90,7 +88,11 @@ export default function MaterialGroupListPage() {
       <PageMeta title="Nhóm vật tư | TAMI ERP" description="Quản lý danh mục nhóm vật tư" />
       <section aria-labelledby="page-title" className="space-y-4">
         <PageHeader
-          breadcrumb={[{ label: "Danh mục" }, { label: "Nhóm vật tư" }]}
+          breadcrumb={[
+            { label: "Dashboard", to: "/dashboard" },
+            { label: "Dữ liệu chung" },
+            { label: "Nhóm vật tư" },
+          ]}
           title="Nhóm vật tư"
           action={{
             label: "Tạo nhóm vật tư mới",
@@ -100,7 +102,12 @@ export default function MaterialGroupListPage() {
         />
 
         <div className="shadow-theme-xs overflow-visible rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
-          <MaterialGroupToolbar search={listView.search} onSearchChange={listView.setSearch} />
+          <MaterialGroupToolbar
+            search={listView.search}
+            status={listView.status}
+            onSearchChange={listView.setSearch}
+            onStatusChange={listView.setStatus}
+          />
 
           {list.isLoading && (
             <div aria-busy="true" aria-label="Đang tải danh sách nhóm vật tư">

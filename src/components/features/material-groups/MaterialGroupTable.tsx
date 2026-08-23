@@ -51,9 +51,7 @@ export function MaterialGroupTable({
                   : "bg-gray-300 dark:bg-gray-700"
               } ${isToggling ? "opacity-50" : ""}`}
               title={
-                group.status === "active"
-                  ? "Đang hoạt động (Bấm để ngừng hoạt động)"
-                  : "Đang ngừng hoạt động (Bấm để kích hoạt)"
+                group.status === "active" ? "Đang sử dụng (Bấm để tắt)" : "Đã tắt (Bấm để bật)"
               }
             >
               <span
@@ -69,7 +67,7 @@ export function MaterialGroupTable({
                   : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300"
               }`}
             >
-              {group.status === "active" ? "Đang hoạt động" : "Ngừng hoạt động"}
+              {group.status === "active" ? "Đang sử dụng" : "Đã tắt"}
             </span>
           </div>
         );

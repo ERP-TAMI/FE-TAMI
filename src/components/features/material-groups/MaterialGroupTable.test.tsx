@@ -47,7 +47,7 @@ describe("MaterialGroupTable", () => {
 
     expect(onToggleStatus).not.toHaveBeenCalled();
     fireEvent.click(
-      screen.getByTitle("Đang hoạt động (Bấm để ngừng hoạt động)"),
+      screen.getByTitle("Đang sử dụng (Bấm để tắt)"),
     );
     expect(onToggleStatus).toHaveBeenCalledWith(materialGroup);
   });

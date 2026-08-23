@@ -1,3 +1,4 @@
+import { BrowserRouter } from "react-router-dom";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import MaterialGroupListPage from "./MaterialGroupListPage";
@@ -24,6 +25,14 @@ const materialGroup = {
   status: "active" as const,
 };
 
+function renderPage() {
+  return render(
+    <BrowserRouter>
+      <MaterialGroupListPage />
+    </BrowserRouter>,
+  );
+}
+
 describe("MaterialGroupListPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -40,7 +49,7 @@ describe("MaterialGroupListPage", () => {
       refetch: vi.fn(),
     });
 
-    render(<MaterialGroupListPage />);
+    renderPage();
 
     expect(screen.getByLabelText("Đang tải danh sách nhóm vật tư")).toBeTruthy();
   });
@@ -55,7 +64,7 @@ describe("MaterialGroupListPage", () => {
       refetch,
     });
 
-    render(<MaterialGroupListPage />);
+    renderPage();
     fireEvent.click(screen.getByRole("button", { name: "Thử lại" }));
 
     expect(screen.getByText(/Không thể kết nối đến máy chủ/)).toBeTruthy();
@@ -71,7 +80,7 @@ describe("MaterialGroupListPage", () => {
       refetch: vi.fn(),
     });
 
-    render(<MaterialGroupListPage />);
+    renderPage();
 
     expect(screen.getByText("Không tìm thấy nhóm vật tư phù hợp.")).toBeTruthy();
   });
@@ -89,7 +98,7 @@ describe("MaterialGroupListPage", () => {
       refetch: vi.fn(),
     });
 
-    render(<MaterialGroupListPage />);
+    renderPage();
     fireEvent.click(screen.getByRole("button", { name: "Tạo nhóm vật tư mới" }));
     fireEvent.change(screen.getByLabelText("Tên nhóm"), { target: { value: "Accessories" } });
     fireEvent.click(screen.getByRole("button", { name: "Lưu nhóm vật tư" }));
@@ -114,7 +123,7 @@ describe("MaterialGroupListPage", () => {
       refetch: vi.fn(),
     });
 
-    render(<MaterialGroupListPage />);
+    renderPage();
     fireEvent.click(screen.getByRole("button", { name: "Sửa" }));
     fireEvent.change(screen.getByLabelText("Tên nhóm"), { target: { value: "Main fabric" } });
     fireEvent.click(screen.getByRole("button", { name: "Lưu nhóm vật tư" }));
@@ -140,8 +149,8 @@ describe("MaterialGroupListPage", () => {
       refetch: vi.fn(),
     });
 
-    render(<MaterialGroupListPage />);
-    fireEvent.click(screen.getByTitle("Đang hoạt động (Bấm để ngừng hoạt động)"));
+    renderPage();
+    fireEvent.click(screen.getByTitle("Đang sử dụng (Bấm để tắt)"));
 
     expect(screen.queryByRole("dialog")).toBeNull();
     await waitFor(() => {
@@ -162,7 +171,7 @@ describe("MaterialGroupListPage", () => {
       refetch: vi.fn(),
     });
 
-    render(<MaterialGroupListPage />);
+    renderPage();
     fireEvent.click(within(screen.getByRole("table")).getByRole("button", { name: "Xóa" }));
 
     expect(hooks.remove.mutateAsync).not.toHaveBeenCalled();
@@ -190,15 +199,10 @@ describe("MaterialGroupListPage", () => {
       refetch: vi.fn(),
     });
 
-    render(<MaterialGroupListPage />);
+    renderPage();
 
     expect(screen.queryByLabelText("Tổng quan nhóm vật tư")).toBeNull();
     expect(screen.queryByRole("heading", { name: "Danh sách nhóm vật tư" })).toBeNull();
-    expect(
-      screen.queryByText("Quản lý và sắp xếp các nhóm dùng để phân loại vật tư trong hệ thống."),
-    ).toBeNull();
-    expect(screen.queryByText("Tìm kiếm, lọc và quản lý các nhóm vật tư hiện có.")).toBeNull();
-    expect(screen.queryByRole("group", { name: "Lọc theo trạng thái" })).toBeNull();
 
     fireEvent.change(screen.getByLabelText("Tìm kiếm nhóm vật tư"), {
       target: { value: "Phụ" },
@@ -206,6 +210,36 @@ describe("MaterialGroupListPage", () => {
 
     expect(screen.getByText("Phụ liệu")).toBeTruthy();
     expect(screen.queryByText("Fabric")).toBeNull();
+  });
+
+  it("lọc danh sách theo trạng thái", () => {
+    hooks.useMaterialGroups.mockReturnValue({
+      isLoading: false,
+      isError: false,
+      data: [
+        materialGroup,
+        {
+          ...materialGroup,
+          id: "24b7062b-24d7-411d-8466-f3f2bbdd735e",
+          name: "Phụ liệu",
+          status: "inactive",
+        },
+      ],
+      error: null,
+      refetch: vi.fn(),
+    });
+
+    renderPage();
+
+    const filterGroup = screen.getByRole("group", { name: "Lọc theo trạng thái" });
+    fireEvent.click(within(filterGroup).getByRole("button", { name: "Đã tắt" }));
+
+    expect(screen.getByText("Phụ liệu")).toBeTruthy();
+    expect(screen.queryByText("Fabric")).toBeNull();
+
+    fireEvent.click(within(filterGroup).getByRole("button", { name: "Tất cả" }));
+    expect(screen.getByText("Fabric")).toBeTruthy();
+    expect(screen.getByText("Phụ liệu")).toBeTruthy();
   });
 
   it("phân trang danh sách và quay lại trang đầu khi tìm kiếm", () => {
@@ -222,7 +256,7 @@ describe("MaterialGroupListPage", () => {
       refetch: vi.fn(),
     });
 
-    render(<MaterialGroupListPage />);
+    renderPage();
 
     expect(screen.getByText("Hiển thị 1–5 trên 6 nhóm vật tư")).toBeTruthy();
     expect(screen.queryByText("Nhóm vật tư 6")).toBeNull();
