@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { stylesApi } from "../api/stylesApi";
+import { stylesApi } from "@/api/stylesApi";
 import type { CreateStylePayload, StyleQueryFilter, UpdateStylePayload } from "@/types/style";
 
 export const styleKeys = {

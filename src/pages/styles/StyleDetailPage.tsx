@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import type { StyleStatus } from "@/types/style";
-import { useStyle, useUpdateStyle } from "@/features/styles/hooks/useStyles";
+import { useStyle, useUpdateStyle } from "@/hooks/useStyles";
 import { StyleStatusBadge } from "@/components/features/styles/StyleStatusBadge";
 import { StyleFormModal } from "@/components/features/styles/StyleFormModal";
 import { StyleImagePlaceholder } from "@/components/features/styles/StyleImagePlaceholder";

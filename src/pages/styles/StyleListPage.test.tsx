@@ -3,9 +3,9 @@ import { BrowserRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import StyleListPage from "./StyleListPage";
-import { stylesApi } from "@/features/styles/api/stylesApi";
+import { stylesApi } from "@/api/stylesApi";
 
-vi.mock("@/features/styles/api/stylesApi", () => ({
+vi.mock("@/api/stylesApi", () => ({
   stylesApi: {
     getStyles: vi.fn(),
     deleteStyle: vi.fn(),

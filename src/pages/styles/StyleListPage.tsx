@@ -6,7 +6,7 @@ import {
   useCreateStyle,
   useUpdateStyle,
   useDeleteStyle,
-} from "@/features/styles/hooks/useStyles";
+} from "@/hooks/useStyles";
 import { StyleFormModal } from "@/components/features/styles/StyleFormModal";
 import { StyleImagePlaceholder } from "@/components/features/styles/StyleImagePlaceholder";
 import { DeleteConfirmDialog } from "@/components/features/styles/DeleteConfirmDialog";
