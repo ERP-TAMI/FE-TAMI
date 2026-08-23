@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "@/App";
 import { ThemeProvider } from "@/context/ThemeContext";
 import { materialGroupApi } from "@/api/material-group.api";
+import { useAuthStore } from "@/store/authStore";
 
 vi.mock("@/api/material-group.api", () => ({
   materialGroupApi: {
@@ -15,6 +16,16 @@ vi.mock("@/api/material-group.api", () => ({
   },
 }));
 
+// Route-wiring tests don't exercise the real bootstrap/refresh flow (that's
+// covered by apiClient.test.ts) — they just need `status` to reflect
+// whatever the test puts in the auth store, synchronously.
+vi.mock("@/hooks/useAuthBootstrap", async () => {
+  const { useAuthStore } = await import("@/store/authStore");
+  return {
+    useAuthBootstrap: () => useAuthStore((state) => state.status),
+  };
+});
+
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
@@ -24,7 +35,23 @@ beforeEach(() => {
   window.history.pushState({}, "", "/dashboard");
   vi.spyOn(window, "scrollTo").mockImplementation(() => undefined);
   vi.mocked(materialGroupApi.list).mockResolvedValue([]);
+  useAuthStore.setState({ status: "unauthenticated", user: null, accessToken: null });
 });
+
+function signIn() {
+  useAuthStore.setState({
+    status: "authenticated",
+    accessToken: "test-access-token",
+    user: {
+      id: "11111111-1111-1111-1111-111111111111",
+      email: "sa@tami.test",
+      fullName: "Quản trị hệ thống",
+      roleCode: "SA",
+      roleName: "Quản trị hệ thống",
+      permissions: [],
+    },
+  });
+}
 
 function renderApp() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -39,6 +66,7 @@ function renderApp() {
 
 describe("application routes", () => {
   it("renders the dashboard shell", () => {
+    signIn();
     renderApp();
 
     expect(screen.getByRole("heading", { name: "Dashboard" })).toBeTruthy();
@@ -54,10 +82,26 @@ describe("application routes", () => {
     window.history.pushState({}, "", "/login");
     renderApp();
 
-    expect(screen.getByRole("heading", { name: "Welcome back" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Đăng nhập" })).toBeTruthy();
+  });
+
+  it("redirects an unauthenticated visitor from a protected route to /login", () => {
+    window.history.pushState({}, "", "/masters/material-groups");
+    renderApp();
+
+    expect(screen.getByRole("heading", { name: "Đăng nhập" })).toBeTruthy();
+  });
+
+  it("redirects an authenticated visitor away from /login", () => {
+    signIn();
+    window.history.pushState({}, "", "/login");
+    renderApp();
+
+    expect(screen.getByRole("heading", { name: "Dashboard" })).toBeTruthy();
   });
 
   it("redirects the masters entry route to materials", () => {
+    signIn();
     window.history.pushState({}, "", "/masters");
     renderApp();
 
@@ -65,6 +109,7 @@ describe("application routes", () => {
   });
 
   it("renders the material groups management route", () => {
+    signIn();
     window.history.pushState({}, "", "/masters/material-groups");
     renderApp();
 
@@ -72,6 +117,7 @@ describe("application routes", () => {
   });
 
   it("redirects the admin entry route to users", () => {
+    signIn();
     window.history.pushState({}, "", "/admin");
     renderApp();
 
