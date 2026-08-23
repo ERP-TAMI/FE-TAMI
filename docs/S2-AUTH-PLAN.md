@@ -80,7 +80,7 @@ git worktree add ../FE-TAMI-auth-04 -b feat/Nguyen_S2-AUTH-04-login-ui-guard ori
 | Task | Branch | PR |
 |---|---|---|
 | S2-AUTH-04 | `feat/Nguyen_S2-AUTH-04-login-ui-guard` | https://github.com/ERP-TAMI/FE-TAMI/pull/15 |
-| S2-AUTH-05 (FE) | `feat/Nguyen_S2-AUTH-05-fe-auth-tests` | _(điền sau khi tạo)_ |
+| S2-AUTH-05 (FE) | `feat/Nguyen_S2-AUTH-05-fe-auth-tests` | https://github.com/ERP-TAMI/FE-TAMI/pull/16 |
 
 ## Deferred (ngoài phạm vi Sprint này)
 - Đổi mật khẩu bắt buộc lần đầu (`must_change_password`) — cột đã có sẵn ở BE nhưng chưa có luồng UI.
