@@ -100,6 +100,7 @@ export default function StyleDetailPage() {
     const nextStatus: StyleStatus = style.status === "active" ? "draft" : "active";
     try {
       await statusUpdate.mutateAsync({ id: style.id, payload: { status: nextStatus } });
+      showToast(nextStatus === "active" ? "Đã kích hoạt mẫu Fit." : "Đã chuyển mẫu Fit về nháp.");
     } catch (err: unknown) {
       showToast(getApiError(err, "Cập nhật trạng thái thất bại.").message, "error");
     }
@@ -294,7 +295,10 @@ export default function StyleDetailPage() {
           onSubmit={(payload) =>
             void update
               .mutateAsync({ id: style.id, payload })
-              .then(() => setIsEditModalOpen(false))
+              .then(() => {
+                showToast("Đã cập nhật mẫu Fit.");
+                setIsEditModalOpen(false);
+              })
               .catch(() => {
                 // Lỗi đã hiển thị trong form qua update.error.
               })

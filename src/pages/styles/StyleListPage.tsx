@@ -76,6 +76,7 @@ export default function StyleListPage() {
     try {
       if (editingStyle === "create") await create.mutateAsync(payload);
       else if (editingStyle) await update.mutateAsync({ id: editingStyle.id, payload });
+      showToast(editingStyle === "create" ? "Đã tạo mẫu Fit." : "Đã cập nhật mẫu Fit.");
       closeForm();
     } catch {
       // Lỗi đã hiển thị trong form qua create.error/update.error.
@@ -97,6 +98,7 @@ export default function StyleListPage() {
     const nextStatus: StyleStatus = style.status === "active" ? "draft" : "active";
     try {
       await statusUpdate.mutateAsync({ id: style.id, payload: { status: nextStatus } });
+      showToast(nextStatus === "active" ? "Đã kích hoạt mẫu Fit." : "Đã chuyển mẫu Fit về nháp.");
     } catch (err: unknown) {
       showToast(getApiError(err, "Đổi trạng thái thất bại.").message, "error");
     }
