@@ -13,12 +13,8 @@ const material = {
   materialGroupId: null,
   materialGroupName: null,
   defaultUnitId: "0a989bfe-fb34-489c-b5fe-30f74a1dc09d",
-  defaultUnitCode: "M",
   defaultUnitName: "Mét",
   defaultYieldPct: "2.5000",
-  lastUnitCost: "9007199254740991.01",
-  currentStock: "30.2500",
-  lowStockThreshold: "10.0000",
   status: "active",
   createdAt: "2026-08-23T00:00:00.000Z",
   updatedAt: "2026-08-23T00:00:00.000Z",
@@ -51,8 +47,7 @@ describe("materialApi", () => {
     vi.mocked(apiClient.get).mockResolvedValue({ data: material });
 
     await expect(materialApi.detail(material.id)).resolves.toMatchObject({
-      lastUnitCost: "9007199254740991.01",
-      currentStock: "30.2500",
+      defaultYieldPct: "2.5000",
     });
   });
 });

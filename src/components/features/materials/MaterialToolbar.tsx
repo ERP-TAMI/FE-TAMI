@@ -58,7 +58,9 @@ export function MaterialToolbar({
             value={materialGroupId}
             options={[
               { value: "", label: "Tất cả nhóm vật tư" },
-              ...materialGroups.map((group) => ({ value: group.id, label: group.name })),
+              ...[...materialGroups]
+                .sort((a, b) => a.name.localeCompare(b.name, "vi"))
+                .map((group) => ({ value: group.id, label: group.name })),
             ]}
             className="border-gray-300 bg-white dark:border-gray-600 dark:bg-gray-900"
             onChange={(event) => onMaterialGroupChange(event.target.value)}

@@ -17,7 +17,13 @@ import { useMaterialGroups } from "@/hooks/useMaterialGroups";
 import { useToast } from "@/hooks/useToast";
 import { getApiError } from "@/lib/apiError";
 import { PlusIcon } from "@/icons";
-import type { Material, MaterialFilters, MaterialInput, MaterialStatus } from "@/types/material";
+import type {
+  Material,
+  MaterialFilters,
+  MaterialInput,
+  MaterialStatus,
+  MaterialUpdateInput,
+} from "@/types/material";
 
 type Dialog =
   | { type: "delete"; material: Material }
@@ -74,14 +80,15 @@ export default function MaterialsPage() {
   const closeForm = () => {
     setEditing(undefined);
     setIsDirty(false);
+    create.reset();
+    update.reset();
   };
 
-  const saveForm = async (input: MaterialInput) => {
+  const saveForm = async (input: MaterialInput | MaterialUpdateInput) => {
     try {
-      if (editing === "create") await create.mutateAsync(input);
+      if (editing === "create") await create.mutateAsync(input as MaterialInput);
       else if (editing) {
-        const { materialCode: _materialCode, ...updateInput } = input;
-        await update.mutateAsync({ id: editing.id, input: updateInput });
+        await update.mutateAsync({ id: editing.id, input: input as MaterialUpdateInput });
       }
       showToast(editing === "create" ? "Đã tạo vật tư." : "Đã cập nhật vật tư.");
       closeForm();

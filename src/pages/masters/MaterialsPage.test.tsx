@@ -7,10 +7,11 @@ const hooks = vi.hoisted(() => ({
   useMaterials: vi.fn(),
   useMaterialGroups: vi.fn(),
   useActiveUnits: vi.fn(),
-  create: { isPending: false, error: null, mutateAsync: vi.fn() },
-  update: { isPending: false, error: null, mutateAsync: vi.fn() },
+  create: { isPending: false, error: null, mutateAsync: vi.fn(), reset: vi.fn() },
+  update: { isPending: false, error: null, mutateAsync: vi.fn(), reset: vi.fn() },
   updateStatus: { isPending: false, error: null, mutateAsync: vi.fn() },
   remove: { isPending: false, error: null, mutateAsync: vi.fn() },
+  createUnit: { isPending: false, error: null, mutateAsync: vi.fn() },
 }));
 
 vi.mock("@/hooks/useMaterials", () => ({
@@ -20,6 +21,7 @@ vi.mock("@/hooks/useMaterials", () => ({
   useUpdateMaterial: () => hooks.update,
   useUpdateMaterialStatus: () => hooks.updateStatus,
   useDeleteMaterial: () => hooks.remove,
+  useCreateUnit: () => hooks.createUnit,
 }));
 
 vi.mock("@/hooks/useMaterialGroups", () => ({
@@ -33,12 +35,8 @@ const material = {
   materialGroupId: null,
   materialGroupName: null,
   defaultUnitId: "0a989bfe-fb34-489c-b5fe-30f74a1dc09d",
-  defaultUnitCode: "M",
   defaultUnitName: "Mét",
   defaultYieldPct: "2.5000",
-  lastUnitCost: "123.45",
-  currentStock: "30.2500",
-  lowStockThreshold: "10.0000",
   status: "active" as const,
   createdAt: "2026-08-23T00:00:00.000Z",
   updatedAt: "2026-08-23T00:00:00.000Z",
@@ -80,9 +78,7 @@ describe("MaterialsPage", () => {
       data: [
         {
           id: material.defaultUnitId,
-          code: "M",
           name: "Mét",
-          decimalScale: 4,
           status: "active",
         },
       ],
@@ -121,6 +117,10 @@ describe("MaterialsPage", () => {
         name: inactiveGroup.name,
       }),
     ).toBeNull();
+    fireEvent.change(screen.getByLabelText("Nhóm vật tư"), { target: { value: activeGroup.id } });
+    fireEvent.change(screen.getByLabelText("Đơn vị tính"), {
+      target: { value: material.defaultUnitId },
+    });
     fireEvent.change(screen.getByLabelText("Mã vật tư"), { target: { value: "FAB-002" } });
     fireEvent.change(screen.getByLabelText("Tên vật tư"), { target: { value: "Vải lót" } });
     fireEvent.click(screen.getByRole("button", { name: "Lưu vật tư" }));
@@ -132,7 +132,7 @@ describe("MaterialsPage", () => {
     hooks.updateStatus.mutateAsync.mockResolvedValue({ ...material, status: "inactive" });
     renderPage();
 
-    fireEvent.click(screen.getByTitle("Đang sử dụng (Bấm để tắt)"));
+    fireEvent.click(screen.getByRole("button", { name: "Khóa" }));
     expect(hooks.updateStatus.mutateAsync).not.toHaveBeenCalled();
     fireEvent.click(
       within(screen.getByRole("dialog")).getByRole("button", { name: "Vô hiệu hóa" }),
@@ -146,11 +146,11 @@ describe("MaterialsPage", () => {
     });
   });
 
-  it("opens detail and continues into the edit flow", async () => {
+  it("opens detail and continues into the edit flow, sending only the changed field", async () => {
     hooks.update.mutateAsync.mockResolvedValue({ ...material, materialName: "Vải cập nhật" });
     renderPage();
 
-    fireEvent.click(screen.getByRole("button", { name: "Xem chi tiết" }));
+    fireEvent.click(screen.getByRole("button", { name: material.materialCode }));
     expect(screen.getByRole("heading", { name: "Chi tiết vật tư" })).toBeTruthy();
     fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Chỉnh sửa" }));
     expect(screen.getByRole("heading", { name: "Chỉnh sửa vật tư" })).toBeTruthy();
@@ -164,16 +164,26 @@ describe("MaterialsPage", () => {
     await waitFor(() => {
       expect(hooks.update.mutateAsync).toHaveBeenCalledWith({
         id: material.id,
-        input: expect.objectContaining({ materialName: "Vải cập nhật" }),
+        input: { materialName: "Vải cập nhật" },
       });
     });
+  });
+
+  it("resets the create/update mutation state when the form is closed", () => {
+    renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "Tạo vật tư mới" }));
+    fireEvent.click(screen.getByRole("button", { name: "Hủy" }));
+
+    expect(hooks.create.reset).toHaveBeenCalled();
+    expect(hooks.update.reset).toHaveBeenCalled();
   });
 
   it("deletes an unreferenced material only after confirmation", async () => {
     hooks.remove.mutateAsync.mockResolvedValue(undefined);
     renderPage();
 
-    fireEvent.click(screen.getByRole("button", { name: "Xóa vật tư" }));
+    fireEvent.click(screen.getByRole("button", { name: "Xóa" }));
     expect(hooks.remove.mutateAsync).not.toHaveBeenCalled();
     fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Xóa" }));
 

@@ -14,14 +14,8 @@ export function MaterialDetail({
     ["Mã vật tư", material.materialCode],
     ["Tên vật tư", material.materialName],
     ["Nhóm vật tư", material.materialGroupName ?? "—"],
-    [
-      "Đơn vị tính",
-      material.defaultUnitName ? `${material.defaultUnitCode} — ${material.defaultUnitName}` : "—",
-    ],
-    ["Yield mặc định (%)", material.defaultYieldPct],
-    ["Đơn giá gần nhất", material.lastUnitCost],
-    ["Tồn kho hiện tại", material.currentStock],
-    ["Ngưỡng tồn thấp", material.lowStockThreshold],
+    ["Đơn vị tính", material.defaultUnitName ?? "—"],
+    ["Yield (%)", material.defaultYieldPct],
     ["Trạng thái", material.status === "active" ? "Đang sử dụng" : "Đã tắt"],
   ];
   return (

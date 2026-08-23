@@ -53,7 +53,7 @@ export function Table<T>({
               <th
                 key={column.key}
                 scope="col"
-                className={`px-5 py-3.5 font-semibold ${column.width ?? ""} ${alignClass(column.align)}`}
+                className={`px-5 py-3.5 font-semibold whitespace-nowrap ${column.width ?? ""} ${alignClass(column.align)}`}
               >
                 {column.header}
               </th>

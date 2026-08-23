@@ -3,9 +3,11 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { Alert, Button, ConfirmDialog, Input, Modal, Select } from "@/components/shared";
+import { useCreateUnit } from "@/hooks/useMaterials";
+import { getApiError } from "@/lib/apiError";
 import type { ApiError } from "@/lib/apiError";
 import type { MaterialGroup } from "@/types/material-group";
-import type { Material, MaterialInput, Unit } from "@/types/material";
+import type { Material, MaterialInput, MaterialUpdateInput, Unit } from "@/types/material";
 
 const decimal = (pattern: RegExp, message: string) => z.string().trim().regex(pattern, message);
 
@@ -26,18 +28,6 @@ const schema = z.object({
     /^\d{1,4}(?:\.\d{1,4})?$/,
     "Yield phải là số không âm, tối đa 4 chữ số thập phân",
   ),
-  lastUnitCost: decimal(
-    /^\d{1,16}(?:\.\d{1,2})?$/,
-    "Đơn giá phải là số không âm, tối đa 2 chữ số thập phân",
-  ),
-  currentStock: decimal(
-    /^\d{1,14}(?:\.\d{1,4})?$/,
-    "Tồn kho phải là số không âm, tối đa 4 chữ số thập phân",
-  ),
-  lowStockThreshold: decimal(
-    /^\d{1,14}(?:\.\d{1,4})?$/,
-    "Ngưỡng tồn thấp phải là số không âm, tối đa 4 chữ số thập phân",
-  ),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -49,7 +39,7 @@ type MaterialFormProps = {
   isSubmitting: boolean;
   serverError?: ApiError;
   onClose: () => void;
-  onSubmit: (input: MaterialInput) => void;
+  onSubmit: (input: MaterialInput | MaterialUpdateInput) => void;
   onDirtyChange?: (isDirty: boolean) => void;
 };
 
@@ -65,6 +55,10 @@ export function MaterialForm({
   onDirtyChange,
 }: MaterialFormProps) {
   const [discardDialogOpen, setDiscardDialogOpen] = useState(false);
+  const [newUnitDraft, setNewUnitDraft] = useState<{ name: string } | null>(null);
+  const [newUnitError, setNewUnitError] = useState<string>();
+  const createUnit = useCreateUnit();
+
   const currentGroupMissing =
     material?.materialGroupId &&
     !materialGroups.some((group) => group.id === material.materialGroupId);
@@ -72,7 +66,9 @@ export function MaterialForm({
     material?.defaultUnitId && !units.some((unit) => unit.id === material.defaultUnitId);
   const groupOptions = [
     { value: "", label: "Không thuộc nhóm" },
-    ...materialGroups.map((group) => ({ value: group.id, label: group.name })),
+    ...[...materialGroups]
+      .sort((a, b) => a.name.localeCompare(b.name, "vi"))
+      .map((group) => ({ value: group.id, label: group.name })),
     ...(currentGroupMissing
       ? [
           {
@@ -84,17 +80,19 @@ export function MaterialForm({
   ];
   const unitOptions = [
     { value: "", label: "Chọn đơn vị tính" },
-    ...units.map((unit) => ({ value: unit.id, label: `${unit.code} — ${unit.name}` })),
+    ...[...units]
+      .sort((a, b) => a.name.localeCompare(b.name, "vi"))
+      .map((unit) => ({ value: unit.id, label: unit.name })),
     ...(currentUnitMissing
       ? [
           {
             value: material.defaultUnitId!,
-            label: `${material.defaultUnitCode ?? "ĐVT"} — ${material.defaultUnitName ?? "Đơn vị hiện tại"} (đã tắt)`,
+            label: `${material.defaultUnitName ?? "Đơn vị hiện tại"} (đã tắt)`,
           },
         ]
       : []),
   ];
-  const { register, handleSubmit, formState } = useForm<FormValues>({
+  const { register, handleSubmit, formState, setValue } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: material
       ? {
@@ -103,19 +101,13 @@ export function MaterialForm({
           materialGroupId: material.materialGroupId ?? "",
           defaultUnitId: material.defaultUnitId ?? "",
           defaultYieldPct: material.defaultYieldPct,
-          lastUnitCost: material.lastUnitCost,
-          currentStock: material.currentStock,
-          lowStockThreshold: material.lowStockThreshold,
         }
       : {
           materialCode: "",
           materialName: "",
           materialGroupId: "",
-          defaultUnitId: units[0]?.id ?? "",
+          defaultUnitId: "",
           defaultYieldPct: "0",
-          lastUnitCost: "0",
-          currentStock: "0",
-          lowStockThreshold: "10",
         },
   });
 
@@ -132,17 +124,44 @@ export function MaterialForm({
     setDiscardDialogOpen(false);
     onClose();
   };
-  const submit = (values: FormValues) =>
-    onSubmit({
-      ...values,
-      materialCode: values.materialCode.toUpperCase(),
-      materialGroupId: values.materialGroupId || null,
-    });
+
+  const submit = (values: FormValues) => {
+    if (mode === "create") {
+      onSubmit({
+        materialCode: values.materialCode.toUpperCase(),
+        materialName: values.materialName,
+        materialGroupId: values.materialGroupId || null,
+        defaultUnitId: values.defaultUnitId,
+        defaultYieldPct: values.defaultYieldPct,
+      });
+      return;
+    }
+
+    const dirty = formState.dirtyFields;
+    const patch: MaterialUpdateInput = {};
+    if (dirty.materialName) patch.materialName = values.materialName;
+    if (dirty.materialGroupId) patch.materialGroupId = values.materialGroupId || null;
+    if (dirty.defaultUnitId) patch.defaultUnitId = values.defaultUnitId;
+    if (dirty.defaultYieldPct) patch.defaultYieldPct = values.defaultYieldPct;
+    onSubmit(patch);
+  };
+
+  const confirmCreateUnit = async () => {
+    if (!newUnitDraft) return;
+    setNewUnitError(undefined);
+    try {
+      const unit = await createUnit.mutateAsync(newUnitDraft);
+      setValue("defaultUnitId", unit.id, { shouldDirty: true, shouldValidate: true });
+      setNewUnitDraft(null);
+    } catch (error) {
+      setNewUnitError(getApiError(error, "Không thể tạo đơn vị tính. Vui lòng thử lại.").message);
+    }
+  };
 
   return (
     <>
       <Modal
-        open={!discardDialogOpen}
+        open={!discardDialogOpen && !newUnitDraft}
         title={mode === "create" ? "Tạo vật tư" : "Chỉnh sửa vật tư"}
         closeLabel="Đóng biểu mẫu"
         onClose={requestClose}
@@ -183,38 +202,61 @@ export function MaterialForm({
               error={formState.errors.materialGroupId?.message}
               {...register("materialGroupId")}
             />
-            <Select
-              label="Đơn vị tính"
-              options={unitOptions}
-              error={formState.errors.defaultUnitId?.message}
-              {...register("defaultUnitId")}
-            />
+            <div className="space-y-2">
+              <Select
+                label="Đơn vị tính"
+                options={unitOptions}
+                error={formState.errors.defaultUnitId?.message}
+                {...register("defaultUnitId")}
+              />
+              <button
+                type="button"
+                onClick={() => setNewUnitDraft({ name: "" })}
+                className="text-brand-600 dark:text-brand-400 text-theme-xs font-medium hover:underline"
+              >
+                + Thêm đơn vị tính mới
+              </button>
+            </div>
             <Input
-              label="Yield mặc định (%)"
+              label="Yield (%)"
               inputMode="decimal"
               error={formState.errors.defaultYieldPct?.message}
               {...register("defaultYieldPct")}
             />
-            <Input
-              label="Đơn giá gần nhất"
-              inputMode="decimal"
-              error={formState.errors.lastUnitCost?.message}
-              {...register("lastUnitCost")}
-            />
-            <Input
-              label="Tồn kho hiện tại"
-              inputMode="decimal"
-              error={formState.errors.currentStock?.message}
-              {...register("currentStock")}
-            />
-            <Input
-              label="Ngưỡng tồn thấp"
-              inputMode="decimal"
-              error={formState.errors.lowStockThreshold?.message}
-              {...register("lowStockThreshold")}
-            />
           </div>
         </form>
+      </Modal>
+      <Modal
+        open={Boolean(newUnitDraft)}
+        title="Thêm đơn vị tính mới"
+        closeLabel="Đóng"
+        onClose={() => setNewUnitDraft(null)}
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setNewUnitDraft(null)}>
+              Hủy
+            </Button>
+            <Button onClick={confirmCreateUnit} loading={createUnit.isPending}>
+              Tạo đơn vị
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          {newUnitError && (
+            <Alert variant="error" title="Không thể tạo đơn vị tính">
+              {newUnitError}
+            </Alert>
+          )}
+          <Input
+            label="Tên đơn vị"
+            placeholder="Ví dụ: Cuộn"
+            value={newUnitDraft?.name ?? ""}
+            onChange={(event) =>
+              setNewUnitDraft((draft) => (draft ? { ...draft, name: event.target.value } : draft))
+            }
+          />
+        </div>
       </Modal>
       <ConfirmDialog
         open={discardDialogOpen}
