@@ -1,30 +1,34 @@
-import { useState, useEffect } from "react";
-import axios from "axios";
-import type { Style, StyleStatus, CreateStylePayload, UpdateStylePayload } from "@/types/style";
-import { stylesApi } from "@/features/styles/api/stylesApi";
+import { useEffect, useState } from "react";
+import type { Style, StyleStatus, CreateStylePayload } from "@/types/style";
 import { UnsavedChangesDialog } from "./UnsavedChangesDialog";
-import { getErrorMessage } from "./utils/getErrorMessage";
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: () => void;
+  onSubmit: (payload: CreateStylePayload) => void;
+  isSubmitting: boolean;
+  serverError?: string | null;
+  hasCodeConflict?: boolean;
   styleToEdit?: Style | null;
 }
 
-export function StyleFormModal({ isOpen, onClose, onSuccess, styleToEdit }: Props) {
+export function StyleFormModal({
+  isOpen,
+  onClose,
+  onSubmit,
+  isSubmitting,
+  serverError,
+  hasCodeConflict = false,
+  styleToEdit,
+}: Props) {
   const [styleCode, setStyleCode] = useState("");
   const [styleName, setStyleName] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("");
   const [status, setStatus] = useState<StyleStatus>("draft");
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Errors
   const [codeError, setCodeError] = useState<string | null>(null);
-  const [generalError, setGeneralError] = useState<string | null>(null);
-
-  // Unsaved changes confirmation dialog
+  const [nameError, setNameError] = useState<string | null>(null);
   const [showUnsavedConfirm, setShowUnsavedConfirm] = useState(false);
 
   const isEdit = !!styleToEdit;
@@ -44,7 +48,7 @@ export function StyleFormModal({ isOpen, onClose, onSuccess, styleToEdit }: Prop
       setStatus("draft");
     }
     setCodeError(null);
-    setGeneralError(null);
+    setNameError(null);
   }, [styleToEdit, isOpen]);
 
   const isDirty = isEdit
@@ -59,17 +63,14 @@ export function StyleFormModal({ isOpen, onClose, onSuccess, styleToEdit }: Prop
       category.trim() !== "";
 
   const handleRequestClose = () => {
-    if (isDirty) {
-      setShowUnsavedConfirm(true);
-    } else {
-      onClose();
-    }
+    if (isDirty) setShowUnsavedConfirm(true);
+    else onClose();
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setCodeError(null);
-    setGeneralError(null);
+    setNameError(null);
 
     let hasClientError = false;
     if (!styleCode.trim()) {
@@ -77,45 +78,18 @@ export function StyleFormModal({ isOpen, onClose, onSuccess, styleToEdit }: Prop
       hasClientError = true;
     }
     if (!styleName.trim()) {
-      setGeneralError("Tên mẫu Fit không được để trống.");
+      setNameError("Tên mẫu Fit không được để trống.");
       hasClientError = true;
     }
-
     if (hasClientError) return;
 
-    try {
-      setIsSubmitting(true);
-      if (isEdit && styleToEdit) {
-        const payload: UpdateStylePayload = {
-          styleCode: styleCode.trim(),
-          styleName: styleName.trim(),
-          description: description.trim() || undefined,
-          category: category.trim() || undefined,
-          status,
-        };
-        await stylesApi.updateStyle(styleToEdit.id, payload);
-      } else {
-        const payload: CreateStylePayload = {
-          styleCode: styleCode.trim(),
-          styleName: styleName.trim(),
-          description: description.trim() || undefined,
-          category: category.trim() || undefined,
-          status,
-        };
-        await stylesApi.createStyle(payload);
-      }
-      onSuccess();
-      onClose();
-    } catch (err: unknown) {
-      const isConflict = axios.isAxiosError(err) && err.response?.status === 409;
-      if (isConflict) {
-        setCodeError("Mã mẫu này đã tồn tại trong hệ thống.");
-      } else {
-        setGeneralError(getErrorMessage(err, "Có lỗi xảy ra khi lưu thông tin mẫu Fit."));
-      }
-    } finally {
-      setIsSubmitting(false);
-    }
+    onSubmit({
+      styleCode: styleCode.trim(),
+      styleName: styleName.trim(),
+      description: description.trim() || undefined,
+      category: category.trim() || undefined,
+      status,
+    });
   };
 
   if (!isOpen) return null;
@@ -144,9 +118,9 @@ export function StyleFormModal({ isOpen, onClose, onSuccess, styleToEdit }: Prop
             </button>
           </div>
 
-          {generalError && (
+          {serverError && !hasCodeConflict && (
             <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-300">
-              {generalError}
+              {serverError}
             </div>
           )}
 
@@ -166,15 +140,14 @@ export function StyleFormModal({ isOpen, onClose, onSuccess, styleToEdit }: Prop
                 }}
                 placeholder="STY-000248"
                 className={`mt-1 h-10 w-full rounded-lg border px-3 font-mono text-sm text-gray-900 dark:text-white dark:bg-gray-800 transition-colors focus:outline-none focus:ring-2 ${
-                  codeError
+                  codeError || hasCodeConflict
                     ? "border-red-500 focus:border-red-500 focus:ring-red-500/20"
                     : "border-gray-300 focus:border-blue-500 focus:ring-blue-500/20 dark:border-gray-700"
                 }`}
               />
-              {/* Inline 409 / Validation Error */}
-              {codeError && (
+              {(codeError || hasCodeConflict) && (
                 <p className="mt-1 text-xs text-red-600 dark:text-red-400 font-medium">
-                  {codeError}
+                  {codeError || serverError}
                 </p>
               )}
             </div>
@@ -188,10 +161,20 @@ export function StyleFormModal({ isOpen, onClose, onSuccess, styleToEdit }: Prop
                 id="style-name"
                 type="text"
                 value={styleName}
-                onChange={(e) => setStyleName(e.target.value)}
+                onChange={(e) => {
+                  setStyleName(e.target.value);
+                  if (nameError) setNameError(null);
+                }}
                 placeholder="VD: Oversized Tee Classic"
-                className="mt-1 h-10 w-full rounded-lg border border-gray-300 px-3 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-white transition-colors"
+                className={`mt-1 h-10 w-full rounded-lg border px-3 text-sm text-gray-900 dark:text-white dark:bg-gray-800 transition-colors focus:outline-none focus:ring-2 ${
+                  nameError
+                    ? "border-red-500 focus:border-red-500 focus:ring-red-500/20"
+                    : "border-gray-300 focus:border-blue-500 focus:ring-blue-500/20 dark:border-gray-700"
+                }`}
               />
+              {nameError && (
+                <p className="mt-1 text-xs text-red-600 dark:text-red-400 font-medium">{nameError}</p>
+              )}
             </div>
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -210,7 +193,7 @@ export function StyleFormModal({ isOpen, onClose, onSuccess, styleToEdit }: Prop
                 />
               </div>
 
-              {/* Status Field */}
+              {/* Status Field: chỉ Nháp / Hoạt động */}
               <div>
                 <label htmlFor="style-status" className="block text-xs font-medium text-gray-700 dark:text-gray-300">
                   Trạng thái
@@ -222,7 +205,6 @@ export function StyleFormModal({ isOpen, onClose, onSuccess, styleToEdit }: Prop
                   className="mt-1 h-10 w-full rounded-lg border border-gray-300 px-3 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-white transition-colors"
                 >
                   <option value="draft">Nháp</option>
-                  <option value="approved">Đã duyệt</option>
                   <option value="active">Hoạt động</option>
                 </select>
               </div>

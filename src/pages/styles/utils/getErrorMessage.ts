@@ -8,3 +8,7 @@ export function getErrorMessage(err: unknown, fallback: string): string {
   }
   return fallback;
 }
+
+export function isConflictError(err: unknown): boolean {
+  return axios.isAxiosError(err) && err.response?.status === 409;
+}

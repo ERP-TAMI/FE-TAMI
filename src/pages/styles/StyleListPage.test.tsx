@@ -1,13 +1,15 @@
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { BrowserRouter } from "react-router-dom";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import StyleListPage from "../StyleListPage";
+import StyleListPage from "./StyleListPage";
 import { stylesApi } from "@/features/styles/api/stylesApi";
 
 vi.mock("@/features/styles/api/stylesApi", () => ({
   stylesApi: {
     getStyles: vi.fn(),
     deleteStyle: vi.fn(),
+    updateStyle: vi.fn(),
   },
 }));
 
@@ -15,6 +17,19 @@ afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
 });
+
+function renderPage() {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  });
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter>
+        <StyleListPage />
+      </BrowserRouter>
+    </QueryClientProvider>,
+  );
+}
 
 const mockStyles = [
   {
@@ -41,11 +56,7 @@ describe("StyleListPage", () => {
       meta: { total: 1, page: 1, limit: 10, totalPages: 1 },
     });
 
-    render(
-      <BrowserRouter>
-        <StyleListPage />
-      </BrowserRouter>,
-    );
+    renderPage();
 
     expect(screen.getByRole("heading", { name: "Mẫu Fit", level: 1 })).toBeTruthy();
 
@@ -61,11 +72,7 @@ describe("StyleListPage", () => {
       meta: { total: 0, page: 1, limit: 10, totalPages: 1 },
     });
 
-    render(
-      <BrowserRouter>
-        <StyleListPage />
-      </BrowserRouter>,
-    );
+    renderPage();
 
     await waitFor(() => {
       expect(screen.getByText("Không tìm thấy Mẫu Fit nào")).toBeTruthy();
@@ -75,11 +82,7 @@ describe("StyleListPage", () => {
   it("renders error state when API request fails", async () => {
     vi.mocked(stylesApi.getStyles).mockRejectedValueOnce(new Error("Network Error"));
 
-    render(
-      <BrowserRouter>
-        <StyleListPage />
-      </BrowserRouter>,
-    );
+    renderPage();
 
     await waitFor(() => {
       expect(screen.getByText("⚠️ Không thể tải dữ liệu")).toBeTruthy();

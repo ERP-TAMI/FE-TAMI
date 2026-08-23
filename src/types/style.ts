@@ -1,4 +1,4 @@
-export type StyleStatus = "draft" | "approved" | "active";
+export type StyleStatus = "draft" | "active";
 
 export interface Style {
   id: string;

@@ -1,30 +1,34 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import type { Style, StyleStatus } from "@/types/style";
-import { stylesApi } from "@/features/styles/api/stylesApi";
-import { StyleStatusBadge } from "./StyleStatusBadge";
-import { StyleFormModal } from "./StyleFormModal";
-import { StyleImagePlaceholder } from "./components/StyleImagePlaceholder";
-import { getErrorMessage } from "./utils/getErrorMessage";
+import type { StyleStatus } from "@/types/style";
+import { useStyle, useUpdateStyle } from "@/features/styles/hooks/useStyles";
+import { StyleStatusBadge } from "@/components/features/styles/StyleStatusBadge";
+import { StyleFormModal } from "@/components/features/styles/StyleFormModal";
+import { StyleImagePlaceholder } from "@/components/features/styles/StyleImagePlaceholder";
+import { getErrorMessage, isConflictError } from "./utils/getErrorMessage";
 
 export default function StyleDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
-  const [style, setStyle] = useState<Style | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const detail = useStyle(id);
+  const style = detail.data;
+  const update = useUpdateStyle();
+  const statusUpdate = useUpdateStyle();
+
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [statusError, setStatusError] = useState<string | null>(null);
 
-  // Image Upload / Paste state
+  // Image Upload / Paste state — chỉ là preview cục bộ, chưa upload lên hệ thống.
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Ảnh chọn/dán/kéo-thả chỉ là preview cục bộ (chưa upload lên hệ thống). Mỗi lần
-  // đổi ảnh phải revoke blob URL cũ để tránh rò bộ nhớ, và revoke luôn khi rời trang.
+  useEffect(() => {
+    if (style?.baseImageVersionId) setImageUrl(style.baseImageVersionId);
+  }, [style?.baseImageVersionId]);
+
+  // Mỗi lần đổi ảnh phải revoke blob URL cũ để tránh rò bộ nhớ, và revoke luôn khi rời trang.
   const setLocalImage = useCallback((file: File) => {
     setImageUrl((prev) => {
       if (prev?.startsWith("blob:")) URL.revokeObjectURL(prev);
@@ -48,63 +52,35 @@ export default function StyleDetailPage() {
     };
   }, []);
 
-  const fetchStyleDetail = async () => {
-    if (!id) return;
-    try {
-      setIsLoading(true);
-      setError(null);
-      const data = await stylesApi.getStyleById(id);
-      setStyle(data);
-      if (data.baseImageVersionId) {
-        setImageUrl(data.baseImageVersionId);
-      }
-    } catch (err: unknown) {
-      setError(getErrorMessage(err, "Không thể tải thông tin mẫu Fit."));
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchStyleDetail();
-  }, [id]);
-
-  // Handle Clipboard Paste (Ctrl+V) for Image
-  const handlePaste = useCallback((e: ClipboardEvent) => {
-    const items = e.clipboardData?.items;
-    if (!items) return;
-
-    for (let i = 0; i < items.length; i++) {
-      if (items[i].type.indexOf("image") !== -1) {
-        const file = items[i].getAsFile();
-        if (file) {
-          setLocalImage(file);
+  const handlePaste = useCallback(
+    (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type.indexOf("image") !== -1) {
+          const file = items[i].getAsFile();
+          if (file) setLocalImage(file);
         }
       }
-    }
-  }, [setLocalImage]);
+    },
+    [setLocalImage],
+  );
 
   useEffect(() => {
     window.addEventListener("paste", handlePaste);
-    return () => {
-      window.removeEventListener("paste", handlePaste);
-    };
+    return () => window.removeEventListener("paste", handlePaste);
   }, [handlePaste]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      setLocalImage(file);
-    }
+    if (file) setLocalImage(file);
   };
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
     const file = e.dataTransfer.files?.[0];
-    if (file && file.type.startsWith("image/")) {
-      setLocalImage(file);
-    }
+    if (file && file.type.startsWith("image/")) setLocalImage(file);
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -117,24 +93,21 @@ export default function StyleDetailPage() {
     setIsDragging(false);
   };
 
-  // Mẫu Fit đang "Đã duyệt" phải đổi trạng thái qua biểu mẫu Sửa để tránh vô tình
-  // ghi đè trạng thái duyệt bằng nút gạt 2 chiều.
   const handleToggleStatus = async () => {
-    if (!style || style.status === "approved") return;
-    const newStatus: StyleStatus = style.status === "active" ? "draft" : "active";
+    if (!style) return;
+    const nextStatus: StyleStatus = style.status === "active" ? "draft" : "active";
     try {
-      setIsUpdatingStatus(true);
       setStatusError(null);
-      const updated = await stylesApi.updateStyle(style.id, { status: newStatus });
-      setStyle(updated);
+      await statusUpdate.mutateAsync({ id: style.id, payload: { status: nextStatus } });
     } catch (err: unknown) {
       setStatusError(getErrorMessage(err, "Cập nhật trạng thái thất bại."));
-    } finally {
-      setIsUpdatingStatus(false);
     }
   };
 
-  if (isLoading) {
+  const formError = update.error ? getErrorMessage(update.error, "Có lỗi xảy ra khi lưu thông tin mẫu Fit.") : null;
+  const hasCodeConflict = isConflictError(update.error);
+
+  if (detail.isLoading) {
     return (
       <div className="space-y-4 animate-pulse">
         <div className="h-6 w-1/4 rounded bg-gray-200 dark:bg-gray-800" />
@@ -143,11 +116,13 @@ export default function StyleDetailPage() {
     );
   }
 
-  if (error || !style) {
+  if (detail.isError || !style) {
     return (
       <div className="rounded-xl border border-red-200 bg-red-50/50 p-6 text-center text-sm text-red-700 dark:border-red-900/40 dark:bg-red-950/20 dark:text-red-300">
         <h3 className="font-semibold text-base">Không tìm thấy mẫu Fit</h3>
-        <p className="mt-1">{error || "Mẫu Fit không tồn tại."}</p>
+        <p className="mt-1">
+          {detail.isError ? getErrorMessage(detail.error, "Không thể tải thông tin mẫu Fit.") : "Mẫu Fit không tồn tại."}
+        </p>
         <button
           onClick={() => navigate("/styles")}
           className="mt-4 rounded-md bg-red-600 px-4 py-2 text-xs font-medium text-white hover:bg-red-700 transition-colors"
@@ -248,11 +223,9 @@ export default function StyleDetailPage() {
           />
         </div>
 
-        {/* Right Column: Style Information & Controls (7 cols) - Enlarged & Clear Typography */}
+        {/* Right Column: Style Information & Controls (7 cols) */}
         <div className="lg:col-span-7 space-y-6">
-          {/* Header Identity Block */}
           <div className="space-y-3 pb-6 border-b border-gray-200/80 dark:border-gray-800">
-            {/* Title & Single Primary Status Badge */}
             <div className="flex items-start justify-between gap-4">
               <div>
                 <div className="flex items-center gap-3">
@@ -276,27 +249,19 @@ export default function StyleDetailPage() {
                 </div>
               </div>
 
-              {/* Top Actions: Single Status Toggle & Edit Button */}
+              {/* Top Actions: Status Toggle & Edit Button */}
               <div className="flex items-center gap-3">
                 <button
                   type="button"
-                  onClick={handleToggleStatus}
-                  disabled={isUpdatingStatus || style.status === "approved"}
-                  className={`relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                    style.status === "approved" ? "cursor-not-allowed" : "cursor-pointer"
-                  } ${
-                    style.status === "active"
-                      ? "bg-emerald-500"
-                      : style.status === "approved"
-                        ? "bg-blue-400"
-                        : "bg-gray-300 dark:bg-gray-700"
+                  onClick={() => void handleToggleStatus()}
+                  disabled={statusUpdate.isPending}
+                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                    style.status === "active" ? "bg-emerald-500" : "bg-gray-300 dark:bg-gray-700"
                   }`}
                   title={
-                    style.status === "approved"
-                      ? "Đã duyệt — đổi trạng thái qua nút Chỉnh sửa"
-                      : style.status === "active"
-                        ? "Đang Hoạt động (Bấm để chuyển về Nháp)"
-                        : "Đang Nháp (Bấm để kích hoạt)"
+                    style.status === "active"
+                      ? "Đang Hoạt động (Bấm để chuyển về Nháp)"
+                      : "Đang Nháp (Bấm để kích hoạt)"
                   }
                 >
                   <span
@@ -316,7 +281,7 @@ export default function StyleDetailPage() {
             </div>
           </div>
 
-          {/* Details Section with Enlarged Clear Typography */}
+          {/* Details Section */}
           <div className="space-y-4">
             <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400">
               Thông tin chi tiết mẫu fit
@@ -363,12 +328,24 @@ export default function StyleDetailPage() {
       </div>
 
       {/* Edit Form Modal */}
-      <StyleFormModal
-        isOpen={isEditModalOpen}
-        onClose={() => setIsEditModalOpen(false)}
-        onSuccess={fetchStyleDetail}
-        styleToEdit={style}
-      />
+      {isEditModalOpen && (
+        <StyleFormModal
+          isOpen
+          styleToEdit={style}
+          isSubmitting={update.isPending}
+          serverError={formError}
+          hasCodeConflict={hasCodeConflict}
+          onClose={() => setIsEditModalOpen(false)}
+          onSubmit={(payload) =>
+            void update
+              .mutateAsync({ id: style.id, payload })
+              .then(() => setIsEditModalOpen(false))
+              .catch(() => {
+                // Lỗi đã hiển thị trong form qua update.error.
+              })
+          }
+        />
+      )}
     </div>
   );
 }
