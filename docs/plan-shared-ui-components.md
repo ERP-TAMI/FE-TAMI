@@ -1,6 +1,8 @@
 # Plan: Đồng nhất UI + component dùng chung (Nhóm vật tư & Mẫu Fit)
 
-**Trạng thái: để dành, chưa làm.** Làm ở branch/PR riêng sau, không chung với branch xoá `displayOrder` (xem `Erp-BE/docs/plan-remove-material-group-display-order.md`).
+**Trạng thái: đã làm xong.** Thực hiện ở branch `feat/Thang-shared-ui-components` (checkout từ `dev`), commit `155fa75`, PR: https://github.com/ERP-TAMI/FE-TAMI/pull/new/feat/Thang-shared-ui-components.
+
+Lưu ý: các đường dẫn file nhắc tới trong plan bên dưới là đường dẫn tại thời điểm viết plan (trước khi tái cấu trúc thư mục xoá `src/features/`). Vị trí thực tế sau khi hoàn thành: Nhóm vật tư ở `src/pages/masters/`, `src/components/features/material-groups/`, `src/hooks/`, `src/api/`, `src/types/material-group.ts`; Mẫu Fit ở `src/pages/styles/`, `src/components/features/styles/`, `src/hooks/useStyles.ts`, `src/api/stylesApi.ts`, `src/types/style.ts`.
 
 ## Bối cảnh
 
