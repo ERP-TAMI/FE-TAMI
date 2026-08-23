@@ -15,11 +15,7 @@ import StyleDetailPage from "@/pages/styles/StyleDetailPage";
 import AuditLogPage from "@/pages/audit/AuditLogPage";
 import NotFoundPage from "@/pages/NotFoundPage";
 
-// TODO(S2-AUTH): re-enable once the other in-progress feature screens are
-// done, so their own testing/dev flow isn't blocked by a login requirement.
-// Login/session code (LoginPage, authStore, refresh, logout) all stays fully
-// wired and testable — this only pauses the forced redirect.
-const AUTH_GUARD_ENABLED = false;
+const AUTH_GUARD_ENABLED = true;
 
 export default function App() {
   const status = useAuthBootstrap();

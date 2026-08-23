@@ -2,6 +2,8 @@
 
 Phạm vi: toàn bộ luồng auth FE đã build ở S2-AUTH-04 (#15, merged) — màn hình đăng nhập, session store, route guard, tự động refresh. Xem thêm `Erp-BE/docs/S2-AUTH-05-BE-TEST-REPORT.md` cho phần BE.
 
+> 🔄 **Cập nhật 2026-08-23 (hotfix `fix/Nguyen-enable-auth-guard`)**: mục 4 bên dưới ghi "access token không bao giờ lưu vào localStorage" — điều này **đã đổi**. Sau phản hồi trực tiếp về việc F5 luôn phải gọi lại `/auth/refresh` dù token còn hạn, đã chuyển sang lưu access token vào `localStorage` (`tami_session`) để tái sử dụng khi còn hạn, chỉ gọi refresh khi thật sự hết hạn. Refresh token vẫn luôn ở httpOnly cookie, không đổi. Chi tiết đánh đổi + lý do: xem `docs/S2-AUTH-PLAN.md`. Test Playwright ở mục 2 đã cập nhật theo hành vi mới (file gốc giữ nguyên bên dưới làm lịch sử).
+
 ## 1. Kết quả chạy test tự động
 
 | Bộ test | Số lượng | Kết quả |
