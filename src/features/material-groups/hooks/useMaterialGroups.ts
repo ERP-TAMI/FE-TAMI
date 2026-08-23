@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { materialGroupApi } from "../api/material-group.api";
 import { materialGroupKeys } from "../api/material-group.keys";
-import type { MaterialGroupInput, MaterialGroupStatus } from "../types/material-group.types";
+import type { MaterialGroupInput, MaterialGroupStatus } from "@/types/material-group";
 
 export function useMaterialGroups(status?: MaterialGroupStatus) {
   return useQuery({

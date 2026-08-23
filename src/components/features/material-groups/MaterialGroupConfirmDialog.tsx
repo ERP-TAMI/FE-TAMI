@@ -1,5 +1,5 @@
 import { Button, Modal } from "@/components/shared";
-import type { MaterialGroup } from "../types/material-group.types";
+import type { MaterialGroup } from "@/types/material-group";
 
 type MaterialGroupConfirmDialogProps = {
   materialGroup: MaterialGroup;

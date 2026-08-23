@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { MaterialGroupTable } from "./MaterialGroupTable";
-import type { MaterialGroup } from "../types/material-group.types";
+import type { MaterialGroup } from "@/types/material-group";
 
 const materialGroup: MaterialGroup = {
   id: "e41a0a7d-28b1-4d78-9c26-b017f5c5f890",

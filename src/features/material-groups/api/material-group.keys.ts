@@ -1,4 +1,4 @@
-import type { MaterialGroupStatus } from "../types/material-group.types";
+import type { MaterialGroupStatus } from "@/types/material-group";
 
 export const materialGroupKeys = {
   all: ["material-groups"] as const,

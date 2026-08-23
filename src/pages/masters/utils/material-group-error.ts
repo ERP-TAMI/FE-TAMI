@@ -1,9 +1,5 @@
 import axios from "axios";
-
-export type MaterialGroupError = {
-  code: string;
-  message: string;
-};
+import type { MaterialGroupError } from "@/types/material-group";
 
 type ErrorResponse = {
   code?: unknown;

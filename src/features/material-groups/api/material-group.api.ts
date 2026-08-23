@@ -1,13 +1,6 @@
 import apiClient from "@/lib/apiClient";
-import {
-  materialGroupListSchema,
-  materialGroupResponseSchema,
-} from "../schemas/material-group.schema";
-import type {
-  MaterialGroup,
-  MaterialGroupInput,
-  MaterialGroupStatus,
-} from "../types/material-group.types";
+import type { MaterialGroup, MaterialGroupInput, MaterialGroupStatus } from "@/types/material-group";
+import { materialGroupListSchema, materialGroupResponseSchema } from "./material-group.schema";
 
 const resource = "/masters/material-groups";
 

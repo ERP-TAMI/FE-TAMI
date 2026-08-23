@@ -1,5 +1,5 @@
 import { PencilIcon, TrashBinIcon } from "@/icons";
-import type { MaterialGroup } from "../types/material-group.types";
+import type { MaterialGroup } from "@/types/material-group";
 
 type MaterialGroupTableProps = {
   materialGroups: MaterialGroup[];

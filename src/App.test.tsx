@@ -3,9 +3,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "@/App";
 import { ThemeProvider } from "@/context/ThemeContext";
-import { materialGroupApi } from "@/features/master-data/material-groups/api/material-group.api";
+import { materialGroupApi } from "@/features/material-groups/api/material-group.api";
 
-vi.mock("@/features/master-data/material-groups/api/material-group.api", () => ({
+vi.mock("@/features/material-groups/api/material-group.api", () => ({
   materialGroupApi: {
     list: vi.fn().mockResolvedValue([]),
     create: vi.fn(),

@@ -6,7 +6,7 @@ import DashboardPage from "@/pages/Dashboard/DashboardPage";
 import BomPage from "@/pages/bom/BomPage";
 import PoPage from "@/pages/po/PoPage";
 import MaterialsPage from "@/pages/masters/MaterialsPage";
-import MaterialGroupListPage from "@/features/master-data/material-groups/pages/MaterialGroupListPage";
+import MaterialGroupListPage from "@/pages/masters/MaterialGroupListPage";
 import UsersPage from "@/pages/admin/UsersPage";
 import StyleListPage from "@/pages/styles/StyleListPage";
 import StyleDetailPage from "@/pages/styles/StyleDetailPage";

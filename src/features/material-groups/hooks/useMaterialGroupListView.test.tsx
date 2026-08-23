@@ -1,6 +1,6 @@
 import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import type { MaterialGroup } from "../types/material-group.types";
+import type { MaterialGroup } from "@/types/material-group";
 import { useMaterialGroupListView } from "./useMaterialGroupListView";
 
 const groups: MaterialGroup[] = Array.from({ length: 6 }, (_, index) => ({

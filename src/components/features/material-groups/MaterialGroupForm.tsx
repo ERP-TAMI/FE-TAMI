@@ -3,8 +3,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { Alert, Button, Input, Modal } from "@/components/shared";
-import type { MaterialGroup, MaterialGroupInput } from "../types/material-group.types";
-import type { MaterialGroupError } from "../utils/material-group-error";
+import type { MaterialGroup, MaterialGroupError, MaterialGroupInput } from "@/types/material-group";
 
 const schema = z.object({
   name: z

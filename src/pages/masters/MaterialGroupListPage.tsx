@@ -1,26 +1,22 @@
 import { useEffect, useState } from "react";
 import { Alert, Button, Toast } from "@/components/shared";
 import PageMeta from "@/components/shared/PageMeta";
-import { MaterialGroupConfirmDialog } from "../components/MaterialGroupConfirmDialog";
-import { MaterialGroupForm } from "../components/MaterialGroupForm";
-import { MaterialGroupPagination } from "../components/MaterialGroupPagination";
-import { MaterialGroupPageHeader } from "../components/MaterialGroupPageHeader";
-import { MaterialGroupTable } from "../components/MaterialGroupTable";
-import { MaterialGroupToolbar } from "../components/MaterialGroupToolbar";
+import { MaterialGroupConfirmDialog } from "@/components/features/material-groups/MaterialGroupConfirmDialog";
+import { MaterialGroupForm } from "@/components/features/material-groups/MaterialGroupForm";
+import { MaterialGroupPagination } from "@/components/features/material-groups/MaterialGroupPagination";
+import { MaterialGroupPageHeader } from "@/components/features/material-groups/MaterialGroupPageHeader";
+import { MaterialGroupTable } from "@/components/features/material-groups/MaterialGroupTable";
+import { MaterialGroupToolbar } from "@/components/features/material-groups/MaterialGroupToolbar";
 import {
   useCreateMaterialGroup,
   useDeleteMaterialGroup,
   useMaterialGroups,
   useUpdateMaterialGroup,
   useUpdateMaterialGroupStatus,
-} from "../hooks/useMaterialGroups";
-import { useMaterialGroupListView } from "../hooks/useMaterialGroupListView";
-import type {
-  MaterialGroup,
-  MaterialGroupInput,
-  MaterialGroupStatus,
-} from "../types/material-group.types";
-import { getMaterialGroupError } from "../utils/material-group-error";
+} from "@/features/material-groups/hooks/useMaterialGroups";
+import { useMaterialGroupListView } from "@/features/material-groups/hooks/useMaterialGroupListView";
+import type { MaterialGroup, MaterialGroupInput, MaterialGroupStatus } from "@/types/material-group";
+import { getMaterialGroupError } from "./utils/material-group-error";
 
 type Dialog = { type: "delete"; materialGroup: MaterialGroup } | undefined;
 const emptyMaterialGroups: MaterialGroup[] = [];

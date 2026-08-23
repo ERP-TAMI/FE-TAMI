@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import type { MaterialGroup } from "../types/material-group.types";
+import type { MaterialGroup } from "@/types/material-group";
 
 const pageSize = 5;
 
