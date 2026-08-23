@@ -20,7 +20,6 @@ vi.mock("../hooks/useMaterialGroups", () => ({
 
 const materialGroup = {
   id: "e41a0a7d-28b1-4d78-9c26-b017f5c5f890",
-  code: "FABRIC",
   name: "Fabric",
   status: "active" as const,
 };
@@ -128,7 +127,7 @@ describe("MaterialGroupListPage", () => {
     });
   });
 
-  it("changes status only after confirmation", async () => {
+  it("toggles status immediately without a confirmation dialog", async () => {
     hooks.updateStatus.mutateAsync.mockResolvedValue({
       ...materialGroup,
       status: "inactive",
@@ -142,15 +141,9 @@ describe("MaterialGroupListPage", () => {
     });
 
     render(<MaterialGroupListPage />);
-    fireEvent.click(
-      within(screen.getByRole("table")).getByRole("button", { name: "Ngừng hoạt động" }),
-    );
+    fireEvent.click(screen.getByTitle("Đang hoạt động (Bấm để ngừng hoạt động)"));
 
-    expect(hooks.updateStatus.mutateAsync).not.toHaveBeenCalled();
-    fireEvent.click(
-      within(screen.getByRole("dialog")).getByRole("button", { name: "Ngừng hoạt động" }),
-    );
-
+    expect(screen.queryByRole("dialog")).toBeNull();
     await waitFor(() => {
       expect(hooks.updateStatus.mutateAsync).toHaveBeenCalledWith({
         id: materialGroup.id,
@@ -159,7 +152,28 @@ describe("MaterialGroupListPage", () => {
     });
   });
 
-  it("ưu tiên danh sách và tìm kiếm nhóm vật tư theo mã hoặc tên", () => {
+  it("deletes a group only after confirmation", async () => {
+    hooks.remove.mutateAsync.mockResolvedValue(undefined);
+    hooks.useMaterialGroups.mockReturnValue({
+      isLoading: false,
+      isError: false,
+      data: [materialGroup],
+      error: null,
+      refetch: vi.fn(),
+    });
+
+    render(<MaterialGroupListPage />);
+    fireEvent.click(within(screen.getByRole("table")).getByRole("button", { name: "Xóa" }));
+
+    expect(hooks.remove.mutateAsync).not.toHaveBeenCalled();
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Xóa" }));
+
+    await waitFor(() => {
+      expect(hooks.remove.mutateAsync).toHaveBeenCalledWith(materialGroup.id);
+    });
+  });
+
+  it("ưu tiên danh sách và tìm kiếm nhóm vật tư theo tên", () => {
     hooks.useMaterialGroups.mockReturnValue({
       isLoading: false,
       isError: false,
@@ -168,7 +182,6 @@ describe("MaterialGroupListPage", () => {
         {
           ...materialGroup,
           id: "24b7062b-24d7-411d-8466-f3f2bbdd735e",
-          code: "ACC",
           name: "Phụ liệu",
           status: "inactive",
         },
@@ -188,7 +201,7 @@ describe("MaterialGroupListPage", () => {
     expect(screen.queryByRole("group", { name: "Lọc theo trạng thái" })).toBeNull();
 
     fireEvent.change(screen.getByLabelText("Tìm kiếm nhóm vật tư"), {
-      target: { value: "ACC" },
+      target: { value: "Phụ" },
     });
 
     expect(screen.getByText("Phụ liệu")).toBeTruthy();
@@ -199,7 +212,6 @@ describe("MaterialGroupListPage", () => {
     const materialGroups = Array.from({ length: 6 }, (_, index) => ({
       ...materialGroup,
       id: `e41a0a7d-28b1-4d78-9c26-b017f5c5f8${index}`,
-      code: `GROUP-${index + 1}`,
       name: `Nhóm vật tư ${index + 1}`,
     }));
     hooks.useMaterialGroups.mockReturnValue({
@@ -220,7 +232,7 @@ describe("MaterialGroupListPage", () => {
     expect(screen.queryByText("Nhóm vật tư 1")).toBeNull();
 
     fireEvent.change(screen.getByLabelText("Tìm kiếm nhóm vật tư"), {
-      target: { value: "GROUP-1" },
+      target: { value: "Nhóm vật tư 1" },
     });
     expect(screen.getByText("Nhóm vật tư 1")).toBeTruthy();
     expect(screen.getByText("Hiển thị 1–1 trên 1 nhóm vật tư")).toBeTruthy();

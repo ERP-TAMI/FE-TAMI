@@ -30,7 +30,7 @@ export function MaterialGroupToolbar({ search, onSearchChange }: MaterialGroupTo
           <Input
             type="search"
             aria-label="Tìm kiếm nhóm vật tư"
-            placeholder="Tìm theo mã hoặc tên nhóm..."
+            placeholder="Tìm theo tên nhóm..."
             value={search}
             className="border-gray-300 bg-white pl-11 dark:border-gray-600 dark:bg-gray-900"
             onChange={(event) => onSearchChange(event.target.value)}

@@ -10,10 +10,7 @@ export function useMaterialGroupListView(materialGroups: MaterialGroup[]) {
   const filteredMaterialGroups = useMemo(() => {
     const keyword = search.trim().toLocaleLowerCase("vi");
     return materialGroups.filter((group) => {
-      const matchesSearch =
-        !keyword ||
-        group.code.toLocaleLowerCase("vi").includes(keyword) ||
-        group.name.toLocaleLowerCase("vi").includes(keyword);
+      const matchesSearch = !keyword || group.name.toLocaleLowerCase("vi").includes(keyword);
       return matchesSearch;
     });
   }, [materialGroups, search]);

@@ -22,7 +22,7 @@ import type {
 } from "../types/material-group.types";
 import { getMaterialGroupError } from "../utils/material-group-error";
 
-type Dialog = { type: "status" | "delete"; materialGroup: MaterialGroup } | undefined;
+type Dialog = { type: "delete"; materialGroup: MaterialGroup } | undefined;
 const emptyMaterialGroups: MaterialGroup[] = [];
 
 export default function MaterialGroupListPage() {
@@ -35,8 +35,7 @@ export default function MaterialGroupListPage() {
   const update = useUpdateMaterialGroup();
   const updateStatus = useUpdateMaterialGroupStatus();
   const remove = useDeleteMaterialGroup();
-  const mutation =
-    create.isPending || update.isPending || updateStatus.isPending || remove.isPending;
+  const mutation = create.isPending || update.isPending || remove.isPending;
   const serverError = create.error ?? update.error;
   const materialGroups = list.data ?? emptyMaterialGroups;
   const listView = useMaterialGroupListView(materialGroups);
@@ -70,24 +69,24 @@ export default function MaterialGroupListPage() {
   const confirmDialog = async () => {
     if (!dialog) return;
     try {
-      if (dialog.type === "delete") {
-        await remove.mutateAsync(dialog.materialGroup.id);
-        setToast("Đã xóa nhóm vật tư.");
-      } else {
-        const nextStatus: MaterialGroupStatus =
-          dialog.materialGroup.status === "active" ? "inactive" : "active";
-        await updateStatus.mutateAsync({ id: dialog.materialGroup.id, status: nextStatus });
-        setToast(
-          nextStatus === "active" ? "Đã kích hoạt nhóm vật tư." : "Đã ngừng hoạt động nhóm vật tư.",
-        );
-      }
+      await remove.mutateAsync(dialog.materialGroup.id);
+      setToast("Đã xóa nhóm vật tư.");
       setDialog(undefined);
     } catch (error) {
-      const fallback =
-        dialog.type === "delete"
-          ? "Không thể xóa nhóm vật tư."
-          : "Không thể đổi trạng thái nhóm vật tư.";
-      setToast(getMaterialGroupError(error, fallback).message);
+      setToast(getMaterialGroupError(error, "Không thể xóa nhóm vật tư.").message);
+    }
+  };
+
+  const toggleStatus = async (materialGroup: MaterialGroup) => {
+    const nextStatus: MaterialGroupStatus =
+      materialGroup.status === "active" ? "inactive" : "active";
+    try {
+      await updateStatus.mutateAsync({ id: materialGroup.id, status: nextStatus });
+      setToast(
+        nextStatus === "active" ? "Đã kích hoạt nhóm vật tư." : "Đã ngừng hoạt động nhóm vật tư.",
+      );
+    } catch (error) {
+      setToast(getMaterialGroupError(error, "Không thể đổi trạng thái nhóm vật tư.").message);
     }
   };
 
@@ -133,8 +132,9 @@ export default function MaterialGroupListPage() {
             <>
               <MaterialGroupTable
                 materialGroups={listView.paginatedMaterialGroups}
+                togglingId={updateStatus.isPending ? updateStatus.variables?.id : undefined}
                 onEdit={setEditing}
-                onStatus={(materialGroup) => setDialog({ type: "status", materialGroup })}
+                onToggleStatus={(materialGroup) => void toggleStatus(materialGroup)}
                 onDelete={(materialGroup) => setDialog({ type: "delete", materialGroup })}
               />
               <MaterialGroupPagination
@@ -166,7 +166,6 @@ export default function MaterialGroupListPage() {
       )}
       {dialog && (
         <MaterialGroupConfirmDialog
-          action={dialog.type}
           materialGroup={dialog.materialGroup}
           isSubmitting={mutation}
           onClose={() => setDialog(undefined)}

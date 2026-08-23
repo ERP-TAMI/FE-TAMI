@@ -1,22 +1,23 @@
-import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { MaterialGroupTable } from "./MaterialGroupTable";
 import type { MaterialGroup } from "../types/material-group.types";
 
 const materialGroup: MaterialGroup = {
   id: "e41a0a7d-28b1-4d78-9c26-b017f5c5f890",
-  code: "STEEL",
   name: "Steel",
   status: "active",
 };
 
 describe("MaterialGroupTable", () => {
+  afterEach(cleanup);
+
   it("renders an empty state", () => {
     render(
       <MaterialGroupTable
         materialGroups={[]}
         onEdit={vi.fn()}
-        onStatus={vi.fn()}
+        onToggleStatus={vi.fn()}
         onDelete={vi.fn()}
       />,
     );
@@ -24,47 +25,67 @@ describe("MaterialGroupTable", () => {
     expect(screen.getByText("Không tìm thấy nhóm vật tư phù hợp.")).not.toBeNull();
   });
 
-  it("renders a row and only runs its action after the user clicks", () => {
-    const onStatus = vi.fn();
+  it("renders a row and only toggles status after the user clicks the switch", () => {
+    const onToggleStatus = vi.fn();
     render(
       <MaterialGroupTable
         materialGroups={[materialGroup]}
         onEdit={vi.fn()}
-        onStatus={onStatus}
+        onToggleStatus={onToggleStatus}
         onDelete={vi.fn()}
       />,
     );
 
     expect(screen.getByText("Steel")).not.toBeNull();
-    const columns = screen.getByText("Steel").closest("table")?.querySelectorAll("col");
-    expect(Array.from(columns ?? []).map((column) => column.className)).toEqual([
-      "w-1/6",
-      "w-1/6",
-      "w-1/6",
-      "w-1/3",
+    const headers = screen.getByRole("columnheader", { name: "Tên nhóm" }).closest("tr")
+      ?.children;
+    expect(Array.from(headers ?? []).map((header) => header.className)).toEqual([
+      "w-[45%] px-5 py-3.5 font-semibold",
+      "w-[25%] px-5 py-3.5 font-semibold",
+      "w-[30%] px-5 py-3.5 text-center font-semibold",
     ]);
-    expect(onStatus).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "Ngừng hoạt động" }));
-    expect(onStatus).toHaveBeenCalledWith(materialGroup);
+
+    expect(onToggleStatus).not.toHaveBeenCalled();
+    fireEvent.click(
+      screen.getByTitle("Đang hoạt động (Bấm để ngừng hoạt động)"),
+    );
+    expect(onToggleStatus).toHaveBeenCalledWith(materialGroup);
   });
 
-  it("keeps long codes and names inside their columns", () => {
+  it("keeps a long name inside its column", () => {
     const longGroup = {
       ...materialGroup,
-      code: "MG-1D42638C2CAF4F03AFC79285B7C47AD99",
-      name: "Nhóm vật tư có tên rất dài",
+      name: "Nhóm vật tư có tên rất dài để kiểm tra hành vi cắt bớt trong bảng danh sách",
     };
 
     render(
       <MaterialGroupTable
         materialGroups={[longGroup]}
         onEdit={vi.fn()}
-        onStatus={vi.fn()}
+        onToggleStatus={vi.fn()}
         onDelete={vi.fn()}
       />,
     );
 
-    expect(screen.getByTitle(longGroup.code).className).toContain("truncate");
     expect(screen.getByTitle(longGroup.name).className).toContain("truncate");
+  });
+
+  it("edits and deletes a group through the action buttons", () => {
+    const onEdit = vi.fn();
+    const onDelete = vi.fn();
+    render(
+      <MaterialGroupTable
+        materialGroups={[materialGroup]}
+        onEdit={onEdit}
+        onToggleStatus={vi.fn()}
+        onDelete={onDelete}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Sửa" }));
+    expect(onEdit).toHaveBeenCalledWith(materialGroup);
+
+    fireEvent.click(screen.getByRole("button", { name: "Xóa" }));
+    expect(onDelete).toHaveBeenCalledWith(materialGroup);
   });
 });

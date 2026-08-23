@@ -5,7 +5,6 @@ import { useMaterialGroupListView } from "./useMaterialGroupListView";
 
 const groups: MaterialGroup[] = Array.from({ length: 6 }, (_, index) => ({
   id: `group-${index + 1}`,
-  code: `GROUP-${index + 1}`,
   name: `Nhóm ${index + 1}`,
   status: "active",
 }));

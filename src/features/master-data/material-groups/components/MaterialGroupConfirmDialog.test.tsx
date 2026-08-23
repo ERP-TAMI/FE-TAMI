@@ -5,7 +5,6 @@ import type { MaterialGroup } from "../types/material-group.types";
 
 const materialGroup: MaterialGroup = {
   id: "e41a0a7d-28b1-4d78-9c26-b017f5c5f890",
-  code: "STEEL",
   name: "Steel",
   status: "active",
 };
@@ -15,7 +14,6 @@ describe("MaterialGroupConfirmDialog", () => {
     const onConfirm = vi.fn();
     render(
       <MaterialGroupConfirmDialog
-        action="delete"
         materialGroup={materialGroup}
         isSubmitting={false}
         onClose={vi.fn()}

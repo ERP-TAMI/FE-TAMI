@@ -75,7 +75,7 @@ describe("MaterialGroupForm", () => {
         isSubmitting={false}
         serverError={{
           code: "CONFLICT",
-          message: "Mã hoặc tên nhóm vật tư đã tồn tại.",
+          message: "Tên nhóm vật tư đã tồn tại.",
         }}
         onClose={vi.fn()}
         onSubmit={vi.fn()}
@@ -83,7 +83,7 @@ describe("MaterialGroupForm", () => {
     );
 
     expect((await screen.findByRole("alert")).textContent).toContain(
-      "Mã hoặc tên nhóm vật tư đã tồn tại.",
+      "Tên nhóm vật tư đã tồn tại.",
     );
     expect(screen.getByLabelText("Tên nhóm").getAttribute("aria-invalid")).not.toBe("true");
   });
