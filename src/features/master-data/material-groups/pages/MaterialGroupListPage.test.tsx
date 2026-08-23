@@ -22,7 +22,6 @@ const materialGroup = {
   id: "e41a0a7d-28b1-4d78-9c26-b017f5c5f890",
   code: "FABRIC",
   name: "Fabric",
-  displayOrder: 0,
   status: "active" as const,
 };
 
@@ -82,7 +81,6 @@ describe("MaterialGroupListPage", () => {
     hooks.create.mutateAsync.mockResolvedValue({
       ...materialGroup,
       name: "Accessories",
-      displayOrder: 3,
     });
     hooks.useMaterialGroups.mockReturnValue({
       isLoading: false,
@@ -95,13 +93,11 @@ describe("MaterialGroupListPage", () => {
     render(<MaterialGroupListPage />);
     fireEvent.click(screen.getByRole("button", { name: "Tạo nhóm vật tư mới" }));
     fireEvent.change(screen.getByLabelText("Tên nhóm"), { target: { value: "Accessories" } });
-    fireEvent.change(screen.getByLabelText("Thứ tự hiển thị"), { target: { value: "3" } });
     fireEvent.click(screen.getByRole("button", { name: "Lưu nhóm vật tư" }));
 
     await waitFor(() => {
       expect(hooks.create.mutateAsync).toHaveBeenCalledWith({
         name: "Accessories",
-        displayOrder: 3,
       });
     });
   });
@@ -110,7 +106,6 @@ describe("MaterialGroupListPage", () => {
     hooks.update.mutateAsync.mockResolvedValue({
       ...materialGroup,
       name: "Main fabric",
-      displayOrder: 2,
     });
     hooks.useMaterialGroups.mockReturnValue({
       isLoading: false,
@@ -123,13 +118,12 @@ describe("MaterialGroupListPage", () => {
     render(<MaterialGroupListPage />);
     fireEvent.click(screen.getByRole("button", { name: "Sửa" }));
     fireEvent.change(screen.getByLabelText("Tên nhóm"), { target: { value: "Main fabric" } });
-    fireEvent.change(screen.getByLabelText("Thứ tự hiển thị"), { target: { value: "2" } });
     fireEvent.click(screen.getByRole("button", { name: "Lưu nhóm vật tư" }));
 
     await waitFor(() => {
       expect(hooks.update.mutateAsync).toHaveBeenCalledWith({
         id: materialGroup.id,
-        input: { name: "Main fabric", displayOrder: 2 },
+        input: { name: "Main fabric" },
       });
     });
   });
@@ -207,7 +201,6 @@ describe("MaterialGroupListPage", () => {
       id: `e41a0a7d-28b1-4d78-9c26-b017f5c5f8${index}`,
       code: `GROUP-${index + 1}`,
       name: `Nhóm vật tư ${index + 1}`,
-      displayOrder: index + 1,
     }));
     hooks.useMaterialGroups.mockReturnValue({
       isLoading: false,

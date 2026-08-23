@@ -23,7 +23,6 @@ describe("materialGroupApi", () => {
           id: "e41a0a7d-28b1-4d78-9c26-b017f5c5f890",
           code: "FABRIC",
           name: "Fabric",
-          displayOrder: 0,
           status: "active",
         },
       ],

@@ -48,13 +48,6 @@ export function MaterialGroupTable({
           ),
         },
         {
-          key: "displayOrder",
-          header: "Thứ tự",
-          width: "standard",
-          align: "center",
-          render: (group) => group.displayOrder,
-        },
-        {
           key: "status",
           header: "Trạng thái",
           width: "standard",

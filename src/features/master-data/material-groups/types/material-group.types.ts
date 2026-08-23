@@ -4,8 +4,7 @@ export type MaterialGroup = {
   id: string;
   code: string;
   name: string;
-  displayOrder: number;
   status: MaterialGroupStatus;
 };
 
-export type MaterialGroupInput = Pick<MaterialGroup, "name" | "displayOrder">;
+export type MaterialGroupInput = Pick<MaterialGroup, "name">;

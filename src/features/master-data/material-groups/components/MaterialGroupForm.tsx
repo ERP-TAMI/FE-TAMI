@@ -12,10 +12,6 @@ const schema = z.object({
     .trim()
     .min(1, "Tên nhóm là bắt buộc")
     .max(150, "Tên nhóm không được vượt quá 150 ký tự"),
-  displayOrder: z
-    .number()
-    .int("Thứ tự hiển thị phải là số nguyên")
-    .min(0, "Thứ tự hiển thị không được âm"),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -41,12 +37,7 @@ export function MaterialGroupForm({
 }: MaterialGroupFormProps) {
   const { register, handleSubmit, formState } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: materialGroup
-      ? {
-          name: materialGroup.name,
-          displayOrder: materialGroup.displayOrder,
-        }
-      : { name: "", displayOrder: 0 },
+    defaultValues: materialGroup ? { name: materialGroup.name } : { name: "" },
   });
 
   useEffect(() => onDirtyChange?.(formState.isDirty), [formState.isDirty, onDirtyChange]);
@@ -92,15 +83,6 @@ export function MaterialGroupForm({
           placeholder="Ví dụ: Vải chính, Phụ liệu"
           error={formState.errors.name?.message}
           {...register("name")}
-        />
-        <Input
-          label="Thứ tự hiển thị"
-          type="number"
-          min="0"
-          step="1"
-          hint="Số nhỏ hơn sẽ được hiển thị trước."
-          error={formState.errors.displayOrder?.message}
-          {...register("displayOrder", { valueAsNumber: true })}
         />
       </form>
     </Modal>

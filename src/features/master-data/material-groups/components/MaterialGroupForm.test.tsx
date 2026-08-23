@@ -37,7 +37,7 @@ describe("MaterialGroupForm", () => {
     fireEvent.click(screen.getByRole("button", { name: "Lưu nhóm vật tư" }));
 
     await waitFor(() => {
-      expect(onSubmit).toHaveBeenCalledWith({ name: "Fabric", displayOrder: 0 });
+      expect(onSubmit).toHaveBeenCalledWith({ name: "Fabric" });
     });
     rerender(
       <MaterialGroupForm
@@ -86,25 +86,6 @@ describe("MaterialGroupForm", () => {
       "Mã hoặc tên nhóm vật tư đã tồn tại.",
     );
     expect(screen.getByLabelText("Tên nhóm").getAttribute("aria-invalid")).not.toBe("true");
-  });
-
-  it("rejects a negative display order", async () => {
-    const onSubmit = vi.fn();
-    render(
-      <MaterialGroupForm
-        mode="create"
-        isSubmitting={false}
-        onClose={vi.fn()}
-        onSubmit={onSubmit}
-      />,
-    );
-
-    fireEvent.change(screen.getByLabelText("Tên nhóm"), { target: { value: "Fabric" } });
-    fireEvent.change(screen.getByLabelText("Thứ tự hiển thị"), { target: { value: "-1" } });
-    fireEvent.click(screen.getByRole("button", { name: "Lưu nhóm vật tư" }));
-
-    expect(onSubmit).not.toHaveBeenCalled();
-    expect(await screen.findByText("Thứ tự hiển thị không được âm")).toBeTruthy();
   });
 
   it("warns before closing a dirty form", () => {

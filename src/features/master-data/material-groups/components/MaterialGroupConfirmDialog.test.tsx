@@ -7,7 +7,6 @@ const materialGroup: MaterialGroup = {
   id: "e41a0a7d-28b1-4d78-9c26-b017f5c5f890",
   code: "STEEL",
   name: "Steel",
-  displayOrder: 10,
   status: "active",
 };
 
