@@ -309,12 +309,12 @@ export default function StyleListPage() {
                 <table className="w-full table-fixed text-left text-sm text-gray-700 dark:text-gray-200">
                   <thead className="border-b border-gray-200 bg-gray-50/80 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:border-gray-800 dark:bg-gray-800/80 dark:text-gray-400">
                     <tr>
-                      <th className="w-[15%] px-5 py-3.5 font-semibold">Mã mẫu</th>
-                      <th className="w-[21%] px-5 py-3.5 font-semibold">Tên mẫu</th>
-                      <th className="w-[17%] px-5 py-3.5 font-semibold">Dòng sản phẩm</th>
-                      <th className="w-[17%] px-5 py-3.5 font-semibold">Trạng thái</th>
-                      <th className="w-[14%] px-5 py-3.5 font-semibold">Ngày tạo</th>
-                      <th className="w-[16%] px-5 py-3.5 font-semibold text-center">Thao tác</th>
+                      <th className="w-[16%] px-5 py-3.5 font-semibold">Mã mẫu</th>
+                      <th className="w-[23%] px-5 py-3.5 font-semibold">Tên mẫu</th>
+                      <th className="w-[16%] px-5 py-3.5 font-semibold">Dòng sản phẩm</th>
+                      <th className="w-[16%] px-5 py-3.5 font-semibold">Trạng thái</th>
+                      <th className="w-[12%] px-5 py-3.5 font-semibold">Ngày tạo</th>
+                      <th className="w-[17%] px-5 py-3.5 font-semibold text-center">Thao tác</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
@@ -325,7 +325,7 @@ export default function StyleListPage() {
                           key={style.id}
                           className="group h-16 hover:bg-gray-50/80 dark:hover:bg-gray-800/50 transition-colors"
                         >
-                          <td className="w-[15%] px-5 py-4 truncate">
+                          <td className="w-[16%] px-5 py-4 truncate">
                             <Link
                               to={`/styles/${style.id}`}
                               title={style.styleCode}
@@ -335,16 +335,16 @@ export default function StyleListPage() {
                             </Link>
                           </td>
 
-                          <td className="w-[21%] px-5 py-4 text-sm font-medium text-gray-900 dark:text-white truncate">
+                          <td className="w-[23%] px-5 py-4 text-sm font-medium text-gray-900 dark:text-white truncate">
                             {style.styleName}
                           </td>
 
-                          <td className="w-[17%] px-5 py-4 text-sm text-gray-600 dark:text-gray-300 truncate">
+                          <td className="w-[16%] px-5 py-4 text-sm text-gray-600 dark:text-gray-300 truncate">
                             {style.category || "—"}
                           </td>
 
                           {/* Trạng thái - Nút gạt Nháp <-> Hoạt động */}
-                          <td className="w-[17%] px-5 py-4">
+                          <td className="w-[16%] px-5 py-4">
                             <div className="flex items-center gap-2.5">
                               <button
                                 type="button"
@@ -369,15 +369,15 @@ export default function StyleListPage() {
                             </div>
                           </td>
 
-                          <td className="w-[14%] px-5 py-4 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                          <td className="w-[12%] px-5 py-4 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
                             {new Date(style.createdAt).toLocaleDateString("vi-VN")}
                           </td>
 
-                          <td className="w-[16%] px-5 py-4 text-center">
-                            <div className="flex items-center justify-center gap-2">
+                          <td className="w-[17%] px-5 py-4 text-center">
+                            <div className="flex items-center justify-center gap-1">
                               <Link
                                 to={`/styles/${style.id}`}
-                                className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50/60 px-2.5 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100 dark:border-blue-900/40 dark:bg-blue-950/40 dark:text-blue-300 dark:hover:bg-blue-900/60 transition-colors"
+                                className="inline-flex items-center gap-1 rounded-lg border border-blue-200 bg-blue-50/60 px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100 dark:border-blue-900/40 dark:bg-blue-950/40 dark:text-blue-300 dark:hover:bg-blue-900/60 transition-colors"
                                 title="Xem chi tiết"
                               >
                                 <EyeIcon className="h-3.5 w-3.5 shrink-0" />
@@ -386,19 +386,19 @@ export default function StyleListPage() {
 
                               <button
                                 onClick={() => setEditingStyle(style)}
-                                className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700 transition-colors"
+                                className="inline-flex items-center gap-1 rounded-lg border border-gray-300 bg-white px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700 transition-colors"
                                 title="Chỉnh sửa"
                               >
-                                <PencilIcon className="h-3.5 w-3.5" />
+                                <PencilIcon className="h-3.5 w-3.5 shrink-0" />
                                 <span>Sửa</span>
                               </button>
 
                               <button
                                 onClick={() => setStyleToDelete(style)}
-                                className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50/60 px-2.5 py-1 text-xs font-medium text-red-600 hover:bg-red-100 dark:border-red-900/40 dark:bg-red-950/40 dark:text-red-300 dark:hover:bg-red-900/60 transition-colors"
+                                className="inline-flex items-center gap-1 rounded-lg border border-red-200 bg-red-50/60 px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-100 dark:border-red-900/40 dark:bg-red-950/40 dark:text-red-300 dark:hover:bg-red-900/60 transition-colors"
                                 title="Xóa mẫu Fit"
                               >
-                                <TrashBinIcon className="h-3.5 w-3.5" />
+                                <TrashBinIcon className="h-3.5 w-3.5 shrink-0" />
                                 <span>Xóa</span>
                               </button>
                             </div>
@@ -425,11 +425,14 @@ export default function StyleListPage() {
                       </div>
 
                       <div className="mt-3 space-y-1.5">
-                        <div className="flex items-center justify-between">
-                          <span className="font-mono text-sm font-semibold text-blue-600 dark:text-blue-400">
+                        <div className="flex items-center justify-between gap-2">
+                          <span
+                            className="min-w-0 flex-1 truncate font-mono text-sm font-semibold text-blue-600 dark:text-blue-400"
+                            title={style.styleCode}
+                          >
                             {style.styleCode}
                           </span>
-                          <div className="flex items-center gap-1.5">
+                          <div className="flex shrink-0 items-center gap-1.5">
                             <button
                               type="button"
                               onClick={() => void toggleStatus(style)}
@@ -447,10 +450,10 @@ export default function StyleListPage() {
                             <StyleStatusBadge status={style.status} showDot={false} />
                           </div>
                         </div>
-                        <h4 className="text-sm font-medium text-gray-900 dark:text-white line-clamp-1">
+                        <h4 className="truncate text-sm font-medium text-gray-900 dark:text-white" title={style.styleName}>
                           {style.styleName}
                         </h4>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                        <p className="truncate text-xs text-gray-500 dark:text-gray-400">
                           {style.category || "Chưa phân nhóm"}
                         </p>
                       </div>

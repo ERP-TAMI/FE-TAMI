@@ -25,7 +25,7 @@ export function DeleteConfirmDialog({
         </h3>
         <p className="mt-2 text-xs leading-relaxed text-gray-600 dark:text-gray-300">
           Bạn có chắc chắn muốn xóa mẫu Fit{" "}
-          <strong className="font-mono text-blue-600 dark:text-blue-400">
+          <strong className="font-mono text-blue-600 dark:text-blue-400 break-all">
             {styleCode || styleName}
           </strong>{" "}
           không? Hành động này không thể hoàn tác.

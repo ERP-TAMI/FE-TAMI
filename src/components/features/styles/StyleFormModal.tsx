@@ -102,10 +102,10 @@ export function StyleFormModal({
           <div className="flex items-center justify-between border-b border-gray-100 pb-4 dark:border-gray-800">
             <div>
               <h3 className="text-base font-semibold text-gray-900 dark:text-white">
-                {isEdit ? `Chỉnh sửa Mẫu Fit (${styleToEdit?.styleCode})` : "Tạo Mẫu Fit Mới"}
+                {isEdit ? "Chỉnh sửa Mẫu Fit" : "Tạo Mẫu Fit Mới"}
               </h3>
               <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-                Thêm một mẫu fit mới vào hệ thống.
+                {isEdit ? "Cập nhật thông tin mẫu Fit đã có." : "Thêm một mẫu fit mới vào hệ thống."}
               </p>
             </div>
             <button

@@ -145,7 +145,10 @@ export default function StyleDetailPage() {
           Mẫu Fit
         </Link>
         <span>/</span>
-        <span className="font-mono font-medium text-gray-900 dark:text-white">
+        <span
+          className="min-w-0 max-w-[240px] truncate font-mono font-medium text-gray-900 dark:text-white"
+          title={style.styleCode}
+        >
           {style.styleCode}
         </span>
       </nav>
@@ -227,57 +230,16 @@ export default function StyleDetailPage() {
         <div className="lg:col-span-7 space-y-6">
           <div className="space-y-3 pb-6 border-b border-gray-200/80 dark:border-gray-800">
             <div className="flex items-start justify-between gap-4">
-              <div>
-                <div className="flex items-center gap-3">
-                  <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
-                    {style.styleName}
-                  </h1>
-                  <StyleStatusBadge status={style.status} />
-                </div>
-                <div className="mt-2 flex items-center gap-3">
-                  <span className="font-mono text-base font-bold text-blue-600 dark:text-blue-400">
-                    {style.styleCode}
-                  </span>
-                  {style.category && (
-                    <>
-                      <span className="text-gray-300 dark:text-gray-700">•</span>
-                      <span className="text-base font-medium text-gray-600 dark:text-gray-300">
-                        {style.category}
-                      </span>
-                    </>
-                  )}
-                </div>
-              </div>
+              <h1 className="min-w-0 break-words text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
+                {style.styleName}
+              </h1>
 
-              {/* Top Actions: Status Toggle & Edit Button */}
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => void handleToggleStatus()}
-                  disabled={statusUpdate.isPending}
-                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                    style.status === "active" ? "bg-emerald-500" : "bg-gray-300 dark:bg-gray-700"
-                  }`}
-                  title={
-                    style.status === "active"
-                      ? "Đang Hoạt động (Bấm để chuyển về Nháp)"
-                      : "Đang Nháp (Bấm để kích hoạt)"
-                  }
-                >
-                  <span
-                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-xs ring-0 transition duration-200 ease-in-out ${
-                      style.status === "active" ? "translate-x-5" : "translate-x-0"
-                    }`}
-                  />
-                </button>
-
-                <button
-                  onClick={() => setIsEditModalOpen(true)}
-                  className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700 transition-colors shadow-xs"
-                >
-                  Chỉnh sửa
-                </button>
-              </div>
+              <button
+                onClick={() => setIsEditModalOpen(true)}
+                className="shrink-0 rounded-lg border border-gray-300 bg-white px-4 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700 transition-colors shadow-xs"
+              >
+                Chỉnh sửa
+              </button>
             </div>
           </div>
 
@@ -288,26 +250,51 @@ export default function StyleDetailPage() {
             </h3>
             <dl className="divide-y divide-gray-100 dark:divide-gray-800">
               <div className="flex py-4">
-                <dt className="w-1/3 text-sm font-semibold text-gray-500 dark:text-gray-400">Mã mẫu Fit</dt>
-                <dd className="w-2/3 font-mono text-base font-bold text-blue-600 dark:text-blue-400">
+                <dt className="w-1/3 shrink-0 text-sm font-semibold text-gray-500 dark:text-gray-400">Mã mẫu Fit</dt>
+                <dd className="w-2/3 min-w-0 break-all font-mono text-base font-bold text-blue-600 dark:text-blue-400">
                   {style.styleCode}
                 </dd>
               </div>
               <div className="flex py-4">
-                <dt className="w-1/3 text-sm font-semibold text-gray-500 dark:text-gray-400">Tên mẫu Fit</dt>
-                <dd className="w-2/3 text-base font-semibold text-gray-900 dark:text-white">
+                <dt className="w-1/3 shrink-0 text-sm font-semibold text-gray-500 dark:text-gray-400">Tên mẫu Fit</dt>
+                <dd className="w-2/3 min-w-0 break-words text-base font-semibold text-gray-900 dark:text-white">
                   {style.styleName}
                 </dd>
               </div>
               <div className="flex py-4">
-                <dt className="w-1/3 text-sm font-semibold text-gray-500 dark:text-gray-400">Dòng sản phẩm</dt>
-                <dd className="w-2/3 text-base font-medium text-gray-900 dark:text-white">
+                <dt className="w-1/3 shrink-0 text-sm font-semibold text-gray-500 dark:text-gray-400">Dòng sản phẩm</dt>
+                <dd className="w-2/3 min-w-0 break-words text-base font-medium text-gray-900 dark:text-white">
                   {style.category || "—"}
                 </dd>
               </div>
+              <div className="flex items-center py-4">
+                <dt className="w-1/3 shrink-0 text-sm font-semibold text-gray-500 dark:text-gray-400">Trạng thái</dt>
+                <dd className="flex w-2/3 min-w-0 items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => void handleToggleStatus()}
+                    disabled={statusUpdate.isPending}
+                    className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                      style.status === "active" ? "bg-emerald-500" : "bg-gray-300 dark:bg-gray-700"
+                    }`}
+                    title={
+                      style.status === "active"
+                        ? "Đang Hoạt động (Bấm để chuyển về Nháp)"
+                        : "Đang Nháp (Bấm để kích hoạt)"
+                    }
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-xs ring-0 transition duration-200 ease-in-out ${
+                        style.status === "active" ? "translate-x-4" : "translate-x-0"
+                      }`}
+                    />
+                  </button>
+                  <StyleStatusBadge status={style.status} />
+                </dd>
+              </div>
               <div className="flex py-4">
-                <dt className="w-1/3 text-sm font-semibold text-gray-500 dark:text-gray-400">Mô tả đặc điểm</dt>
-                <dd className="w-2/3 text-base font-medium text-gray-900 dark:text-white whitespace-pre-wrap leading-relaxed">
+                <dt className="w-1/3 shrink-0 text-sm font-semibold text-gray-500 dark:text-gray-400">Mô tả đặc điểm</dt>
+                <dd className="w-2/3 min-w-0 break-words text-base font-medium text-gray-900 dark:text-white whitespace-pre-wrap leading-relaxed">
                   {style.description || "Chưa có mô tả chi tiết."}
                 </dd>
               </div>
@@ -320,8 +307,6 @@ export default function StyleDetailPage() {
               <span>Tạo lúc: {new Date(style.createdAt).toLocaleString("vi-VN")}</span>
               <span>•</span>
               <span>Cập nhật: {new Date(style.updatedAt).toLocaleString("vi-VN")}</span>
-              <span>•</span>
-              <span className="font-mono">Row Version: v{style.rowVersion}</span>
             </div>
           </div>
         </div>
