@@ -10,7 +10,7 @@ const hooks = vi.hoisted(() => ({
   remove: { isPending: false, error: null, mutateAsync: vi.fn() },
 }));
 
-vi.mock("@/features/material-groups/hooks/useMaterialGroups", () => ({
+vi.mock("@/hooks/useMaterialGroups", () => ({
   useMaterialGroups: hooks.useMaterialGroups,
   useCreateMaterialGroup: () => hooks.create,
   useUpdateMaterialGroup: () => hooks.update,

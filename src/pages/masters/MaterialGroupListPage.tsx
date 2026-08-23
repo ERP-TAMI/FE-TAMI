@@ -13,8 +13,8 @@ import {
   useMaterialGroups,
   useUpdateMaterialGroup,
   useUpdateMaterialGroupStatus,
-} from "@/features/material-groups/hooks/useMaterialGroups";
-import { useMaterialGroupListView } from "@/features/material-groups/hooks/useMaterialGroupListView";
+} from "@/hooks/useMaterialGroups";
+import { useMaterialGroupListView } from "@/hooks/useMaterialGroupListView";
 import type { MaterialGroup, MaterialGroupInput, MaterialGroupStatus } from "@/types/material-group";
 import { getMaterialGroupError } from "./utils/material-group-error";
 
