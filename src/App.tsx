@@ -6,6 +6,7 @@ import DashboardPage from "@/pages/Dashboard/DashboardPage";
 import BomPage from "@/pages/bom/BomPage";
 import PoPage from "@/pages/po/PoPage";
 import MaterialsPage from "@/pages/masters/MaterialsPage";
+import MaterialGroupListPage from "@/pages/masters/MaterialGroupListPage";
 import UsersPage from "@/pages/admin/UsersPage";
 import StyleListPage from "@/pages/styles/StyleListPage";
 import StyleDetailPage from "@/pages/styles/StyleDetailPage";
@@ -27,6 +28,7 @@ export default function App() {
           <Route path="po" element={<PoPage />} />
           <Route path="masters" element={<Navigate to="/masters/materials" replace />} />
           <Route path="masters/materials" element={<MaterialsPage />} />
+          <Route path="masters/material-groups" element={<MaterialGroupListPage />} />
           <Route path="admin" element={<Navigate to="/admin/users" replace />} />
           <Route path="admin/users" element={<UsersPage />} />
           <Route path="audit-log" element={<AuditLogPage />} />
