@@ -1,7 +1,7 @@
 # S2-AUTH: Kế hoạch triển khai Authentication & Authorization (Frontend)
 
 ## Status
-S2-AUTH-04: code xong, test đầy đủ (unit/component + Playwright thật với BE qua Vite proxy), PR đang mở (https://github.com/ERP-TAMI/FE-TAMI/pull/15). S2-AUTH-05 (phần FE) chưa bắt đầu.
+S2-AUTH-04 đã merge vào dev (#15). S2-AUTH-05 (phần FE): code xong (thêm test kiểm tra không lộ token/mật khẩu qua browser storage bằng Playwright), báo cáo test tại `docs/S2-AUTH-05-FE-TEST-REPORT.md`, PR đang mở.
 
 > ⚠️ **Route guard tạm thời tắt** (theo yêu cầu, để không chặn các tính năng khác đang được code song song): `AUTH_GUARD_ENABLED = false` trong `src/App.tsx`. Toàn bộ code login/session (LoginPage, authStore, refresh, logout, header) vẫn hoạt động đầy đủ và test được — chỉ tạm dừng việc **ép** chuyển hướng người chưa đăng nhập về `/login`. Test liên quan (`App.test.tsx`, `e2e/auth.spec.ts`) đã `skip` kèm ghi chú, logic guard vẫn được test đầy đủ qua `ProtectedRoute.test.tsx`. **Cần đổi lại `true` sau khi các tính năng khác code xong**, rồi un-skip 2 test đã skip.
 
@@ -80,7 +80,7 @@ git worktree add ../FE-TAMI-auth-04 -b feat/Nguyen_S2-AUTH-04-login-ui-guard ori
 | Task | Branch | PR |
 |---|---|---|
 | S2-AUTH-04 | `feat/Nguyen_S2-AUTH-04-login-ui-guard` | https://github.com/ERP-TAMI/FE-TAMI/pull/15 |
-| S2-AUTH-05 (FE) | `feat/Nguyen_S2-AUTH-05-fe-auth-tests` | _(điền sau khi tạo)_ |
+| S2-AUTH-05 (FE) | `feat/Nguyen_S2-AUTH-05-fe-auth-tests` | https://github.com/ERP-TAMI/FE-TAMI/pull/16 |
 
 ## Deferred (ngoài phạm vi Sprint này)
 - Đổi mật khẩu bắt buộc lần đầu (`must_change_password`) — cột đã có sẵn ở BE nhưng chưa có luồng UI.
