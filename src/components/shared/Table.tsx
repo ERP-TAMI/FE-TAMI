@@ -13,6 +13,7 @@ export type TableProps<T> = {
   columns: TableColumn<T>[];
   rows: T[];
   getRowKey: (row: T, index: number) => string | number;
+  tableClassName?: string;
   emptyMessage?: ReactNode;
   embedded?: boolean;
   loading?: boolean;
@@ -29,6 +30,7 @@ export function Table<T>({
   columns,
   rows,
   getRowKey,
+  tableClassName = "",
   emptyMessage = "Không có dữ liệu.",
   embedded = false,
   loading = false,
@@ -42,7 +44,9 @@ export function Table<T>({
           : "overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-800"
       }
     >
-      <table className="text-theme-sm w-full table-fixed text-left text-gray-700 dark:text-gray-200">
+      <table
+        className={`text-theme-sm w-full table-fixed text-left text-gray-700 dark:text-gray-200 ${tableClassName}`}
+      >
         <thead className="text-theme-xs border-b border-gray-200 bg-gray-50/80 font-semibold tracking-wider text-gray-500 uppercase dark:border-gray-800 dark:bg-gray-800/80 dark:text-gray-400">
           <tr>
             {columns.map((column) => (
