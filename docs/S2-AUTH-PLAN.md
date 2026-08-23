@@ -16,16 +16,20 @@ Tài liệu này lên kế hoạch cho 2 nhánh việc thuộc repo `FE-TAMI`:
 | S2-AUTH-05 (phần FE) | Component test đăng nhập/redirect, rà soát CORS/cookie phía client | `feat/Nguyen_S2-AUTH-05-fe-auth-tests` |
 
 ## Quyết định kỹ thuật đã chốt
-1. **Không lưu access token hay refresh token vào `localStorage`/`sessionStorage`.** Access token chỉ giữ trong memory (zustand store, không dùng middleware `persist`). Refresh token là httpOnly cookie do BE set — FE không bao giờ đọc được refresh token bằng JS.
-2. **Cơ chế làm mới phiên** — 3 lớp, không phải "cứ F5 là gọi":
-   - **Bootstrap 1 lần lúc app khởi động**: vì access token ở memory nên mất khi tải lại trang → gọi `/auth/refresh` một lần khi app mount để khôi phục phiên từ cookie.
-   - **Timer chủ động**: sau khi có access token, decode `exp` claim, đặt `setTimeout` gọi refresh trước ~60 giây so với lúc hết hạn thật (access token TTL 15 phút → refresh ở phút thứ 14).
-   - **Interceptor 401 dự phòng**: bắt lỗi 401 từ bất kỳ API call nào (trừ chính `/auth/login`, `/auth/refresh`), dùng **single-flight** (nhiều request 401 cùng lúc chỉ trigger 1 lần gọi `/auth/refresh`, các request còn lại đợi chung promise đó) + cờ `_retried` trên request để **chỉ retry đúng 1 lần** — chống lặp vô hạn khi refresh cũng fail.
-   - Nếu refresh thất bại ở bất kỳ lớp nào → clear session, điều hướng `/login`.
-3. `axios` instance dùng `withCredentials: true` để cookie refresh được gửi kèm mọi request tới BE.
-4. **Quy trình PR**: Claude tự `git push` + `gh pr create` cho từng task, xác nhận với user trước mỗi lần tạo PR. Mỗi task 1 PR riêng.
 
-Nguồn tham khảo pattern trên: xem mục cuối `Erp-BE/docs/S2-AUTH-PLAN.md`.
+> 🔄 **Cập nhật 2026-08-23 (hotfix `fix/Nguyen-enable-auth-guard`): đổi chiến lược lưu access token.** Bản đầu (S2-AUTH-04) chọn access token chỉ ở memory theo khuyến nghị OWASP (giảm bề mặt tấn công XSS), đổi lại F5 luôn phải gọi `/auth/refresh` để khôi phục phiên. Sau phản hồi trực tiếp, đổi sang lưu access token vào `localStorage` (key `tami_session`, cùng thông tin `user`) — F5 tự decode `exp` phía client, còn hạn (> 60s) thì dùng luôn **không gọi API nào cả**, hết hạn mới gọi `/auth/refresh`. Đánh đổi: access token giờ đọc được bởi script XSS nếu có (trước đây thì không, vì chỉ ở memory) — chấp nhận vì TTL ngắn (15 phút) giới hạn thời gian khai thác, và **refresh token vẫn luôn ở httpOnly cookie, không đổi, JS không bao giờ đọc được** — token bị đánh cắp (nếu có) không dùng để cấp phiên mới được. Đây là quyết định có cân nhắc, không phải sơ suất bảo mật.
+
+1. **Refresh token**: luôn ở httpOnly cookie do BE set, `Path=/`, `SameSite=Lax` — FE không bao giờ đọc được bằng JS (không đổi từ trước).
+2. **Access token**: lưu ở `localStorage` (`tami_session` = `{ user, accessToken }`), ghi/xoá đồng bộ trong `authStore.setSession()`/`clearSession()` (`src/store/authStore.ts`).
+3. **Cơ chế làm mới phiên** — 3 lớp:
+   - **Bootstrap lúc app khởi động** (`useAuthBootstrap.ts`): đọc `tami_session` từ `localStorage` → decode `exp` → còn hạn (> 60s) thì hydrate thẳng vào store, **0 network call**; hết hạn hoặc không có gì lưu thì mới gọi `/auth/refresh` (hoặc bỏ qua thẳng sang `unauthenticated` nếu chưa từng đăng nhập).
+   - **Timer chủ động**: sau khi có access token (dù hydrate từ storage hay từ API), đặt `setTimeout` gọi refresh trước ~60 giây so với lúc hết hạn thật.
+   - **Interceptor 401 dự phòng**: bắt lỗi 401 từ bất kỳ API call nào (trừ chính `/auth/login`, `/auth/refresh`), dùng **single-flight** (nhiều request 401 cùng lúc chỉ trigger 1 lần gọi `/auth/refresh`) + cờ `_retried` để **chỉ retry đúng 1 lần** — chống lặp vô hạn khi refresh cũng fail.
+   - Nếu refresh thất bại ở bất kỳ lớp nào → clear session (xoá cả `localStorage`), điều hướng `/login`.
+4. `axios` instance dùng `withCredentials: true` để cookie refresh được gửi kèm mọi request tới BE.
+5. **Quy trình PR**: Claude tự `git push` + `gh pr create` cho từng task, xác nhận với user trước mỗi lần tạo PR. Mỗi task 1 PR riêng.
+
+Nguồn tham khảo pattern refresh-token ban đầu: xem mục cuối `Erp-BE/docs/S2-AUTH-PLAN.md` (vẫn đúng cho phần refresh token/cookie, chỉ phần lưu access token là thay đổi).
 
 ## ⚠️ Bug thực tế đã gặp và fix trong quá trình tích hợp: mất phiên khi F5
 Khi test tích hợp thật (FE dev server qua Vite proxy `/api` → BE), phát hiện F5 luôn mất phiên dù `/auth/refresh` hoạt động đúng khi gọi trực tiếp vào BE. Nguyên nhân: BE set cookie `refresh_token` với `Path=/auth`, nhưng từ góc nhìn trình duyệt, FE gọi API ở path `/api/auth/refresh` (qua proxy) — path này **không match** `/auth` theo RFC 6265, nên trình duyệt không gửi cookie lại. Đã fix ở phía BE (`Erp-BE` PR #22): đổi `REFRESH_COOKIE_PATH` thành `/`. Xác nhận lại bằng cách replay chính xác luồng login → refresh qua Vite proxy với cookie jar của curl (enforce path-matching giống trình duyệt) — sau fix, refresh trả 200 đúng.

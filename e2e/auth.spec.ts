@@ -49,7 +49,7 @@ test.describe("Authentication flow (real browser, real BE)", () => {
     await expect(page).toHaveURL(/\/login$/);
   });
 
-  test("never persists the password, access token, or refresh token in browser storage", async ({
+  test("persists the access token (not the password or refresh token) in localStorage", async ({
     page,
     context,
   }) => {
@@ -64,16 +64,44 @@ test.describe("Authentication flow (real browser, real BE)", () => {
       session: { ...window.sessionStorage },
     }));
     const serialized = JSON.stringify(storageDump);
+    // Access token is intentionally persisted (so a reload can reuse it
+    // without an API call) — but the password must never appear anywhere.
     expect(serialized).not.toContain(SA.password);
-    expect(serialized).not.toContain("eyJ"); // base64url JWT header prefix ("{"a...)
+    expect(serialized).toContain("eyJ"); // base64url JWT header prefix
 
-    // The refresh token cookie must be httpOnly (invisible to page.evaluate's
-    // document.cookie) and must never appear in localStorage/sessionStorage.
+    // The refresh token itself must still never leave the httpOnly cookie —
+    // invisible to document.cookie and never persisted client-side.
+    expect(serialized).not.toMatch(/refresh/i);
     expect(await page.evaluate(() => document.cookie)).not.toContain("refresh_token");
     const cookies = await context.cookies();
     const refreshCookie = cookies.find((cookie) => cookie.name === "refresh_token");
     expect(refreshCookie?.httpOnly).toBe(true);
     expect(refreshCookie?.sameSite).toBe("Lax");
+
+    await page.getByRole("button", { name: "Đăng xuất" }).click();
+    await expect(page).toHaveURL(/\/login$/);
+
+    const afterLogout = await page.evaluate(() => window.localStorage.getItem("tami_session"));
+    expect(afterLogout).toBeNull();
+  });
+
+  test("reuses a still-valid persisted access token across a reload with no /auth/refresh call", async ({
+    page,
+  }) => {
+    await page.goto("/login");
+    await page.getByLabel("Email").fill(SA.email);
+    await page.getByLabel("Mật khẩu").fill(SA.password);
+    await page.getByRole("button", { name: "Đăng nhập" }).click();
+    await expect(page).toHaveURL(/\/dashboard$/);
+
+    let refreshCalls = 0;
+    page.on("request", (request) => {
+      if (request.url().includes("/auth/refresh")) refreshCalls += 1;
+    });
+
+    await page.reload();
+    await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
+    expect(refreshCalls).toBe(0);
 
     await page.getByRole("button", { name: "Đăng xuất" }).click();
   });
