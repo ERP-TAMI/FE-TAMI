@@ -3,7 +3,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { Alert, Button, Input, Modal } from "@/components/shared";
-import type { MaterialGroup, MaterialGroupError, MaterialGroupInput } from "@/types/material-group";
+import type { ApiError } from "@/lib/apiError";
+import type { MaterialGroup, MaterialGroupInput } from "@/types/material-group";
 
 const schema = z.object({
   name: z
@@ -19,7 +20,7 @@ type MaterialGroupFormProps = {
   mode: "create" | "edit";
   materialGroup?: MaterialGroup;
   isSubmitting: boolean;
-  serverError?: MaterialGroupError;
+  serverError?: ApiError;
   onClose: () => void;
   onSubmit: (input: MaterialGroupInput) => void;
   onDirtyChange?: (isDirty: boolean) => void;

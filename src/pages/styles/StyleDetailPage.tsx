@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import type { StyleStatus } from "@/types/style";
 import { useStyle, useUpdateStyle } from "@/hooks/useStyles";
+import { useToast } from "@/hooks/useToast";
+import { PageHeader, Toast } from "@/components/shared";
 import { StyleStatusBadge } from "@/components/features/styles/StyleStatusBadge";
 import { StyleFormModal } from "@/components/features/styles/StyleFormModal";
 import { StyleImagePlaceholder } from "@/components/features/styles/StyleImagePlaceholder";
-import { getErrorMessage, isConflictError } from "./utils/getErrorMessage";
+import { getApiError, isConflictError } from "@/lib/apiError";
 
 export default function StyleDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -17,7 +19,7 @@ export default function StyleDetailPage() {
   const statusUpdate = useUpdateStyle();
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [statusError, setStatusError] = useState<string | null>(null);
+  const { toast, showToast, hideToast } = useToast();
 
   // Image Upload / Paste state — chỉ là preview cục bộ, chưa upload lên hệ thống.
   const [imageUrl, setImageUrl] = useState<string | null>(null);
@@ -97,14 +99,16 @@ export default function StyleDetailPage() {
     if (!style) return;
     const nextStatus: StyleStatus = style.status === "active" ? "draft" : "active";
     try {
-      setStatusError(null);
       await statusUpdate.mutateAsync({ id: style.id, payload: { status: nextStatus } });
+      showToast(nextStatus === "active" ? "Đã kích hoạt mẫu Fit." : "Đã chuyển mẫu Fit về nháp.");
     } catch (err: unknown) {
-      setStatusError(getErrorMessage(err, "Cập nhật trạng thái thất bại."));
+      showToast(getApiError(err, "Cập nhật trạng thái thất bại.").message, "error");
     }
   };
 
-  const formError = update.error ? getErrorMessage(update.error, "Có lỗi xảy ra khi lưu thông tin mẫu Fit.") : null;
+  const formError = update.error
+    ? getApiError(update.error, "Có lỗi xảy ra khi lưu thông tin mẫu Fit.").message
+    : null;
   const hasCodeConflict = isConflictError(update.error);
 
   if (detail.isLoading) {
@@ -121,7 +125,9 @@ export default function StyleDetailPage() {
       <div className="rounded-xl border border-red-200 bg-red-50/50 p-6 text-center text-sm text-red-700 dark:border-red-900/40 dark:bg-red-950/20 dark:text-red-300">
         <h3 className="font-semibold text-base">Không tìm thấy mẫu Fit</h3>
         <p className="mt-1">
-          {detail.isError ? getErrorMessage(detail.error, "Không thể tải thông tin mẫu Fit.") : "Mẫu Fit không tồn tại."}
+          {detail.isError
+            ? getApiError(detail.error, "Không thể tải thông tin mẫu Fit.").message
+            : "Mẫu Fit không tồn tại."}
         </p>
         <button
           onClick={() => navigate("/styles")}
@@ -135,35 +141,15 @@ export default function StyleDetailPage() {
 
   return (
     <div className="space-y-6">
-      {/* Minimal Breadcrumb */}
-      <nav className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
-        <Link to="/dashboard" className="hover:text-gray-900 dark:hover:text-white transition-colors">
-          Dashboard
-        </Link>
-        <span>/</span>
-        <Link to="/styles" className="hover:text-gray-900 dark:hover:text-white transition-colors">
-          Mẫu Fit
-        </Link>
-        <span>/</span>
-        <span
-          className="min-w-0 max-w-[240px] truncate font-mono font-medium text-gray-900 dark:text-white"
-          title={style.styleCode}
-        >
-          {style.styleCode}
-        </span>
-      </nav>
-
-      {statusError && (
-        <div className="flex items-center justify-between rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-300">
-          <span>{statusError}</span>
-          <button
-            onClick={() => setStatusError(null)}
-            className="ml-2 font-bold text-red-500 hover:text-red-700"
-          >
-            ✕
-          </button>
-        </div>
-      )}
+      <PageHeader
+        breadcrumb={[
+          { label: "Dashboard", to: "/dashboard" },
+          { label: "Mẫu Fit", to: "/styles" },
+          { label: style.styleCode },
+        ]}
+        title={style.styleName}
+        action={{ label: "Chỉnh sửa", onClick: () => setIsEditModalOpen(true) }}
+      />
 
       {/* Product Style Record Layout (Left 5 Cols Image, Right 7 Cols Info) */}
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-12 items-start">
@@ -228,21 +214,6 @@ export default function StyleDetailPage() {
 
         {/* Right Column: Style Information & Controls (7 cols) */}
         <div className="lg:col-span-7 space-y-6">
-          <div className="space-y-3 pb-6 border-b border-gray-200/80 dark:border-gray-800">
-            <div className="flex items-start justify-between gap-4">
-              <h1 className="min-w-0 break-words text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
-                {style.styleName}
-              </h1>
-
-              <button
-                onClick={() => setIsEditModalOpen(true)}
-                className="shrink-0 rounded-lg border border-gray-300 bg-white px-4 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700 transition-colors shadow-xs"
-              >
-                Chỉnh sửa
-              </button>
-            </div>
-          </div>
-
           {/* Details Section */}
           <div className="space-y-4">
             <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400">
@@ -324,13 +295,23 @@ export default function StyleDetailPage() {
           onSubmit={(payload) =>
             void update
               .mutateAsync({ id: style.id, payload })
-              .then(() => setIsEditModalOpen(false))
+              .then(() => {
+                showToast("Đã cập nhật mẫu Fit.");
+                setIsEditModalOpen(false);
+              })
               .catch(() => {
                 // Lỗi đã hiển thị trong form qua update.error.
               })
           }
         />
       )}
+      <Toast
+        open={Boolean(toast)}
+        message={toast?.message ?? ""}
+        variant={toast?.variant}
+        closeLabel="Đóng thông báo"
+        onClose={hideToast}
+      />
     </div>
   );
 }

@@ -1,19 +1,21 @@
 import { useMemo, useState } from "react";
-import type { MaterialGroup } from "@/types/material-group";
+import type { MaterialGroup, MaterialGroupStatus } from "@/types/material-group";
 
 const pageSize = 5;
 
 export function useMaterialGroupListView(materialGroups: MaterialGroup[]) {
   const [search, setSearch] = useState("");
+  const [status, setStatus] = useState<MaterialGroupStatus | "">("");
   const [page, setPage] = useState(1);
 
   const filteredMaterialGroups = useMemo(() => {
     const keyword = search.trim().toLocaleLowerCase("vi");
     return materialGroups.filter((group) => {
       const matchesSearch = !keyword || group.name.toLocaleLowerCase("vi").includes(keyword);
-      return matchesSearch;
+      const matchesStatus = !status || group.status === status;
+      return matchesSearch && matchesStatus;
     });
-  }, [materialGroups, search]);
+  }, [materialGroups, search, status]);
 
   const totalPages = Math.max(1, Math.ceil(filteredMaterialGroups.length / pageSize));
   const currentPage = Math.min(page, totalPages);
@@ -24,6 +26,7 @@ export function useMaterialGroupListView(materialGroups: MaterialGroup[]) {
 
   return {
     search,
+    status,
     page: currentPage,
     pageSize,
     totalPages,
@@ -32,6 +35,10 @@ export function useMaterialGroupListView(materialGroups: MaterialGroup[]) {
     setPage,
     setSearch: (value: string) => {
       setSearch(value);
+      setPage(1);
+    },
+    setStatus: (value: MaterialGroupStatus | "") => {
+      setStatus(value);
       setPage(1);
     },
   };

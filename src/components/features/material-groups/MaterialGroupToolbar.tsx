@@ -1,19 +1,29 @@
 import { Input } from "@/components/shared";
+import type { MaterialGroupStatus } from "@/types/material-group";
 
 type MaterialGroupToolbarProps = {
   search: string;
+  status: MaterialGroupStatus | "";
   onSearchChange: (value: string) => void;
+  onStatusChange: (value: MaterialGroupStatus | "") => void;
 };
 
-export function MaterialGroupToolbar({ search, onSearchChange }: MaterialGroupToolbarProps) {
+const statusOptions: Array<{ key: MaterialGroupStatus | ""; label: string }> = [
+  { key: "", label: "Tất cả" },
+  { key: "active", label: "Đang sử dụng" },
+  { key: "inactive", label: "Đã tắt" },
+];
+
+export function MaterialGroupToolbar({
+  search,
+  status,
+  onSearchChange,
+  onStatusChange,
+}: MaterialGroupToolbarProps) {
   return (
     <header className="border-b border-gray-200 bg-gray-50 px-4 py-5 sm:px-6 dark:border-gray-800 dark:bg-white/[0.03]">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-          Danh sách nhóm vật tư
-        </h2>
-
-        <div className="relative w-full lg:w-96">
+      <div className="flex flex-1 flex-wrap items-center gap-2.5">
+        <div className="relative min-w-[220px] max-w-sm flex-1">
           <span className="pointer-events-none absolute top-1/2 left-3.5 z-10 -translate-y-1/2 text-gray-400">
             <svg
               aria-hidden="true"
@@ -35,6 +45,30 @@ export function MaterialGroupToolbar({ search, onSearchChange }: MaterialGroupTo
             className="border-gray-300 bg-white pl-11 dark:border-gray-600 dark:bg-gray-900"
             onChange={(event) => onSearchChange(event.target.value)}
           />
+        </div>
+
+        <div
+          role="group"
+          aria-label="Lọc theo trạng thái"
+          className="flex items-center rounded-lg border border-gray-200 bg-white p-0.5 dark:border-gray-700 dark:bg-gray-900"
+        >
+          {statusOptions.map((option) => {
+            const isSelected = status === option.key;
+            return (
+              <button
+                key={option.key || "all"}
+                type="button"
+                onClick={() => onStatusChange(option.key)}
+                className={`text-theme-xs rounded-md px-3 py-1.5 font-medium transition-colors ${
+                  isSelected
+                    ? "bg-brand-50 text-brand-600 dark:bg-brand-500/15 dark:text-brand-400"
+                    : "text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
+                }`}
+              >
+                {option.label}
+              </button>
+            );
+          })}
         </div>
       </div>
     </header>

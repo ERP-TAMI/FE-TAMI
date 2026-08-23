@@ -7,19 +7,21 @@ import {
   useUpdateStyle,
   useDeleteStyle,
 } from "@/hooks/useStyles";
+import { useToast } from "@/hooks/useToast";
+import { ConfirmDialog, PageHeader, Pagination, Toast } from "@/components/shared";
 import { StyleFormModal } from "@/components/features/styles/StyleFormModal";
 import { StyleImagePlaceholder } from "@/components/features/styles/StyleImagePlaceholder";
-import { DeleteConfirmDialog } from "@/components/features/styles/DeleteConfirmDialog";
 import { StyleStatusBadge } from "@/components/features/styles/StyleStatusBadge";
-import { getErrorMessage, isConflictError } from "./utils/getErrorMessage";
-import { TableIcon, GridIcon, EyeIcon, PencilIcon, TrashBinIcon } from "@/icons";
+import { StyleTable } from "@/components/features/styles/StyleTable";
+import { getApiError, isConflictError } from "@/lib/apiError";
+import { TableIcon, GridIcon, EyeIcon, PencilIcon } from "@/icons";
 
 type ViewMode = "table" | "grid";
 
 const emptyStyles: Style[] = [];
 
 export default function StyleListPage() {
-  const [actionError, setActionError] = useState<string | null>(null);
+  const { toast, showToast, hideToast } = useToast();
   const [viewMode, setViewMode] = useState<ViewMode>("table");
 
   // Filters
@@ -52,7 +54,7 @@ export default function StyleListPage() {
   const totalPages = list.data?.meta.totalPages ?? 1;
   const formError = create.error ?? update.error;
   const serverError = formError
-    ? getErrorMessage(formError, "Có lỗi xảy ra khi lưu thông tin mẫu Fit.")
+    ? getApiError(formError, "Có lỗi xảy ra khi lưu thông tin mẫu Fit.").message
     : null;
   const hasCodeConflict = isConflictError(formError);
 
@@ -74,6 +76,7 @@ export default function StyleListPage() {
     try {
       if (editingStyle === "create") await create.mutateAsync(payload);
       else if (editingStyle) await update.mutateAsync({ id: editingStyle.id, payload });
+      showToast(editingStyle === "create" ? "Đã tạo mẫu Fit." : "Đã cập nhật mẫu Fit.");
       closeForm();
     } catch {
       // Lỗi đã hiển thị trong form qua create.error/update.error.
@@ -84,73 +87,35 @@ export default function StyleListPage() {
     if (!styleToDelete) return;
     try {
       await remove.mutateAsync(styleToDelete.id);
+      showToast("Đã xóa mẫu Fit.");
       setStyleToDelete(undefined);
     } catch (err: unknown) {
-      setActionError(getErrorMessage(err, "Xóa mẫu Fit thất bại. Vui lòng thử lại."));
+      showToast(getApiError(err, "Xóa mẫu Fit thất bại. Vui lòng thử lại.").message, "error");
     }
   };
 
   const toggleStatus = async (style: Style) => {
     const nextStatus: StyleStatus = style.status === "active" ? "draft" : "active";
     try {
-      setActionError(null);
       await statusUpdate.mutateAsync({ id: style.id, payload: { status: nextStatus } });
+      showToast(nextStatus === "active" ? "Đã kích hoạt mẫu Fit." : "Đã chuyển mẫu Fit về nháp.");
     } catch (err: unknown) {
-      setActionError(getErrorMessage(err, "Đổi trạng thái thất bại."));
+      showToast(getApiError(err, "Đổi trạng thái thất bại.").message, "error");
     }
   };
 
   return (
     <div className="space-y-6">
-      {/* Page Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          {/* Breadcrumb */}
-          <nav className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400 mb-1">
-            <Link to="/dashboard" className="hover:text-gray-900 dark:hover:text-white transition-colors">
-              Dashboard
-            </Link>
-            <span>/</span>
-            <span className="font-medium text-gray-900 dark:text-white">Mẫu Fit</span>
-          </nav>
-
-          {/* Title & Small Inline Summary */}
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
-              Mẫu Fit
-            </h1>
-            <div className="flex items-center gap-2 text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800/80 px-2.5 py-1 rounded-full border border-gray-200/80 dark:border-gray-700/80">
-              <span>{total} mẫu</span>
-              <span>•</span>
-              <span className="text-emerald-600 dark:text-emerald-400">{activeCount} hoạt động</span>
-              <span>•</span>
-              <span className="text-amber-600 dark:text-amber-400">{draftCount} nháp</span>
-            </div>
-          </div>
-        </div>
-
-        <div>
-          <button
-            onClick={() => setEditingStyle("create")}
-            className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-xs font-medium text-white hover:bg-blue-700 transition-colors shadow-xs"
-          >
-            + Tạo Mẫu Fit Mới
-          </button>
-        </div>
-      </div>
-
-      {/* Action Error Banner */}
-      {actionError && (
-        <div className="flex items-center justify-between rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-300">
-          <span>{actionError}</span>
-          <button
-            onClick={() => setActionError(null)}
-            className="ml-2 font-bold text-red-500 hover:text-red-700"
-          >
-            ✕
-          </button>
-        </div>
-      )}
+      <PageHeader
+        breadcrumb={[{ label: "Dashboard", to: "/dashboard" }, { label: "Mẫu Fit" }]}
+        title="Mẫu Fit"
+        stats={[
+          { label: "mẫu", value: total },
+          { label: "hoạt động", value: activeCount, tone: "success" },
+          { label: "nháp", value: draftCount, tone: "warning" },
+        ]}
+        action={{ label: "+ Tạo Mẫu Fit Mới", onClick: () => setEditingStyle("create") }}
+      />
 
       {/* Enterprise Toolbar */}
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -262,7 +227,7 @@ export default function StyleListPage() {
         <div className="rounded-lg border border-red-200 bg-red-50/50 p-4 text-xs text-red-700 dark:border-red-900/40 dark:bg-red-950/20 dark:text-red-300">
           <p className="font-semibold">⚠️ Không thể tải dữ liệu</p>
           <p className="mt-0.5">
-            {getErrorMessage(list.error, "Không thể tải danh sách mẫu Fit. Vui lòng thử lại.")}
+            {getApiError(list.error, "Không thể tải danh sách mẫu Fit. Vui lòng thử lại.").message}
           </p>
           <button
             onClick={() => void list.refetch()}
@@ -304,112 +269,13 @@ export default function StyleListPage() {
       {!list.isLoading && !list.isError && styles.length > 0 && (
         <>
           {viewMode === "table" ? (
-            <div className="overflow-hidden rounded-xl border border-gray-200/80 bg-white shadow-xs dark:border-gray-800 dark:bg-gray-900">
-              <div className="overflow-x-auto">
-                <table className="w-full table-fixed text-left text-sm text-gray-700 dark:text-gray-200">
-                  <thead className="border-b border-gray-200 bg-gray-50/80 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:border-gray-800 dark:bg-gray-800/80 dark:text-gray-400">
-                    <tr>
-                      <th className="w-[16%] px-5 py-3.5 font-semibold">Mã mẫu</th>
-                      <th className="w-[23%] px-5 py-3.5 font-semibold">Tên mẫu</th>
-                      <th className="w-[16%] px-5 py-3.5 font-semibold">Dòng sản phẩm</th>
-                      <th className="w-[16%] px-5 py-3.5 font-semibold">Trạng thái</th>
-                      <th className="w-[12%] px-5 py-3.5 font-semibold">Ngày tạo</th>
-                      <th className="w-[17%] px-5 py-3.5 font-semibold text-center">Thao tác</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                    {styles.map((style) => {
-                      const isToggling = statusUpdate.isPending && statusUpdate.variables?.id === style.id;
-                      return (
-                        <tr
-                          key={style.id}
-                          className="group h-16 hover:bg-gray-50/80 dark:hover:bg-gray-800/50 transition-colors"
-                        >
-                          <td className="w-[16%] px-5 py-4 truncate">
-                            <Link
-                              to={`/styles/${style.id}`}
-                              title={style.styleCode}
-                              className="font-mono text-sm font-semibold text-blue-600 hover:underline dark:text-blue-400 truncate block max-w-full"
-                            >
-                              {style.styleCode}
-                            </Link>
-                          </td>
-
-                          <td className="w-[23%] px-5 py-4 text-sm font-medium text-gray-900 dark:text-white truncate">
-                            {style.styleName}
-                          </td>
-
-                          <td className="w-[16%] px-5 py-4 text-sm text-gray-600 dark:text-gray-300 truncate">
-                            {style.category || "—"}
-                          </td>
-
-                          {/* Trạng thái - Nút gạt Nháp <-> Hoạt động */}
-                          <td className="w-[16%] px-5 py-4">
-                            <div className="flex items-center gap-2.5">
-                              <button
-                                type="button"
-                                onClick={() => void toggleStatus(style)}
-                                disabled={isToggling}
-                                className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                                  style.status === "active" ? "bg-emerald-500" : "bg-gray-300 dark:bg-gray-700"
-                                } ${isToggling ? "opacity-50" : ""}`}
-                                title={
-                                  style.status === "active"
-                                    ? "Đang Hoạt động (Bấm để chuyển thành Nháp)"
-                                    : "Đang Nháp (Bấm để chuyển thành Hoạt động)"
-                                }
-                              >
-                                <span
-                                  className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-xs ring-0 transition duration-200 ease-in-out ${
-                                    style.status === "active" ? "translate-x-4" : "translate-x-0"
-                                  }`}
-                                />
-                              </button>
-                              <StyleStatusBadge status={style.status} showDot={false} />
-                            </div>
-                          </td>
-
-                          <td className="w-[12%] px-5 py-4 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
-                            {new Date(style.createdAt).toLocaleDateString("vi-VN")}
-                          </td>
-
-                          <td className="w-[17%] px-5 py-4 text-center">
-                            <div className="flex items-center justify-center gap-1">
-                              <Link
-                                to={`/styles/${style.id}`}
-                                className="inline-flex items-center gap-1 rounded-lg border border-blue-200 bg-blue-50/60 px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100 dark:border-blue-900/40 dark:bg-blue-950/40 dark:text-blue-300 dark:hover:bg-blue-900/60 transition-colors"
-                                title="Xem chi tiết"
-                              >
-                                <EyeIcon className="h-3.5 w-3.5 shrink-0" />
-                                <span>Xem</span>
-                              </Link>
-
-                              <button
-                                onClick={() => setEditingStyle(style)}
-                                className="inline-flex items-center gap-1 rounded-lg border border-gray-300 bg-white px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700 transition-colors"
-                                title="Chỉnh sửa"
-                              >
-                                <PencilIcon className="h-3.5 w-3.5 shrink-0" />
-                                <span>Sửa</span>
-                              </button>
-
-                              <button
-                                onClick={() => setStyleToDelete(style)}
-                                className="inline-flex items-center gap-1 rounded-lg border border-red-200 bg-red-50/60 px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-100 dark:border-red-900/40 dark:bg-red-950/40 dark:text-red-300 dark:hover:bg-red-900/60 transition-colors"
-                                title="Xóa mẫu Fit"
-                              >
-                                <TrashBinIcon className="h-3.5 w-3.5 shrink-0" />
-                                <span>Xóa</span>
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+            <StyleTable
+              styles={styles}
+              togglingId={statusUpdate.isPending ? statusUpdate.variables?.id : undefined}
+              onToggleStatus={(style) => void toggleStatus(style)}
+              onEdit={setEditingStyle}
+              onDelete={setStyleToDelete}
+            />
           ) : (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
               {styles.map((style) => {
@@ -486,31 +352,14 @@ export default function StyleListPage() {
             </div>
           )}
 
-          {/* Pagination */}
-          <div className="flex items-center justify-between py-2 text-xs text-gray-500">
-            <span>
-              Hiển thị <strong className="font-medium text-gray-900 dark:text-white">{styles.length}</strong> / <strong className="font-medium text-gray-900 dark:text-white">{total}</strong> mẫu Fit
-            </span>
-            <div className="flex items-center gap-2">
-              <button
-                disabled={page <= 1}
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                className="rounded-md border border-gray-200 bg-white px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-40 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800 transition-colors"
-              >
-                Trước
-              </button>
-              <span className="text-xs text-gray-700 dark:text-gray-300 font-medium">
-                {page} / {totalPages}
-              </span>
-              <button
-                disabled={page >= totalPages}
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                className="rounded-md border border-gray-200 bg-white px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-40 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800 transition-colors"
-              >
-                Sau
-              </button>
-            </div>
-          </div>
+          <Pagination
+            page={page}
+            pageSize={limit}
+            totalItems={total}
+            totalPages={totalPages}
+            itemLabel="mẫu Fit"
+            onPageChange={setPage}
+          />
         </>
       )}
 
@@ -529,15 +378,32 @@ export default function StyleListPage() {
 
       {/* Delete Confirmation */}
       {styleToDelete && (
-        <DeleteConfirmDialog
-          isOpen
-          styleCode={styleToDelete.styleCode}
-          styleName={styleToDelete.styleName}
-          isDeleting={remove.isPending}
+        <ConfirmDialog
+          open
+          title="Xóa mẫu Fit"
+          description={
+            <>
+              Bạn có chắc chắn muốn xóa mẫu Fit{" "}
+              <strong className="text-brand-600 dark:text-brand-400 font-mono break-all">
+                {styleToDelete.styleCode || styleToDelete.styleName}
+              </strong>{" "}
+              không? Hành động này không thể hoàn tác.
+            </>
+          }
+          confirmLabel="Xóa Mẫu Fit"
+          variant="danger"
+          isSubmitting={remove.isPending}
           onConfirm={() => void confirmDelete()}
-          onCancel={() => setStyleToDelete(undefined)}
+          onClose={() => setStyleToDelete(undefined)}
         />
       )}
+      <Toast
+        open={Boolean(toast)}
+        message={toast?.message ?? ""}
+        variant={toast?.variant}
+        closeLabel="Đóng thông báo"
+        onClose={hideToast}
+      />
     </div>
   );
 }

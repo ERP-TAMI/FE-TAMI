@@ -1,11 +1,12 @@
-import { Button } from "@/components/shared";
+import { Button } from "@/components/shared/Button";
 import { AngleLeftIcon, AngleRightIcon } from "@/icons";
 
-type MaterialGroupPaginationProps = {
+export type PaginationProps = {
   page: number;
   pageSize: number;
   totalItems: number;
   totalPages: number;
+  itemLabel: string;
   onPageChange: (page: number) => void;
 };
 
@@ -25,13 +26,14 @@ function getVisiblePages(page: number, totalPages: number): Array<number | "elli
   return result;
 }
 
-export function MaterialGroupPagination({
+export function Pagination({
   page,
   pageSize,
   totalItems,
   totalPages,
+  itemLabel,
   onPageChange,
-}: MaterialGroupPaginationProps) {
+}: PaginationProps) {
   if (totalItems === 0) return null;
 
   const firstItem = (page - 1) * pageSize + 1;
@@ -41,11 +43,11 @@ export function MaterialGroupPagination({
   return (
     <footer className="flex flex-col gap-4 border-t border-gray-200 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6 dark:border-gray-800">
       <p className="text-theme-sm text-gray-500 dark:text-gray-400">
-        Hiển thị {firstItem}–{lastItem} trên {totalItems} nhóm vật tư
+        Hiển thị {firstItem}–{lastItem} trên {totalItems} {itemLabel}
       </p>
 
       <nav
-        aria-label="Phân trang nhóm vật tư"
+        aria-label={`Phân trang ${itemLabel}`}
         className="flex items-center justify-between gap-2 sm:justify-end"
       >
         <Button

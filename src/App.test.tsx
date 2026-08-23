@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "@/App";
@@ -43,6 +43,9 @@ describe("application routes", () => {
 
     expect(screen.getByRole("heading", { name: "Dashboard" })).toBeTruthy();
     expect(screen.getByRole("complementary", { name: "Primary navigation" })).toBeTruthy();
+    expect(screen.queryByRole("link", { name: "Vật tư" })).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Dữ liệu chung" }));
     expect(screen.getByRole("link", { name: "Vật tư" })).toBeTruthy();
     expect(screen.queryByRole("link", { name: "Materials" })).toBeNull();
   });
