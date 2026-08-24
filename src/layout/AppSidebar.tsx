@@ -34,6 +34,7 @@ const navItems: NavItem[] = [
       { name: "Vật tư", path: "/masters/materials" },
       { name: "Nhóm vật tư", path: "/masters/material-groups" },
       { name: "Giai đoạn công đoạn", path: "/masters/stages" },
+      { name: "Đơn vị tính", path: "/masters/units" },
     ],
   },
   { name: "Administration", path: "/admin", icon: <UserCircleIcon /> },

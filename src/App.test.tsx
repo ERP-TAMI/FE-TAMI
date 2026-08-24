@@ -118,7 +118,7 @@ describe("application routes", () => {
     window.history.pushState({}, "", "/masters");
     renderApp();
 
-    expect(screen.getByRole("heading", { name: "Materials" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Vật tư - Phụ liệu" })).toBeTruthy();
   });
 
   it("renders the material groups management route", () => {

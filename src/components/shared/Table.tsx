@@ -13,6 +13,7 @@ export type TableProps<T> = {
   columns: TableColumn<T>[];
   rows: T[];
   getRowKey: (row: T, index: number) => string | number;
+  tableClassName?: string;
   emptyMessage?: ReactNode;
   embedded?: boolean;
   loading?: boolean;
@@ -30,6 +31,7 @@ export function Table<T>({
   columns,
   rows,
   getRowKey,
+  tableClassName = "",
   emptyMessage = "Không có dữ liệu.",
   embedded = false,
   loading = false,
@@ -53,7 +55,7 @@ export function Table<T>({
               <th
                 key={column.key}
                 scope="col"
-                className={`px-5 py-3.5 font-semibold ${column.width ?? ""} ${alignClass(column.align)}`}
+                className={`px-5 py-3.5 font-semibold whitespace-nowrap ${column.width ?? ""} ${alignClass(column.align)}`}
               >
                 {column.header}
               </th>
