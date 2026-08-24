@@ -1,4 +1,12 @@
-import { BrowserRouter, Navigate, Outlet, Route, Routes } from "react-router-dom";
+import {
+  createBrowserRouter,
+  Navigate,
+  Outlet,
+  Route,
+  RouterProvider,
+  Routes,
+  type DataRouter,
+} from "react-router-dom";
 import AppLayout from "@/layout/AppLayout";
 import { ScrollToTop } from "@/components/shared/ScrollToTop";
 import { ProtectedRoute } from "@/routes/ProtectedRoute";
@@ -20,11 +28,11 @@ import NotFoundPage from "@/pages/NotFoundPage";
 
 const AUTH_GUARD_ENABLED = true;
 
-export default function App() {
+export function AppRoutes() {
   const status = useAuthBootstrap();
 
   return (
-    <BrowserRouter>
+    <>
       <ScrollToTop />
       <Routes>
         <Route
@@ -54,6 +62,14 @@ export default function App() {
         </Route>
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
-    </BrowserRouter>
+    </>
   );
+}
+
+export function createAppRouter(): DataRouter {
+  return createBrowserRouter([{ path: "*", element: <AppRoutes /> }]);
+}
+
+export default function App({ router }: { router: DataRouter }) {
+  return <RouterProvider router={router} />;
 }

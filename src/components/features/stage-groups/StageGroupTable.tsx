@@ -1,5 +1,5 @@
 import { Table, type TableColumn } from "@/components/shared/Table";
-import { PencilIcon } from "@/icons";
+import { PencilIcon, TrashBinIcon } from "@/icons";
 import type { StageGroupSummary } from "@/types/stage-group";
 
 type StageGroupTableProps = {
@@ -7,6 +7,7 @@ type StageGroupTableProps = {
   togglingId?: string;
   loading?: boolean;
   onEdit: (group: StageGroupSummary) => void;
+  onDelete: (group: StageGroupSummary) => void;
   onToggleStatus: (group: StageGroupSummary) => void;
 };
 
@@ -15,6 +16,7 @@ export function StageGroupTable({
   togglingId,
   loading = false,
   onEdit,
+  onDelete,
   onToggleStatus,
 }: StageGroupTableProps) {
   const columns: TableColumn<StageGroupSummary>[] = [
@@ -96,15 +98,26 @@ export function StageGroupTable({
       width: "w-[20%]",
       align: "center",
       render: (group) => (
-        <button
-          type="button"
-          onClick={() => onEdit(group)}
-          title="Chỉnh sửa nhóm công đoạn"
-          className="inline-flex items-center gap-1 rounded-lg border border-gray-300 bg-white px-2 py-1 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
-        >
-          <PencilIcon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-          <span>Sửa</span>
-        </button>
+        <div className="flex items-center justify-center gap-1">
+          <button
+            type="button"
+            onClick={() => onEdit(group)}
+            title="Chỉnh sửa nhóm công đoạn"
+            className="inline-flex items-center gap-1 rounded-lg border border-gray-300 bg-white px-2 py-1 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+          >
+            <PencilIcon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            <span>Sửa</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => onDelete(group)}
+            title="Xóa nhóm công đoạn"
+            className="inline-flex items-center gap-1 rounded-lg border border-red-200 bg-red-50/60 px-2 py-1 text-xs font-medium text-red-600 transition-colors hover:bg-red-100 dark:border-red-900/40 dark:bg-red-950/40 dark:text-red-300 dark:hover:bg-red-900/60"
+          >
+            <TrashBinIcon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            <span>Xóa</span>
+          </button>
+        </div>
       ),
     },
   ];

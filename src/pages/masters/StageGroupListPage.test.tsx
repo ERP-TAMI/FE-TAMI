@@ -1,7 +1,16 @@
-import { BrowserRouter } from "react-router-dom";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { createMemoryRouter, RouterProvider } from "react-router-dom";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import StageGroupListPage from "./StageGroupListPage";
+
+const NativeRequest = globalThis.Request;
+
+class RouterTestRequest extends NativeRequest {
+  constructor(input: RequestInfo | URL, init?: RequestInit) {
+    const { signal: _signal, ...compatibleInit } = init ?? {};
+    super(input, compatibleInit);
+  }
+}
 
 const mocks = vi.hoisted(() => ({
   useStageGroups: vi.fn(),
@@ -10,6 +19,7 @@ const mocks = vi.hoisted(() => ({
   create: { isPending: false, error: null, mutateAsync: vi.fn(), reset: vi.fn() },
   update: { isPending: false, error: null, mutateAsync: vi.fn(), reset: vi.fn() },
   updateStatus: { isPending: false, variables: undefined, mutateAsync: vi.fn() },
+  remove: { isPending: false, mutateAsync: vi.fn() },
 }));
 
 vi.mock("@/hooks/useStageGroups", () => ({
@@ -18,6 +28,7 @@ vi.mock("@/hooks/useStageGroups", () => ({
   useCreateStageGroup: () => mocks.create,
   useUpdateStageGroup: () => mocks.update,
   useUpdateStageGroupStatus: () => mocks.updateStatus,
+  useDeleteStageGroup: () => mocks.remove,
 }));
 vi.mock("@/hooks/useStages", () => ({ useStages: mocks.useStages }));
 
@@ -53,12 +64,16 @@ const detail = {
   ],
 };
 
-function renderPage() {
-  return render(
-    <BrowserRouter>
-      <StageGroupListPage />
-    </BrowserRouter>,
+function renderPage(initialEntries = ["/masters/stage-groups"]) {
+  vi.stubGlobal("Request", RouterTestRequest);
+  const router = createMemoryRouter(
+    [
+      { path: "/masters/stage-groups", element: <StageGroupListPage /> },
+      { path: "/dashboard", element: <h1>Dashboard target</h1> },
+    ],
+    { initialEntries, initialIndex: initialEntries.length - 1 },
   );
+  return { router, ...render(<RouterProvider router={router} />) };
 }
 
 describe("StageGroupListPage", () => {
@@ -80,7 +95,10 @@ describe("StageGroupListPage", () => {
     mocks.useStages.mockReturnValue({ data: [stage], error: null });
   });
 
-  afterEach(cleanup);
+  afterEach(() => {
+    cleanup();
+    vi.unstubAllGlobals();
+  });
 
   it("creates a group with an ordered child stage", async () => {
     mocks.create.mutateAsync.mockResolvedValue(detail);
@@ -145,5 +163,41 @@ describe("StageGroupListPage", () => {
         status: "inactive",
       });
     });
+  });
+
+  it("deletes a stage group only after confirmation", async () => {
+    mocks.remove.mutateAsync.mockResolvedValue(undefined);
+    renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "Xóa" }));
+    expect(mocks.remove.mutateAsync).not.toHaveBeenCalled();
+
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Xóa" }));
+
+    await waitFor(() => {
+      expect(mocks.remove.mutateAsync).toHaveBeenCalledWith(summary.id);
+    });
+  });
+
+  it("blocks browser back and SPA navigation while the form is dirty", async () => {
+    const { router } = renderPage(["/dashboard", "/masters/stage-groups"]);
+
+    fireEvent.click(screen.getByRole("button", { name: "Tạo nhóm công đoạn" }));
+    fireEvent.change(screen.getByLabelText("Tên nhóm công đoạn"), {
+      target: { value: "Nhóm đang nhập" },
+    });
+
+    await act(() => router.navigate(-1));
+
+    expect(router.state.location.pathname).toBe("/masters/stage-groups");
+    expect(screen.getByRole("heading", { name: "Hủy các thay đổi?" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Tiếp tục chỉnh sửa" }));
+    expect(screen.getByDisplayValue("Nhóm đang nhập")).toBeTruthy();
+
+    await act(() => router.navigate("/dashboard"));
+    expect(screen.getByRole("heading", { name: "Hủy các thay đổi?" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Bỏ thay đổi" }));
+
+    expect(await screen.findByRole("heading", { name: "Dashboard target" })).toBeTruthy();
   });
 });

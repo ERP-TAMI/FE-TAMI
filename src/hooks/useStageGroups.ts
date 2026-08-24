@@ -49,3 +49,8 @@ export function useUpdateStageGroupStatus() {
     onSuccess: invalidate,
   });
 }
+
+export function useDeleteStageGroup() {
+  const invalidate = useInvalidateStageGroups();
+  return useMutation({ mutationFn: stageGroupApi.remove, onSuccess: invalidate });
+}

@@ -32,4 +32,7 @@ export const stageGroupApi = {
     const response = await apiClient.patch<StageGroup>(`${resource}/${id}/status`, { status });
     return stageGroupResponseSchema.parse(response.data);
   },
+  async remove(id: string): Promise<void> {
+    await apiClient.delete(`${resource}/${id}`);
+  },
 };

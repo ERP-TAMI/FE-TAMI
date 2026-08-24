@@ -1,12 +1,22 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useBlocker, type BlockerFunction } from "react-router-dom";
 import { StageGroupForm } from "@/components/features/stage-groups/StageGroupForm";
 import { StageGroupTable } from "@/components/features/stage-groups/StageGroupTable";
 import { StageGroupToolbar } from "@/components/features/stage-groups/StageGroupToolbar";
-import { Alert, Button, Modal, PageHeader, Pagination, Toast } from "@/components/shared";
+import {
+  Alert,
+  Button,
+  ConfirmDialog,
+  Modal,
+  PageHeader,
+  Pagination,
+  Toast,
+} from "@/components/shared";
 import PageMeta from "@/components/shared/PageMeta";
 import { useStages } from "@/hooks/useStages";
 import {
   useCreateStageGroup,
+  useDeleteStageGroup,
   useStageGroup,
   useStageGroups,
   useUpdateStageGroup,
@@ -25,6 +35,8 @@ const emptyStages: Stage[] = [];
 export default function StageGroupListPage() {
   const [editing, setEditing] = useState<"create" | string>();
   const [isFormDirty, setIsFormDirty] = useState(false);
+  const [discardCloseRequested, setDiscardCloseRequested] = useState(false);
+  const [deleting, setDeleting] = useState<StageGroupSummary>();
   const { toast, showToast, hideToast } = useToast();
   const list = useStageGroups();
   const activeStages = useStages({ status: "active" });
@@ -32,8 +44,15 @@ export default function StageGroupListPage() {
   const create = useCreateStageGroup();
   const update = useUpdateStageGroup();
   const updateStatus = useUpdateStageGroupStatus();
+  const remove = useDeleteStageGroup();
   const groups = list.data ?? emptyGroups;
   const listView = useStageGroupListView(groups);
+  const shouldBlockNavigation = useCallback<BlockerFunction>(
+    ({ currentLocation, nextLocation }) =>
+      isFormDirty && currentLocation.pathname !== nextLocation.pathname,
+    [isFormDirty],
+  );
+  const blocker = useBlocker(shouldBlockNavigation);
 
   useEffect(() => {
     const warnBeforeUnload = (event: BeforeUnloadEvent) => {
@@ -50,6 +69,26 @@ export default function StageGroupListPage() {
     setIsFormDirty(false);
     create.reset();
     update.reset();
+  };
+  const requestCloseForm = () => {
+    if (isFormDirty) {
+      setDiscardCloseRequested(true);
+      return;
+    }
+    closeForm();
+  };
+  const cancelDiscard = () => {
+    setDiscardCloseRequested(false);
+    if (blocker.state === "blocked") blocker.reset();
+  };
+  const confirmDiscard = () => {
+    setDiscardCloseRequested(false);
+    setIsFormDirty(false);
+    if (blocker.state === "blocked") {
+      blocker.proceed();
+      return;
+    }
+    closeForm();
   };
   const saveForm = async (input: StageGroupInput) => {
     try {
@@ -72,6 +111,16 @@ export default function StageGroupListPage() {
       showToast(status === "active" ? "Đã bật nhóm công đoạn." : "Đã tắt nhóm công đoạn.");
     } catch (error) {
       showToast(getApiError(error, "Không thể đổi trạng thái nhóm công đoạn.").message, "error");
+    }
+  };
+  const deleteGroup = async () => {
+    if (!deleting) return;
+    try {
+      await remove.mutateAsync(deleting.id);
+      showToast("Đã xóa nhóm công đoạn.");
+      setDeleting(undefined);
+    } catch (error) {
+      showToast(getApiError(error, "Không thể xóa nhóm công đoạn.").message, "error");
     }
   };
   const startEdit = (group: StageGroupSummary) => {
@@ -118,6 +167,7 @@ export default function StageGroupListPage() {
                 groups={emptyGroups}
                 loading
                 onEdit={() => {}}
+                onDelete={() => {}}
                 onToggleStatus={() => {}}
               />
             </div>
@@ -141,6 +191,7 @@ export default function StageGroupListPage() {
                 groups={listView.paginatedGroups}
                 togglingId={updateStatus.isPending ? updateStatus.variables?.id : undefined}
                 onEdit={startEdit}
+                onDelete={setDeleting}
                 onToggleStatus={(group) => void toggleStatus(group)}
               />
               <Pagination
@@ -169,20 +220,20 @@ export default function StageGroupListPage() {
               ? getApiError(activeStages.error, "Không thể tải danh sách công đoạn.").message
               : undefined
           }
-          onClose={closeForm}
+          onClose={requestCloseForm}
           onSubmit={(input) => void saveForm(input)}
           onDirtyChange={setIsFormDirty}
         />
       )}
       {editing && editing !== "create" && detail.isLoading && (
-        <Modal open title="Chỉnh sửa nhóm công đoạn" onClose={closeForm}>
+        <Modal open title="Chỉnh sửa nhóm công đoạn" onClose={requestCloseForm}>
           <div className="py-8 text-center text-sm text-gray-500" aria-busy="true">
             Đang tải thông tin nhóm công đoạn...
           </div>
         </Modal>
       )}
       {editing && editing !== "create" && detail.isError && (
-        <Modal open title="Không thể tải nhóm công đoạn" onClose={closeForm}>
+        <Modal open title="Không thể tải nhóm công đoạn" onClose={requestCloseForm}>
           <Alert variant="error" title="Không thể tải dữ liệu chỉnh sửa">
             {getApiError(detail.error, "Không thể tải thông tin nhóm công đoạn.").message}
           </Alert>
@@ -204,7 +255,7 @@ export default function StageGroupListPage() {
               ? getApiError(activeStages.error, "Không thể tải danh sách công đoạn.").message
               : undefined
           }
-          onClose={closeForm}
+          onClose={requestCloseForm}
           onSubmit={(input) => void saveForm(input)}
           onDirtyChange={setIsFormDirty}
         />
@@ -215,6 +266,33 @@ export default function StageGroupListPage() {
         variant={toast?.variant}
         onClose={hideToast}
       />
+      <ConfirmDialog
+        open={discardCloseRequested || blocker.state === "blocked"}
+        title="Hủy các thay đổi?"
+        description="Các thông tin nhóm công đoạn chưa lưu sẽ bị mất. Bạn có chắc muốn tiếp tục?"
+        confirmLabel="Bỏ thay đổi"
+        cancelLabel="Tiếp tục chỉnh sửa"
+        variant="danger"
+        onClose={cancelDiscard}
+        onConfirm={confirmDiscard}
+      />
+      {deleting && (
+        <ConfirmDialog
+          open
+          title="Xóa nhóm công đoạn"
+          description={
+            <>
+              Bạn có chắc muốn xóa "{deleting.groupName}"? Chỉ có thể xóa khi chưa có dữ liệu nghiệp
+              vụ nào tham chiếu.
+            </>
+          }
+          confirmLabel="Xóa"
+          variant="danger"
+          isSubmitting={remove.isPending}
+          onClose={() => setDeleting(undefined)}
+          onConfirm={() => void deleteGroup()}
+        />
+      )}
     </>
   );
 }

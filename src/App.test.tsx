@@ -1,12 +1,22 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { createMemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import App from "@/App";
+import App, { AppRoutes } from "@/App";
 import { ThemeProvider } from "@/context/ThemeContext";
 import { materialGroupApi } from "@/api/material-group.api";
 import { stageApi } from "@/api/stage.api";
 import { stageGroupApi } from "@/api/stage-group.api";
 import { useAuthStore } from "@/store/authStore";
+
+const NativeRequest = globalThis.Request;
+
+class RouterTestRequest extends NativeRequest {
+  constructor(input: RequestInfo | URL, init?: RequestInit) {
+    const { signal: _signal, ...compatibleInit } = init ?? {};
+    super(input, compatibleInit);
+  }
+}
 
 vi.mock("@/api/material-group.api", () => ({
   materialGroupApi: {
@@ -52,6 +62,7 @@ vi.mock("@/hooks/useAuthBootstrap", async () => {
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
 beforeEach(() => {
@@ -79,14 +90,21 @@ function signIn() {
 }
 
 function renderApp() {
+  vi.stubGlobal("Request", RouterTestRequest);
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider>
-        <App />
-      </ThemeProvider>
-    </QueryClientProvider>,
-  );
+  const router = createMemoryRouter([{ path: "*", element: <AppRoutes /> }], {
+    initialEntries: [window.location.pathname],
+  });
+  return {
+    router,
+    ...render(
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider>
+          <App router={router} />
+        </ThemeProvider>
+      </QueryClientProvider>,
+    ),
+  };
 }
 
 describe("application routes", () => {
@@ -155,6 +173,28 @@ describe("application routes", () => {
     renderApp();
 
     expect(screen.getByRole("heading", { name: "Nhóm công đoạn" })).toBeTruthy();
+  });
+
+  it("blocks sidebar navigation while the stage group form is dirty", async () => {
+    signIn();
+    window.history.pushState({}, "", "/masters/stage-groups");
+    const { router } = renderApp();
+
+    fireEvent.click(screen.getByRole("button", { name: "Tạo nhóm công đoạn" }));
+    fireEvent.change(screen.getByLabelText("Tên nhóm công đoạn"), {
+      target: { value: "Nhóm đang nhập" },
+    });
+    const navigation = screen.getByRole("navigation", { name: "ERP modules" });
+    fireEvent.click(within(navigation).getByRole("link", { name: "Dashboard" }));
+
+    expect(router.state.location.pathname).toBe("/masters/stage-groups");
+    expect(await screen.findByRole("heading", { name: "Hủy các thay đổi?" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Tiếp tục chỉnh sửa" }));
+    expect(screen.getByDisplayValue("Nhóm đang nhập")).toBeTruthy();
+
+    fireEvent.click(within(navigation).getByRole("link", { name: "Dashboard" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Bỏ thay đổi" }));
+    expect(await screen.findByRole("heading", { name: "Dashboard" })).toBeTruthy();
   });
 
   it("redirects the admin entry route to users", () => {

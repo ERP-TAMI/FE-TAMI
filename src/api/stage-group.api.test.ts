@@ -7,6 +7,7 @@ vi.mock("@/lib/apiClient", () => ({
     get: vi.fn(),
     post: vi.fn(),
     patch: vi.fn(),
+    delete: vi.fn(),
   },
 }));
 
@@ -56,6 +57,13 @@ describe("stageGroupApi", () => {
 
     await expect(stageGroupApi.update(group.id, input)).resolves.toEqual(detail);
     expect(apiClient.patch).toHaveBeenCalledWith(`/masters/stage-groups/${group.id}`, input);
+  });
+
+  it("deletes a stage group through the dedicated endpoint", async () => {
+    vi.mocked(apiClient.delete).mockResolvedValue({ data: undefined });
+
+    await expect(stageGroupApi.remove(group.id)).resolves.toBeUndefined();
+    expect(apiClient.delete).toHaveBeenCalledWith(`/masters/stage-groups/${group.id}`);
   });
 
   it("rejects malformed child-stage snapshots at the API boundary", async () => {
