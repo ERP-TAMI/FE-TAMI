@@ -37,7 +37,7 @@ describe("StageGroupForm", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Lưu nhóm công đoạn" }));
+    fireEvent.click(screen.getByRole("button", { name: "Tạo Nhóm Công Đoạn" }));
 
     expect(onSubmit).not.toHaveBeenCalled();
     expect(await screen.findByText("Tên nhóm là bắt buộc")).toBeTruthy();
@@ -64,7 +64,7 @@ describe("StageGroupForm", () => {
       target: { value: stages[0].id },
     });
     fireEvent.click(screen.getByRole("button", { name: "Thêm công đoạn" }));
-    fireEvent.click(screen.getByRole("button", { name: "Lưu nhóm công đoạn" }));
+    fireEvent.click(screen.getByRole("button", { name: "Tạo Nhóm Công Đoạn" }));
 
     await waitFor(() => {
       expect(onSubmit).toHaveBeenCalledWith({
@@ -102,7 +102,7 @@ describe("StageGroupForm", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "Thêm công đoạn" }));
     fireEvent.click(screen.getByRole("button", { name: "Đưa May thân lên" }));
-    fireEvent.click(screen.getByRole("button", { name: "Lưu nhóm công đoạn" }));
+    fireEvent.click(screen.getByRole("button", { name: "Tạo Nhóm Công Đoạn" }));
 
     await waitFor(() => {
       expect(onSubmit).toHaveBeenCalledWith({
@@ -143,7 +143,7 @@ describe("StageGroupForm", () => {
     fireEvent.change(screen.getByLabelText("Thay công đoạn ở vị trí 1"), {
       target: { value: stages[1].id },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Lưu nhóm công đoạn" }));
+    fireEvent.click(screen.getByRole("button", { name: "Tạo Nhóm Công Đoạn" }));
 
     await waitFor(() => {
       expect(onSubmit).toHaveBeenCalledWith(

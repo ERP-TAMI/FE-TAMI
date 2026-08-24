@@ -129,7 +129,7 @@ export function StageGroupForm({
               Hủy
             </Button>
             <Button form="stage-group-form" type="submit" loading={isSubmitting}>
-              Lưu nhóm công đoạn
+              {mode === "create" ? "Tạo Nhóm Công Đoạn" : "Lưu nhóm công đoạn"}
             </Button>
           </>
         }

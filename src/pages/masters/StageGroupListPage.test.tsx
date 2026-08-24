@@ -97,7 +97,7 @@ describe("StageGroupListPage", () => {
       target: { value: stage.id },
     });
     fireEvent.click(screen.getByRole("button", { name: "Thêm công đoạn" }));
-    fireEvent.click(screen.getByRole("button", { name: "Lưu nhóm công đoạn" }));
+    fireEvent.click(screen.getByRole("button", { name: "Tạo Nhóm Công Đoạn" }));
 
     await waitFor(() => {
       expect(mocks.create.mutateAsync).toHaveBeenCalledWith({
@@ -106,6 +106,7 @@ describe("StageGroupListPage", () => {
         description: null,
         items: [{ stageId: stage.id, orderIndex: 0 }],
       });
+      expect(screen.queryByRole("dialog")).toBeNull();
     });
   });
 
