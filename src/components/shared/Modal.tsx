@@ -6,6 +6,7 @@ export type ModalProps = {
   children: ReactNode;
   footer?: ReactNode;
   closeLabel?: string;
+  size?: "md" | "xl";
   onClose: () => void;
 };
 
@@ -15,6 +16,7 @@ export function Modal({
   children,
   footer,
   closeLabel = "Đóng hộp thoại",
+  size = "md",
   onClose,
 }: ModalProps) {
   useEffect(() => {
@@ -45,7 +47,9 @@ export function Modal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="modal-title"
-        className="shadow-theme-lg relative z-10 w-full max-w-lg rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900"
+        className={`shadow-theme-lg relative z-10 max-h-[calc(100vh-3rem)] w-full overflow-y-auto rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900 ${
+          size === "xl" ? "max-w-5xl" : "max-w-lg"
+        }`}
       >
         <div className="flex items-start justify-between gap-4">
           <h2

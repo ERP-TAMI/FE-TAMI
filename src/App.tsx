@@ -10,6 +10,7 @@ import PoPage from "@/pages/po/PoPage";
 import MaterialsPage from "@/pages/masters/MaterialsPage";
 import MaterialGroupListPage from "@/pages/masters/MaterialGroupListPage";
 import StageListPage from "@/pages/masters/StageListPage";
+import StageGroupListPage from "@/pages/masters/StageGroupListPage";
 import UnitListPage from "@/pages/masters/UnitListPage";
 import UsersPage from "@/pages/admin/UsersPage";
 import StyleListPage from "@/pages/styles/StyleListPage";
@@ -28,7 +29,9 @@ export default function App() {
       <Routes>
         <Route
           path="/login"
-          element={status === "authenticated" ? <Navigate to="/dashboard" replace /> : <LoginPage />}
+          element={
+            status === "authenticated" ? <Navigate to="/dashboard" replace /> : <LoginPage />
+          }
         />
         <Route element={AUTH_GUARD_ENABLED ? <ProtectedRoute /> : <Outlet />}>
           <Route element={<AppLayout />}>
@@ -42,6 +45,7 @@ export default function App() {
             <Route path="masters/materials" element={<MaterialsPage />} />
             <Route path="masters/material-groups" element={<MaterialGroupListPage />} />
             <Route path="masters/stages" element={<StageListPage />} />
+            <Route path="masters/stage-groups" element={<StageGroupListPage />} />
             <Route path="masters/units" element={<UnitListPage />} />
             <Route path="admin" element={<Navigate to="/admin/users" replace />} />
             <Route path="admin/users" element={<UsersPage />} />

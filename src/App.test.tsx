@@ -5,6 +5,7 @@ import App from "@/App";
 import { ThemeProvider } from "@/context/ThemeContext";
 import { materialGroupApi } from "@/api/material-group.api";
 import { stageApi } from "@/api/stage.api";
+import { stageGroupApi } from "@/api/stage-group.api";
 import { useAuthStore } from "@/store/authStore";
 
 vi.mock("@/api/material-group.api", () => ({
@@ -28,6 +29,16 @@ vi.mock("@/api/stage.api", () => ({
   },
 }));
 
+vi.mock("@/api/stage-group.api", () => ({
+  stageGroupApi: {
+    list: vi.fn().mockResolvedValue([]),
+    detail: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    updateStatus: vi.fn(),
+  },
+}));
+
 // Route-wiring tests don't exercise the real bootstrap/refresh flow (that's
 // covered by apiClient.test.ts) — they just need `status` to reflect
 // whatever the test puts in the auth store, synchronously.
@@ -48,6 +59,7 @@ beforeEach(() => {
   vi.spyOn(window, "scrollTo").mockImplementation(() => undefined);
   vi.mocked(materialGroupApi.list).mockResolvedValue([]);
   vi.mocked(stageApi.list).mockResolvedValue([]);
+  vi.mocked(stageGroupApi.list).mockResolvedValue([]);
   useAuthStore.setState({ status: "unauthenticated", user: null, accessToken: null });
 });
 
@@ -135,6 +147,14 @@ describe("application routes", () => {
     renderApp();
 
     expect(screen.getByRole("heading", { name: "Giai đoạn công đoạn" })).toBeTruthy();
+  });
+
+  it("renders the stage groups management route", () => {
+    signIn();
+    window.history.pushState({}, "", "/masters/stage-groups");
+    renderApp();
+
+    expect(screen.getByRole("heading", { name: "Nhóm công đoạn" })).toBeTruthy();
   });
 
   it("redirects the admin entry route to users", () => {
