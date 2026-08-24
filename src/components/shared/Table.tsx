@@ -18,7 +18,6 @@ export type TableProps<T> = {
   embedded?: boolean;
   loading?: boolean;
   loadingRowCount?: number;
-  tableClassName?: string;
 };
 
 function alignClass(align?: "left" | "center" | "right") {
@@ -36,7 +35,6 @@ export function Table<T>({
   embedded = false,
   loading = false,
   loadingRowCount = 5,
-  tableClassName = "",
 }: TableProps<T>) {
   return (
     <div

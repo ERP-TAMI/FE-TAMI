@@ -7,6 +7,7 @@ vi.mock("@/lib/apiClient", () => ({
     get: vi.fn(),
     post: vi.fn(),
     patch: vi.fn(),
+    delete: vi.fn(),
   },
 }));
 
@@ -37,6 +38,13 @@ describe("stageApi", () => {
 
     await expect(stageApi.updateSsvBulk(input)).resolves.toEqual([{ ...stage, ssv: "13.000" }]);
     expect(apiClient.patch).toHaveBeenCalledWith("/masters/stages/bulk-ssv", input);
+  });
+
+  it("deletes a stage through the stage endpoint", async () => {
+    vi.mocked(apiClient.delete).mockResolvedValue({ data: undefined });
+
+    await expect(stageApi.remove(stage.id)).resolves.toBeUndefined();
+    expect(apiClient.delete).toHaveBeenCalledWith(`/masters/stages/${stage.id}`);
   });
 
   it("rejects an invalid response at the API boundary", async () => {

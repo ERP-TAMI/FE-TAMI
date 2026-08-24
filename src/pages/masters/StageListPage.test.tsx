@@ -9,6 +9,7 @@ const hooks = vi.hoisted(() => ({
   update: { isPending: false, error: null, mutateAsync: vi.fn() },
   updateStatus: { isPending: false, variables: undefined, mutateAsync: vi.fn() },
   updateSsvBulk: { isPending: false, error: null, mutateAsync: vi.fn() },
+  remove: { isPending: false, error: null, mutateAsync: vi.fn() },
 }));
 
 vi.mock("@/hooks/useStages", () => ({
@@ -17,6 +18,7 @@ vi.mock("@/hooks/useStages", () => ({
   useUpdateStage: () => hooks.update,
   useUpdateStageStatus: () => hooks.updateStatus,
   useUpdateStageSsvBulk: () => hooks.updateSsvBulk,
+  useDeleteStage: () => hooks.remove,
 }));
 
 const stages = [
@@ -154,6 +156,24 @@ describe("StageListPage", () => {
         id: stages[0].id,
         status: "inactive",
       });
+    });
+  });
+
+  it("shows visible edit and delete actions and deletes only after confirmation", async () => {
+    hooks.remove.mutateAsync.mockResolvedValue(undefined);
+    renderPage();
+
+    const table = within(screen.getByRole("table"));
+    expect(table.getAllByRole("button", { name: "Sửa" })).toHaveLength(2);
+    fireEvent.click(table.getAllByRole("button", { name: "Xóa" })[0]);
+
+    expect(hooks.remove.mutateAsync).not.toHaveBeenCalled();
+    const dialog = within(screen.getByRole("dialog"));
+    expect(dialog.getByText(/Cắt vải/)).toBeTruthy();
+    fireEvent.click(dialog.getByRole("button", { name: "Xóa" }));
+
+    await waitFor(() => {
+      expect(hooks.remove.mutateAsync).toHaveBeenCalledWith(stages[0].id);
     });
   });
 

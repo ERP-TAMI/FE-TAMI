@@ -1,5 +1,5 @@
 import { Table, type TableColumn } from "@/components/shared/Table";
-import { PencilIcon } from "@/icons";
+import { PencilIcon, TrashBinIcon } from "@/icons";
 import type { Stage } from "@/types/stage";
 
 type StageTableProps = {
@@ -10,6 +10,7 @@ type StageTableProps = {
   togglingId?: string;
   loading?: boolean;
   onEdit: (stage: Stage) => void;
+  onDelete: (stage: Stage) => void;
   onToggleStatus: (stage: Stage) => void;
   onBulkValueChange?: (id: string, value: string) => void;
 };
@@ -22,6 +23,7 @@ export function StageTable({
   togglingId,
   loading = false,
   onEdit,
+  onDelete,
   onToggleStatus,
   onBulkValueChange,
 }: StageTableProps) {
@@ -29,7 +31,7 @@ export function StageTable({
     {
       key: "code",
       header: "Mã công đoạn",
-      width: "w-[22%]",
+      width: "w-[15%]",
       render: (stage) => (
         <span
           title={stage.stageCode}
@@ -42,7 +44,7 @@ export function StageTable({
     {
       key: "name",
       header: "Tên công đoạn",
-      width: "w-[20%]",
+      width: "w-[18%]",
       render: (stage) => (
         <span title={stage.stageName} className="block truncate font-medium">
           {stage.stageName}
@@ -52,7 +54,7 @@ export function StageTable({
     {
       key: "description",
       header: "Mô tả",
-      width: "w-[25%]",
+      width: "w-[13%]",
       render: (stage) => (
         <span title={stage.description ?? undefined} className="block truncate text-gray-500">
           {stage.description || "—"}
@@ -62,7 +64,7 @@ export function StageTable({
     {
       key: "ssv",
       header: "SSV (giây)",
-      width: "w-[13%]",
+      width: "w-[10%]",
       align: "right",
       render: (stage) =>
         bulkMode ? (
@@ -127,19 +129,31 @@ export function StageTable({
     {
       key: "actions",
       header: "Thao tác",
-      width: "w-[6%]",
+      width: "w-[30%]",
       align: "center",
       render: (stage) => (
-        <button
-          type="button"
-          onClick={() => onEdit(stage)}
-          disabled={bulkMode}
-          title="Chỉnh sửa công đoạn"
-          className="inline-flex items-center gap-1 rounded-lg border border-gray-300 bg-white px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
-        >
-          <PencilIcon className="h-3.5 w-3.5" />
-          <span className="sr-only">Sửa</span>
-        </button>
+        <div className="flex items-center justify-center gap-1">
+          <button
+            type="button"
+            onClick={() => onEdit(stage)}
+            disabled={bulkMode}
+            title="Chỉnh sửa công đoạn"
+            className="inline-flex items-center gap-1 rounded-lg border border-gray-300 bg-white px-2 py-1 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+          >
+            <PencilIcon className="h-3.5 w-3.5 shrink-0" />
+            <span>Sửa</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => onDelete(stage)}
+            disabled={bulkMode}
+            title="Xóa công đoạn"
+            className="inline-flex items-center gap-1 rounded-lg border border-red-200 bg-red-50/60 px-2 py-1 text-xs font-medium text-red-600 transition-colors hover:bg-red-100 disabled:opacity-50 dark:border-red-900/40 dark:bg-red-950/40 dark:text-red-300 dark:hover:bg-red-900/60"
+          >
+            <TrashBinIcon className="h-3.5 w-3.5 shrink-0" />
+            <span>Xóa</span>
+          </button>
+        </div>
       ),
     },
   ];

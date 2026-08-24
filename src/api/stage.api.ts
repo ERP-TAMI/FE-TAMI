@@ -36,4 +36,7 @@ export const stageApi = {
     const response = await apiClient.patch<Stage[]>(`${resource}/bulk-ssv`, input);
     return stageListSchema.parse(response.data);
   },
+  async remove(id: string): Promise<void> {
+    await apiClient.delete(`${resource}/${id}`);
+  },
 };

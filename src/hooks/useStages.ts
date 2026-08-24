@@ -48,6 +48,11 @@ export function useUpdateStageStatus() {
   });
 }
 
+export function useDeleteStage() {
+  const invalidate = useInvalidateStages();
+  return useMutation({ mutationFn: stageApi.remove, onSuccess: invalidate });
+}
+
 export function useUpdateStageSsvBulk() {
   const invalidate = useInvalidateStages();
   return useMutation({
