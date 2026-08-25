@@ -104,6 +104,9 @@ export default function StyleDetailPage() {
 
   const handlePaste = useCallback(
     (e: ClipboardEvent) => {
+      // Chỉ áp dụng cho ảnh chính của Style ở tab "Thông tin chung" — tránh ghi đè nhầm
+      // baseImageVersionId khi người dùng đang paste ảnh vào tab Tài liệu sản xuất.
+      if (activeTab !== "general") return;
       const items = e.clipboardData?.items;
       if (!items) return;
       for (let i = 0; i < items.length; i++) {
@@ -113,7 +116,7 @@ export default function StyleDetailPage() {
         }
       }
     },
-    [handleUploadAndSaveImage],
+    [activeTab, handleUploadAndSaveImage],
   );
 
   useEffect(() => {
