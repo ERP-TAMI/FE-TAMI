@@ -3,6 +3,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { Alert, Button, ConfirmDialog, Input, Modal } from "@/components/shared";
+import { LockIcon, UnlockIcon } from "@/icons";
 import type { ApiError } from "@/lib/apiError";
 import { STAGE_SSV_PATTERN, type Stage, type StageInput } from "@/types/stage";
 
@@ -18,6 +19,13 @@ const schema = z.object({
     .string()
     .trim()
     .regex(STAGE_SSV_PATTERN, "SSV phải là số không âm, tối đa 3 chữ số thập phân"),
+});
+const editSchema = schema.extend({
+  stageCode: z
+    .string()
+    .trim()
+    .min(1, "Mã công đoạn là bắt buộc")
+    .max(50, "Mã công đoạn không được vượt quá 50 ký tự"),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -41,8 +49,9 @@ export function StageForm({
   onDirtyChange,
 }: StageFormProps) {
   const [discardDialogOpen, setDiscardDialogOpen] = useState(false);
-  const { register, handleSubmit, formState } = useForm<FormValues>({
-    resolver: zodResolver(schema),
+  const [isCodeLocked, setIsCodeLocked] = useState(mode === "edit");
+  const { register, handleSubmit, formState, setFocus } = useForm<FormValues>({
+    resolver: zodResolver(mode === "edit" ? editSchema : schema),
     defaultValues: stage
       ? {
           stageCode: stage.stageCode,
@@ -54,6 +63,9 @@ export function StageForm({
   });
 
   useEffect(() => onDirtyChange?.(formState.isDirty), [formState.isDirty, onDirtyChange]);
+  useEffect(() => {
+    if (mode === "edit" && !isCodeLocked) setFocus("stageCode");
+  }, [isCodeLocked, mode, setFocus]);
 
   const requestClose = () => {
     if (formState.isDirty) {
@@ -99,11 +111,42 @@ export function StageForm({
           <div className="grid gap-4 sm:grid-cols-2">
             <Input
               label="Mã công đoạn"
+              labelAction={
+                mode === "edit" ? (
+                  <button
+                    type="button"
+                    aria-label={isCodeLocked ? "Mở khóa mã công đoạn" : "Khóa mã công đoạn"}
+                    aria-pressed={!isCodeLocked}
+                    title={isCodeLocked ? "Mở khóa để sửa mã" : "Khóa mã công đoạn"}
+                    onClick={() => setIsCodeLocked((current) => !current)}
+                    className={`inline-flex h-6 w-6 items-center justify-center rounded-md transition-colors focus:ring-3 focus:outline-none ${
+                      isCodeLocked
+                        ? "text-gray-400 hover:bg-gray-100 hover:text-gray-600 focus:ring-gray-400/20 dark:text-gray-500 dark:hover:bg-gray-800 dark:hover:text-gray-300"
+                        : "bg-brand-50 text-brand-500 hover:bg-brand-100 focus:ring-brand-500/20 dark:bg-brand-500/15 dark:text-brand-400"
+                    }`}
+                  >
+                    {isCodeLocked ? (
+                      <LockIcon className="h-3.5 w-3.5" aria-hidden="true" />
+                    ) : (
+                      <UnlockIcon className="h-3.5 w-3.5" aria-hidden="true" />
+                    )}
+                  </button>
+                ) : undefined
+              }
               placeholder="Ví dụ: GD-CAT"
               hint={
-                mode === "create" ? "Để trống để hệ thống tự tạo mã từ tên công đoạn." : undefined
+                mode === "create"
+                  ? "Để trống để hệ thống tự tạo mã từ tên công đoạn."
+                  : isCodeLocked
+                    ? "Nhấn biểu tượng khóa để chỉnh sửa mã công đoạn."
+                    : "Mã công đoạn đang mở khóa và có thể chỉnh sửa."
               }
-              disabled={mode === "edit"}
+              disabled={mode === "edit" && isCodeLocked}
+              className={
+                mode === "edit" && isCodeLocked
+                  ? "disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500 disabled:opacity-100 dark:disabled:bg-gray-800/80 dark:disabled:text-gray-400"
+                  : undefined
+              }
               error={formState.errors.stageCode?.message}
               {...register("stageCode")}
             />
