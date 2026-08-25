@@ -1,0 +1,229 @@
+import { useState, useEffect } from "react";
+import { Modal } from "@/components/shared/Modal";
+import { Button } from "@/components/shared/Button";
+import { CheckLineIcon } from "@/icons";
+
+import type { StageGroup, StageGroupSubItem } from "@/api/stageGroup.api";
+
+export interface StageGroupPickerDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  group: StageGroup | null;
+  onConfirm: (selectedItems: StageGroupSubItem[]) => void;
+  existingStageNames?: string[];
+}
+
+export function StageGroupPickerDialog({
+  open,
+  onOpenChange,
+  group,
+  onConfirm,
+  existingStageNames = [],
+}: StageGroupPickerDialogProps) {
+  const [selectedItems, setSelectedItems] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    if (!group) {
+      setSelectedItems({});
+      return;
+    }
+
+    const preSelected: Record<string, boolean> = {};
+    const items = group.items || [];
+    const normalizedExisting = existingStageNames.map((n) =>
+      n.toLowerCase().trim(),
+    );
+
+    items.forEach((item) => {
+      const normalizedName = item.name?.toLowerCase().trim();
+      if (normalizedExisting.includes(normalizedName)) {
+        preSelected[item.id] = true;
+      }
+    });
+
+    setSelectedItems(preSelected);
+  }, [group, existingStageNames]);
+
+  if (!group) return null;
+
+  const items = group.items || [];
+  const normalizedExisting = existingStageNames.map((n) =>
+    n.toLowerCase().trim(),
+  );
+
+  const selectableItems = items.filter((item) => {
+    const normalizedName = item.name?.toLowerCase().trim();
+    return !normalizedExisting.includes(normalizedName);
+  });
+
+  const selectableCount = selectableItems.length;
+  const existingCount = items.length - selectableCount;
+
+  const selectableSelectedCount = selectableItems.filter(
+    (item) => selectedItems[item.id],
+  ).length;
+  const allSelectableSelected =
+    selectableCount > 0 && selectableSelectedCount === selectableCount;
+
+  function handleToggleAll() {
+    if (allSelectableSelected) {
+      const newSel: Record<string, boolean> = {};
+      items.forEach((item) => {
+        const normalizedName = item.name?.toLowerCase().trim();
+        if (normalizedExisting.includes(normalizedName)) {
+          newSel[item.id] = true;
+        }
+      });
+      setSelectedItems(newSel);
+    } else {
+      const newSel: Record<string, boolean> = {};
+      items.forEach((item) => {
+        newSel[item.id] = true;
+      });
+      setSelectedItems(newSel);
+    }
+  }
+
+  function handleToggleItem(id: string) {
+    const item = items.find((i) => i.id === id);
+    if (item) {
+      const normalizedName = item.name?.toLowerCase().trim();
+      if (normalizedExisting.includes(normalizedName)) {
+        return;
+      }
+    }
+
+    setSelectedItems((prev) => ({
+      ...prev,
+      [id]: !prev[id],
+    }));
+  }
+
+  function handleConfirm() {
+    const newSelected = items.filter((item) => {
+      const normalizedName = item.name?.toLowerCase().trim();
+      return (
+        !normalizedExisting.includes(normalizedName) && selectedItems[item.id]
+      );
+    });
+    onConfirm(newSelected);
+    onOpenChange(false);
+  }
+
+  const modalFooter = (
+    <div className="flex items-center justify-between w-full">
+      <div className="text-xs text-gray-500 dark:text-gray-400">
+        {selectableSelectedCount > 0 && (
+          <span className="text-emerald-600 dark:text-emerald-400 font-medium">
+            +{selectableSelectedCount} công đoạn mới
+          </span>
+        )}
+        {existingCount > 0 && (
+          <span className="ml-2">({existingCount} đã có trong nhóm)</span>
+        )}
+      </div>
+      <div className="flex gap-2">
+        <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
+          Hủy
+        </Button>
+        <Button
+          variant="primary"
+          size="sm"
+          onClick={handleConfirm}
+          disabled={selectableSelectedCount === 0}
+        >
+          <CheckLineIcon className="w-4 h-4" />
+          Thêm {selectableSelectedCount} công đoạn
+        </Button>
+
+      </div>
+    </div>
+  );
+
+  return (
+    <Modal
+      open={open}
+      title={`Thêm nhóm: ${group.name}`}
+      onClose={() => onOpenChange(false)}
+      footer={modalFooter}
+    >
+      <div className="space-y-3">
+        {group.description && (
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            {group.description}
+          </p>
+        )}
+
+        <div className="flex items-center space-x-2 pb-2 border-b border-gray-100 dark:border-gray-800">
+          <input
+            type="checkbox"
+            id="selectAll"
+            checked={allSelectableSelected}
+            onChange={handleToggleAll}
+            className="h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500"
+          />
+          <label
+            htmlFor="selectAll"
+            className="text-xs font-semibold text-gray-700 dark:text-gray-200 cursor-pointer"
+          >
+            Chọn tất cả ({selectableCount} công đoạn mới)
+          </label>
+        </div>
+
+        <div className="max-h-60 overflow-y-auto space-y-1.5 pr-1">
+          {items.map((item) => {
+            const normalizedName = item.name?.toLowerCase().trim();
+            const isExisting = normalizedExisting.includes(normalizedName);
+
+            return (
+              <div
+                key={item.id}
+                onClick={() => !isExisting && handleToggleItem(item.id)}
+                className={`flex items-center justify-between p-2.5 rounded-lg border transition-colors ${
+                  isExisting
+                    ? "bg-gray-50 dark:bg-gray-800/40 border-gray-100 dark:border-gray-800 cursor-default opacity-70"
+                    : "bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800 hover:border-brand-300 dark:hover:border-brand-700 cursor-pointer"
+                }`}
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <input
+                    type="checkbox"
+                    checked={!!selectedItems[item.id]}
+                    disabled={isExisting}
+                    onChange={() => handleToggleItem(item.id)}
+                    onClick={(e) => e.stopPropagation()}
+                    className="h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500"
+                  />
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold text-gray-900 dark:text-white truncate">
+                      {item.name}
+                      {isExisting && (
+                        <span className="ml-2 text-[10px] text-emerald-600 dark:text-emerald-400 font-normal">
+                          (đã thêm)
+                        </span>
+                      )}
+                    </p>
+                    {item.description && (
+                      <p className="text-[11px] text-gray-400 dark:text-gray-500 truncate">
+                        {item.description}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <span className="font-mono text-xs font-bold text-brand-600 dark:text-brand-400 shrink-0 ml-2">
+                  {item.ssv}s
+                </span>
+              </div>
+            );
+          })}
+
+          {items.length === 0 && (
+            <p className="text-xs text-gray-400 text-center py-4">
+              Nhóm này chưa có công đoạn con nào.
+            </p>
+          )}
+        </div>
+      </div>
+    </Modal>
+  );
+}
