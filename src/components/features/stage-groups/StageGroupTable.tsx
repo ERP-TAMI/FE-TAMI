@@ -1,40 +1,29 @@
 import { useState } from "react";
 import { Table, type TableColumn } from "@/components/shared/Table";
 import { ChevronDownIcon, PencilIcon, TrashBinIcon } from "@/icons";
-import type { Stage } from "@/types/stage";
 import type { StageGroupItemInput, StageGroupSummary } from "@/types/stage-group";
 import { StageGroupExpandedRow } from "./StageGroupExpandedRow";
 
 type StageGroupTableProps = {
   groups: StageGroupSummary[];
   togglingId?: string;
-  togglingStageId?: string;
   loading?: boolean;
-  stagesById?: ReadonlyMap<string, Stage>;
   isSavingItems?: boolean;
   onEdit: (group: StageGroupSummary) => void;
   onDelete: (group: StageGroupSummary) => void;
   onToggleStatus: (group: StageGroupSummary) => void;
-  onEditStage: (stage: Stage) => void;
-  onToggleStageStatus: (stage: Stage) => void;
-  onSaveItemSsv: (groupId: string, items: StageGroupItemInput[]) => Promise<boolean>;
-  onRemoveItem: (groupId: string, items: StageGroupItemInput[]) => Promise<boolean>;
+  onSaveItems: (groupId: string, items: StageGroupItemInput[]) => Promise<boolean>;
 };
 
 export function StageGroupTable({
   groups,
   togglingId,
-  togglingStageId,
   loading = false,
-  stagesById,
   isSavingItems,
   onEdit,
   onDelete,
   onToggleStatus,
-  onEditStage,
-  onToggleStageStatus,
-  onSaveItemSsv,
-  onRemoveItem,
+  onSaveItems,
 }: StageGroupTableProps) {
   const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set());
   const toggleExpanded = (groupId: string) => {
@@ -185,13 +174,8 @@ export function StageGroupTable({
         expandedIds.has(group.id) ? (
           <StageGroupExpandedRow
             group={group}
-            stagesById={stagesById}
             isSavingItems={isSavingItems}
-            togglingStageId={togglingStageId}
-            onEditStage={onEditStage}
-            onToggleStageStatus={onToggleStageStatus}
-            onSaveItemSsv={onSaveItemSsv}
-            onRemoveItem={onRemoveItem}
+            onSaveItems={onSaveItems}
           />
         ) : undefined
       }

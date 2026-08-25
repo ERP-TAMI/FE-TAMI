@@ -1,6 +1,6 @@
 export type StageGroupItemSsvCellProps = {
   fieldId: string;
-  stageName: string;
+  itemName: string;
   value: string;
   error?: string;
   isEditing: boolean;
@@ -9,7 +9,7 @@ export type StageGroupItemSsvCellProps = {
 
 export function StageGroupItemSsvCell({
   fieldId,
-  stageName,
+  itemName,
   value,
   error,
   isEditing,
@@ -25,7 +25,7 @@ export function StageGroupItemSsvCell({
       <input
         type="text"
         inputMode="decimal"
-        aria-label={`SSV cho ${stageName}`}
+        aria-label={`SSV cho ${itemName}`}
         aria-invalid={Boolean(error)}
         aria-describedby={error ? errorId : undefined}
         value={value}

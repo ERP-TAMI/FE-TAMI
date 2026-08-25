@@ -1,40 +1,28 @@
 import { Alert, Button, Table } from "@/components/shared";
 import { useStageGroup } from "@/hooks/useStageGroups";
 import { getApiError } from "@/lib/apiError";
-import type { Stage } from "@/types/stage";
 import type { StageGroupItemInput, StageGroupSummary } from "@/types/stage-group";
 import { StageGroupExpandedItemTable } from "./StageGroupExpandedItemTable";
 
 type StageGroupExpandedRowProps = {
   group: StageGroupSummary;
-  stagesById?: ReadonlyMap<string, Stage>;
   isSavingItems?: boolean;
-  togglingStageId?: string;
-  onEditStage: (stage: Stage) => void;
-  onToggleStageStatus: (stage: Stage) => void;
-  onSaveItemSsv: (groupId: string, items: StageGroupItemInput[]) => Promise<boolean>;
-  onRemoveItem: (groupId: string, items: StageGroupItemInput[]) => Promise<boolean>;
+  onSaveItems: (groupId: string, items: StageGroupItemInput[]) => Promise<boolean>;
 };
 
 const loadingColumns = [
   { key: "position", header: "STT", width: "w-[5%]" },
-  { key: "code", header: "Mã công đoạn", width: "w-[15%]" },
-  { key: "name", header: "Tên công đoạn", width: "w-[16%]" },
-  { key: "description", header: "Mô tả", width: "w-[17%]" },
-  { key: "ssv", header: "SSV (giây)", width: "w-[12%]" },
-  { key: "status", header: "Trạng thái", width: "w-[12%]" },
-  { key: "actions", header: "Thao tác", width: "w-[23%]" },
+  { key: "name", header: "Tên công đoạn con", width: "w-[21%]" },
+  { key: "description", header: "Mô tả", width: "w-[25%]" },
+  { key: "ssv", header: "SSV (giây)", width: "w-[13%]" },
+  { key: "status", header: "Trạng thái", width: "w-[17%]" },
+  { key: "actions", header: "Thao tác", width: "w-[18%]" },
 ];
 
 export function StageGroupExpandedRow({
   group,
-  stagesById,
   isSavingItems,
-  togglingStageId,
-  onEditStage,
-  onToggleStageStatus,
-  onSaveItemSsv,
-  onRemoveItem,
+  onSaveItems,
 }: StageGroupExpandedRowProps) {
   const detail = useStageGroup(group.id);
 
@@ -69,13 +57,8 @@ export function StageGroupExpandedRow({
           <StageGroupExpandedItemTable
             group={group}
             items={detail.data?.items ?? []}
-            stagesById={stagesById}
             isSavingItems={isSavingItems}
-            togglingStageId={togglingStageId}
-            onEditStage={onEditStage}
-            onToggleStageStatus={onToggleStageStatus}
-            onSaveItemSsv={onSaveItemSsv}
-            onRemoveItem={onRemoveItem}
+            onSaveItems={onSaveItems}
           />
         </div>
       )}

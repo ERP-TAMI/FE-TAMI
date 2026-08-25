@@ -1,9 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useBlocker, type BlockerFunction } from "react-router-dom";
 import { StageGroupForm } from "@/components/features/stage-groups/StageGroupForm";
 import { StageGroupTable } from "@/components/features/stage-groups/StageGroupTable";
 import { StageGroupToolbar } from "@/components/features/stage-groups/StageGroupToolbar";
-import { StageForm } from "@/components/features/stages/StageForm";
 import {
   Alert,
   Button,
@@ -14,7 +13,6 @@ import {
   Toast,
 } from "@/components/shared";
 import PageMeta from "@/components/shared/PageMeta";
-import { useStages, useUpdateStage, useUpdateStageStatus } from "@/hooks/useStages";
 import {
   useCreateStageGroup,
   useDeleteStageGroup,
@@ -27,7 +25,6 @@ import { useStageGroupListView } from "@/hooks/useStageGroupListView";
 import { useToast } from "@/hooks/useToast";
 import { PlusIcon } from "@/icons";
 import { getApiError } from "@/lib/apiError";
-import type { Stage, StageInput, StageStatus } from "@/types/stage";
 import type {
   StageGroupInput,
   StageGroupItemInput,
@@ -36,37 +33,20 @@ import type {
 } from "@/types/stage-group";
 
 const emptyGroups: StageGroupSummary[] = [];
-const emptyStages: Stage[] = [];
-const emptyStagesById = new Map<string, Stage>();
 
 export default function StageGroupListPage() {
   const [editing, setEditing] = useState<"create" | string>();
   const [isFormDirty, setIsFormDirty] = useState(false);
   const [discardCloseRequested, setDiscardCloseRequested] = useState(false);
   const [deleting, setDeleting] = useState<StageGroupSummary>();
-  const [editingStage, setEditingStage] = useState<Stage>();
   const { toast, showToast, hideToast } = useToast();
   const list = useStageGroups();
-  const stageCatalog = useStages();
   const detail = useStageGroup(editing && editing !== "create" ? editing : undefined);
   const create = useCreateStageGroup();
   const update = useUpdateStageGroup();
   const updateStatus = useUpdateStageGroupStatus();
   const remove = useDeleteStageGroup();
-  const updateStage = useUpdateStage();
-  const updateStageStatus = useUpdateStageStatus();
   const groups = list.data ?? emptyGroups;
-  const activeStages = useMemo(
-    () => stageCatalog.data?.filter((stage) => stage.status === "active") ?? emptyStages,
-    [stageCatalog.data],
-  );
-  const stagesById = useMemo(
-    () =>
-      stageCatalog.data
-        ? new Map(stageCatalog.data.map((stage) => [stage.id, stage]))
-        : emptyStagesById,
-    [stageCatalog.data],
-  );
   const listView = useStageGroupListView(groups);
   const shouldBlockNavigation = useCallback<BlockerFunction>(
     ({ currentLocation, nextLocation }) =>
@@ -134,37 +114,14 @@ export default function StageGroupListPage() {
       showToast(getApiError(error, "Không thể đổi trạng thái nhóm công đoạn.").message, "error");
     }
   };
-  const saveGroupItems = async (
-    id: string,
-    items: StageGroupItemInput[],
-    successMessage: string,
-  ): Promise<boolean> => {
+  const saveGroupItems = async (id: string, items: StageGroupItemInput[]): Promise<boolean> => {
     try {
       await update.mutateAsync({ id, input: { items } });
-      showToast(successMessage);
+      showToast("Đã cập nhật công đoạn con trong nhóm.");
       return true;
     } catch (error) {
       showToast(getApiError(error, "Không thể cập nhật công đoạn trong nhóm.").message, "error");
       return false;
-    }
-  };
-  const toggleStageStatus = async (stage: Stage) => {
-    const status: StageStatus = stage.status === "active" ? "inactive" : "active";
-    try {
-      await updateStageStatus.mutateAsync({ id: stage.id, status });
-      showToast(status === "active" ? "Đã bật công đoạn." : "Đã tắt công đoạn.");
-    } catch (error) {
-      showToast(getApiError(error, "Không thể đổi trạng thái công đoạn.").message, "error");
-    }
-  };
-  const saveStage = async (input: StageInput) => {
-    if (!editingStage) return;
-    try {
-      await updateStage.mutateAsync({ id: editingStage.id, input });
-      showToast("Đã cập nhật công đoạn Master.");
-      setEditingStage(undefined);
-    } catch {
-      // StageForm keeps its values and displays the mutation error.
     }
   };
   const deleteGroup = async () => {
@@ -220,14 +177,10 @@ export default function StageGroupListPage() {
               <StageGroupTable
                 groups={emptyGroups}
                 loading
-                stagesById={emptyStagesById}
                 onEdit={() => {}}
                 onDelete={() => {}}
                 onToggleStatus={() => {}}
-                onEditStage={() => {}}
-                onToggleStageStatus={() => {}}
-                onSaveItemSsv={async () => false}
-                onRemoveItem={async () => false}
+                onSaveItems={async () => false}
               />
             </div>
           )}
@@ -248,23 +201,12 @@ export default function StageGroupListPage() {
             <>
               <StageGroupTable
                 groups={listView.paginatedGroups}
-                stagesById={stagesById}
                 isSavingItems={update.isPending}
                 togglingId={updateStatus.isPending ? updateStatus.variables?.id : undefined}
-                togglingStageId={
-                  updateStageStatus.isPending ? updateStageStatus.variables?.id : undefined
-                }
                 onEdit={startEdit}
                 onDelete={setDeleting}
                 onToggleStatus={(group) => void toggleStatus(group)}
-                onEditStage={setEditingStage}
-                onToggleStageStatus={(stage) => void toggleStageStatus(stage)}
-                onSaveItemSsv={(id, items) =>
-                  saveGroupItems(id, items, "Đã cập nhật SSV riêng trong nhóm.")
-                }
-                onRemoveItem={(id, items) =>
-                  saveGroupItems(id, items, "Đã loại công đoạn khỏi nhóm.")
-                }
+                onSaveItems={saveGroupItems}
               />
               <Pagination
                 page={listView.page}
@@ -282,15 +224,9 @@ export default function StageGroupListPage() {
       {editing === "create" && (
         <StageGroupForm
           mode="create"
-          stages={activeStages}
           isSubmitting={create.isPending}
           serverError={
             create.error ? getApiError(create.error, "Không thể tạo nhóm công đoạn.") : undefined
-          }
-          stageOptionsError={
-            stageCatalog.error
-              ? getApiError(stageCatalog.error, "Không thể tải danh sách công đoạn.").message
-              : undefined
           }
           onClose={requestCloseForm}
           onSubmit={(input) => void saveForm(input)}
@@ -315,38 +251,15 @@ export default function StageGroupListPage() {
         <StageGroupForm
           mode="edit"
           group={detail.data}
-          stages={activeStages}
           isSubmitting={update.isPending}
           serverError={
             update.error
               ? getApiError(update.error, "Không thể cập nhật nhóm công đoạn.")
               : undefined
           }
-          stageOptionsError={
-            stageCatalog.error
-              ? getApiError(stageCatalog.error, "Không thể tải danh sách công đoạn.").message
-              : undefined
-          }
           onClose={requestCloseForm}
           onSubmit={(input) => void saveForm(input)}
           onDirtyChange={setIsFormDirty}
-        />
-      )}
-      {editingStage && (
-        <StageForm
-          mode="edit"
-          stage={editingStage}
-          isSubmitting={updateStage.isPending}
-          serverError={
-            updateStage.error
-              ? getApiError(updateStage.error, "Không thể cập nhật công đoạn Master.")
-              : undefined
-          }
-          onClose={() => {
-            setEditingStage(undefined);
-            updateStage.reset();
-          }}
-          onSubmit={(input) => void saveStage(input)}
         />
       )}
       <Toast

@@ -1,11 +1,11 @@
 export type StageGroupStatus = "active" | "inactive";
 
 export type StageGroupItem = {
-  stageId: string;
-  stageCode: string;
-  stageName: string;
+  id: string;
+  itemName: string;
   description: string | null;
   ssv: string;
+  status: StageGroupStatus;
   orderIndex: number;
 };
 
@@ -24,7 +24,7 @@ export type StageGroup = StageGroupSummary & {
   items: StageGroupItem[];
 };
 
-export type StageGroupItemInput = Pick<StageGroupItem, "stageId" | "ssv" | "orderIndex">;
+export type StageGroupItemInput = Omit<StageGroupItem, "id"> & { id?: string };
 
 export type StageGroupInput = Pick<StageGroup, "groupName" | "description"> & {
   groupCode?: string;

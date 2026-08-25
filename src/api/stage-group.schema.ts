@@ -12,11 +12,11 @@ const stageGroupSummarySchema = z.object({
 });
 
 const stageGroupItemSchema = z.object({
-  stageId: z.string().uuid(),
-  stageCode: z.string(),
-  stageName: z.string(),
+  id: z.string().uuid(),
+  itemName: z.string().min(1),
   description: z.string().nullable(),
   ssv: z.string().regex(/^\d{1,9}(?:\.\d{1,3})?$/),
+  status: z.enum(["active", "inactive"]),
   orderIndex: z.number().int().nonnegative(),
 });
 

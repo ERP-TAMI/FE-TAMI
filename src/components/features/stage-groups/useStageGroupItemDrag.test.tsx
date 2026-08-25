@@ -7,20 +7,20 @@ import { useStageGroupItemDrag } from "./useStageGroupItemDrag";
 type TestRow = {
   fieldId: string;
   position: number;
-  stage: { stageName: string };
+  itemName: string;
 };
 
-const initialRows: TestRow[] = ["A", "B", "C", "D", "E"].map((stageName, index) => ({
-  fieldId: stageName,
+const initialRows: TestRow[] = ["A", "B", "C", "D", "E"].map((itemName, index) => ({
+  fieldId: itemName,
   position: index + 1,
-  stage: { stageName },
+  itemName,
 }));
 
 const columns: TableColumn<TestRow>[] = [
   {
     key: "stage",
     header: "Công đoạn",
-    render: (row) => row.stage.stageName,
+    render: (row) => row.itemName,
   },
 ];
 
@@ -47,7 +47,10 @@ function DragHarness() {
 }
 
 function rowOrder() {
-  return screen.getAllByRole("row").slice(1).map((row) => row.textContent);
+  return screen
+    .getAllByRole("row")
+    .slice(1)
+    .map((row) => row.textContent);
 }
 
 describe("useStageGroupItemDrag", () => {

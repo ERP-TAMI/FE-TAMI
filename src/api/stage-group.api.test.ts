@@ -34,14 +34,17 @@ describe("stageGroupApi", () => {
     });
   });
 
-  it("sends the full ordered stage list when updating", async () => {
+  it("sends the full ordered independent child list when updating", async () => {
     const input = {
       groupName: "Nhóm may",
       description: null,
       items: [
         {
-          stageId: "771c0dc2-cd59-44e3-9b16-cacb200f20e5",
+          id: "771c0dc2-cd59-44e3-9b16-cacb200f20e5",
+          itemName: "May thân",
+          description: "May ráp thân",
           ssv: "12.500",
+          status: "active" as const,
           orderIndex: 0,
         },
       ],
@@ -50,12 +53,8 @@ describe("stageGroupApi", () => {
       ...group,
       items: [
         {
-          stageId: input.items[0].stageId,
-          stageCode: "GD-MAY",
-          stageName: "May thân",
-          description: null,
+          ...input.items[0],
           ssv: "12.500",
-          orderIndex: 0,
         },
       ],
     };
@@ -72,9 +71,21 @@ describe("stageGroupApi", () => {
     expect(apiClient.delete).toHaveBeenCalledWith(`/masters/stage-groups/${group.id}`);
   });
 
-  it("rejects malformed child-stage snapshots at the API boundary", async () => {
+  it("rejects malformed independent children at the API boundary", async () => {
     vi.mocked(apiClient.get).mockResolvedValue({
-      data: { ...group, items: [{ stageId: "invalid" }] },
+      data: {
+        ...group,
+        items: [
+          {
+            id: "invalid",
+            itemName: "May thân",
+            description: null,
+            ssv: "12.500",
+            status: "active",
+            orderIndex: 0,
+          },
+        ],
+      },
     });
 
     await expect(stageGroupApi.detail(group.id)).rejects.toThrow();

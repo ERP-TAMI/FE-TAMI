@@ -1,72 +1,49 @@
-import { Button, Select } from "@/components/shared";
+import { Button } from "@/components/shared";
+import type { StageGroupStatus } from "@/types/stage-group";
 import { StageGroupItemTable } from "./StageGroupItemTable";
-
-export type StageGroupStageOption = {
-  id: string;
-  stageCode: string;
-  stageName: string;
-  description: string | null;
-  ssv: string;
-  isInactive?: boolean;
-};
 
 export type StageGroupOrderedItem = {
   fieldId: string;
-  stageId: string;
+  id?: string;
+  itemName: string;
+  description: string;
   ssv: string;
+  status: StageGroupStatus;
 };
+
+export type StageGroupEditableField = Exclude<keyof StageGroupOrderedItem, "fieldId" | "id">;
+
+export type StageGroupItemFieldErrors = Partial<
+  Record<"itemName" | "description" | "ssv" | "status", string>
+>;
 
 type StageGroupItemEditorProps = {
   items: StageGroupOrderedItem[];
-  stagesById: Map<string, StageGroupStageOption>;
-  availableStages: StageGroupStageOption[];
-  selectedStageId: string;
   error?: string;
-  ssvErrors?: Array<string | undefined>;
-  onSelectedStageChange: (stageId: string) => void;
+  itemErrors?: StageGroupItemFieldErrors[];
   onAdd: () => void;
   onMove: (from: number, to: number) => void;
-  onStageChange: (index: number, stageId: string) => void;
-  onSsvChange: (index: number, ssv: string) => void;
+  onChange: (index: number, field: StageGroupEditableField, value: string) => void;
   onRemove: (index: number) => void;
 };
 
 export function StageGroupItemEditor({
   items,
-  stagesById,
-  availableStages,
-  selectedStageId,
   error,
-  ssvErrors,
-  onSelectedStageChange,
+  itemErrors,
   onAdd,
   onMove,
-  onStageChange,
-  onSsvChange,
+  onChange,
   onRemove,
 }: StageGroupItemEditorProps) {
   return (
     <fieldset className="space-y-4 rounded-xl border border-gray-200 p-4 dark:border-gray-700">
       <legend className="px-1 text-sm font-semibold text-gray-900 dark:text-white">
-        Danh sách công đoạn
+        Danh sách công đoạn con
       </legend>
-      <div className="flex flex-col items-end gap-3 sm:flex-row">
-        <div className="w-full flex-1">
-          <Select
-            label="Chọn công đoạn"
-            value={selectedStageId}
-            options={[
-              { label: "Chọn công đoạn để thêm", value: "" },
-              ...availableStages.map((stage) => ({
-                value: stage.id,
-                label: `${stage.stageCode} — ${stage.stageName}`,
-              })),
-            ]}
-            onChange={(event) => onSelectedStageChange(event.target.value)}
-          />
-        </div>
-        <Button type="button" variant="outline" disabled={!selectedStageId} onClick={onAdd}>
-          Thêm công đoạn
+      <div className="flex justify-end">
+        <Button type="button" variant="outline" onClick={onAdd}>
+          Thêm công đoạn con
         </Button>
       </div>
 
@@ -84,12 +61,9 @@ export function StageGroupItemEditor({
 
       <StageGroupItemTable
         items={items}
-        stagesById={stagesById}
-        availableStages={availableStages}
-        ssvErrors={ssvErrors}
+        itemErrors={itemErrors}
         onMove={onMove}
-        onStageChange={onStageChange}
-        onSsvChange={onSsvChange}
+        onChange={onChange}
         onRemove={onRemove}
       />
     </fieldset>

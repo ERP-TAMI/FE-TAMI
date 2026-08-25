@@ -1,9 +1,16 @@
-import { useCallback, useEffect, useRef, useState, type HTMLAttributes, type MouseEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type HTMLAttributes,
+  type MouseEvent,
+} from "react";
 
 type DraggableStageGroupRow = {
   fieldId: string;
   position: number;
-  stage: { stageName: string };
+  itemName: string;
 };
 
 type UseStageGroupItemDragProps<Row extends DraggableStageGroupRow> = {
@@ -81,7 +88,7 @@ export function useStageGroupItemDrag<Row extends DraggableStageGroupRow>({
 
     return {
       title: canDrag
-        ? `Giữ chuột và kéo ${row.stage.stageName} để đổi thứ tự`
+        ? `Giữ chuột và kéo ${row.itemName || `vị trí ${row.position + 1}`} để đổi thứ tự`
         : disabled
           ? "Hoàn tất chỉnh sửa SSV trước khi kéo"
           : undefined,
