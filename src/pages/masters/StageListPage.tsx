@@ -73,8 +73,7 @@ export default function StageListPage() {
     try {
       if (editing === "create") await create.mutateAsync(input);
       else if (editing) {
-        const { stageCode: _stageCode, ...updateInput } = input;
-        await update.mutateAsync({ id: editing.id, input: updateInput });
+        await update.mutateAsync({ id: editing.id, input });
       }
       showToast(editing === "create" ? "Đã tạo công đoạn." : "Đã cập nhật công đoạn.");
       closeForm();
@@ -248,8 +247,8 @@ export default function StageListPage() {
           title="Xóa công đoạn"
           description={
             <>
-              Bạn có chắc muốn xóa "{deleting.stageName}"? Chỉ có thể xóa khi chưa có dữ liệu
-              nghiệp vụ nào tham chiếu.
+              Bạn có chắc muốn xóa "{deleting.stageName}"? Chỉ có thể xóa khi chưa có dữ liệu nghiệp
+              vụ nào tham chiếu.
             </>
           }
           confirmLabel="Xóa"

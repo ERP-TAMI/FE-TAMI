@@ -71,7 +71,7 @@ describe("StageForm", () => {
     });
   });
 
-  it("locks the code when editing an existing stage", () => {
+  it("toggles the stage code between locked and editable states", () => {
     render(
       <StageForm
         mode="edit"
@@ -82,10 +82,23 @@ describe("StageForm", () => {
       />,
     );
 
-    expect((screen.getByLabelText("Mã công đoạn") as HTMLInputElement).disabled).toBe(true);
+    const codeInput = screen.getByLabelText("Mã công đoạn") as HTMLInputElement;
+
+    expect(codeInput.disabled).toBe(true);
+    expect(codeInput.className).toContain("cursor-not-allowed");
+    expect(codeInput.className).toContain("bg-gray-100");
+    fireEvent.click(screen.getByRole("button", { name: "Mở khóa mã công đoạn" }));
+
+    expect(codeInput.disabled).toBe(false);
+    expect(document.activeElement).toBe(codeInput);
+    expect(screen.getByRole("button", { name: "Khóa mã công đoạn" })).toBeTruthy();
+    expect(screen.getByText("Mã công đoạn đang mở khóa và có thể chỉnh sửa.")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Khóa mã công đoạn" }));
+    expect(codeInput.disabled).toBe(true);
   });
 
-  it("submits an edit while keeping the immutable stage code in form state", async () => {
+  it("submits a normalized stage code after unlocking it", async () => {
     const onSubmit = vi.fn();
     render(
       <StageForm
@@ -97,7 +110,38 @@ describe("StageForm", () => {
       />,
     );
 
+    fireEvent.click(screen.getByRole("button", { name: "Mở khóa mã công đoạn" }));
+    fireEvent.change(screen.getByLabelText("Mã công đoạn"), {
+      target: { value: " gd-cat-laser " },
+    });
     fireEvent.change(screen.getByLabelText("Tên công đoạn"), { target: { value: "Cắt laser" } });
+    fireEvent.click(screen.getByRole("button", { name: "Lưu công đoạn" }));
+
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalledWith({
+        stageCode: "GD-CAT-LASER",
+        stageName: "Cắt laser",
+        description: "Cắt chi tiết theo sơ đồ",
+        ssv: "12.500",
+      });
+    });
+  });
+
+  it("keeps the existing stage code when saving while it remains locked", async () => {
+    const onSubmit = vi.fn();
+    render(
+      <StageForm
+        mode="edit"
+        stage={stage}
+        isSubmitting={false}
+        onClose={vi.fn()}
+        onSubmit={onSubmit}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText("Tên công đoạn"), {
+      target: { value: "Cắt laser" },
+    });
     fireEvent.click(screen.getByRole("button", { name: "Lưu công đoạn" }));
 
     await waitFor(() => {
@@ -108,6 +152,26 @@ describe("StageForm", () => {
         ssv: "12.500",
       });
     });
+  });
+
+  it("requires a stage code when an existing stage is unlocked for editing", async () => {
+    const onSubmit = vi.fn();
+    render(
+      <StageForm
+        mode="edit"
+        stage={stage}
+        isSubmitting={false}
+        onClose={vi.fn()}
+        onSubmit={onSubmit}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Mở khóa mã công đoạn" }));
+    fireEvent.change(screen.getByLabelText("Mã công đoạn"), { target: { value: "" } });
+    fireEvent.click(screen.getByRole("button", { name: "Lưu công đoạn" }));
+
+    expect(onSubmit).not.toHaveBeenCalled();
+    expect(await screen.findByText("Mã công đoạn là bắt buộc")).toBeTruthy();
   });
 
   it("uses the shared confirmation dialog for dirty forms", () => {
