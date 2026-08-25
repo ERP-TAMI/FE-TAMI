@@ -49,6 +49,7 @@ function renderTable(overrides: Partial<React.ComponentProps<typeof StageGroupTa
   const props: React.ComponentProps<typeof StageGroupTable> = {
     groups: [group],
     onEdit: vi.fn(),
+    onEditSsv: vi.fn(),
     onDelete: vi.fn(),
     onToggleStatus: vi.fn(),
     onSaveItems: vi.fn().mockResolvedValue(true),
@@ -76,16 +77,17 @@ describe("StageGroupTable", () => {
       <StageGroupTable
         groups={[group, inactiveGroup]}
         onEdit={vi.fn()}
+        onEditSsv={vi.fn()}
         onDelete={vi.fn()}
         onToggleStatus={vi.fn()}
         onSaveItems={vi.fn().mockResolvedValue(true)}
       />,
     );
     expect(screen.getByRole("columnheader", { name: "Trạng thái" }).className).toContain(
-      "w-[17%] text-right",
+      "w-[15%] text-right",
     );
     expect(screen.getByRole("columnheader", { name: "Thao tác" }).className).toContain(
-      "w-[18%] text-center",
+      "w-[24%] text-center",
     );
     expect(screen.getByTitle("Đang sử dụng (Bấm để tắt)").parentElement?.className).toContain(
       "justify-end",
@@ -97,6 +99,7 @@ describe("StageGroupTable", () => {
       <StageGroupTable
         groups={[group]}
         onEdit={vi.fn()}
+        onEditSsv={vi.fn()}
         onDelete={vi.fn()}
         onToggleStatus={vi.fn()}
         onSaveItems={vi.fn().mockResolvedValue(true)}

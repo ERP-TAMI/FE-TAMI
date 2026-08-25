@@ -10,6 +10,7 @@ type StageGroupTableProps = {
   loading?: boolean;
   isSavingItems?: boolean;
   onEdit: (group: StageGroupSummary) => void;
+  onEditSsv: (group: StageGroupSummary) => void;
   onDelete: (group: StageGroupSummary) => void;
   onToggleStatus: (group: StageGroupSummary) => void;
   onSaveItems: (groupId: string, items: StageGroupItemInput[]) => Promise<boolean>;
@@ -21,6 +22,7 @@ export function StageGroupTable({
   loading = false,
   isSavingItems,
   onEdit,
+  onEditSsv,
   onDelete,
   onToggleStatus,
   onSaveItems,
@@ -63,7 +65,7 @@ export function StageGroupTable({
     {
       key: "code",
       header: "Mã nhóm",
-      width: "w-[14%]",
+      width: "w-[13%]",
       render: (group) => (
         <span
           title={group.groupCode}
@@ -76,7 +78,7 @@ export function StageGroupTable({
     {
       key: "name",
       header: "Tên nhóm",
-      width: "w-[18%]",
+      width: "w-[17%]",
       render: (group) => (
         <span title={group.groupName} className="block truncate font-medium">
           {group.groupName}
@@ -86,7 +88,7 @@ export function StageGroupTable({
     {
       key: "description",
       header: "Mô tả",
-      width: "w-[18%]",
+      width: "w-[16%]",
       render: (group) => (
         <span title={group.description ?? undefined} className="block truncate text-gray-500">
           {group.description || "—"}
@@ -103,7 +105,7 @@ export function StageGroupTable({
     {
       key: "status",
       header: "Trạng thái",
-      width: "w-[17%]",
+      width: "w-[15%]",
       align: "right",
       render: (group) => {
         const isToggling = togglingId === group.id;
@@ -136,10 +138,19 @@ export function StageGroupTable({
     {
       key: "actions",
       header: "Thao tác",
-      width: "w-[18%]",
+      width: "w-[24%]",
       align: "center",
       render: (group) => (
         <div className="flex items-center justify-center gap-1">
+          <button
+            type="button"
+            onClick={() => onEditSsv(group)}
+            aria-label={`Sửa SSV nhóm ${group.groupName}`}
+            title="Sửa SSV toàn bộ công đoạn con"
+            className="border-brand-200 bg-brand-50/60 text-brand-600 hover:bg-brand-100 dark:border-brand-800 dark:bg-brand-950/30 dark:text-brand-300 dark:hover:bg-brand-900/40 inline-flex items-center rounded-lg border px-2 py-1 text-xs font-medium transition-colors"
+          >
+            Sửa SSV
+          </button>
           <button
             type="button"
             onClick={() => onEdit(group)}
@@ -166,7 +177,7 @@ export function StageGroupTable({
   return (
     <Table
       embedded
-      tableClassName="min-w-[920px]"
+      tableClassName="min-w-[1120px]"
       columns={columns}
       rows={groups}
       getRowKey={(group) => group.id}

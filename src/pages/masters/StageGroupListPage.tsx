@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useBlocker, type BlockerFunction } from "react-router-dom";
 import { StageGroupForm } from "@/components/features/stage-groups/StageGroupForm";
 import { StageGroupTable } from "@/components/features/stage-groups/StageGroupTable";
+import { StageGroupSsvForm } from "@/components/features/stage-groups/StageGroupSsvForm";
 import { StageGroupToolbar } from "@/components/features/stage-groups/StageGroupToolbar";
 import {
   Alert,
@@ -39,9 +40,11 @@ export default function StageGroupListPage() {
   const [isFormDirty, setIsFormDirty] = useState(false);
   const [discardCloseRequested, setDiscardCloseRequested] = useState(false);
   const [deleting, setDeleting] = useState<StageGroupSummary>();
+  const [ssvEditing, setSsvEditing] = useState<string>();
   const { toast, showToast, hideToast } = useToast();
   const list = useStageGroups();
-  const detail = useStageGroup(editing && editing !== "create" ? editing : undefined);
+  const detailId = editing && editing !== "create" ? editing : ssvEditing;
+  const detail = useStageGroup(detailId);
   const create = useCreateStageGroup();
   const update = useUpdateStageGroup();
   const updateStatus = useUpdateStageGroupStatus();
@@ -124,6 +127,16 @@ export default function StageGroupListPage() {
       return false;
     }
   };
+  const saveGroupSsv = async (items: StageGroupItemInput[]) => {
+    if (!ssvEditing) return;
+    try {
+      await update.mutateAsync({ id: ssvEditing, input: { items } });
+      showToast(`Đã cập nhật SSV cho ${items.length} công đoạn con.`);
+      setSsvEditing(undefined);
+    } catch (error) {
+      showToast(getApiError(error, "Không thể cập nhật SSV công đoạn con.").message, "error");
+    }
+  };
   const deleteGroup = async () => {
     if (!deleting) return;
     try {
@@ -178,6 +191,7 @@ export default function StageGroupListPage() {
                 groups={emptyGroups}
                 loading
                 onEdit={() => {}}
+                onEditSsv={() => {}}
                 onDelete={() => {}}
                 onToggleStatus={() => {}}
                 onSaveItems={async () => false}
@@ -204,6 +218,7 @@ export default function StageGroupListPage() {
                 isSavingItems={update.isPending}
                 togglingId={updateStatus.isPending ? updateStatus.variables?.id : undefined}
                 onEdit={startEdit}
+                onEditSsv={(group) => setSsvEditing(group.id)}
                 onDelete={setDeleting}
                 onToggleStatus={(group) => void toggleStatus(group)}
                 onSaveItems={saveGroupItems}
@@ -260,6 +275,28 @@ export default function StageGroupListPage() {
           onClose={requestCloseForm}
           onSubmit={(input) => void saveForm(input)}
           onDirtyChange={setIsFormDirty}
+        />
+      )}
+      {ssvEditing && detail.isLoading && (
+        <Modal open title="Sửa SSV công đoạn con" onClose={() => setSsvEditing(undefined)}>
+          <div className="py-8 text-center text-sm text-gray-500" aria-busy="true">
+            Đang tải danh sách công đoạn con...
+          </div>
+        </Modal>
+      )}
+      {ssvEditing && detail.isError && (
+        <Modal open title="Không thể tải SSV" onClose={() => setSsvEditing(undefined)}>
+          <Alert variant="error" title="Không thể tải danh sách công đoạn con">
+            {getApiError(detail.error, "Không thể tải dữ liệu SSV.").message}
+          </Alert>
+        </Modal>
+      )}
+      {ssvEditing && detail.data && (
+        <StageGroupSsvForm
+          group={detail.data}
+          isSubmitting={update.isPending}
+          onClose={() => setSsvEditing(undefined)}
+          onSubmit={(items) => void saveGroupSsv(items)}
         />
       )}
       <Toast

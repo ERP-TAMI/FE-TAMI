@@ -190,6 +190,38 @@ describe("StageGroupListPage", () => {
     });
   });
 
+  it("edits SSV for every child operation in the selected group at once", async () => {
+    mocks.update.mutateAsync.mockResolvedValue(detail);
+    renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "Sửa SSV nhóm Nhóm may" }));
+
+    const dialog = screen.getByRole("dialog", { name: "Sửa SSV - Nhóm may" });
+    expect(within(dialog).getByDisplayValue("12.500")).toBeTruthy();
+    expect(within(dialog).getByDisplayValue("10.000")).toBeTruthy();
+
+    fireEvent.change(within(dialog).getByLabelText("SSV cho công đoạn con May thân"), {
+      target: { value: "15.250" },
+    });
+    fireEvent.change(within(dialog).getByLabelText("SSV cho công đoạn con May lưng"), {
+      target: { value: "11.750" },
+    });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Lưu SSV" }));
+
+    await waitFor(() => {
+      expect(mocks.update.mutateAsync).toHaveBeenCalledWith({
+        id: summary.id,
+        input: {
+          items: [
+            { ...detail.items[0], ssv: "15.250" },
+            { ...detail.items[1], ssv: "11.750" },
+          ],
+        },
+      });
+      expect(screen.queryByRole("dialog", { name: "Sửa SSV - Nhóm may" })).toBeNull();
+    });
+  });
+
   it("toggles an independent child status through the group update", async () => {
     mocks.update.mutateAsync.mockResolvedValue(detail);
     renderPage();
