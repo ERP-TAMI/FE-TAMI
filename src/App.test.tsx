@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "@/App";
 import { ThemeProvider } from "@/context/ThemeContext";
 import { materialGroupApi } from "@/api/material-group.api";
+import { stageApi } from "@/api/stage.api";
 import { useAuthStore } from "@/store/authStore";
 
 vi.mock("@/api/material-group.api", () => ({
@@ -13,6 +14,17 @@ vi.mock("@/api/material-group.api", () => ({
     update: vi.fn(),
     updateStatus: vi.fn(),
     remove: vi.fn(),
+  },
+}));
+
+vi.mock("@/api/stage.api", () => ({
+  stageApi: {
+    list: vi.fn().mockResolvedValue([]),
+    detail: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    updateStatus: vi.fn(),
+    updateSsvBulk: vi.fn(),
   },
 }));
 
@@ -35,6 +47,7 @@ beforeEach(() => {
   window.history.pushState({}, "", "/dashboard");
   vi.spyOn(window, "scrollTo").mockImplementation(() => undefined);
   vi.mocked(materialGroupApi.list).mockResolvedValue([]);
+  vi.mocked(stageApi.list).mockResolvedValue([]);
   useAuthStore.setState({ status: "unauthenticated", user: null, accessToken: null });
 });
 
@@ -105,7 +118,7 @@ describe("application routes", () => {
     window.history.pushState({}, "", "/masters");
     renderApp();
 
-    expect(screen.getByRole("heading", { name: "Materials" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Vật tư - Phụ liệu" })).toBeTruthy();
   });
 
   it("renders the material groups management route", () => {
@@ -114,6 +127,14 @@ describe("application routes", () => {
     renderApp();
 
     expect(screen.getByRole("heading", { name: "Nhóm vật tư" })).toBeTruthy();
+  });
+
+  it("renders the stages management route", () => {
+    signIn();
+    window.history.pushState({}, "", "/masters/stages");
+    renderApp();
+
+    expect(screen.getByRole("heading", { name: "Giai đoạn công đoạn" })).toBeTruthy();
   });
 
   it("redirects the admin entry route to users", () => {
