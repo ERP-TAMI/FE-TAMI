@@ -3,10 +3,14 @@ import { useStageGroup } from "@/hooks/useStageGroups";
 import { getApiError } from "@/lib/apiError";
 import type { StageGroupItemInput, StageGroupSummary } from "@/types/stage-group";
 import { StageGroupExpandedItemTable } from "./StageGroupExpandedItemTable";
+import { StageGroupSsvInlineTable } from "./StageGroupSsvInlineTable";
 
 type StageGroupExpandedRowProps = {
   group: StageGroupSummary;
   isSavingItems?: boolean;
+  ssvEditMode?: boolean;
+  onCloseSsvEdit: () => void;
+  onSsvDirtyChange: (isDirty: boolean) => void;
   onSaveItems: (groupId: string, items: StageGroupItemInput[]) => Promise<boolean>;
 };
 
@@ -22,6 +26,9 @@ const loadingColumns = [
 export function StageGroupExpandedRow({
   group,
   isSavingItems,
+  ssvEditMode = false,
+  onCloseSsvEdit,
+  onSsvDirtyChange,
   onSaveItems,
 }: StageGroupExpandedRowProps) {
   const detail = useStageGroup(group.id);
@@ -54,12 +61,23 @@ export function StageGroupExpandedRow({
         </div>
       ) : (
         <div className="overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900">
-          <StageGroupExpandedItemTable
-            group={group}
-            items={detail.data?.items ?? []}
-            isSavingItems={isSavingItems}
-            onSaveItems={onSaveItems}
-          />
+          {ssvEditMode ? (
+            <StageGroupSsvInlineTable
+              group={group}
+              items={detail.data?.items ?? []}
+              isSavingItems={isSavingItems}
+              onClose={onCloseSsvEdit}
+              onDirtyChange={onSsvDirtyChange}
+              onSaveItems={onSaveItems}
+            />
+          ) : (
+            <StageGroupExpandedItemTable
+              group={group}
+              items={detail.data?.items ?? []}
+              isSavingItems={isSavingItems}
+              onSaveItems={onSaveItems}
+            />
+          )}
         </div>
       )}
     </div>

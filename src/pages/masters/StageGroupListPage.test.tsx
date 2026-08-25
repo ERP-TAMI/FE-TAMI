@@ -196,17 +196,17 @@ describe("StageGroupListPage", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Sửa SSV nhóm Nhóm may" }));
 
-    const dialog = screen.getByRole("dialog", { name: "Sửa SSV - Nhóm may" });
-    expect(within(dialog).getByDisplayValue("12.500")).toBeTruthy();
-    expect(within(dialog).getByDisplayValue("10.000")).toBeTruthy();
+    const region = screen.getByRole("region", { name: "Các công đoạn của Nhóm may" });
+    expect(within(region).getByDisplayValue("12.500")).toBeTruthy();
+    expect(within(region).getByDisplayValue("10.000")).toBeTruthy();
 
-    fireEvent.change(within(dialog).getByLabelText("SSV cho công đoạn con May thân"), {
+    fireEvent.change(within(region).getByLabelText("SSV cho công đoạn con May thân"), {
       target: { value: "15.250" },
     });
-    fireEvent.change(within(dialog).getByLabelText("SSV cho công đoạn con May lưng"), {
+    fireEvent.change(within(region).getByLabelText("SSV cho công đoạn con May lưng"), {
       target: { value: "11.750" },
     });
-    fireEvent.click(within(dialog).getByRole("button", { name: "Lưu SSV" }));
+    fireEvent.click(within(region).getByRole("button", { name: "Lưu SSV" }));
 
     await waitFor(() => {
       expect(mocks.update.mutateAsync).toHaveBeenCalledWith({
@@ -218,8 +218,29 @@ describe("StageGroupListPage", () => {
           ],
         },
       });
-      expect(screen.queryByRole("dialog", { name: "Sửa SSV - Nhóm may" })).toBeNull();
+      expect(within(region).queryByRole("button", { name: "Lưu SSV" })).toBeNull();
     });
+  });
+
+  it("preserves unsaved inline SSV values when navigation is cancelled", async () => {
+    const { router } = renderPage(["/dashboard", "/masters/stage-groups"]);
+
+    fireEvent.click(screen.getByRole("button", { name: "Sửa SSV nhóm Nhóm may" }));
+    const ssvInput = screen.getByLabelText("SSV cho công đoạn con May thân");
+    fireEvent.change(ssvInput, { target: { value: "18.250" } });
+
+    expect(
+      screen.getByRole("searchbox", { name: "Tìm kiếm nhóm công đoạn" }).hasAttribute("disabled"),
+    ).toBe(true);
+    expect(screen.getByRole("button", { name: "Tất cả" }).hasAttribute("disabled")).toBe(true);
+    expect(screen.queryByRole("button", { name: "Tạo nhóm công đoạn" })).toBeNull();
+
+    await act(() => router.navigate("/dashboard"));
+    expect(router.state.location.pathname).toBe("/masters/stage-groups");
+    expect(screen.getByRole("heading", { name: "Hủy các thay đổi?" })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Tiếp tục chỉnh sửa" }));
+    expect(screen.getByDisplayValue("18.250")).toBeTruthy();
   });
 
   it("toggles an independent child status through the group update", async () => {

@@ -4,6 +4,7 @@ import type { StageGroupStatus } from "@/types/stage-group";
 type StageGroupToolbarProps = {
   search: string;
   status: StageGroupStatus | "";
+  disabled?: boolean;
   onSearchChange: (value: string) => void;
   onStatusChange: (value: StageGroupStatus | "") => void;
 };
@@ -17,6 +18,7 @@ const statusOptions: Array<{ key: StageGroupStatus | ""; label: string }> = [
 export function StageGroupToolbar({
   search,
   status,
+  disabled = false,
   onSearchChange,
   onStatusChange,
 }: StageGroupToolbarProps) {
@@ -42,6 +44,7 @@ export function StageGroupToolbar({
             aria-label="Tìm kiếm nhóm công đoạn"
             placeholder="Tìm theo mã hoặc tên nhóm..."
             value={search}
+            disabled={disabled}
             className="border-gray-300 bg-white pl-11 dark:border-gray-600 dark:bg-gray-900"
             onChange={(event) => onSearchChange(event.target.value)}
           />
@@ -55,8 +58,9 @@ export function StageGroupToolbar({
             <button
               key={option.key || "all"}
               type="button"
+              disabled={disabled}
               onClick={() => onStatusChange(option.key)}
-              className={`text-theme-xs rounded-md px-3 py-1.5 font-medium transition-colors ${
+              className={`text-theme-xs rounded-md px-3 py-1.5 font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
                 status === option.key
                   ? "bg-brand-50 text-brand-600 dark:bg-brand-500/15 dark:text-brand-400"
                   : "text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"

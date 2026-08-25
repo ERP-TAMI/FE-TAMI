@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState } from "react";
 import { useBlocker, type BlockerFunction } from "react-router-dom";
 import { StageGroupForm } from "@/components/features/stage-groups/StageGroupForm";
 import { StageGroupTable } from "@/components/features/stage-groups/StageGroupTable";
-import { StageGroupSsvForm } from "@/components/features/stage-groups/StageGroupSsvForm";
 import { StageGroupToolbar } from "@/components/features/stage-groups/StageGroupToolbar";
 import {
   Alert,
@@ -38,35 +37,36 @@ const emptyGroups: StageGroupSummary[] = [];
 export default function StageGroupListPage() {
   const [editing, setEditing] = useState<"create" | string>();
   const [isFormDirty, setIsFormDirty] = useState(false);
+  const [isSsvEditing, setIsSsvEditing] = useState(false);
+  const [isSsvDirty, setIsSsvDirty] = useState(false);
   const [discardCloseRequested, setDiscardCloseRequested] = useState(false);
   const [deleting, setDeleting] = useState<StageGroupSummary>();
-  const [ssvEditing, setSsvEditing] = useState<string>();
   const { toast, showToast, hideToast } = useToast();
   const list = useStageGroups();
-  const detailId = editing && editing !== "create" ? editing : ssvEditing;
-  const detail = useStageGroup(detailId);
+  const detail = useStageGroup(editing && editing !== "create" ? editing : undefined);
   const create = useCreateStageGroup();
   const update = useUpdateStageGroup();
   const updateStatus = useUpdateStageGroupStatus();
   const remove = useDeleteStageGroup();
   const groups = list.data ?? emptyGroups;
   const listView = useStageGroupListView(groups);
+  const hasUnsavedChanges = isFormDirty || isSsvDirty;
   const shouldBlockNavigation = useCallback<BlockerFunction>(
     ({ currentLocation, nextLocation }) =>
-      isFormDirty && currentLocation.pathname !== nextLocation.pathname,
-    [isFormDirty],
+      hasUnsavedChanges && currentLocation.pathname !== nextLocation.pathname,
+    [hasUnsavedChanges],
   );
   const blocker = useBlocker(shouldBlockNavigation);
 
   useEffect(() => {
     const warnBeforeUnload = (event: BeforeUnloadEvent) => {
-      if (!isFormDirty) return;
+      if (!hasUnsavedChanges) return;
       event.preventDefault();
       event.returnValue = "";
     };
     window.addEventListener("beforeunload", warnBeforeUnload);
     return () => window.removeEventListener("beforeunload", warnBeforeUnload);
-  }, [isFormDirty]);
+  }, [hasUnsavedChanges]);
 
   const closeForm = () => {
     setEditing(undefined);
@@ -88,6 +88,8 @@ export default function StageGroupListPage() {
   const confirmDiscard = () => {
     setDiscardCloseRequested(false);
     setIsFormDirty(false);
+    setIsSsvDirty(false);
+    setIsSsvEditing(false);
     if (blocker.state === "blocked") {
       blocker.proceed();
       return;
@@ -127,16 +129,6 @@ export default function StageGroupListPage() {
       return false;
     }
   };
-  const saveGroupSsv = async (items: StageGroupItemInput[]) => {
-    if (!ssvEditing) return;
-    try {
-      await update.mutateAsync({ id: ssvEditing, input: { items } });
-      showToast(`Đã cập nhật SSV cho ${items.length} công đoạn con.`);
-      setSsvEditing(undefined);
-    } catch (error) {
-      showToast(getApiError(error, "Không thể cập nhật SSV công đoạn con.").message, "error");
-    }
-  };
   const deleteGroup = async () => {
     if (!deleting) return;
     try {
@@ -171,17 +163,22 @@ export default function StageGroupListPage() {
               tone: "success",
             },
           ]}
-          action={{
-            label: "Tạo nhóm công đoạn",
-            onClick: () => setEditing("create"),
-            icon: <PlusIcon className="h-4 w-4" aria-hidden="true" />,
-          }}
+          action={
+            isSsvEditing
+              ? undefined
+              : {
+                  label: "Tạo nhóm công đoạn",
+                  onClick: () => setEditing("create"),
+                  icon: <PlusIcon className="h-4 w-4" aria-hidden="true" />,
+                }
+          }
         />
 
         <div className="shadow-theme-xs overflow-visible rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
           <StageGroupToolbar
             search={listView.search}
             status={listView.status}
+            disabled={isSsvEditing}
             onSearchChange={listView.setSearch}
             onStatusChange={listView.setStatus}
           />
@@ -191,7 +188,6 @@ export default function StageGroupListPage() {
                 groups={emptyGroups}
                 loading
                 onEdit={() => {}}
-                onEditSsv={() => {}}
                 onDelete={() => {}}
                 onToggleStatus={() => {}}
                 onSaveItems={async () => false}
@@ -218,19 +214,22 @@ export default function StageGroupListPage() {
                 isSavingItems={update.isPending}
                 togglingId={updateStatus.isPending ? updateStatus.variables?.id : undefined}
                 onEdit={startEdit}
-                onEditSsv={(group) => setSsvEditing(group.id)}
                 onDelete={setDeleting}
                 onToggleStatus={(group) => void toggleStatus(group)}
+                onSsvEditingChange={setIsSsvEditing}
+                onSsvDirtyChange={setIsSsvDirty}
                 onSaveItems={saveGroupItems}
               />
-              <Pagination
-                page={listView.page}
-                pageSize={listView.pageSize}
-                totalItems={listView.totalItems}
-                totalPages={listView.totalPages}
-                itemLabel="nhóm công đoạn"
-                onPageChange={listView.setPage}
-              />
+              {!isSsvEditing && (
+                <Pagination
+                  page={listView.page}
+                  pageSize={listView.pageSize}
+                  totalItems={listView.totalItems}
+                  totalPages={listView.totalPages}
+                  itemLabel="nhóm công đoạn"
+                  onPageChange={listView.setPage}
+                />
+              )}
             </>
           )}
         </div>
@@ -277,28 +276,6 @@ export default function StageGroupListPage() {
           onDirtyChange={setIsFormDirty}
         />
       )}
-      {ssvEditing && detail.isLoading && (
-        <Modal open title="Sửa SSV công đoạn con" onClose={() => setSsvEditing(undefined)}>
-          <div className="py-8 text-center text-sm text-gray-500" aria-busy="true">
-            Đang tải danh sách công đoạn con...
-          </div>
-        </Modal>
-      )}
-      {ssvEditing && detail.isError && (
-        <Modal open title="Không thể tải SSV" onClose={() => setSsvEditing(undefined)}>
-          <Alert variant="error" title="Không thể tải danh sách công đoạn con">
-            {getApiError(detail.error, "Không thể tải dữ liệu SSV.").message}
-          </Alert>
-        </Modal>
-      )}
-      {ssvEditing && detail.data && (
-        <StageGroupSsvForm
-          group={detail.data}
-          isSubmitting={update.isPending}
-          onClose={() => setSsvEditing(undefined)}
-          onSubmit={(items) => void saveGroupSsv(items)}
-        />
-      )}
       <Toast
         open={Boolean(toast)}
         message={toast?.message ?? ""}
@@ -308,7 +285,7 @@ export default function StageGroupListPage() {
       <ConfirmDialog
         open={discardCloseRequested || blocker.state === "blocked"}
         title="Hủy các thay đổi?"
-        description="Các thông tin nhóm công đoạn chưa lưu sẽ bị mất. Bạn có chắc muốn tiếp tục?"
+        description="Các thay đổi chưa lưu sẽ bị mất. Bạn có chắc muốn tiếp tục?"
         confirmLabel="Bỏ thay đổi"
         cancelLabel="Tiếp tục chỉnh sửa"
         variant="danger"

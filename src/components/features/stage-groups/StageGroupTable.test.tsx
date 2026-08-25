@@ -49,7 +49,6 @@ function renderTable(overrides: Partial<React.ComponentProps<typeof StageGroupTa
   const props: React.ComponentProps<typeof StageGroupTable> = {
     groups: [group],
     onEdit: vi.fn(),
-    onEditSsv: vi.fn(),
     onDelete: vi.fn(),
     onToggleStatus: vi.fn(),
     onSaveItems: vi.fn().mockResolvedValue(true),
@@ -77,7 +76,6 @@ describe("StageGroupTable", () => {
       <StageGroupTable
         groups={[group, inactiveGroup]}
         onEdit={vi.fn()}
-        onEditSsv={vi.fn()}
         onDelete={vi.fn()}
         onToggleStatus={vi.fn()}
         onSaveItems={vi.fn().mockResolvedValue(true)}
@@ -99,7 +97,6 @@ describe("StageGroupTable", () => {
       <StageGroupTable
         groups={[group]}
         onEdit={vi.fn()}
-        onEditSsv={vi.fn()}
         onDelete={vi.fn()}
         onToggleStatus={vi.fn()}
         onSaveItems={vi.fn().mockResolvedValue(true)}
