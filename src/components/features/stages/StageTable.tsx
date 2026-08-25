@@ -98,10 +98,11 @@ export function StageTable({
       key: "status",
       header: "Trạng thái",
       width: "w-[17%]",
+      align: "right",
       render: (stage) => {
         const isToggling = togglingId === stage.id;
         return (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center justify-end gap-2">
             <button
               type="button"
               onClick={() => onToggleStatus(stage)}
@@ -119,7 +120,7 @@ export function StageTable({
                 }`}
               />
             </button>
-            <span className="text-theme-xs whitespace-nowrap">
+            <span className="text-theme-xs inline-block w-20 shrink-0 text-left whitespace-nowrap">
               {stage.status === "active" ? "Đang sử dụng" : "Đã tắt"}
             </span>
           </div>

@@ -63,11 +63,12 @@ export function StageGroupTable({
     {
       key: "status",
       header: "Trạng thái",
-      width: "w-[15%]",
+      width: "w-[17%]",
+      align: "right",
       render: (group) => {
         const isToggling = togglingId === group.id;
         return (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center justify-end gap-2">
             <button
               type="button"
               onClick={() => onToggleStatus(group)}
@@ -85,7 +86,7 @@ export function StageGroupTable({
                 }`}
               />
             </button>
-            <span className="text-theme-xs whitespace-nowrap">
+            <span className="text-theme-xs inline-block w-20 shrink-0 text-left whitespace-nowrap">
               {group.status === "active" ? "Đang sử dụng" : "Đã tắt"}
             </span>
           </div>
@@ -95,7 +96,7 @@ export function StageGroupTable({
     {
       key: "actions",
       header: "Thao tác",
-      width: "w-[20%]",
+      width: "w-[18%]",
       align: "center",
       render: (group) => (
         <div className="flex items-center justify-center gap-1">

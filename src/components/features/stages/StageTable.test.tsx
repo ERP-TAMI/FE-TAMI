@@ -12,12 +12,25 @@ const stage: Stage = {
   status: "active",
 };
 
+const inactiveStage: Stage = {
+  ...stage,
+  id: "b2308510-11ca-4f28-967d-75727235fe96",
+  stageCode: "GD-BE-DINH-DAU-DAY",
+  stageName: "Bẻ đính đầu dây",
+  status: "inactive",
+};
+
 describe("StageTable", () => {
   afterEach(cleanup);
 
-  it("balances the desktop columns between stage information, status, and actions", () => {
+  it("balances the desktop columns and moves the status content closer to actions", () => {
     render(
-      <StageTable stages={[stage]} onEdit={vi.fn()} onDelete={vi.fn()} onToggleStatus={vi.fn()} />,
+      <StageTable
+        stages={[stage, inactiveStage]}
+        onEdit={vi.fn()}
+        onDelete={vi.fn()}
+        onToggleStatus={vi.fn()}
+      />,
     );
 
     const headers = screen
@@ -29,8 +42,13 @@ describe("StageTable", () => {
       "px-5 py-3.5 font-semibold whitespace-nowrap w-[19%] text-left",
       "px-5 py-3.5 font-semibold whitespace-nowrap w-[19%] text-left",
       "px-5 py-3.5 font-semibold whitespace-nowrap w-[10%] text-right",
-      "px-5 py-3.5 font-semibold whitespace-nowrap w-[17%] text-left",
+      "px-5 py-3.5 font-semibold whitespace-nowrap w-[17%] text-right",
       "px-5 py-3.5 font-semibold whitespace-nowrap w-[17%] text-center",
     ]);
+    expect(screen.getByTitle("Đang sử dụng (Bấm để tắt)").parentElement?.className).toContain(
+      "justify-end",
+    );
+    expect(screen.getByText("Đang sử dụng").className).toContain("w-20");
+    expect(screen.getByText("Đã tắt").className).toContain("w-20");
   });
 });
