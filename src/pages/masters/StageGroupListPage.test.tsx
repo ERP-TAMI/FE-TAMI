@@ -20,6 +20,8 @@ const mocks = vi.hoisted(() => ({
   update: { isPending: false, error: null, mutateAsync: vi.fn(), reset: vi.fn() },
   updateStatus: { isPending: false, variables: undefined, mutateAsync: vi.fn() },
   remove: { isPending: false, mutateAsync: vi.fn() },
+  updateStage: { isPending: false, error: null, mutateAsync: vi.fn(), reset: vi.fn() },
+  updateStageStatus: { isPending: false, variables: undefined, mutateAsync: vi.fn() },
 }));
 
 vi.mock("@/hooks/useStageGroups", () => ({
@@ -30,7 +32,11 @@ vi.mock("@/hooks/useStageGroups", () => ({
   useUpdateStageGroupStatus: () => mocks.updateStatus,
   useDeleteStageGroup: () => mocks.remove,
 }));
-vi.mock("@/hooks/useStages", () => ({ useStages: mocks.useStages }));
+vi.mock("@/hooks/useStages", () => ({
+  useStages: mocks.useStages,
+  useUpdateStage: () => mocks.updateStage,
+  useUpdateStageStatus: () => mocks.updateStageStatus,
+}));
 
 const stage = {
   id: "771c0dc2-cd59-44e3-9b16-cacb200f20e5",
@@ -161,6 +167,67 @@ describe("StageGroupListPage", () => {
       expect(mocks.updateStatus.mutateAsync).toHaveBeenCalledWith({
         id: summary.id,
         status: "inactive",
+      });
+    });
+  });
+
+  it("updates a child item's group-specific SSV from the expanded row", async () => {
+    mocks.update.mutateAsync.mockResolvedValue({
+      ...detail,
+      items: [{ ...detail.items[0], ssv: "15.750" }],
+    });
+    renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "Xem các công đoạn của Nhóm may" }));
+    fireEvent.click(screen.getByRole("button", { name: "Sửa SSV cho May thân" }));
+    fireEvent.change(screen.getByLabelText("SSV cho May thân"), {
+      target: { value: "15.750" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Lưu SSV cho May thân" }));
+
+    await waitFor(() => {
+      expect(mocks.update.mutateAsync).toHaveBeenCalledWith({
+        id: summary.id,
+        input: { items: [{ stageId: stage.id, ssv: "15.750", orderIndex: 0 }] },
+      });
+    });
+  });
+
+  it("updates child Stage Master status from the expanded row", async () => {
+    mocks.updateStageStatus.mutateAsync.mockResolvedValue({ ...stage, status: "inactive" });
+    renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "Xem các công đoạn của Nhóm may" }));
+    fireEvent.click(screen.getByRole("switch", { name: "Tắt công đoạn May thân" }));
+
+    await waitFor(() => {
+      expect(mocks.updateStageStatus.mutateAsync).toHaveBeenCalledWith({
+        id: stage.id,
+        status: "inactive",
+      });
+    });
+  });
+
+  it("opens the Stage Master form from a child row and saves the edit", async () => {
+    mocks.updateStage.mutateAsync.mockResolvedValue({ ...stage, stageName: "May thân chính" });
+    renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "Xem các công đoạn của Nhóm may" }));
+    fireEvent.click(screen.getByRole("button", { name: "Sửa công đoạn May thân" }));
+    fireEvent.change(screen.getByLabelText("Tên công đoạn"), {
+      target: { value: "May thân chính" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Lưu công đoạn" }));
+
+    await waitFor(() => {
+      expect(mocks.updateStage.mutateAsync).toHaveBeenCalledWith({
+        id: stage.id,
+        input: {
+          stageCode: stage.stageCode,
+          stageName: "May thân chính",
+          description: null,
+          ssv: stage.ssv,
+        },
       });
     });
   });

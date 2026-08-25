@@ -1,91 +1,41 @@
 import { Alert, Button, Table } from "@/components/shared";
-import type { TableColumn } from "@/components/shared/Table";
 import { useStageGroup } from "@/hooks/useStageGroups";
 import { getApiError } from "@/lib/apiError";
-import type { StageGroupItem, StageGroupSummary } from "@/types/stage-group";
+import type { Stage } from "@/types/stage";
+import type { StageGroupItemInput, StageGroupSummary } from "@/types/stage-group";
+import { StageGroupExpandedItemTable } from "./StageGroupExpandedItemTable";
 
 type StageGroupExpandedRowProps = {
   group: StageGroupSummary;
-  activeStageIds?: ReadonlySet<string>;
+  stagesById?: ReadonlyMap<string, Stage>;
+  isSavingItems?: boolean;
+  togglingStageId?: string;
+  onEditStage: (stage: Stage) => void;
+  onToggleStageStatus: (stage: Stage) => void;
+  onSaveItemSsv: (groupId: string, items: StageGroupItemInput[]) => Promise<boolean>;
+  onRemoveItem: (groupId: string, items: StageGroupItemInput[]) => Promise<boolean>;
 };
 
-function getColumns(activeStageIds?: ReadonlySet<string>): TableColumn<StageGroupItem>[] {
-  return [
-    {
-      key: "position",
-      header: "STT",
-      width: "w-[7%]",
-      align: "center",
-      render: (item) => <span className="font-semibold tabular-nums">{item.orderIndex + 1}</span>,
-    },
-    {
-      key: "code",
-      header: "Mã công đoạn",
-      width: "w-[20%]",
-      render: (item) => (
-        <span
-          title={item.stageCode}
-          className="block truncate font-semibold text-gray-900 dark:text-white"
-        >
-          {item.stageCode}
-        </span>
-      ),
-    },
-    {
-      key: "name",
-      header: "Tên công đoạn",
-      width: "w-[21%]",
-      render: (item) => (
-        <span title={item.stageName} className="block truncate font-medium">
-          {item.stageName}
-        </span>
-      ),
-    },
-    {
-      key: "description",
-      header: "Mô tả",
-      width: "w-[22%]",
-      render: (item) => (
-        <span
-          title={item.description ?? undefined}
-          className="block truncate text-gray-500 dark:text-gray-400"
-        >
-          {item.description || "—"}
-        </span>
-      ),
-    },
-    {
-      key: "ssv",
-      header: "SSV (giây)",
-      width: "w-[13%]",
-      align: "right",
-      render: (item) => <span className="font-semibold tabular-nums">{item.ssv}</span>,
-    },
-    {
-      key: "status",
-      header: "Trạng thái",
-      width: "w-[17%]",
-      render: (item) => {
-        const isActive = activeStageIds?.has(item.stageId);
-        return (
-          <span
-            className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${
-              isActive === undefined
-                ? "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400"
-                : isActive
-                  ? "bg-success-50 text-success-700 dark:bg-success-500/10 dark:text-success-400"
-                  : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300"
-            }`}
-          >
-            {isActive === undefined ? "—" : isActive ? "Đang sử dụng" : "Đã tắt"}
-          </span>
-        );
-      },
-    },
-  ];
-}
+const loadingColumns = [
+  { key: "position", header: "STT", width: "w-[5%]" },
+  { key: "code", header: "Mã công đoạn", width: "w-[15%]" },
+  { key: "name", header: "Tên công đoạn", width: "w-[16%]" },
+  { key: "description", header: "Mô tả", width: "w-[17%]" },
+  { key: "ssv", header: "SSV (giây)", width: "w-[12%]" },
+  { key: "status", header: "Trạng thái", width: "w-[12%]" },
+  { key: "actions", header: "Thao tác", width: "w-[23%]" },
+];
 
-export function StageGroupExpandedRow({ group, activeStageIds }: StageGroupExpandedRowProps) {
+export function StageGroupExpandedRow({
+  group,
+  stagesById,
+  isSavingItems,
+  togglingStageId,
+  onEditStage,
+  onToggleStageStatus,
+  onSaveItemSsv,
+  onRemoveItem,
+}: StageGroupExpandedRowProps) {
   const detail = useStageGroup(group.id);
 
   return (
@@ -102,17 +52,30 @@ export function StageGroupExpandedRow({ group, activeStageIds }: StageGroupExpan
             Thử lại
           </Button>
         </Alert>
-      ) : (
+      ) : detail.isLoading ? (
         <div className="overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900">
           <Table
             embedded
-            tableClassName="min-w-[920px]"
-            columns={getColumns(activeStageIds)}
-            rows={detail.data?.items ?? []}
-            getRowKey={(item) => item.stageId}
-            loading={detail.isLoading}
+            tableClassName="min-w-[1280px]"
+            columns={loadingColumns}
+            rows={[]}
+            getRowKey={(_, index) => index}
+            loading
             loadingRowCount={Math.min(Math.max(group.itemCount, 3), 8)}
-            emptyMessage="Nhóm chưa có công đoạn nào."
+          />
+        </div>
+      ) : (
+        <div className="overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900">
+          <StageGroupExpandedItemTable
+            group={group}
+            items={detail.data?.items ?? []}
+            stagesById={stagesById}
+            isSavingItems={isSavingItems}
+            togglingStageId={togglingStageId}
+            onEditStage={onEditStage}
+            onToggleStageStatus={onToggleStageStatus}
+            onSaveItemSsv={onSaveItemSsv}
+            onRemoveItem={onRemoveItem}
           />
         </div>
       )}

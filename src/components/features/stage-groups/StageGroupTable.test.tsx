@@ -1,7 +1,8 @@
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { StageGroupTable } from "./StageGroupTable";
 import type { StageGroup, StageGroupSummary } from "@/types/stage-group";
+import type { Stage } from "@/types/stage";
 
 const mocks = vi.hoisted(() => ({ useStageGroup: vi.fn() }));
 
@@ -48,6 +49,38 @@ const detail: StageGroup = {
   ],
 };
 
+const stagesById = new Map<string, Stage>(
+  detail.items.map((item, index) => [
+    item.stageId,
+    {
+      id: item.stageId,
+      stageCode: item.stageCode,
+      stageName: item.stageName,
+      description: item.description,
+      ssv: item.ssv,
+      status: index === 0 ? "active" : "inactive",
+    },
+  ]),
+);
+
+function renderTable(overrides: Partial<React.ComponentProps<typeof StageGroupTable>> = {}) {
+  const props: React.ComponentProps<typeof StageGroupTable> = {
+    groups: [group],
+    stagesById,
+    onEdit: vi.fn(),
+    onDelete: vi.fn(),
+    onToggleStatus: vi.fn(),
+    onEditStage: vi.fn(),
+    onToggleStageStatus: vi.fn(),
+    onSaveItemSsv: vi.fn().mockResolvedValue(true),
+    onRemoveItem: vi.fn().mockResolvedValue(true),
+    ...overrides,
+  };
+  render(<StageGroupTable {...props} />);
+  fireEvent.click(screen.getByRole("button", { name: `Xem các công đoạn của ${group.groupName}` }));
+  return props;
+}
+
 describe("StageGroupTable", () => {
   beforeEach(() => {
     mocks.useStageGroup.mockReturnValue({
@@ -65,9 +98,14 @@ describe("StageGroupTable", () => {
     render(
       <StageGroupTable
         groups={[group, inactiveGroup]}
+        stagesById={stagesById}
         onEdit={vi.fn()}
         onDelete={vi.fn()}
         onToggleStatus={vi.fn()}
+        onEditStage={vi.fn()}
+        onToggleStageStatus={vi.fn()}
+        onSaveItemSsv={vi.fn().mockResolvedValue(true)}
+        onRemoveItem={vi.fn().mockResolvedValue(true)}
       />,
     );
 
@@ -88,10 +126,14 @@ describe("StageGroupTable", () => {
     render(
       <StageGroupTable
         groups={[group]}
-        activeStageIds={new Set([detail.items[0].stageId])}
+        stagesById={stagesById}
         onEdit={vi.fn()}
         onDelete={vi.fn()}
         onToggleStatus={vi.fn()}
+        onEditStage={vi.fn()}
+        onToggleStageStatus={vi.fn()}
+        onSaveItemSsv={vi.fn().mockResolvedValue(true)}
+        onRemoveItem={vi.fn().mockResolvedValue(true)}
       />,
     );
 
@@ -120,5 +162,50 @@ describe("StageGroupTable", () => {
     expect(
       screen.queryByRole("region", { name: `Các công đoạn của ${group.groupName}` }),
     ).toBeNull();
+  });
+
+  it("updates only the selected item's group-specific SSV", async () => {
+    const onSaveItemSsv = vi.fn().mockResolvedValue(true);
+    renderTable({ onSaveItemSsv });
+
+    fireEvent.click(screen.getByRole("button", { name: "Sửa SSV cho Bản đan dây nịt" }));
+    fireEvent.change(screen.getByLabelText("SSV cho Bản đan dây nịt"), {
+      target: { value: "65.500" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Lưu SSV cho Bản đan dây nịt" }));
+
+    await waitFor(() => {
+      expect(onSaveItemSsv).toHaveBeenCalledWith(group.id, [
+        { stageId: detail.items[0].stageId, ssv: "65.500", orderIndex: 0 },
+        { stageId: detail.items[1].stageId, ssv: "10.000", orderIndex: 1 },
+      ]);
+    });
+  });
+
+  it("delegates master Stage edit and status changes", () => {
+    const onEditStage = vi.fn();
+    const onToggleStageStatus = vi.fn();
+    renderTable({ onEditStage, onToggleStageStatus });
+    const region = screen.getByRole("region", { name: `Các công đoạn của ${group.groupName}` });
+
+    fireEvent.click(within(region).getByRole("switch", { name: "Tắt công đoạn Bản đan dây nịt" }));
+    fireEvent.click(within(region).getByRole("button", { name: "Sửa công đoạn Bản đan dây nịt" }));
+
+    expect(onToggleStageStatus).toHaveBeenCalledWith(stagesById.get(detail.items[0].stageId));
+    expect(onEditStage).toHaveBeenCalledWith(stagesById.get(detail.items[0].stageId));
+  });
+
+  it("removes an item from only this group and compacts the remaining order", async () => {
+    const onRemoveItem = vi.fn().mockResolvedValue(true);
+    renderTable({ onRemoveItem });
+
+    fireEvent.click(screen.getByRole("button", { name: "Xóa Bản đan dây nịt khỏi nhóm NS% 1K" }));
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Loại bỏ" }));
+
+    await waitFor(() => {
+      expect(onRemoveItem).toHaveBeenCalledWith(group.id, [
+        { stageId: detail.items[1].stageId, ssv: "10.000", orderIndex: 0 },
+      ]);
+    });
   });
 });

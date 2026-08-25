@@ -1,27 +1,40 @@
 import { useState } from "react";
 import { Table, type TableColumn } from "@/components/shared/Table";
 import { ChevronDownIcon, PencilIcon, TrashBinIcon } from "@/icons";
-import type { StageGroupSummary } from "@/types/stage-group";
+import type { Stage } from "@/types/stage";
+import type { StageGroupItemInput, StageGroupSummary } from "@/types/stage-group";
 import { StageGroupExpandedRow } from "./StageGroupExpandedRow";
 
 type StageGroupTableProps = {
   groups: StageGroupSummary[];
   togglingId?: string;
+  togglingStageId?: string;
   loading?: boolean;
-  activeStageIds?: ReadonlySet<string>;
+  stagesById?: ReadonlyMap<string, Stage>;
+  isSavingItems?: boolean;
   onEdit: (group: StageGroupSummary) => void;
   onDelete: (group: StageGroupSummary) => void;
   onToggleStatus: (group: StageGroupSummary) => void;
+  onEditStage: (stage: Stage) => void;
+  onToggleStageStatus: (stage: Stage) => void;
+  onSaveItemSsv: (groupId: string, items: StageGroupItemInput[]) => Promise<boolean>;
+  onRemoveItem: (groupId: string, items: StageGroupItemInput[]) => Promise<boolean>;
 };
 
 export function StageGroupTable({
   groups,
   togglingId,
+  togglingStageId,
   loading = false,
-  activeStageIds,
+  stagesById,
+  isSavingItems,
   onEdit,
   onDelete,
   onToggleStatus,
+  onEditStage,
+  onToggleStageStatus,
+  onSaveItemSsv,
+  onRemoveItem,
 }: StageGroupTableProps) {
   const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set());
   const toggleExpanded = (groupId: string) => {
@@ -170,7 +183,16 @@ export function StageGroupTable({
       getRowKey={(group) => group.id}
       renderExpandedRow={(group) =>
         expandedIds.has(group.id) ? (
-          <StageGroupExpandedRow group={group} activeStageIds={activeStageIds} />
+          <StageGroupExpandedRow
+            group={group}
+            stagesById={stagesById}
+            isSavingItems={isSavingItems}
+            togglingStageId={togglingStageId}
+            onEditStage={onEditStage}
+            onToggleStageStatus={onToggleStageStatus}
+            onSaveItemSsv={onSaveItemSsv}
+            onRemoveItem={onRemoveItem}
+          />
         ) : undefined
       }
       loading={loading}
