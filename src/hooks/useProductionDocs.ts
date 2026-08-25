@@ -140,13 +140,11 @@ export function useLinkProductionDocAttachment() {
   return useMutation({
     mutationFn: ({
       styleId,
-      docId,
       documentId,
     }: {
       styleId: string;
-      docId: string;
       documentId: string;
-    }) => productionDocApi.linkAttachment(styleId, docId, documentId),
+    }) => productionDocApi.linkAttachment(styleId, documentId),
     onSuccess: (_, variables) => {
       void queryClient.invalidateQueries({
         queryKey: productionDocKeys.detail(variables.styleId),
@@ -160,13 +158,11 @@ export function useUnlinkProductionDocAttachment() {
   return useMutation({
     mutationFn: ({
       styleId,
-      docId,
       documentId,
     }: {
       styleId: string;
-      docId: string;
       documentId: string;
-    }) => productionDocApi.unlinkAttachment(styleId, docId, documentId),
+    }) => productionDocApi.unlinkAttachment(styleId, documentId),
     onSuccess: (_, variables) => {
       void queryClient.invalidateQueries({
         queryKey: productionDocKeys.detail(variables.styleId),

@@ -90,23 +90,15 @@ export const productionDocApi = {
     return response.data as Blob;
   },
 
-  async linkAttachment(
-    styleId: string,
-    docId: string,
-    documentId: string,
-  ): Promise<void> {
-    await apiClient.post(`/styles/${styleId}/production-docs/${docId}/attachments`, {
+  async linkAttachment(styleId: string, documentId: string): Promise<void> {
+    await apiClient.post(`/styles/${styleId}/production-docs/attachments`, {
       documentId,
     });
   },
 
-  async unlinkAttachment(
-    styleId: string,
-    docId: string,
-    documentId: string,
-  ): Promise<void> {
+  async unlinkAttachment(styleId: string, documentId: string): Promise<void> {
     await apiClient.delete(
-      `/styles/${styleId}/production-docs/${docId}/attachments/${documentId}`,
+      `/styles/${styleId}/production-docs/attachments/${documentId}`,
     );
   },
 

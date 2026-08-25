@@ -56,9 +56,9 @@ describe("productionDocApi", () => {
 
   it("unlinks an attachment safely", async () => {
     vi.mocked(apiClient.delete).mockResolvedValueOnce({ data: null });
-    await productionDocApi.unlinkAttachment("style-1", "doc-1", "att-1");
+    await productionDocApi.unlinkAttachment("style-1", "att-1");
     expect(apiClient.delete).toHaveBeenCalledWith(
-      "/styles/style-1/production-docs/doc-1/attachments/att-1",
+      "/styles/style-1/production-docs/attachments/att-1",
     );
   });
 });

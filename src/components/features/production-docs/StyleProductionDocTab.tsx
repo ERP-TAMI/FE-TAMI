@@ -387,7 +387,6 @@ export function StyleProductionDocTab({
     try {
       await linkAttachment.mutateAsync({
         styleId,
-        docId: doc.id,
         documentId,
       });
       showToast("Đã đính kèm tài liệu.");
@@ -404,7 +403,6 @@ export function StyleProductionDocTab({
     try {
       await unlinkAttachment.mutateAsync({
         styleId,
-        docId: doc.id,
         documentId,
       });
       showToast("Đã gỡ liên kết đính kèm.");
