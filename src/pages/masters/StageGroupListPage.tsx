@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useBlocker, type BlockerFunction } from "react-router-dom";
 import { StageGroupForm } from "@/components/features/stage-groups/StageGroupForm";
 import { StageGroupTable } from "@/components/features/stage-groups/StageGroupTable";
@@ -46,6 +46,10 @@ export default function StageGroupListPage() {
   const updateStatus = useUpdateStageGroupStatus();
   const remove = useDeleteStageGroup();
   const groups = list.data ?? emptyGroups;
+  const activeStageIds = useMemo(
+    () => (activeStages.data ? new Set(activeStages.data.map((stage) => stage.id)) : undefined),
+    [activeStages.data],
+  );
   const listView = useStageGroupListView(groups);
   const shouldBlockNavigation = useCallback<BlockerFunction>(
     ({ currentLocation, nextLocation }) =>
@@ -189,6 +193,7 @@ export default function StageGroupListPage() {
             <>
               <StageGroupTable
                 groups={listView.paginatedGroups}
+                activeStageIds={activeStageIds}
                 togglingId={updateStatus.isPending ? updateStatus.variables?.id : undefined}
                 onEdit={startEdit}
                 onDelete={setDeleting}

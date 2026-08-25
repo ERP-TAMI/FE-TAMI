@@ -12,7 +12,13 @@ describe("Table", () => {
 
   it("renders skeleton rows instead of data while loading", () => {
     render(
-      <Table<Row> columns={columns} rows={rows} getRowKey={(row) => row.id} loading loadingRowCount={3} />,
+      <Table<Row>
+        columns={columns}
+        rows={rows}
+        getRowKey={(row) => row.id}
+        loading
+        loadingRowCount={3}
+      />,
     );
 
     expect(screen.queryByText("Fabric")).toBeNull();
@@ -54,5 +60,21 @@ describe("Table", () => {
     expect(row.getAttribute("title")).toBe("Kéo để sắp xếp");
     fireEvent.dragStart(row);
     expect(onDragStart).toHaveBeenCalledTimes(1);
+  });
+
+  it("renders optional expanded content directly after its data row", () => {
+    render(
+      <Table<Row>
+        columns={columns}
+        rows={rows}
+        getRowKey={(row) => row.id}
+        renderExpandedRow={(row) => <div>{row.name} details</div>}
+      />,
+    );
+
+    const bodyRows = document.querySelectorAll("tbody tr");
+    expect(bodyRows).toHaveLength(2);
+    expect(bodyRows[1].textContent).toBe("Fabric details");
+    expect(bodyRows[1].querySelector("td")?.getAttribute("colspan")).toBe("1");
   });
 });

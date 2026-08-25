@@ -1,4 +1,4 @@
-import type { HTMLAttributes, ReactNode } from "react";
+import { Fragment, type HTMLAttributes, type ReactNode } from "react";
 
 export type TableColumn<T> = {
   key: string;
@@ -14,6 +14,7 @@ export type TableProps<T> = {
   rows: T[];
   getRowKey: (row: T, index: number) => string | number;
   getRowProps?: (row: T, index: number) => HTMLAttributes<HTMLTableRowElement>;
+  renderExpandedRow?: (row: T, index: number) => ReactNode;
   tableClassName?: string;
   emptyMessage?: ReactNode;
   embedded?: boolean;
@@ -32,6 +33,7 @@ export function Table<T>({
   rows,
   getRowKey,
   getRowProps,
+  renderExpandedRow,
   tableClassName = "",
   emptyMessage = "Không có dữ liệu.",
   embedded = false,
@@ -85,18 +87,27 @@ export function Table<T>({
           ) : (
             rows.map((row, index) => {
               const rowProps = getRowProps?.(row, index);
+              const expandedContent = renderExpandedRow?.(row, index);
               return (
-                <tr
-                  {...rowProps}
-                  key={getRowKey(row, index)}
-                  className={`group h-16 transition-colors hover:bg-gray-50/80 dark:hover:bg-gray-800/50 ${rowProps?.className ?? ""}`}
-                >
-                  {columns.map((column) => (
-                    <td key={column.key} className={`px-5 py-4 ${alignClass(column.align)}`}>
-                      {column.render ? column.render(row) : null}
-                    </td>
-                  ))}
-                </tr>
+                <Fragment key={getRowKey(row, index)}>
+                  <tr
+                    {...rowProps}
+                    className={`group h-16 transition-colors hover:bg-gray-50/80 dark:hover:bg-gray-800/50 ${rowProps?.className ?? ""}`}
+                  >
+                    {columns.map((column) => (
+                      <td key={column.key} className={`px-5 py-4 ${alignClass(column.align)}`}>
+                        {column.render ? column.render(row) : null}
+                      </td>
+                    ))}
+                  </tr>
+                  {expandedContent !== null && expandedContent !== undefined && (
+                    <tr className="bg-gray-50/60 dark:bg-gray-950/20">
+                      <td colSpan={columns.length} className="p-0">
+                        {expandedContent}
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
               );
             })
           )}

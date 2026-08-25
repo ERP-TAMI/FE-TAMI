@@ -1,11 +1,14 @@
+import { useState } from "react";
 import { Table, type TableColumn } from "@/components/shared/Table";
-import { PencilIcon, TrashBinIcon } from "@/icons";
+import { ChevronDownIcon, PencilIcon, TrashBinIcon } from "@/icons";
 import type { StageGroupSummary } from "@/types/stage-group";
+import { StageGroupExpandedRow } from "./StageGroupExpandedRow";
 
 type StageGroupTableProps = {
   groups: StageGroupSummary[];
   togglingId?: string;
   loading?: boolean;
+  activeStageIds?: ReadonlySet<string>;
   onEdit: (group: StageGroupSummary) => void;
   onDelete: (group: StageGroupSummary) => void;
   onToggleStatus: (group: StageGroupSummary) => void;
@@ -15,15 +18,50 @@ export function StageGroupTable({
   groups,
   togglingId,
   loading = false,
+  activeStageIds,
   onEdit,
   onDelete,
   onToggleStatus,
 }: StageGroupTableProps) {
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set());
+  const toggleExpanded = (groupId: string) => {
+    setExpandedIds((current) => {
+      const next = new Set(current);
+      if (next.has(groupId)) next.delete(groupId);
+      else next.add(groupId);
+      return next;
+    });
+  };
   const columns: TableColumn<StageGroupSummary>[] = [
+    {
+      key: "expand",
+      header: "",
+      width: "w-[5%]",
+      align: "center",
+      render: (group) => {
+        const isExpanded = expandedIds.has(group.id);
+        return (
+          <button
+            type="button"
+            onClick={() => toggleExpanded(group.id)}
+            aria-expanded={isExpanded}
+            aria-controls={`stage-group-items-${group.id}`}
+            aria-label={`${isExpanded ? "Thu gọn" : "Xem"} các công đoạn của ${group.groupName}`}
+            title={isExpanded ? "Thu gọn danh sách công đoạn" : "Xem đầy đủ công đoạn"}
+            className="hover:border-brand-300 hover:bg-brand-50 hover:text-brand-600 focus:ring-brand-500/20 dark:hover:border-brand-700 dark:hover:bg-brand-950/30 inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 transition focus:ring-3 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
+          >
+            <ChevronDownIcon
+              className={`h-4 w-4 transition-transform ${isExpanded ? "rotate-180" : ""}`}
+              aria-hidden="true"
+            />
+          </button>
+        );
+      },
+    },
     {
       key: "code",
       header: "Mã nhóm",
-      width: "w-[15%]",
+      width: "w-[14%]",
       render: (group) => (
         <span
           title={group.groupCode}
@@ -36,7 +74,7 @@ export function StageGroupTable({
     {
       key: "name",
       header: "Tên nhóm",
-      width: "w-[20%]",
+      width: "w-[18%]",
       render: (group) => (
         <span title={group.groupName} className="block truncate font-medium">
           {group.groupName}
@@ -46,7 +84,7 @@ export function StageGroupTable({
     {
       key: "description",
       header: "Mô tả",
-      width: "w-[20%]",
+      width: "w-[18%]",
       render: (group) => (
         <span title={group.description ?? undefined} className="block truncate text-gray-500">
           {group.description || "—"}
@@ -130,6 +168,11 @@ export function StageGroupTable({
       columns={columns}
       rows={groups}
       getRowKey={(group) => group.id}
+      renderExpandedRow={(group) =>
+        expandedIds.has(group.id) ? (
+          <StageGroupExpandedRow group={group} activeStageIds={activeStageIds} />
+        ) : undefined
+      }
       loading={loading}
       emptyMessage="Không tìm thấy nhóm công đoạn phù hợp."
     />
