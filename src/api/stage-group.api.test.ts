@@ -38,7 +38,13 @@ describe("stageGroupApi", () => {
     const input = {
       groupName: "Nhóm may",
       description: null,
-      items: [{ stageId: "771c0dc2-cd59-44e3-9b16-cacb200f20e5", orderIndex: 0 }],
+      items: [
+        {
+          stageId: "771c0dc2-cd59-44e3-9b16-cacb200f20e5",
+          ssv: "12.500",
+          orderIndex: 0,
+        },
+      ],
     };
     const detail = {
       ...group,

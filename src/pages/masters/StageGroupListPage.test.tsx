@@ -122,7 +122,7 @@ describe("StageGroupListPage", () => {
         groupCode: "NC-MAY",
         groupName: "Nhóm may",
         description: null,
-        items: [{ stageId: stage.id, orderIndex: 0 }],
+        items: [{ stageId: stage.id, ssv: stage.ssv, orderIndex: 0 }],
       });
       expect(screen.queryByRole("dialog")).toBeNull();
     });
@@ -145,7 +145,7 @@ describe("StageGroupListPage", () => {
         input: {
           groupName: "Nhóm may chính",
           description: null,
-          items: [{ stageId: stage.id, orderIndex: 0 }],
+          items: [{ stageId: stage.id, ssv: stage.ssv, orderIndex: 0 }],
         },
       });
     });

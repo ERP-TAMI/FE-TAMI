@@ -24,7 +24,7 @@ export type StageGroup = StageGroupSummary & {
   items: StageGroupItem[];
 };
 
-export type StageGroupItemInput = Pick<StageGroupItem, "stageId" | "orderIndex">;
+export type StageGroupItemInput = Pick<StageGroupItem, "stageId" | "ssv" | "orderIndex">;
 
 export type StageGroupInput = Pick<StageGroup, "groupName" | "description"> & {
   groupCode?: string;

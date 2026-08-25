@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { HTMLAttributes, ReactNode } from "react";
 
 export type TableColumn<T> = {
   key: string;
@@ -13,6 +13,7 @@ export type TableProps<T> = {
   columns: TableColumn<T>[];
   rows: T[];
   getRowKey: (row: T, index: number) => string | number;
+  getRowProps?: (row: T, index: number) => HTMLAttributes<HTMLTableRowElement>;
   tableClassName?: string;
   emptyMessage?: ReactNode;
   embedded?: boolean;
@@ -30,6 +31,7 @@ export function Table<T>({
   columns,
   rows,
   getRowKey,
+  getRowProps,
   tableClassName = "",
   emptyMessage = "Không có dữ liệu.",
   embedded = false,
@@ -81,18 +83,22 @@ export function Table<T>({
               </td>
             </tr>
           ) : (
-            rows.map((row, index) => (
-              <tr
-                key={getRowKey(row, index)}
-                className="group h-16 transition-colors hover:bg-gray-50/80 dark:hover:bg-gray-800/50"
-              >
-                {columns.map((column) => (
-                  <td key={column.key} className={`px-5 py-4 ${alignClass(column.align)}`}>
-                    {column.render ? column.render(row) : null}
-                  </td>
-                ))}
-              </tr>
-            ))
+            rows.map((row, index) => {
+              const rowProps = getRowProps?.(row, index);
+              return (
+                <tr
+                  {...rowProps}
+                  key={getRowKey(row, index)}
+                  className={`group h-16 transition-colors hover:bg-gray-50/80 dark:hover:bg-gray-800/50 ${rowProps?.className ?? ""}`}
+                >
+                  {columns.map((column) => (
+                    <td key={column.key} className={`px-5 py-4 ${alignClass(column.align)}`}>
+                      {column.render ? column.render(row) : null}
+                    </td>
+                  ))}
+                </tr>
+              );
+            })
           )}
         </tbody>
       </table>

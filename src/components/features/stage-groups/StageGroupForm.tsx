@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useFieldArray, useForm } from "react-hook-form";
+import { useFieldArray, useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 import { Alert, Button, Input, Modal } from "@/components/shared";
 import type { ApiError } from "@/lib/apiError";
-import type { Stage } from "@/types/stage";
+import { STAGE_SSV_PATTERN, type Stage } from "@/types/stage";
 import type { StageGroup, StageGroupInput } from "@/types/stage-group";
 import { StageGroupItemEditor, type StageGroupStageOption } from "./StageGroupItemEditor";
 
@@ -17,7 +17,15 @@ const schema = z.object({
     .max(255, "Tên nhóm không được vượt quá 255 ký tự"),
   description: z.string().trim(),
   items: z
-    .array(z.object({ stageId: z.string().uuid() }))
+    .array(
+      z.object({
+        stageId: z.string().uuid(),
+        ssv: z
+          .string()
+          .trim()
+          .regex(STAGE_SSV_PATTERN, "SSV phải là số không âm và có tối đa 3 số thập phân"),
+      }),
+    )
     .min(1, "Nhóm phải có ít nhất một công đoạn"),
 });
 
@@ -46,7 +54,7 @@ export function StageGroupForm({
   onDirtyChange,
 }: StageGroupFormProps) {
   const [selectedStageId, setSelectedStageId] = useState("");
-  const { control, register, handleSubmit, formState } = useForm<FormValues>({
+  const { control, register, handleSubmit, formState, setValue } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: group
       ? {
@@ -56,11 +64,12 @@ export function StageGroupForm({
           items: group.items
             .slice()
             .sort((left, right) => left.orderIndex - right.orderIndex)
-            .map((item) => ({ stageId: item.stageId })),
+            .map((item) => ({ stageId: item.stageId, ssv: item.ssv })),
         }
       : { groupCode: "", groupName: "", description: "", items: [] },
   });
-  const { fields, append, move, remove, update } = useFieldArray({ control, name: "items" });
+  const { fields, append, move, remove } = useFieldArray({ control, name: "items" });
+  const watchedItems = useWatch({ control, name: "items" }) ?? [];
 
   useEffect(() => onDirtyChange?.(formState.isDirty), [formState.isDirty, onDirtyChange]);
 
@@ -87,30 +96,33 @@ export function StageGroupForm({
     }
     return options;
   }, [group?.items, stages]);
-  const selectedIds = new Set(fields.map((field) => field.stageId));
+  const selectedIds = new Set(watchedItems.map((item) => item.stageId));
   const availableStages = stages
     .filter((stage) => !selectedIds.has(stage.id))
     .map((stage) => stagesById.get(stage.id)!);
 
   const addStage = () => {
     if (!selectedStageId || selectedIds.has(selectedStageId)) return;
-    append({ stageId: selectedStageId });
+    append({ stageId: selectedStageId, ssv: stagesById.get(selectedStageId)!.ssv });
     setSelectedStageId("");
   };
   const submit = (values: FormValues) => {
-    const groupCode = values.groupCode.trim().toUpperCase();
+    const groupCode = values.groupCode?.trim().toUpperCase();
     onSubmit({
-      ...(groupCode ? { groupCode } : {}),
+      ...(mode === "create" && groupCode ? { groupCode } : {}),
       groupName: values.groupName,
       description: values.description || null,
       items: values.items.map((item, orderIndex) => ({ ...item, orderIndex })),
     });
   };
+  const itemSsvErrors = Array.isArray(formState.errors.items)
+    ? formState.errors.items.map((item) => item?.ssv?.message)
+    : [];
 
   return (
     <Modal
       open
-      size="xl"
+      size="2xl"
       title={mode === "create" ? "Tạo nhóm công đoạn" : "Chỉnh sửa nhóm công đoạn"}
       closeLabel="Đóng biểu mẫu nhóm công đoạn"
       onClose={onClose}
@@ -163,15 +175,35 @@ export function StageGroupForm({
           {...register("description")}
         />
         <StageGroupItemEditor
-          items={fields.map((field) => ({ fieldId: field.id, stageId: field.stageId }))}
+          items={fields.map((field, index) => ({
+            fieldId: field.id,
+            stageId: watchedItems[index]?.stageId ?? field.stageId,
+            ssv: watchedItems[index]?.ssv ?? field.ssv,
+          }))}
           stagesById={stagesById}
           availableStages={availableStages}
           selectedStageId={selectedStageId}
           error={formState.errors.items?.root?.message ?? formState.errors.items?.message}
+          ssvErrors={itemSsvErrors}
           onSelectedStageChange={setSelectedStageId}
           onAdd={addStage}
           onMove={move}
-          onChange={(index, stageId) => update(index, { stageId })}
+          onStageChange={(index, stageId) => {
+            setValue(`items.${index}.stageId`, stageId, {
+              shouldDirty: true,
+              shouldValidate: true,
+            });
+            setValue(`items.${index}.ssv`, stagesById.get(stageId)!.ssv, {
+              shouldDirty: true,
+              shouldValidate: true,
+            });
+          }}
+          onSsvChange={(index, ssv) =>
+            setValue(`items.${index}.ssv`, ssv, {
+              shouldDirty: true,
+              shouldValidate: true,
+            })
+          }
           onRemove={remove}
         />
       </form>
