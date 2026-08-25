@@ -185,8 +185,8 @@ export default function StyleDetailPage() {
 
   return (
     <div className="space-y-5">
-      {/* Sticky Top Header Container */}
-      <div className="sticky top-16 z-30 -mx-4 md:-mx-6 -mt-4 md:-mt-6 px-4 md:px-6 pt-4 pb-1 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md border-b border-gray-200/80 dark:border-gray-800 space-y-4 transition-all">
+      {/* Top Header Container — cuộn tự nhiên theo trang, không sticky (khớp UX bản gốc) */}
+      <div className="space-y-4">
         {/* Enterprise Compact Header */}
         <StyleHeader
           styleCode={style.styleCode}

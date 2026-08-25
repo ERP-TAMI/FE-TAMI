@@ -66,7 +66,7 @@ export function DocumentToolbar({
     : null;
 
   return (
-    <div className="sticky top-[152px] z-20 -mx-4 md:-mx-6 px-4 md:px-6 py-3.5 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md border-b border-gray-200/80 dark:border-gray-800 shadow-2xs flex flex-wrap items-center justify-between gap-4 transition-all">
+    <div className="-mx-4 md:-mx-6 px-4 md:px-6 py-3.5 bg-white dark:bg-gray-900 border-b border-gray-200/80 dark:border-gray-800 flex flex-wrap items-center justify-between gap-4">
       {/* Title & Metadata */}
       <div className="space-y-1">
         <div className="flex items-center gap-3">
