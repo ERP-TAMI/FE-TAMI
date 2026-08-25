@@ -6,6 +6,7 @@ import { useUploadImage } from "@/hooks/useUploadImage";
 import { useToast } from "@/hooks/useToast";
 import { Toast } from "@/components/shared";
 import { StyleFormModal } from "@/components/features/styles/StyleFormModal";
+import { UnsavedChangesDialog } from "@/components/features/styles/UnsavedChangesDialog";
 import { StyleHeader } from "@/components/features/styles/StyleHeader";
 import { StyleTabs } from "@/components/features/styles/StyleTabs";
 import { GeneralTab } from "@/components/features/styles/GeneralTab";
@@ -27,13 +28,29 @@ export default function StyleDetailPage() {
     }
   }, [id, location.pathname, navigate]);
 
-  const handleTabChange = (tab: "general" | "production_doc") => {
+  const [isProductionDocEditing, setIsProductionDocEditing] = useState(false);
+  const [pendingTab, setPendingTab] = useState<"general" | "production_doc" | null>(null);
+
+  const navigateToTab = (tab: "general" | "production_doc") => {
     if (!id) return;
     if (tab === "production_doc") {
       navigate(`/styles/${id}/production-doc`);
     } else {
       navigate(`/styles/${id}/detail`);
     }
+  };
+
+  const handleTabChange = (tab: "general" | "production_doc") => {
+    if (isProductionDocEditing && tab !== activeTab) {
+      setPendingTab(tab);
+      return;
+    }
+    navigateToTab(tab);
+  };
+
+  const handleConfirmLeaveTab = () => {
+    if (pendingTab) navigateToTab(pendingTab);
+    setPendingTab(null);
   };
 
   const detail = useStyle(id);
@@ -226,8 +243,15 @@ export default function StyleDetailPage() {
           styleName={style.styleName}
           styleDescription={style.description}
           styleImageUrl={imageUrl || style.baseImageVersionId || undefined}
+          onEditingChange={setIsProductionDocEditing}
         />
       )}
+
+      <UnsavedChangesDialog
+        isOpen={pendingTab !== null}
+        onConfirmLeave={handleConfirmLeaveTab}
+        onCancel={() => setPendingTab(null)}
+      />
 
       {/* Edit Modal */}
       {isEditModalOpen && (

@@ -36,6 +36,7 @@ interface Props {
   styleName: string;
   styleDescription?: string | null;
   styleImageUrl?: string | null;
+  onEditingChange?: (isEditing: boolean) => void;
 }
 
 function SectionHeader({ num, title }: { num: string; title: string }) {
@@ -137,6 +138,7 @@ export function StyleProductionDocTab({
   styleName,
   styleDescription,
   styleImageUrl,
+  onEditingChange,
 }: Props) {
   const { data: doc, isLoading, isError, error, refetch } = useProductionDoc(
     styleId,
@@ -154,6 +156,11 @@ export function StyleProductionDocTab({
   const { toast, showToast, hideToast } = useToast();
 
   const [isEditing, setIsEditing] = useState(false);
+
+  useEffect(() => {
+    onEditingChange?.(isEditing);
+    return () => onEditingChange?.(false);
+  }, [isEditing, onEditingChange]);
   const [docName, setDocName] = useState("");
   const [sec1Desc, setSec1Desc] = useState("");
   const [sec1Image, setSec1Image] = useState("");
