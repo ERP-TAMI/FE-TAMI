@@ -31,7 +31,7 @@ export function StageTable({
     {
       key: "code",
       header: "Mã công đoạn",
-      width: "w-[15%]",
+      width: "w-[18%]",
       render: (stage) => (
         <span
           title={stage.stageCode}
@@ -44,7 +44,7 @@ export function StageTable({
     {
       key: "name",
       header: "Tên công đoạn",
-      width: "w-[18%]",
+      width: "w-[19%]",
       render: (stage) => (
         <span title={stage.stageName} className="block truncate font-medium">
           {stage.stageName}
@@ -54,7 +54,7 @@ export function StageTable({
     {
       key: "description",
       header: "Mô tả",
-      width: "w-[13%]",
+      width: "w-[19%]",
       render: (stage) => (
         <span title={stage.description ?? undefined} className="block truncate text-gray-500">
           {stage.description || "—"}
@@ -97,7 +97,7 @@ export function StageTable({
     {
       key: "status",
       header: "Trạng thái",
-      width: "w-[14%]",
+      width: "w-[17%]",
       render: (stage) => {
         const isToggling = togglingId === stage.id;
         return (
@@ -129,7 +129,7 @@ export function StageTable({
     {
       key: "actions",
       header: "Thao tác",
-      width: "w-[30%]",
+      width: "w-[17%]",
       align: "center",
       render: (stage) => (
         <div className="flex items-center justify-center gap-1">
