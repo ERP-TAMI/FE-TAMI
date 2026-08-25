@@ -15,6 +15,7 @@ import { useStyles } from "@/hooks/useStyles";
 import { useUploadImage } from "@/hooks/useUploadImage";
 import { useToast } from "@/hooks/useToast";
 import { getApiError } from "@/lib/apiError";
+import { validateImageFile } from "@/lib/validateImageFile";
 
 import { DocumentToolbar } from "./DocumentToolbar";
 import { SizeSpecTable } from "./SizeSpecTable";
@@ -546,17 +547,21 @@ export function StyleProductionDocTab({
                       className="hidden"
                       onChange={async (e) => {
                         const file = e.target.files?.[0];
-                        if (file) {
-                          try {
-                            const res = await uploadImage.mutateAsync(file);
-                            setSec1Image(res.url);
-                            showToast("Đã tải ảnh phác thảo.");
-                          } catch (err) {
-                            showToast(
-                              getApiError(err, "Tải ảnh thất bại.").message,
-                              "error",
-                            );
-                          }
+                        if (!file) return;
+                        const validationError = validateImageFile(file);
+                        if (validationError) {
+                          showToast(validationError, "error");
+                          return;
+                        }
+                        try {
+                          const res = await uploadImage.mutateAsync(file);
+                          setSec1Image(res.url);
+                          showToast("Đã tải ảnh phác thảo.");
+                        } catch (err) {
+                          showToast(
+                            getApiError(err, "Tải ảnh thất bại.").message,
+                            "error",
+                          );
                         }
                       }}
                     />
@@ -724,17 +729,21 @@ export function StyleProductionDocTab({
                 className="hidden"
                 onChange={async (e) => {
                   const file = e.target.files?.[0];
-                  if (file) {
-                    try {
-                      const res = await uploadImage.mutateAsync(file);
-                      setSec5SizeImages((prev) => [...prev, res.url]);
-                      showToast("Đã tải ảnh thông số full size.");
-                    } catch (err) {
-                      showToast(
-                        getApiError(err, "Tải ảnh thất bại.").message,
-                        "error",
-                      );
-                    }
+                  if (!file) return;
+                  const validationError = validateImageFile(file);
+                  if (validationError) {
+                    showToast(validationError, "error");
+                    return;
+                  }
+                  try {
+                    const res = await uploadImage.mutateAsync(file);
+                    setSec5SizeImages((prev) => [...prev, res.url]);
+                    showToast("Đã tải ảnh thông số full size.");
+                  } catch (err) {
+                    showToast(
+                      getApiError(err, "Tải ảnh thất bại.").message,
+                      "error",
+                    );
                   }
                 }}
               />
@@ -865,6 +874,11 @@ export function StyleProductionDocTab({
                               updated[idx].imageGroups![grpIdx].imageUrls || [];
                             if (currentImgs.length >= 2) {
                               showToast("Mỗi heading tối đa 2 ảnh.", "error");
+                              return;
+                            }
+                            const validationError = validateImageFile(file);
+                            if (validationError) {
+                              showToast(validationError, "error");
                               return;
                             }
                             try {

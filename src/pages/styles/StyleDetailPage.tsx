@@ -12,6 +12,7 @@ import { StyleTabs } from "@/components/features/styles/StyleTabs";
 import { GeneralTab } from "@/components/features/styles/GeneralTab";
 import { StyleProductionDocTab } from "@/components/features/production-docs/StyleProductionDocTab";
 import { getApiError, isConflictError } from "@/lib/apiError";
+import { validateImageFile } from "@/lib/validateImageFile";
 
 export default function StyleDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -73,6 +74,11 @@ export default function StyleDetailPage() {
   const handleUploadAndSaveImage = useCallback(
     async (file: File) => {
       if (!style) return;
+      const validationError = validateImageFile(file);
+      if (validationError) {
+        showToast(validationError, "error");
+        return;
+      }
       try {
         const res = await uploadImage.mutateAsync(file);
         setImageUrl(res.url);
