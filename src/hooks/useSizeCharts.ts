@@ -55,4 +55,9 @@ export function useUpdateSizeChartStatus() {
   });
 }
 
+export function useDeleteSizeChart() {
+  const invalidate = useInvalidateSizeCharts();
+  return useMutation({ mutationFn: sizeChartApi.remove, onSuccess: invalidate });
+}
+
 export type { CreateSizeChartInput };

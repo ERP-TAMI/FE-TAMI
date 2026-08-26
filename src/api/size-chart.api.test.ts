@@ -7,6 +7,7 @@ vi.mock("@/lib/apiClient", () => ({
     get: vi.fn(),
     post: vi.fn(),
     patch: vi.fn(),
+    delete: vi.fn(),
   },
 }));
 
@@ -64,7 +65,11 @@ describe("sizeChartApi", () => {
     });
   });
 
-  it("exposes no hard-delete API", () => {
-    expect(sizeChartApi).not.toHaveProperty("delete");
+  it("deletes a size chart without parsing a response body", async () => {
+    vi.mocked(apiClient.delete).mockResolvedValue({ data: undefined });
+
+    await expect(sizeChartApi.remove(sizeChart.id)).resolves.toBeUndefined();
+
+    expect(apiClient.delete).toHaveBeenCalledWith(`/masters/size-charts/${sizeChart.id}`);
   });
 });

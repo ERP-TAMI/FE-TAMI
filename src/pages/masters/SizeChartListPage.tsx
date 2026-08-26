@@ -8,6 +8,7 @@ import PageMeta from "@/components/shared/PageMeta";
 import { useSizeChartListView } from "@/hooks/useSizeChartListView";
 import {
   useCreateSizeChart,
+  useDeleteSizeChart,
   useSizeCharts,
   useUpdateSizeChart,
   useUpdateSizeChartStatus,
@@ -27,12 +28,14 @@ const emptySizeCharts: SizeChart[] = [];
 export default function SizeChartListPage() {
   const [editing, setEditing] = useState<SizeChart | "create" | undefined>();
   const [deactivating, setDeactivating] = useState<SizeChart>();
+  const [deleting, setDeleting] = useState<SizeChart>();
   const [isFormDirty, setIsFormDirty] = useState(false);
   const { toast, showToast, hideToast } = useToast();
   const list = useSizeCharts();
   const create = useCreateSizeChart();
   const update = useUpdateSizeChart();
   const updateStatus = useUpdateSizeChartStatus();
+  const remove = useDeleteSizeChart();
   const sizeCharts = list.data ?? emptySizeCharts;
   const listView = useSizeChartListView(sizeCharts);
   const shouldBlockNavigation = useCallback<BlockerFunction>(
@@ -104,6 +107,17 @@ export default function SizeChartListPage() {
     else void changeStatus(sizeChart, "active");
   };
 
+  const confirmDelete = async () => {
+    if (!deleting) return;
+    try {
+      await remove.mutateAsync(deleting.id);
+      showToast("Đã xóa bảng Size.");
+      setDeleting(undefined);
+    } catch (error) {
+      showToast(getApiError(error, "Không thể xóa bảng Size.").message, "error");
+    }
+  };
+
   const formError = editing === "create" ? create.error : editing ? update.error : null;
 
   return (
@@ -147,6 +161,7 @@ export default function SizeChartListPage() {
                 loading
                 onEdit={() => {}}
                 onToggleStatus={() => {}}
+                onDelete={() => {}}
               />
             </div>
           )}
@@ -170,6 +185,7 @@ export default function SizeChartListPage() {
                 togglingId={updateStatus.isPending ? updateStatus.variables?.id : undefined}
                 onEdit={openForm}
                 onToggleStatus={toggleStatus}
+                onDelete={setDeleting}
               />
               <Pagination
                 page={listView.page}
@@ -210,6 +226,23 @@ export default function SizeChartListPage() {
           isSubmitting={updateStatus.isPending}
           onClose={() => setDeactivating(undefined)}
           onConfirm={() => void changeStatus(deactivating, "inactive")}
+        />
+      )}
+      {deleting && (
+        <ConfirmDialog
+          open
+          title="Xóa bảng Size?"
+          description={
+            <>
+              Bạn có chắc muốn xóa vĩnh viễn bảng "{deleting.name}"? Chỉ có thể xóa khi chưa có dữ
+              liệu tham chiếu.
+            </>
+          }
+          confirmLabel="Xóa bảng Size"
+          variant="danger"
+          isSubmitting={remove.isPending}
+          onClose={() => setDeleting(undefined)}
+          onConfirm={() => void confirmDelete()}
         />
       )}
       <ConfirmDialog

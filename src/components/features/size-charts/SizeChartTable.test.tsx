@@ -14,9 +14,17 @@ const sizeChart = {
 afterEach(cleanup);
 
 describe("SizeChartTable", () => {
-  it("renders ordered sizes and exposes edit without a hard-delete action", () => {
+  it("renders ordered sizes and exposes edit and delete actions", () => {
     const onEdit = vi.fn();
-    render(<SizeChartTable sizeCharts={[sizeChart]} onEdit={onEdit} onToggleStatus={vi.fn()} />);
+    const onDelete = vi.fn();
+    render(
+      <SizeChartTable
+        sizeCharts={[sizeChart]}
+        onEdit={onEdit}
+        onToggleStatus={vi.fn()}
+        onDelete={onDelete}
+      />,
+    );
 
     expect(screen.getByText("Áo sơ mi nam")).toBeTruthy();
     expect(screen.getAllByTestId("size-label").map((element) => element.textContent)).toEqual([
@@ -26,16 +34,21 @@ describe("SizeChartTable", () => {
       "L",
       "XL",
     ]);
-    expect(screen.queryByRole("button", { name: /xóa/i })).toBeNull();
-
     fireEvent.click(screen.getByRole("button", { name: "Sửa" }));
     expect(onEdit).toHaveBeenCalledWith(sizeChart);
+    fireEvent.click(screen.getByRole("button", { name: "Xóa" }));
+    expect(onDelete).toHaveBeenCalledWith(sizeChart);
   });
 
   it("provides an accessible status switch", () => {
     const onToggleStatus = vi.fn();
     render(
-      <SizeChartTable sizeCharts={[sizeChart]} onEdit={vi.fn()} onToggleStatus={onToggleStatus} />,
+      <SizeChartTable
+        sizeCharts={[sizeChart]}
+        onEdit={vi.fn()}
+        onToggleStatus={onToggleStatus}
+        onDelete={vi.fn()}
+      />,
     );
 
     fireEvent.click(screen.getByRole("switch", { name: "Tắt Áo sơ mi nam" }));

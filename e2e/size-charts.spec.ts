@@ -59,6 +59,18 @@ test.describe("Size Charts management (real browser, mocked HTTP boundary)", () 
         return;
       }
 
+      if (method === "DELETE") {
+        mutationRequests.push({ method, url: url.pathname, body: undefined });
+        const chartIndex = charts.findIndex((item) => url.pathname.endsWith(item.id));
+        if (chartIndex < 0) {
+          await route.fulfill({ status: 404, contentType: "application/json", body: "{}" });
+          return;
+        }
+        charts.splice(chartIndex, 1);
+        await route.fulfill({ status: 204, body: "" });
+        return;
+      }
+
       const body = request.postDataJSON() as Record<string, unknown>;
       mutationRequests.push({ method, url: url.pathname, body });
 
@@ -99,7 +111,7 @@ test.describe("Size Charts management (real browser, mocked HTTP boundary)", () 
     await page.goto("/masters/size-charts");
     await expect(page.getByRole("heading", { name: "Bảng Size" })).toBeVisible();
     await expect(page.getByText("Áo sơ mi nam", { exact: true })).toBeVisible();
-    await expect(page.getByRole("button", { name: /xóa/i })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Xóa" })).toHaveCount(1);
 
     await page.getByRole("button", { name: "Tạo bảng Size" }).click();
     const form = page.getByRole("dialog");
@@ -136,6 +148,20 @@ test.describe("Size Charts management (real browser, mocked HTTP boundary)", () 
     await expect(confirm.getByText(/PO và tài liệu lịch sử vẫn giữ nguyên/)).toBeVisible();
     await confirm.getByRole("button", { name: "Tắt bảng Size" }).click();
     await expect(page.getByRole("switch", { name: "Bật Áo sơ mi nam" })).toBeVisible();
+
+    const createdRow = page.getByRole("row", { name: /Áo thun E2E/ });
+    await createdRow.getByRole("button", { name: "Xóa" }).click();
+    const deleteDialog = page.getByRole("dialog");
+    await expect(
+      deleteDialog.getByText(/chỉ có thể xóa khi chưa có dữ liệu tham chiếu/i),
+    ).toBeVisible();
+    await deleteDialog.getByRole("button", { name: "Xóa bảng Size" }).click();
+    await expect(page.getByText("Áo thun E2E", { exact: true })).toHaveCount(0);
+    expect(mutationRequests).toContainEqual({
+      method: "DELETE",
+      url: "/api/masters/size-charts/c42ec89d-2cf3-49fb-80fc-1407b74eef04",
+      body: undefined,
+    });
 
     await page.setViewportSize({ width: 375, height: 812 });
     await expect(page.getByRole("heading", { name: "Bảng Size" })).toBeVisible();

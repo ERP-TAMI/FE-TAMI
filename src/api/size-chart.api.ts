@@ -42,4 +42,7 @@ export const sizeChartApi = {
     const response = await apiClient.patch<SizeChart>(`${resource}/${id}/status`, { status });
     return sizeChartResponseSchema.parse(response.data);
   },
+  async remove(id: string): Promise<void> {
+    await apiClient.delete(`${resource}/${id}`);
+  },
 };

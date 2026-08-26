@@ -8,6 +8,7 @@ const hooks = vi.hoisted(() => ({
   create: { isPending: false, error: null as Error | null, mutateAsync: vi.fn(), reset: vi.fn() },
   update: { isPending: false, error: null as Error | null, mutateAsync: vi.fn(), reset: vi.fn() },
   updateStatus: { isPending: false, variables: undefined, mutateAsync: vi.fn() },
+  remove: { isPending: false, error: null as Error | null, mutateAsync: vi.fn() },
 }));
 
 vi.mock("@/hooks/useSizeCharts", () => ({
@@ -15,6 +16,7 @@ vi.mock("@/hooks/useSizeCharts", () => ({
   useCreateSizeChart: () => hooks.create,
   useUpdateSizeChart: () => hooks.update,
   useUpdateSizeChartStatus: () => hooks.updateStatus,
+  useDeleteSizeChart: () => hooks.remove,
 }));
 
 const sizeCharts = [
@@ -167,9 +169,37 @@ describe("SizeChartListPage", () => {
     });
   });
 
-  it("has no hard-delete action", () => {
+  it("deletes a chart only after confirmation", async () => {
+    hooks.remove.mutateAsync.mockResolvedValue(undefined);
     renderPage();
-    expect(screen.queryByRole("button", { name: /xóa/i })).toBeNull();
+
+    fireEvent.click(within(screen.getByRole("table")).getAllByRole("button", { name: "Xóa" })[0]);
+
+    expect(hooks.remove.mutateAsync).not.toHaveBeenCalled();
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByText(/chỉ có thể xóa khi chưa có dữ liệu tham chiếu/i)).toBeTruthy();
+    fireEvent.click(within(dialog).getByRole("button", { name: "Xóa bảng Size" }));
+
+    await waitFor(() => {
+      expect(hooks.remove.mutateAsync).toHaveBeenCalledWith(sizeCharts[0].id);
+      expect(screen.queryByRole("dialog")).toBeNull();
+      expect(screen.getByText("Đã xóa bảng Size.")).toBeTruthy();
+    });
+  });
+
+  it("keeps the confirmation open and shows an error when delete is blocked", async () => {
+    hooks.remove.mutateAsync.mockRejectedValue(new Error("conflict"));
+    renderPage();
+
+    fireEvent.click(within(screen.getByRole("table")).getAllByRole("button", { name: "Xóa" })[0]);
+    fireEvent.click(
+      within(screen.getByRole("dialog")).getByRole("button", { name: "Xóa bảng Size" }),
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole("dialog")).toBeTruthy();
+      expect(screen.getByText("Không thể xóa bảng Size.")).toBeTruthy();
+    });
   });
 
   it("blocks SPA navigation while the form is dirty", async () => {
