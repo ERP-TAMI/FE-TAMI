@@ -91,7 +91,12 @@ export function WorkshopForm({
       location: values.location.trim() || null,
       capacity: Number(values.capacity),
     };
-    onSubmit({ ...mutableFields, workshopCode: values.workshopCode.trim().toUpperCase() });
+    const workshopCode = values.workshopCode?.trim().toUpperCase();
+    const shouldSubmitCode = mode === "create" || !isCodeLocked;
+    onSubmit({
+      ...mutableFields,
+      ...(shouldSubmitCode && workshopCode ? { workshopCode } : {}),
+    });
   };
 
   return (
