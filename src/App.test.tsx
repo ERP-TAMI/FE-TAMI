@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createMemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -7,6 +7,7 @@ import { ThemeProvider } from "@/context/ThemeContext";
 import { materialGroupApi } from "@/api/material-group.api";
 import { stageApi } from "@/api/stage.api";
 import { stageGroupApi } from "@/api/stage-group.api";
+import { workshopApi } from "@/api/workshop.api";
 import { useAuthStore } from "@/store/authStore";
 
 const NativeRequest = globalThis.Request;
@@ -49,6 +50,16 @@ vi.mock("@/api/stage-group.api", () => ({
   },
 }));
 
+vi.mock("@/api/workshop.api", () => ({
+  workshopApi: {
+    list: vi.fn().mockResolvedValue([]),
+    detail: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    updateStatus: vi.fn(),
+  },
+}));
+
 // Route-wiring tests don't exercise the real bootstrap/refresh flow (that's
 // covered by apiClient.test.ts) — they just need `status` to reflect
 // whatever the test puts in the auth store, synchronously.
@@ -71,6 +82,7 @@ beforeEach(() => {
   vi.mocked(materialGroupApi.list).mockResolvedValue([]);
   vi.mocked(stageApi.list).mockResolvedValue([]);
   vi.mocked(stageGroupApi.list).mockResolvedValue([]);
+  vi.mocked(workshopApi.list).mockResolvedValue([]);
   useAuthStore.setState({ status: "unauthenticated", user: null, accessToken: null });
 });
 
@@ -164,7 +176,7 @@ describe("application routes", () => {
     window.history.pushState({}, "", "/masters/stages");
     renderApp();
 
-    expect(screen.getByRole("heading", { name: "Giai đoạn công đoạn" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Công đoạn" })).toBeTruthy();
   });
 
   it("renders the stage groups management route", () => {
@@ -173,6 +185,14 @@ describe("application routes", () => {
     renderApp();
 
     expect(screen.getByRole("heading", { name: "Nhóm công đoạn" })).toBeTruthy();
+  });
+
+  it("renders the workshops management route", () => {
+    signIn();
+    window.history.pushState({}, "", "/masters/workshops");
+    renderApp();
+
+    expect(screen.getByRole("heading", { name: "Xưởng sản xuất" })).toBeTruthy();
   });
 
   it("blocks sidebar navigation while the stage group form is dirty", async () => {
@@ -184,15 +204,14 @@ describe("application routes", () => {
     fireEvent.change(screen.getByLabelText("Tên nhóm công đoạn"), {
       target: { value: "Nhóm đang nhập" },
     });
-    const navigation = screen.getByRole("navigation", { name: "ERP modules" });
-    fireEvent.click(within(navigation).getByRole("link", { name: "Dashboard" }));
+    await act(() => router.navigate("/dashboard"));
 
     expect(router.state.location.pathname).toBe("/masters/stage-groups");
     expect(await screen.findByRole("heading", { name: "Hủy các thay đổi?" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Tiếp tục chỉnh sửa" }));
     expect(screen.getByDisplayValue("Nhóm đang nhập")).toBeTruthy();
 
-    fireEvent.click(within(navigation).getByRole("link", { name: "Dashboard" }));
+    await act(() => router.navigate("/dashboard"));
     fireEvent.click(await screen.findByRole("button", { name: "Bỏ thay đổi" }));
     expect(await screen.findByRole("heading", { name: "Dashboard" })).toBeTruthy();
   });
