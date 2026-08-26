@@ -19,39 +19,47 @@ export interface StageGroup {
 
 export const stageGroupApi = {
   getStageGroups: async (): Promise<StageGroup[]> => {
-    const res = await apiClient.get<any[]>("/masters/stage-groups");
-    return (res.data || []).map((g: any) => ({
-      id: g.id,
-      code: g.groupCode || g.code || "",
-      name: g.groupName || g.name || "",
-      description: g.description || undefined,
+    const res = await apiClient.get<Record<string, unknown>[]>(
+      "/masters/stage-groups",
+    );
+    return (res.data || []).map((g: Record<string, unknown>) => ({
+      id: String(g.id || ""),
+      code: String(g.groupCode || g.code || ""),
+      name: String(g.groupName || g.name || ""),
+      description: g.description ? String(g.description) : undefined,
       isGroup: true,
-      items: (g.items || []).map((it: any) => ({
-        id: it.id,
-        name: it.itemName || it.name || "",
-        description: it.description || undefined,
-        ssv: Number(it.ssv) || 0,
-        orderIndex: it.orderIndex || 0,
-      })),
+      items: (Array.isArray(g.items) ? g.items : []).map(
+        (it: Record<string, unknown>) => ({
+          id: String(it.id || ""),
+          name: String(it.itemName || it.name || ""),
+          description: it.description ? String(it.description) : undefined,
+          ssv: Number(it.ssv) || 0,
+          orderIndex: Number(it.orderIndex) || 0,
+        }),
+      ),
     }));
   },
 
   getStageGroupById: async (id: string): Promise<StageGroup> => {
-    const res = await apiClient.get<any>(`/masters/stage-groups/${id}`);
-    const g = res.data;
+    const res = await apiClient.get<Record<string, unknown>>(
+      `/masters/stage-groups/${id}`,
+    );
+    const g = res.data || {};
     return {
-      id: g.id,
-      code: g.groupCode || g.code || "",
-      name: g.groupName || g.name || "",
-      description: g.description || undefined,
+      id: String(g.id || ""),
+      code: String(g.groupCode || g.code || ""),
+      name: String(g.groupName || g.name || ""),
+      description: g.description ? String(g.description) : undefined,
       isGroup: true,
-      items: (g.items || []).map((it: any) => ({
-        id: it.id,
-        name: it.itemName || it.name || "",
-        description: it.description || undefined,
-        ssv: Number(it.ssv) || 0,
-        orderIndex: it.orderIndex || 0,
-      })),
+      items: (Array.isArray(g.items) ? g.items : []).map(
+        (it: Record<string, unknown>) => ({
+          id: String(it.id || ""),
+          name: String(it.itemName || it.name || ""),
+          description: it.description ? String(it.description) : undefined,
+          ssv: Number(it.ssv) || 0,
+          orderIndex: Number(it.orderIndex) || 0,
+        }),
+      ),
     };
   },
 };

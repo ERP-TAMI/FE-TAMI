@@ -164,7 +164,7 @@ export function StyleOperationStepTable({
     setIsDirty(false);
     const firstTarget = steps.find((row) => Number(row.targetTotal) > 0)?.targetTotal;
     setBulkTargetTotal(firstTarget ? String(firstTarget) : "");
-  }, [rowKeys]);
+  }, [rowKeys, steps]);
 
   useEffect(() => {
     const v = Number(cmBaseDays) || 30;
@@ -184,7 +184,7 @@ export function StyleOperationStepTable({
       : rows;
   }
 
-  function updateLocal(idx: number, field: keyof StyleOperationStepItem, value: any) {
+  function updateLocal(idx: number, field: keyof StyleOperationStepItem, value: unknown) {
     setIsDirty(true);
     setRows((prev) => {
       const next = prev.map((r, i) => {
@@ -382,9 +382,10 @@ export function StyleOperationStepTable({
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
       showToast("Xuất file Excel theo template thành công!", "success");
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Lỗi xuất file Excel:", err);
-      showToast("Không thể xuất file Excel: " + (err.message || "Lỗi hệ thống"), "error");
+      const msg = err instanceof Error ? err.message : "Lỗi hệ thống";
+      showToast("Không thể xuất file Excel: " + msg, "error");
     }
   };
 

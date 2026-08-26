@@ -17,6 +17,7 @@ import { DocsIcon, InfoIcon } from "@/icons";
 
 
 import { stylesApi } from "@/api/stylesApi";
+import type { StyleOperationStepItem } from "@/api/styleOperationStepsApi";
 import { resolveImageUrl } from "@/lib/imageUtils";
 
 export default function StyleDetailPage() {
@@ -158,7 +159,7 @@ export default function StyleDetailPage() {
     }
   };
 
-  const handleSaveSteps = async (stepsData: any[], baseDays?: number) => {
+  const handleSaveSteps = async (stepsData: Partial<StyleOperationStepItem>[], baseDays?: number) => {
     if (!id) return;
     try {
       await bulkSaveSteps.mutateAsync({ steps: stepsData, as3bCmBaseDays: baseDays });

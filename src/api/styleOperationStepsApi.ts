@@ -1,7 +1,9 @@
 import apiClient from "@/lib/apiClient";
 
+import type { StageGroupSubItem } from "./stageGroup.api";
+
 export interface StyleOperationStepItem {
-  id: string;
+  id?: string;
   styleId?: string;
   parentStepId?: string | null;
   stageId?: string | null;
@@ -14,7 +16,7 @@ export interface StyleOperationStepItem {
   orderIndex: number;
   isGroup: boolean;
   groupId?: string | null;
-  groupItems?: any;
+  groupItems?: StageGroupSubItem[];
 }
 
 export interface BulkSaveStyleOperationStepsPayload {
