@@ -42,6 +42,56 @@ describe("StageGroupForm", () => {
     expect(screen.getByRole("dialog").className).toContain("max-w-7xl");
   });
 
+  it("toggles the stage group code between locked and editable states", () => {
+    render(
+      <StageGroupForm
+        mode="edit"
+        group={group}
+        isSubmitting={false}
+        onClose={vi.fn()}
+        onSubmit={vi.fn()}
+      />,
+    );
+
+    const codeInput = screen.getByLabelText("Mã nhóm công đoạn") as HTMLInputElement;
+
+    expect(codeInput.disabled).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: "Mở khóa mã nhóm công đoạn" }));
+
+    expect(codeInput.disabled).toBe(false);
+    expect(document.activeElement).toBe(codeInput);
+    expect(screen.getByRole("button", { name: "Khóa mã nhóm công đoạn" })).toBeTruthy();
+    expect(screen.getByText("Mã nhóm công đoạn đang mở khóa và có thể chỉnh sửa.")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Khóa mã nhóm công đoạn" }));
+    expect(codeInput.disabled).toBe(true);
+  });
+
+  it("submits a normalized stage group code after unlocking it", async () => {
+    const onSubmit = vi.fn();
+    render(
+      <StageGroupForm
+        mode="edit"
+        group={group}
+        isSubmitting={false}
+        onClose={vi.fn()}
+        onSubmit={onSubmit}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Mở khóa mã nhóm công đoạn" }));
+    fireEvent.change(screen.getByLabelText("Mã nhóm công đoạn"), {
+      target: { value: " ns-nhom-may-2 " },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Lưu nhóm công đoạn" }));
+
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({ groupCode: "NS-NHOM-MAY-2" }),
+      );
+    });
+  });
+
   it("requires a group name and at least one independent child", async () => {
     const onSubmit = vi.fn();
     render(

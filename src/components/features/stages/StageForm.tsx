@@ -2,8 +2,7 @@ import { useEffect, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { Alert, Button, ConfirmDialog, Input, Modal } from "@/components/shared";
-import { LockIcon, UnlockIcon } from "@/icons";
+import { Alert, Button, CodeLockToggle, ConfirmDialog, Input, Modal } from "@/components/shared";
 import type { ApiError } from "@/lib/apiError";
 import { STAGE_SSV_PATTERN, type Stage, type StageInput } from "@/types/stage";
 
@@ -113,24 +112,11 @@ export function StageForm({
               label="Mã công đoạn"
               labelAction={
                 mode === "edit" ? (
-                  <button
-                    type="button"
-                    aria-label={isCodeLocked ? "Mở khóa mã công đoạn" : "Khóa mã công đoạn"}
-                    aria-pressed={!isCodeLocked}
-                    title={isCodeLocked ? "Mở khóa để sửa mã" : "Khóa mã công đoạn"}
-                    onClick={() => setIsCodeLocked((current) => !current)}
-                    className={`inline-flex h-6 w-6 items-center justify-center rounded-md transition-colors focus:ring-3 focus:outline-none ${
-                      isCodeLocked
-                        ? "text-gray-400 hover:bg-gray-100 hover:text-gray-600 focus:ring-gray-400/20 dark:text-gray-500 dark:hover:bg-gray-800 dark:hover:text-gray-300"
-                        : "bg-brand-50 text-brand-500 hover:bg-brand-100 focus:ring-brand-500/20 dark:bg-brand-500/15 dark:text-brand-400"
-                    }`}
-                  >
-                    {isCodeLocked ? (
-                      <LockIcon className="h-3.5 w-3.5" aria-hidden="true" />
-                    ) : (
-                      <UnlockIcon className="h-3.5 w-3.5" aria-hidden="true" />
-                    )}
-                  </button>
+                  <CodeLockToggle
+                    codeLabel="mã công đoạn"
+                    isLocked={isCodeLocked}
+                    onToggle={() => setIsCodeLocked((current) => !current)}
+                  />
                 ) : undefined
               }
               placeholder="Ví dụ: GD-CAT"

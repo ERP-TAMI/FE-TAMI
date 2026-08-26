@@ -134,7 +134,7 @@ describe("StageGroupListPage", () => {
     });
   });
 
-  it("loads detail before editing, retains child IDs and omits immutable group code", async () => {
+  it("loads detail before editing, retains child IDs and omits an unchanged group code", async () => {
     mocks.update.mutateAsync.mockResolvedValue(detail);
     renderPage();
     fireEvent.click(screen.getByRole("button", { name: "Sửa" }));
@@ -151,6 +151,25 @@ describe("StageGroupListPage", () => {
           description: null,
           items: detail.items,
         },
+      });
+    });
+  });
+
+  it("passes an unlocked group code to the update mutation", async () => {
+    mocks.update.mutateAsync.mockResolvedValue({ ...detail, groupCode: "NS-MAY-2" });
+    renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "Sửa" }));
+    fireEvent.click(screen.getByRole("button", { name: "Mở khóa mã nhóm công đoạn" }));
+    fireEvent.change(screen.getByLabelText("Mã nhóm công đoạn"), {
+      target: { value: " ns-may-2 " },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Lưu nhóm công đoạn" }));
+
+    await waitFor(() => {
+      expect(mocks.update.mutateAsync).toHaveBeenCalledWith({
+        id: summary.id,
+        input: expect.objectContaining({ groupCode: "NS-MAY-2" }),
       });
     });
   });
