@@ -176,7 +176,7 @@ describe("application routes", () => {
     window.history.pushState({}, "", "/masters/stages");
     renderApp();
 
-    expect(screen.getByRole("heading", { name: "Giai đoạn công đoạn" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Công đoạn" })).toBeTruthy();
   });
 
   it("renders the stage groups management route", () => {

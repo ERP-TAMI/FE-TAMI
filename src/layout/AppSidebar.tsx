@@ -33,7 +33,7 @@ const navItems: NavItem[] = [
     children: [
       { name: "Vật tư", path: "/masters/materials" },
       { name: "Nhóm vật tư", path: "/masters/material-groups" },
-      { name: "Giai đoạn công đoạn", path: "/masters/stages" },
+      { name: "Công đoạn", path: "/masters/stages" },
       { name: "Nhóm công đoạn", path: "/masters/stage-groups" },
       { name: "Đơn vị tính", path: "/masters/units" },
       { name: "Xưởng sản xuất", path: "/masters/workshops" },

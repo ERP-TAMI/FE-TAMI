@@ -41,7 +41,32 @@ describe("WorkshopForm", () => {
     });
   });
 
-  it("locks the code during edit and excludes it from the update payload", async () => {
+  it("toggles the workshop code between locked and editable states", () => {
+    render(
+      <WorkshopForm
+        mode="edit"
+        workshop={workshop}
+        isSubmitting={false}
+        onClose={vi.fn()}
+        onSubmit={vi.fn()}
+      />,
+    );
+
+    const codeInput = screen.getByLabelText("Mã xưởng") as HTMLInputElement;
+
+    expect(codeInput.disabled).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: "Mở khóa mã xưởng" }));
+
+    expect(codeInput.disabled).toBe(false);
+    expect(document.activeElement).toBe(codeInput);
+    expect(screen.getByRole("button", { name: "Khóa mã xưởng" })).toBeTruthy();
+    expect(screen.getByText("Mã xưởng đang mở khóa và có thể chỉnh sửa.")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Khóa mã xưởng" }));
+    expect(codeInput.disabled).toBe(true);
+  });
+
+  it("submits a normalized workshop code after unlocking it", async () => {
     const onSubmit = vi.fn();
     render(
       <WorkshopForm
@@ -53,7 +78,10 @@ describe("WorkshopForm", () => {
       />,
     );
 
-    expect((screen.getByLabelText("Mã xưởng") as HTMLInputElement).disabled).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: "Mở khóa mã xưởng" }));
+    fireEvent.change(screen.getByLabelText("Mã xưởng"), {
+      target: { value: " x-09 " },
+    });
     fireEvent.change(screen.getByLabelText("Tên xưởng"), {
       target: { value: "Xưởng May Chính" },
     });
@@ -61,6 +89,7 @@ describe("WorkshopForm", () => {
 
     await waitFor(() => {
       expect(onSubmit).toHaveBeenCalledWith({
+        workshopCode: "X-09",
         name: "Xưởng May Chính",
         manager: "Nguyễn Văn A",
         location: "Khu A",

@@ -42,4 +42,7 @@ export const workshopApi = {
     const response = await apiClient.patch<Workshop>(`${resource}/${id}/status`, { status });
     return workshopResponseSchema.parse(response.data);
   },
+  async delete(id: string): Promise<void> {
+    await apiClient.delete(`${resource}/${id}`);
+  },
 };

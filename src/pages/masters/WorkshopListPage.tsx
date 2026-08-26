@@ -7,6 +7,7 @@ import { Alert, Button, ConfirmDialog, PageHeader, Pagination, Toast } from "@/c
 import PageMeta from "@/components/shared/PageMeta";
 import {
   useCreateWorkshop,
+  useDeleteWorkshop,
   useUpdateWorkshop,
   useUpdateWorkshopStatus,
   useWorkshops,
@@ -27,12 +28,14 @@ const emptyWorkshops: Workshop[] = [];
 export default function WorkshopListPage() {
   const [editing, setEditing] = useState<Workshop | "create" | undefined>();
   const [deactivating, setDeactivating] = useState<Workshop>();
+  const [deleting, setDeleting] = useState<Workshop>();
   const [isFormDirty, setIsFormDirty] = useState(false);
   const { toast, showToast, hideToast } = useToast();
   const list = useWorkshops();
   const create = useCreateWorkshop();
   const update = useUpdateWorkshop();
   const updateStatus = useUpdateWorkshopStatus();
+  const remove = useDeleteWorkshop();
   const workshops = list.data ?? emptyWorkshops;
   const listView = useWorkshopListView(workshops);
   const shouldBlockNavigation = useCallback<BlockerFunction>(
@@ -104,6 +107,17 @@ export default function WorkshopListPage() {
     else void changeStatus(workshop, "active");
   };
 
+  const deleteWorkshop = async () => {
+    if (!deleting) return;
+    try {
+      await remove.mutateAsync(deleting.id);
+      showToast("Đã xóa xưởng sản xuất.");
+      setDeleting(undefined);
+    } catch (error) {
+      showToast(getApiError(error, "Không thể xóa xưởng sản xuất.").message, "error");
+    }
+  };
+
   const formError = editing === "create" ? create.error : editing ? update.error : null;
 
   return (
@@ -146,6 +160,7 @@ export default function WorkshopListPage() {
                 workshops={emptyWorkshops}
                 loading
                 onEdit={() => {}}
+                onDelete={() => {}}
                 onToggleStatus={() => {}}
               />
             </div>
@@ -169,6 +184,7 @@ export default function WorkshopListPage() {
                 workshops={listView.paginatedWorkshops}
                 togglingId={updateStatus.isPending ? updateStatus.variables?.id : undefined}
                 onEdit={openForm}
+                onDelete={(workshop) => setDeleting(workshop)}
                 onToggleStatus={toggleStatus}
               />
               <Pagination
@@ -212,6 +228,23 @@ export default function WorkshopListPage() {
           isSubmitting={updateStatus.isPending}
           onClose={() => setDeactivating(undefined)}
           onConfirm={() => void changeStatus(deactivating, "inactive")}
+        />
+      )}
+      {deleting && (
+        <ConfirmDialog
+          open
+          title="Xóa xưởng sản xuất"
+          description={
+            <>
+              Bạn có chắc muốn xóa "{deleting.name}"? Chỉ có thể xóa khi chưa có kế hoạch hoặc dữ
+              liệu sản xuất nào tham chiếu.
+            </>
+          }
+          confirmLabel="Xóa"
+          variant="danger"
+          isSubmitting={remove.isPending}
+          onClose={() => setDeleting(undefined)}
+          onConfirm={() => void deleteWorkshop()}
         />
       )}
       <ConfirmDialog

@@ -31,5 +31,5 @@ export type StageGroupInput = Pick<StageGroup, "groupName" | "description"> & {
   items: StageGroupItemInput[];
 };
 
-export type StageGroupUpdateInput = Partial<Omit<StageGroupInput, "groupCode">>;
+export type StageGroupUpdateInput = Partial<StageGroupInput>;
 export type StageGroupListParams = { search?: string; status?: StageGroupStatus };

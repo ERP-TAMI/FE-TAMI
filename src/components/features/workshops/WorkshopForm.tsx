@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { Alert, Button, ConfirmDialog, Input, Modal } from "@/components/shared";
+import { Alert, Button, CodeLockToggle, ConfirmDialog, Input, Modal } from "@/components/shared";
 import type { ApiError } from "@/lib/apiError";
 import {
   WORKSHOP_CAPACITY_MAX,
@@ -59,7 +59,8 @@ export function WorkshopForm({
   onDirtyChange,
 }: WorkshopFormProps) {
   const [discardDialogOpen, setDiscardDialogOpen] = useState(false);
-  const { register, handleSubmit, formState } = useForm<FormValues>({
+  const [isCodeLocked, setIsCodeLocked] = useState(mode === "edit");
+  const { register, handleSubmit, formState, setFocus } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
       workshopCode: workshop?.workshopCode ?? "",
@@ -71,6 +72,9 @@ export function WorkshopForm({
   });
 
   useEffect(() => onDirtyChange?.(formState.isDirty), [formState.isDirty, onDirtyChange]);
+  useEffect(() => {
+    if (mode === "edit" && !isCodeLocked) setFocus("workshopCode");
+  }, [isCodeLocked, mode, setFocus]);
 
   const requestClose = () => {
     if (formState.isDirty) {
@@ -87,11 +91,7 @@ export function WorkshopForm({
       location: values.location.trim() || null,
       capacity: Number(values.capacity),
     };
-    onSubmit(
-      mode === "create"
-        ? { ...mutableFields, workshopCode: values.workshopCode.trim().toUpperCase() }
-        : mutableFields,
-    );
+    onSubmit({ ...mutableFields, workshopCode: values.workshopCode.trim().toUpperCase() });
   };
 
   return (
@@ -121,9 +121,29 @@ export function WorkshopForm({
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
             <Input
               label="Mã xưởng"
+              labelAction={
+                mode === "edit" ? (
+                  <CodeLockToggle
+                    codeLabel="mã xưởng"
+                    isLocked={isCodeLocked}
+                    onToggle={() => setIsCodeLocked((current) => !current)}
+                  />
+                ) : undefined
+              }
               placeholder="Ví dụ: X-01"
-              disabled={mode === "edit"}
-              hint={mode === "edit" ? "Mã xưởng không thể thay đổi sau khi tạo." : undefined}
+              disabled={mode === "edit" && isCodeLocked}
+              hint={
+                mode === "edit"
+                  ? isCodeLocked
+                    ? "Nhấn biểu tượng khóa để chỉnh sửa mã xưởng."
+                    : "Mã xưởng đang mở khóa và có thể chỉnh sửa."
+                  : undefined
+              }
+              className={
+                mode === "edit" && isCodeLocked
+                  ? "disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500 disabled:opacity-100 dark:disabled:bg-gray-800/80 dark:disabled:text-gray-400"
+                  : undefined
+              }
               error={formState.errors.workshopCode?.message}
               {...register("workshopCode")}
             />

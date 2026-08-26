@@ -2,7 +2,15 @@ import { useEffect, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { Alert, Button, ConfirmDialog, Input, Modal, Select } from "@/components/shared";
+import {
+  Alert,
+  Button,
+  CodeLockToggle,
+  ConfirmDialog,
+  Input,
+  Modal,
+  Select,
+} from "@/components/shared";
 import { useCreateUnit } from "@/hooks/useMaterials";
 import { getApiError } from "@/lib/apiError";
 import type { ApiError } from "@/lib/apiError";
@@ -55,6 +63,7 @@ export function MaterialForm({
   onDirtyChange,
 }: MaterialFormProps) {
   const [discardDialogOpen, setDiscardDialogOpen] = useState(false);
+  const [isCodeLocked, setIsCodeLocked] = useState(mode === "edit");
   const [newUnitDraft, setNewUnitDraft] = useState<{ name: string } | null>(null);
   const [newUnitError, setNewUnitError] = useState<string>();
   const createUnit = useCreateUnit();
@@ -92,7 +101,7 @@ export function MaterialForm({
         ]
       : []),
   ];
-  const { register, handleSubmit, formState, setValue } = useForm<FormValues>({
+  const { register, handleSubmit, formState, setFocus, setValue } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: material
       ? {
@@ -112,6 +121,9 @@ export function MaterialForm({
   });
 
   useEffect(() => onDirtyChange?.(formState.isDirty), [formState.isDirty, onDirtyChange]);
+  useEffect(() => {
+    if (mode === "edit" && !isCodeLocked) setFocus("materialCode");
+  }, [isCodeLocked, mode, setFocus]);
   const requestClose = () => {
     if (formState.isDirty) {
       setDiscardDialogOpen(true);
@@ -139,6 +151,7 @@ export function MaterialForm({
 
     const dirty = formState.dirtyFields;
     const patch: MaterialUpdateInput = {};
+    if (dirty.materialCode) patch.materialCode = values.materialCode.toUpperCase();
     if (dirty.materialName) patch.materialName = values.materialName;
     if (dirty.materialGroupId) patch.materialGroupId = values.materialGroupId || null;
     if (dirty.defaultUnitId) patch.defaultUnitId = values.defaultUnitId;
@@ -185,8 +198,29 @@ export function MaterialForm({
           <div className="grid gap-4 sm:grid-cols-2">
             <Input
               label="Mã vật tư"
+              labelAction={
+                mode === "edit" ? (
+                  <CodeLockToggle
+                    codeLabel="mã vật tư"
+                    isLocked={isCodeLocked}
+                    onToggle={() => setIsCodeLocked((current) => !current)}
+                  />
+                ) : undefined
+              }
               placeholder="Ví dụ: FAB-001"
-              disabled={mode === "edit"}
+              disabled={mode === "edit" && isCodeLocked}
+              hint={
+                mode === "edit"
+                  ? isCodeLocked
+                    ? "Nhấn biểu tượng khóa để chỉnh sửa mã vật tư."
+                    : "Mã vật tư đang mở khóa và có thể chỉnh sửa."
+                  : undefined
+              }
+              className={
+                mode === "edit" && isCodeLocked
+                  ? "disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500 disabled:opacity-100 dark:disabled:bg-gray-800/80 dark:disabled:text-gray-400"
+                  : undefined
+              }
               error={formState.errors.materialCode?.message}
               {...register("materialCode")}
             />

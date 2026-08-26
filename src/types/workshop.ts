@@ -25,5 +25,5 @@ export type CreateWorkshopInput = Pick<
 >;
 
 export type UpdateWorkshopInput = Partial<
-  Pick<Workshop, "name" | "manager" | "location" | "capacity">
+  Pick<Workshop, "workshopCode" | "name" | "manager" | "location" | "capacity">
 >;

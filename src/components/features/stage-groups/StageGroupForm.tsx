@@ -1,8 +1,8 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useFieldArray, useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
-import { Alert, Button, Input, Modal } from "@/components/shared";
+import { Alert, Button, CodeLockToggle, Input, Modal } from "@/components/shared";
 import type { ApiError } from "@/lib/apiError";
 import { STAGE_SSV_PATTERN } from "@/types/stage";
 import type { StageGroup, StageGroupInput } from "@/types/stage-group";
@@ -33,6 +33,13 @@ const schema = z.object({
   description: z.string().trim(),
   items: z.array(childSchema).min(1, "Nhóm phải có ít nhất một công đoạn con"),
 });
+const editSchema = schema.extend({
+  groupCode: z
+    .string()
+    .trim()
+    .min(1, "Mã nhóm công đoạn là bắt buộc")
+    .max(50, "Mã nhóm không được vượt quá 50 ký tự"),
+});
 
 type FormValues = z.infer<typeof schema>;
 type StageGroupFormProps = {
@@ -54,8 +61,9 @@ export function StageGroupForm({
   onSubmit,
   onDirtyChange,
 }: StageGroupFormProps) {
-  const { control, register, handleSubmit, formState, setValue } = useForm<FormValues>({
-    resolver: zodResolver(schema),
+  const [isCodeLocked, setIsCodeLocked] = useState(mode === "edit");
+  const { control, register, handleSubmit, formState, setFocus, setValue } = useForm<FormValues>({
+    resolver: zodResolver(mode === "edit" ? editSchema : schema),
     defaultValues: group
       ? {
           groupCode: group.groupCode,
@@ -82,11 +90,16 @@ export function StageGroupForm({
   const watchedItems = useWatch({ control, name: "items" }) ?? [];
 
   useEffect(() => onDirtyChange?.(formState.isDirty), [formState.isDirty, onDirtyChange]);
+  useEffect(() => {
+    if (mode === "edit" && !isCodeLocked) setFocus("groupCode");
+  }, [isCodeLocked, mode, setFocus]);
 
   const submit = (values: FormValues) => {
     const groupCode = values.groupCode.trim().toUpperCase();
+    const shouldSubmitGroupCode =
+      mode === "create" ? Boolean(groupCode) : formState.dirtyFields.groupCode;
     onSubmit({
-      ...(mode === "create" && groupCode ? { groupCode } : {}),
+      ...(shouldSubmitGroupCode ? { groupCode } : {}),
       groupName: values.groupName,
       description: values.description || null,
       items: values.items.map((item, orderIndex) => ({
@@ -135,13 +148,29 @@ export function StageGroupForm({
         <div className="grid gap-4 sm:grid-cols-2">
           <Input
             label="Mã nhóm công đoạn"
+            labelAction={
+              mode === "edit" ? (
+                <CodeLockToggle
+                  codeLabel="mã nhóm công đoạn"
+                  isLocked={isCodeLocked}
+                  onToggle={() => setIsCodeLocked((current) => !current)}
+                />
+              ) : undefined
+            }
             placeholder="Ví dụ: NS-NHOM-MAY"
             hint={
               mode === "create"
                 ? "Để trống để hệ thống tự sinh mã từ tên nhóm công đoạn."
+                : isCodeLocked
+                  ? "Nhấn biểu tượng khóa để chỉnh sửa mã nhóm công đoạn."
+                  : "Mã nhóm công đoạn đang mở khóa và có thể chỉnh sửa."
+            }
+            disabled={mode === "edit" && isCodeLocked}
+            className={
+              mode === "edit" && isCodeLocked
+                ? "disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500 disabled:opacity-100 dark:disabled:bg-gray-800/80 dark:disabled:text-gray-400"
                 : undefined
             }
-            disabled={mode === "edit"}
             error={formState.errors.groupCode?.message}
             {...register("groupCode")}
           />

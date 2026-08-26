@@ -120,15 +120,15 @@ export default function StageListPage() {
 
   return (
     <>
-      <PageMeta title="Giai đoạn công đoạn | TAMI ERP" description="Quản lý danh mục công đoạn" />
+      <PageMeta title="Công đoạn | TAMI ERP" description="Quản lý danh mục công đoạn" />
       <section aria-labelledby="page-title" className="space-y-4">
         <PageHeader
           breadcrumb={[
             { label: "Dashboard", to: "/dashboard" },
             { label: "Dữ liệu chung" },
-            { label: "Giai đoạn công đoạn" },
+            { label: "Công đoạn" },
           ]}
-          title="Giai đoạn công đoạn"
+          title="Công đoạn"
           stats={[
             { label: "công đoạn", value: stages.length },
             {

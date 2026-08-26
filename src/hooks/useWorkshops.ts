@@ -51,4 +51,12 @@ export function useUpdateWorkshopStatus() {
   });
 }
 
+export function useDeleteWorkshop() {
+  const invalidate = useInvalidateWorkshops();
+  return useMutation({
+    mutationFn: (id: string) => workshopApi.delete(id),
+    onSuccess: invalidate,
+  });
+}
+
 export type { CreateWorkshopInput };

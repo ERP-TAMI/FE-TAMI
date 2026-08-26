@@ -28,7 +28,7 @@ export type MaterialInput = {
   defaultYieldPct?: string;
 };
 
-export type MaterialUpdateInput = Omit<Partial<MaterialInput>, "materialCode">;
+export type MaterialUpdateInput = Partial<MaterialInput>;
 
 export type Unit = {
   id: string;

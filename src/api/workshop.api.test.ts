@@ -7,6 +7,7 @@ vi.mock("@/lib/apiClient", () => ({
     get: vi.fn(),
     post: vi.fn(),
     patch: vi.fn(),
+    delete: vi.fn(),
   },
 }));
 
@@ -63,5 +64,13 @@ describe("workshopApi", () => {
       name: "Xưởng May Chính",
       capacity: 700,
     });
+  });
+
+  it("deletes a workshop by id", async () => {
+    vi.mocked(apiClient.delete).mockResolvedValue({ data: undefined });
+
+    await expect(workshopApi.delete(workshop.id)).resolves.toBeUndefined();
+
+    expect(apiClient.delete).toHaveBeenCalledWith(`/masters/workshops/${workshop.id}`);
   });
 });

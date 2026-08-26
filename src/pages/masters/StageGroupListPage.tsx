@@ -101,8 +101,7 @@ export default function StageGroupListPage() {
       if (editing === "create") {
         await create.mutateAsync(input);
       } else if (editing) {
-        const { groupCode: _groupCode, ...updateInput } = input;
-        await update.mutateAsync({ id: editing, input: updateInput });
+        await update.mutateAsync({ id: editing, input });
       }
       showToast(editing === "create" ? "Đã tạo nhóm công đoạn." : "Đã cập nhật nhóm công đoạn.");
       closeForm();

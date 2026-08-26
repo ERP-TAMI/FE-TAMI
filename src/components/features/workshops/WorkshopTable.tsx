@@ -1,5 +1,5 @@
 import { Table, type TableColumn } from "@/components/shared/Table";
-import { PencilIcon } from "@/icons";
+import { PencilIcon, TrashBinIcon } from "@/icons";
 import type { Workshop } from "@/types/workshop";
 
 type WorkshopTableProps = {
@@ -7,6 +7,7 @@ type WorkshopTableProps = {
   togglingId?: string;
   loading?: boolean;
   onEdit: (workshop: Workshop) => void;
+  onDelete: (workshop: Workshop) => void;
   onToggleStatus: (workshop: Workshop) => void;
 };
 
@@ -17,13 +18,14 @@ export function WorkshopTable({
   togglingId,
   loading = false,
   onEdit,
+  onDelete,
   onToggleStatus,
 }: WorkshopTableProps) {
   const columns: TableColumn<Workshop>[] = [
     {
       key: "workshopCode",
       header: "Mã xưởng",
-      width: "w-[13%]",
+      width: "w-[11%]",
       render: (workshop) => (
         <span className="block truncate font-semibold text-gray-900 dark:text-white">
           {workshop.workshopCode}
@@ -33,7 +35,7 @@ export function WorkshopTable({
     {
       key: "name",
       header: "Tên xưởng",
-      width: "w-[18%]",
+      width: "w-[19%]",
       render: (workshop) => (
         <span
           title={workshop.name}
@@ -59,7 +61,6 @@ export function WorkshopTable({
       key: "capacity",
       header: "Công suất/ngày",
       width: "w-[13%]",
-      align: "right",
       render: (workshop) => (
         <span className="font-semibold text-gray-900 tabular-nums dark:text-white">
           {capacityFormatter.format(workshop.capacity)}
@@ -69,7 +70,7 @@ export function WorkshopTable({
     {
       key: "status",
       header: "Trạng thái",
-      width: "w-[16%]",
+      width: "w-[13%]",
       render: (workshop) => {
         const isToggling = togglingId === workshop.id;
         const isActive = workshop.status === "active";
@@ -109,17 +110,29 @@ export function WorkshopTable({
     {
       key: "actions",
       header: "Thao tác",
-      width: "w-[10%]",
+      width: "w-[14%]",
       align: "center",
       render: (workshop) => (
-        <button
-          type="button"
-          onClick={() => onEdit(workshop)}
-          className="focus:ring-brand-500/20 inline-flex items-center gap-1 rounded-lg border border-gray-300 bg-white px-2 py-1 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50 focus:ring-3 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
-        >
-          <PencilIcon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-          <span>Sửa</span>
-        </button>
+        <div className="flex items-center justify-center gap-1">
+          <button
+            type="button"
+            onClick={() => onEdit(workshop)}
+            title="Chỉnh sửa xưởng sản xuất"
+            className="inline-flex items-center gap-1 rounded-lg border border-gray-300 bg-white px-2 py-1 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+          >
+            <PencilIcon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            <span>Sửa</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => onDelete(workshop)}
+            title="Xóa xưởng sản xuất"
+            className="inline-flex items-center gap-1 rounded-lg border border-red-200 bg-red-50/60 px-2 py-1 text-xs font-medium text-red-600 transition-colors hover:bg-red-100 dark:border-red-900/40 dark:bg-red-950/40 dark:text-red-300 dark:hover:bg-red-900/60"
+          >
+            <TrashBinIcon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            <span>Xóa</span>
+          </button>
+        </div>
       ),
     },
   ];
@@ -127,7 +140,7 @@ export function WorkshopTable({
   return (
     <Table
       embedded
-      tableClassName="min-w-[1120px]"
+      tableClassName="min-w-[960px]"
       columns={columns}
       rows={workshops}
       getRowKey={(workshop) => workshop.id}

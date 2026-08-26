@@ -8,6 +8,7 @@ const hooks = vi.hoisted(() => ({
   create: { isPending: false, error: null as Error | null, mutateAsync: vi.fn(), reset: vi.fn() },
   update: { isPending: false, error: null as Error | null, mutateAsync: vi.fn(), reset: vi.fn() },
   updateStatus: { isPending: false, variables: undefined, mutateAsync: vi.fn() },
+  remove: { isPending: false, mutateAsync: vi.fn() },
 }));
 
 vi.mock("@/hooks/useWorkshops", () => ({
@@ -15,6 +16,7 @@ vi.mock("@/hooks/useWorkshops", () => ({
   useCreateWorkshop: () => hooks.create,
   useUpdateWorkshop: () => hooks.update,
   useUpdateWorkshopStatus: () => hooks.updateStatus,
+  useDeleteWorkshop: () => hooks.remove,
 }));
 
 const workshops = [
@@ -175,9 +177,21 @@ describe("WorkshopListPage", () => {
     });
   });
 
-  it("does not offer a hard-delete action", () => {
+  it("confirms before deleting a workshop", async () => {
+    hooks.remove.mutateAsync.mockResolvedValue(undefined);
     renderPage();
-    expect(screen.queryByRole("button", { name: "Xóa" })).toBeNull();
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Xóa" })[0]);
+    expect(hooks.remove.mutateAsync).not.toHaveBeenCalled();
+
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByRole("heading", { name: "Xóa xưởng sản xuất" })).toBeTruthy();
+
+    fireEvent.click(within(dialog).getByRole("button", { name: "Xóa" }));
+    await waitFor(() => {
+      expect(hooks.remove.mutateAsync).toHaveBeenCalledWith(workshops[0].id);
+      expect(screen.queryByRole("dialog")).toBeNull();
+    });
   });
 
   it("blocks SPA navigation while the workshop form is dirty", async () => {
