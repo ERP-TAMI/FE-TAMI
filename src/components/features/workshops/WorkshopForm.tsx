@@ -107,7 +107,7 @@ export function WorkshopForm({
               Hủy
             </Button>
             <Button form="workshop-form" type="submit" loading={isSubmitting}>
-              Lưu xưởng
+              {mode === "create" ? "Tạo xưởng" : "Lưu xưởng"}
             </Button>
           </>
         }

@@ -127,7 +127,7 @@ describe("WorkshopListPage", () => {
 
   it("creates a workshop from the list screen", async () => {
     hooks.create.mutateAsync.mockResolvedValue(workshops[0]);
-    renderPage();
+    const { router } = renderPage();
 
     fireEvent.click(screen.getByRole("button", { name: "Tạo xưởng sản xuất" }));
     fireEvent.change(screen.getByLabelText("Mã xưởng"), { target: { value: "X-09" } });
@@ -135,7 +135,7 @@ describe("WorkshopListPage", () => {
       target: { value: "Xưởng May Xuất Khẩu" },
     });
     fireEvent.change(screen.getByLabelText("Công suất/ngày"), { target: { value: "550" } });
-    fireEvent.click(screen.getByRole("button", { name: "Lưu xưởng" }));
+    fireEvent.click(screen.getByRole("button", { name: "Tạo xưởng" }));
 
     await waitFor(() => {
       expect(hooks.create.mutateAsync).toHaveBeenCalledWith({
@@ -145,6 +145,8 @@ describe("WorkshopListPage", () => {
         location: null,
         capacity: 550,
       });
+      expect(router.state.location.pathname).toBe("/masters/workshops");
+      expect(screen.queryByRole("dialog")).toBeNull();
     });
   });
 

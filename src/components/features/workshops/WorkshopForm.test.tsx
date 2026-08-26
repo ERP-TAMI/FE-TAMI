@@ -28,7 +28,7 @@ describe("WorkshopForm", () => {
       target: { value: " Xưởng May Xuất Khẩu " },
     });
     fireEvent.change(screen.getByLabelText("Công suất/ngày"), { target: { value: "550" } });
-    fireEvent.click(screen.getByRole("button", { name: "Lưu xưởng" }));
+    fireEvent.click(screen.getByRole("button", { name: "Tạo xưởng" }));
 
     await waitFor(() => {
       expect(onSubmit).toHaveBeenCalledWith({
@@ -78,7 +78,7 @@ describe("WorkshopForm", () => {
     fireEvent.change(screen.getByLabelText("Mã xưởng"), { target: { value: "X-09" } });
     fireEvent.change(screen.getByLabelText("Tên xưởng"), { target: { value: "Xưởng 9" } });
     fireEvent.change(screen.getByLabelText("Công suất/ngày"), { target: { value: "1.5" } });
-    fireEvent.click(screen.getByRole("button", { name: "Lưu xưởng" }));
+    fireEvent.click(screen.getByRole("button", { name: "Tạo xưởng" }));
 
     expect(await screen.findByText("Công suất phải là số nguyên không âm")).toBeTruthy();
     expect(onSubmit).not.toHaveBeenCalled();
@@ -95,7 +95,7 @@ describe("WorkshopForm", () => {
     fireEvent.change(screen.getByLabelText("Công suất/ngày"), {
       target: { value: "2147483648" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Lưu xưởng" }));
+    fireEvent.click(screen.getByRole("button", { name: "Tạo xưởng" }));
 
     expect(await screen.findByText("Công suất phải từ 0 đến 2.147.483.647")).toBeTruthy();
     expect(onSubmit).not.toHaveBeenCalled();
