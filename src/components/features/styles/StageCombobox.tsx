@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { stageApi } from "@/api/stage.api";
-import { stageGroupApi, type StageGroup } from "@/api/stageGroup.api";
+import { stageGroupApi, type StageGroup } from "@/api/stage-group.api";
 import { CheckLineIcon, PlugInIcon } from "@/icons";
 
 

@@ -1,6 +1,6 @@
 import apiClient from "@/lib/apiClient";
 
-import type { StageGroupSubItem } from "./stageGroup.api";
+import type { StageGroupSubItem } from "./stage-group.api";
 
 export interface StyleOperationStepItem {
   id?: string;

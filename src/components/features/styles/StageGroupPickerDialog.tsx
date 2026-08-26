@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Modal } from "@/components/shared/Modal";
 import { Button } from "@/components/shared/Button";
 import { CheckLineIcon } from "@/icons";
-import { stageGroupApi, type StageGroup, type StageGroupSubItem } from "@/api/stageGroup.api";
+import { stageGroupApi, type StageGroup, type StageGroupSubItem } from "@/api/stage-group.api";
 
 export interface StageGroupPickerDialogProps {
   open: boolean;

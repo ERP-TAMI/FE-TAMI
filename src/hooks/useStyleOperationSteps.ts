@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { styleOperationStepsApi, type BulkSaveStyleOperationStepsPayload, type StyleOperationStepItem } from "@/api/styleOperationStepsApi";
-import { stageGroupApi } from "@/api/stageGroup.api";
+import { stageGroupApi } from "@/api/stage-group.api";
 import { styleKeys } from "./useStyles";
 
 export const styleStepKeys = {

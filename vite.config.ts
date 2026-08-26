@@ -6,6 +6,11 @@ import svgr from "vite-plugin-svgr";
 
 const rootDir = path.dirname(fileURLToPath(import.meta.url));
 
+const backendTarget =
+  process.env.VITE_BACKEND_URL ||
+  process.env.VITE_API_TARGET ||
+  "http://localhost:3000";
+
 export default defineConfig({
   plugins: [
     react(),
@@ -27,12 +32,12 @@ export default defineConfig({
     port: 5173,
     proxy: {
       "/api": {
-        target: "http://localhost:3000",
+        target: backendTarget,
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ""),
       },
       "/uploads": {
-        target: "http://localhost:3000",
+        target: backendTarget,
         changeOrigin: true,
       },
     },

@@ -20,7 +20,7 @@ import { StageGroupPickerDialog } from "./StageGroupPickerDialog";
 import { CopyOperationStepsDialog } from "./CopyOperationStepsDialog";
 import { StyleImagePlaceholder } from "./StyleImagePlaceholder";
 import { styleOperationStepsApi, type StyleOperationStepItem } from "@/api/styleOperationStepsApi";
-import { stageGroupApi, type StageGroup, type StageGroupSubItem } from "@/api/stageGroup.api";
+import { stageGroupApi, type StageGroup, type StageGroupSubItem } from "@/api/stage-group.api";
 import { useToast } from "@/hooks/useToast";
 import { resolveImageUrl } from "@/lib/imageUtils";
 
@@ -164,7 +164,8 @@ export function StyleOperationStepTable({
     setIsDirty(false);
     const firstTarget = steps.find((row) => Number(row.targetTotal) > 0)?.targetTotal;
     setBulkTargetTotal(firstTarget ? String(firstTarget) : "");
-  }, [rowKeys, steps]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rowKeys]);
 
   useEffect(() => {
     const v = Number(cmBaseDays) || 30;
@@ -184,7 +185,11 @@ export function StyleOperationStepTable({
       : rows;
   }
 
-  function updateLocal(idx: number, field: keyof StyleOperationStepItem, value: unknown) {
+  function updateLocal<K extends keyof StyleOperationStepItem>(
+    idx: number,
+    field: K,
+    value: StyleOperationStepItem[K],
+  ) {
     setIsDirty(true);
     setRows((prev) => {
       const next = prev.map((r, i) => {
@@ -881,7 +886,7 @@ export function StyleOperationStepTable({
                                   : formatTimeValue(row.timePerPiece || 0)
                               }
                               onChange={(e) =>
-                                updateLocal(idx, "timePerPiece", e.target.value)
+                                updateLocal(idx, "timePerPiece", Number(e.target.value) || 0)
                               }
                               onBlur={commitOnBlur}
                               disabled={isGroupRow}
