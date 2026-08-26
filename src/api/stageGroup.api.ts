@@ -19,12 +19,39 @@ export interface StageGroup {
 
 export const stageGroupApi = {
   getStageGroups: async (): Promise<StageGroup[]> => {
-    const res = await apiClient.get<StageGroup[]>("/masters/stage-groups");
-    return res.data;
+    const res = await apiClient.get<any[]>("/masters/stage-groups");
+    return (res.data || []).map((g: any) => ({
+      id: g.id,
+      code: g.groupCode || g.code || "",
+      name: g.groupName || g.name || "",
+      description: g.description || undefined,
+      isGroup: true,
+      items: (g.items || []).map((it: any) => ({
+        id: it.id,
+        name: it.itemName || it.name || "",
+        description: it.description || undefined,
+        ssv: Number(it.ssv) || 0,
+        orderIndex: it.orderIndex || 0,
+      })),
+    }));
   },
 
   getStageGroupById: async (id: string): Promise<StageGroup> => {
-    const res = await apiClient.get<StageGroup>(`/masters/stage-groups/${id}`);
-    return res.data;
+    const res = await apiClient.get<any>(`/masters/stage-groups/${id}`);
+    const g = res.data;
+    return {
+      id: g.id,
+      code: g.groupCode || g.code || "",
+      name: g.groupName || g.name || "",
+      description: g.description || undefined,
+      isGroup: true,
+      items: (g.items || []).map((it: any) => ({
+        id: it.id,
+        name: it.itemName || it.name || "",
+        description: it.description || undefined,
+        ssv: Number(it.ssv) || 0,
+        orderIndex: it.orderIndex || 0,
+      })),
+    };
   },
 };

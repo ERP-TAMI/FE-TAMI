@@ -78,4 +78,12 @@ export const styleOperationStepsApi = {
     );
     return res.data;
   },
+
+  exportExcel: async (styleId: string): Promise<Blob> => {
+    const res = await apiClient.get<Blob>(
+      `/styles/${styleId}/operation-steps/export`,
+      { responseType: "blob" },
+    );
+    return res.data;
+  },
 };

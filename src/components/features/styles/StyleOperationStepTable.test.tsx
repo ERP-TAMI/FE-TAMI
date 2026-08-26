@@ -81,8 +81,8 @@ describe("StyleOperationStepTable", () => {
   });
 
 
-  it("triggers addRow when clicking Thêm công đoạn", () => {
-    const onSave = vi.fn();
+  it("adds a new row locally when clicking Thêm công đoạn and saves on Lưu quy trình click", () => {
+    const onSave = vi.fn().mockResolvedValue(undefined);
     render(
       <StyleOperationStepTable
         styleId="style-1"
@@ -92,14 +92,39 @@ describe("StyleOperationStepTable", () => {
       />,
     );
 
-    const addButton = screen.getByRole("button", { name: "Thêm công đoạn" });
-    fireEvent.click(addButton);
+    const addButtons = screen.getAllByRole("button", { name: "Thêm công đoạn" });
+    expect(addButtons.length).toBeGreaterThan(0);
+    fireEvent.click(addButtons[0]);
+
+    // onSave is not called immediately on addRow
+    expect(onSave).not.toHaveBeenCalled();
+
+    // Clicking Lưu quy trình triggers onSave with newly added row
+    const saveButtons = screen.getAllByRole("button", { name: /Lưu quy trình/i });
+    fireEvent.click(saveButtons[0]);
+    expect(onSave).toHaveBeenCalled();
+  });
+
+  it("triggers triggerSave when clicking Lưu quy trình", () => {
+    const onSave = vi.fn().mockResolvedValue(undefined);
+    render(
+      <StyleOperationStepTable
+        styleId="style-1"
+        steps={mockSteps}
+        canEdit={true}
+        onSave={onSave}
+      />,
+    );
+
+    const saveButtons = screen.getAllByRole("button", { name: /Lưu quy trình/i });
+    expect(saveButtons.length).toBe(2);
+    fireEvent.click(saveButtons[0]);
 
     expect(onSave).toHaveBeenCalled();
   });
 
-  it("triggers removeRow when clicking delete button on a step", () => {
-    const onSave = vi.fn();
+  it("removes row locally when clicking delete button and saves on Lưu quy trình click", () => {
+    const onSave = vi.fn().mockResolvedValue(undefined);
     render(
       <StyleOperationStepTable
         styleId="style-1"
@@ -113,6 +138,16 @@ describe("StyleOperationStepTable", () => {
     expect(deleteButtons.length).toBeGreaterThan(0);
     fireEvent.click(deleteButtons[0]);
 
+    // Confirm in dialog (select modal confirm button)
+    const confirmButtons = screen.getAllByRole("button", { name: "Xóa công đoạn" });
+    fireEvent.click(confirmButtons[confirmButtons.length - 1]);
+
+    // onSave is not called immediately on removeRow
+    expect(onSave).not.toHaveBeenCalled();
+
+    // Clicking Lưu quy trình triggers onSave with updated rows
+    const saveButtons = screen.getAllByRole("button", { name: /Lưu quy trình/i });
+    fireEvent.click(saveButtons[0]);
     expect(onSave).toHaveBeenCalled();
   });
 });

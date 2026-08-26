@@ -2,8 +2,7 @@ import { useState, useEffect } from "react";
 import { Modal } from "@/components/shared/Modal";
 import { Button } from "@/components/shared/Button";
 import { CheckLineIcon } from "@/icons";
-
-import type { StageGroup, StageGroupSubItem } from "@/api/stageGroup.api";
+import { stageGroupApi, type StageGroup, type StageGroupSubItem } from "@/api/stageGroup.api";
 
 export interface StageGroupPickerDialogProps {
   open: boolean;
@@ -20,16 +19,44 @@ export function StageGroupPickerDialog({
   onConfirm,
   existingStageNames = [],
 }: StageGroupPickerDialogProps) {
+  const [activeGroup, setActiveGroup] = useState<StageGroup | null>(group);
+  const [loading, setLoading] = useState(false);
   const [selectedItems, setSelectedItems] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
-    if (!group) {
+    if (!open || !group) {
+      setActiveGroup(null);
+      setSelectedItems({});
+      return;
+    }
+
+    if (group.items && group.items.length > 0) {
+      setActiveGroup(group);
+    } else if (group.id) {
+      setLoading(true);
+      stageGroupApi
+        .getStageGroupById(group.id)
+        .then((detail) => {
+          setActiveGroup(detail);
+        })
+        .catch((err) => {
+          console.error("Failed to load stage group detail", err);
+          setActiveGroup(group);
+        })
+        .finally(() => setLoading(false));
+    } else {
+      setActiveGroup(group);
+    }
+  }, [open, group]);
+
+  useEffect(() => {
+    if (!activeGroup) {
       setSelectedItems({});
       return;
     }
 
     const preSelected: Record<string, boolean> = {};
-    const items = group.items || [];
+    const items = activeGroup.items || [];
     const normalizedExisting = existingStageNames.map((n) =>
       n.toLowerCase().trim(),
     );
@@ -42,11 +69,12 @@ export function StageGroupPickerDialog({
     });
 
     setSelectedItems(preSelected);
-  }, [group, existingStageNames]);
+  }, [activeGroup, existingStageNames]);
 
-  if (!group) return null;
+  if (!open || !group) return null;
 
-  const items = group.items || [];
+  const currentGroup = activeGroup || group;
+  const items = currentGroup.items || [];
   const normalizedExisting = existingStageNames.map((n) =>
     n.toLowerCase().trim(),
   );
@@ -130,12 +158,11 @@ export function StageGroupPickerDialog({
           variant="primary"
           size="sm"
           onClick={handleConfirm}
-          disabled={selectableSelectedCount === 0}
+          disabled={selectableSelectedCount === 0 || loading}
         >
           <CheckLineIcon className="w-4 h-4" />
           Thêm {selectableSelectedCount} công đoạn
         </Button>
-
       </div>
     </div>
   );
@@ -143,14 +170,14 @@ export function StageGroupPickerDialog({
   return (
     <Modal
       open={open}
-      title={`Thêm nhóm: ${group.name}`}
+      title={`Thêm nhóm: ${currentGroup.name || currentGroup.code || ""}`}
       onClose={() => onOpenChange(false)}
       footer={modalFooter}
     >
       <div className="space-y-3">
-        {group.description && (
+        {currentGroup.description && (
           <p className="text-xs text-gray-500 dark:text-gray-400">
-            {group.description}
+            {currentGroup.description}
           </p>
         )}
 
@@ -161,6 +188,7 @@ export function StageGroupPickerDialog({
             checked={allSelectableSelected}
             onChange={handleToggleAll}
             className="h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500"
+            disabled={loading}
           />
           <label
             htmlFor="selectAll"
@@ -171,56 +199,64 @@ export function StageGroupPickerDialog({
         </div>
 
         <div className="max-h-60 overflow-y-auto space-y-1.5 pr-1">
-          {items.map((item) => {
-            const normalizedName = item.name?.toLowerCase().trim();
-            const isExisting = normalizedExisting.includes(normalizedName);
-
-            return (
-              <div
-                key={item.id}
-                onClick={() => !isExisting && handleToggleItem(item.id)}
-                className={`flex items-center justify-between p-2.5 rounded-lg border transition-colors ${
-                  isExisting
-                    ? "bg-gray-50 dark:bg-gray-800/40 border-gray-100 dark:border-gray-800 cursor-default opacity-70"
-                    : "bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800 hover:border-brand-300 dark:hover:border-brand-700 cursor-pointer"
-                }`}
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <input
-                    type="checkbox"
-                    checked={!!selectedItems[item.id]}
-                    disabled={isExisting}
-                    onChange={() => handleToggleItem(item.id)}
-                    onClick={(e) => e.stopPropagation()}
-                    className="h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500"
-                  />
-                  <div className="min-w-0">
-                    <p className="text-xs font-semibold text-gray-900 dark:text-white truncate">
-                      {item.name}
-                      {isExisting && (
-                        <span className="ml-2 text-[10px] text-emerald-600 dark:text-emerald-400 font-normal">
-                          (đã thêm)
-                        </span>
-                      )}
-                    </p>
-                    {item.description && (
-                      <p className="text-[11px] text-gray-400 dark:text-gray-500 truncate">
-                        {item.description}
-                      </p>
-                    )}
-                  </div>
-                </div>
-                <span className="font-mono text-xs font-bold text-brand-600 dark:text-brand-400 shrink-0 ml-2">
-                  {item.ssv}s
-                </span>
-              </div>
-            );
-          })}
-
-          {items.length === 0 && (
-            <p className="text-xs text-gray-400 text-center py-4">
-              Nhóm này chưa có công đoạn con nào.
+          {loading ? (
+            <p className="text-xs text-gray-400 text-center py-6">
+              Đang tải danh sách công đoạn...
             </p>
+          ) : (
+            <>
+              {items.map((item) => {
+                const normalizedName = item.name?.toLowerCase().trim();
+                const isExisting = normalizedExisting.includes(normalizedName);
+
+                return (
+                  <div
+                    key={item.id}
+                    onClick={() => !isExisting && handleToggleItem(item.id)}
+                    className={`flex items-center justify-between p-2.5 rounded-lg border transition-colors ${
+                      isExisting
+                        ? "bg-gray-50 dark:bg-gray-800/40 border-gray-100 dark:border-gray-800 cursor-default opacity-70"
+                        : "bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800 hover:border-brand-300 dark:hover:border-brand-700 cursor-pointer"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <input
+                        type="checkbox"
+                        checked={!!selectedItems[item.id]}
+                        disabled={isExisting}
+                        onChange={() => handleToggleItem(item.id)}
+                        onClick={(e) => e.stopPropagation()}
+                        className="h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500"
+                      />
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold text-gray-900 dark:text-white truncate">
+                          {item.name}
+                          {isExisting && (
+                            <span className="ml-2 text-[10px] text-emerald-600 dark:text-emerald-400 font-normal">
+                              (đã thêm)
+                            </span>
+                          )}
+                        </p>
+                        {item.description && (
+                          <p className="text-[11px] text-gray-400 dark:text-gray-500 truncate">
+                            {item.description}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <span className="font-mono text-xs font-bold text-brand-600 dark:text-brand-400 shrink-0 ml-2">
+                      {item.ssv}s
+                    </span>
+                  </div>
+                );
+              })}
+
+              {items.length === 0 && (
+                <p className="text-xs text-gray-400 text-center py-4">
+                  Nhóm này chưa có công đoạn con nào.
+                </p>
+              )}
+            </>
           )}
         </div>
       </div>

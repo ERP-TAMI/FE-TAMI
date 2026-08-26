@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import type { StyleStatus } from "@/types/style";
 import { useStyle, useUpdateStyle } from "@/hooks/useStyles";
 import {
@@ -16,9 +16,24 @@ import { getApiError, isConflictError } from "@/lib/apiError";
 import { DocsIcon, InfoIcon } from "@/icons";
 
 
+import { stylesApi } from "@/api/stylesApi";
+import { resolveImageUrl } from "@/lib/imageUtils";
+
 export default function StyleDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const location = useLocation();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (
+      id &&
+      !location.pathname.endsWith("/detail") &&
+      !location.pathname.endsWith("/operation-steps") &&
+      !location.pathname.endsWith("/steps")
+    ) {
+      navigate(`/styles/${id}/detail`, { replace: true });
+    }
+  }, [id, location.pathname, navigate]);
 
   const detail = useStyle(id);
   const style = detail.data;
@@ -28,11 +43,23 @@ export default function StyleDetailPage() {
   const stepsQuery = useStyleOperationSteps(id);
   const bulkSaveSteps = useBulkSaveStyleOperationSteps(id || "");
 
-  const [activeTab, setActiveTab] = useState<"info" | "steps">("info");
+  const isStepsTab = location.pathname.endsWith("/operation-steps") || location.pathname.endsWith("/steps");
+  const activeTab: "info" | "steps" = isStepsTab ? "steps" : "info";
+
+  const handleTabChange = (tab: "info" | "steps") => {
+    if (!id) return;
+    if (tab === "steps") {
+      navigate(`/styles/${id}/operation-steps`);
+    } else {
+      navigate(`/styles/${id}/detail`);
+    }
+  };
+
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const { toast, showToast, hideToast } = useToast();
 
   const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -40,28 +67,44 @@ export default function StyleDetailPage() {
     if (style?.baseImageVersionId) setImageUrl(style.baseImageVersionId);
   }, [style?.baseImageVersionId]);
 
-  const setLocalImage = useCallback((file: File) => {
-    setImageUrl((prev) => {
-      if (prev?.startsWith("blob:")) URL.revokeObjectURL(prev);
-      return URL.createObjectURL(file);
-    });
-  }, []);
+  const uploadAndSaveImage = useCallback(
+    async (file: File) => {
+      if (!id) return;
+      setIsUploadingImage(true);
+      try {
+        const { fileUrl } = await stylesApi.uploadImage(file, "style-images");
+        await update.mutateAsync({
+          id,
+          payload: { baseImageVersionId: fileUrl },
+        });
+        setImageUrl(fileUrl);
+        showToast("Đã tải lên và lưu ảnh mẫu Fit thành công!");
+      } catch (err: unknown) {
+        console.error("Failed to upload style image:", err);
+        showToast(getApiError(err, "Không thể tải và lưu ảnh mẫu Fit.").message, "error");
+      } finally {
+        setIsUploadingImage(false);
+      }
+    },
+    [id, update, showToast],
+  );
 
-  const clearLocalImage = useCallback(() => {
-    setImageUrl((prev) => {
-      if (prev?.startsWith("blob:")) URL.revokeObjectURL(prev);
-      return null;
-    });
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      setImageUrl((prev) => {
-        if (prev?.startsWith("blob:")) URL.revokeObjectURL(prev);
-        return prev;
+  const clearAndSaveImage = useCallback(async () => {
+    if (!id) return;
+    setIsUploadingImage(true);
+    try {
+      await update.mutateAsync({
+        id,
+        payload: { baseImageVersionId: undefined },
       });
-    };
-  }, []);
+      setImageUrl(null);
+      showToast("Đã xóa ảnh mẫu Fit.");
+    } catch (err: unknown) {
+      showToast(getApiError(err, "Không thể xóa ảnh mẫu Fit.").message, "error");
+    } finally {
+      setIsUploadingImage(false);
+    }
+  }, [id, update, showToast]);
 
   const handlePaste = useCallback(
     (e: ClipboardEvent) => {
@@ -70,11 +113,11 @@ export default function StyleDetailPage() {
       for (let i = 0; i < items.length; i++) {
         if (items[i].type.indexOf("image") !== -1) {
           const file = items[i].getAsFile();
-          if (file) setLocalImage(file);
+          if (file) void uploadAndSaveImage(file);
         }
       }
     },
-    [setLocalImage],
+    [uploadAndSaveImage],
   );
 
   useEffect(() => {
@@ -84,14 +127,14 @@ export default function StyleDetailPage() {
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) setLocalImage(file);
+    if (file) void uploadAndSaveImage(file);
   };
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
     const file = e.dataTransfer.files?.[0];
-    if (file && file.type.startsWith("image/")) setLocalImage(file);
+    if (file && file.type.startsWith("image/")) void uploadAndSaveImage(file);
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -158,13 +201,17 @@ export default function StyleDetailPage() {
     );
   }
 
+  const currentTabLabel = activeTab === "steps" ? "Phân bổ công đoạn" : "Chi tiết";
+  const currentTabUrl = activeTab === "steps" ? `/styles/${style.id}/operation-steps` : `/styles/${style.id}/detail`;
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         breadcrumb={[
           { label: "Dashboard", to: "/dashboard" },
           { label: "Mẫu Fit", to: "/styles" },
-          { label: style.styleCode },
+          { label: style.styleName || style.styleCode, to: currentTabUrl },
+          { label: currentTabLabel },
         ]}
         title={style.styleName}
         action={{ label: "Chỉnh sửa", onClick: () => setIsEditModalOpen(true) }}
@@ -175,8 +222,8 @@ export default function StyleDetailPage() {
         <nav className="flex space-x-6" aria-label="Tabs">
           <button
             type="button"
-            onClick={() => setActiveTab("info")}
-            className={`flex items-center gap-2 border-b-2 py-3 px-1 text-sm font-semibold transition-colors cursor-pointer ${
+            onClick={() => handleTabChange("info")}
+            className={`flex items-center gap-2 border-b-2 py-2.5 px-1 text-sm font-semibold transition-colors cursor-pointer ${
               activeTab === "info"
                 ? "border-brand-500 text-brand-600 dark:text-brand-400"
                 : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
@@ -187,15 +234,15 @@ export default function StyleDetailPage() {
           </button>
           <button
             type="button"
-            onClick={() => setActiveTab("steps")}
-            className={`flex items-center gap-2 border-b-2 py-3 px-1 text-sm font-semibold transition-colors cursor-pointer ${
+            onClick={() => handleTabChange("steps")}
+            className={`flex items-center gap-2 border-b-2 py-2.5 px-1 text-sm font-semibold transition-colors cursor-pointer ${
               activeTab === "steps"
                 ? "border-brand-500 text-brand-600 dark:text-brand-400"
                 : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
             }`}
           >
             <DocsIcon className="w-4 h-4" />
-            Phân bổ công đoạn & Tính KIM
+            Phân bổ công đoạn &amp; Tính KIM
 
             {(stepsQuery.data?.length ?? 0) > 0 && (
               <span className="ml-1.5 rounded-full bg-brand-50 dark:bg-brand-950/60 px-2 py-0.5 text-xs text-brand-600 dark:text-brand-400">
@@ -208,28 +255,30 @@ export default function StyleDetailPage() {
 
       {/* Tab 1: Info Tab */}
       {activeTab === "info" && (
-        <div className="grid grid-cols-1 gap-8 lg:grid-cols-12 items-start">
-          <div className="lg:col-span-5 space-y-3">
-            <div className="overflow-hidden rounded-2xl border border-gray-200/80 bg-white p-3.5 shadow-xs dark:border-gray-800 dark:bg-gray-900">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 items-stretch min-h-[calc(100vh-240px)]">
+          <div className="lg:col-span-5 flex flex-col">
+            <div className="overflow-hidden rounded-2xl border border-gray-200/80 bg-white p-4 shadow-xs dark:border-gray-800 dark:bg-gray-900 flex-1 flex flex-col justify-center">
               {imageUrl ? (
-                <div className="relative overflow-hidden rounded-xl bg-gray-50 dark:bg-gray-800">
+                <div className="relative overflow-hidden rounded-xl bg-gray-50 dark:bg-gray-800 flex-1 flex items-center justify-center min-h-[350px] p-2">
                   <img
-                    src={imageUrl}
+                    src={resolveImageUrl(imageUrl) || ""}
                     alt={style.styleName}
-                    className="aspect-[4/5] w-full object-contain"
+                    className="max-h-[450px] w-full object-contain mx-auto"
                   />
                   <div className="absolute bottom-3 right-3 flex gap-2">
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
-                      className="rounded-lg bg-white/90 px-3 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-white backdrop-blur-xs dark:bg-gray-900/90 dark:text-gray-200 dark:hover:bg-gray-900 transition-colors"
+                      disabled={isUploadingImage}
+                      className="rounded-lg bg-white/90 px-3.5 py-2 text-xs font-semibold text-gray-700 shadow-sm hover:bg-white backdrop-blur-xs dark:bg-gray-900/90 dark:text-gray-200 dark:hover:bg-gray-900 transition-colors cursor-pointer disabled:opacity-50"
                     >
-                      Thay ảnh
+                      {isUploadingImage ? "Đang tải..." : "Thay ảnh"}
                     </button>
                     <button
                       type="button"
-                      onClick={clearLocalImage}
-                      className="rounded-lg bg-white/90 px-3 py-1.5 text-xs font-medium text-red-600 shadow-sm hover:bg-white backdrop-blur-xs dark:bg-gray-900/90 dark:text-red-400 dark:hover:bg-gray-900 transition-colors"
+                      onClick={() => void clearAndSaveImage()}
+                      disabled={isUploadingImage}
+                      className="rounded-lg bg-white/90 px-3.5 py-2 text-xs font-semibold text-red-600 shadow-sm hover:bg-white backdrop-blur-xs dark:bg-gray-900/90 dark:text-red-400 dark:hover:bg-gray-900 transition-colors cursor-pointer disabled:opacity-50"
                     >
                       Xóa
                     </button>
@@ -241,18 +290,18 @@ export default function StyleDetailPage() {
                   onDragOver={handleDragOver}
                   onDragLeave={handleDragLeave}
                   onClick={() => fileInputRef.current?.click()}
-                  className={`relative flex aspect-[4/5] w-full cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed p-6 text-center transition-colors ${
+                  className={`relative flex min-h-[350px] flex-1 w-full cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed p-8 text-center transition-colors ${
                     isDragging
                       ? "border-blue-500 bg-blue-50/50 dark:bg-blue-950/30"
                       : "border-gray-200 hover:border-gray-300 bg-gray-50/50 dark:border-gray-800 dark:bg-gray-800/40"
                   }`}
                 >
-                  <StyleImagePlaceholder styleCode={style.styleCode} className="h-32 w-32 text-gray-300 dark:text-gray-600 mb-3" />
-                  <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">
+                  <StyleImagePlaceholder styleCode={style.styleCode} className="h-28 w-28 text-gray-300 dark:text-gray-600 mb-3" />
+                  <p className="text-sm font-bold text-gray-700 dark:text-gray-200">
                     Tải ảnh mẫu hoặc Dán trực tiếp (Ctrl+V)
                   </p>
                   <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">
-                    Kéo thả file ảnh hoặc bấm để chọn
+                    Kéo thả file ảnh kỹ thuật hoặc bấm vào đây để chọn file
                   </p>
                 </div>
               )}
@@ -267,69 +316,71 @@ export default function StyleDetailPage() {
             />
           </div>
 
-          <div className="lg:col-span-7 space-y-6">
-            <div className="space-y-4">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400">
-                Thông tin chi tiết mẫu fit
-              </h3>
-              <dl className="divide-y divide-gray-100 dark:divide-gray-800">
-                <div className="flex py-4">
-                  <dt className="w-1/3 shrink-0 text-sm font-semibold text-gray-500 dark:text-gray-400">Mã mẫu Fit</dt>
-                  <dd className="w-2/3 min-w-0 break-all font-mono text-base font-bold text-blue-600 dark:text-blue-400">
-                    {style.styleCode}
-                  </dd>
-                </div>
-                <div className="flex py-4">
-                  <dt className="w-1/3 shrink-0 text-sm font-semibold text-gray-500 dark:text-gray-400">Tên mẫu Fit</dt>
-                  <dd className="w-2/3 min-w-0 break-words text-base font-semibold text-gray-900 dark:text-white">
-                    {style.styleName}
-                  </dd>
-                </div>
-                <div className="flex py-4">
-                  <dt className="w-1/3 shrink-0 text-sm font-semibold text-gray-500 dark:text-gray-400">Dòng sản phẩm</dt>
-                  <dd className="w-2/3 min-w-0 break-words text-base font-medium text-gray-900 dark:text-white">
-                    {style.category || "—"}
-                  </dd>
-                </div>
-                <div className="flex items-center py-4">
-                  <dt className="w-1/3 shrink-0 text-sm font-semibold text-gray-500 dark:text-gray-400">Trạng thái</dt>
-                  <dd className="flex w-2/3 min-w-0 items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={() => void handleToggleStatus()}
-                      disabled={statusUpdate.isPending}
-                      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                        style.status === "active" ? "bg-emerald-500" : "bg-gray-300 dark:bg-gray-700"
-                      }`}
-                      title={
-                        style.status === "active"
-                          ? "Đang Hoạt động (Bấm để chuyển về Nháp)"
-                          : "Đang Nháp (Bấm để kích hoạt)"
-                      }
-                    >
-                      <span
-                        className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-xs ring-0 transition duration-200 ease-in-out ${
-                          style.status === "active" ? "translate-x-4" : "translate-x-0"
+          <div className="lg:col-span-7 flex flex-col">
+            <div className="overflow-hidden rounded-2xl border border-gray-200/80 bg-white p-6 shadow-xs dark:border-gray-800 dark:bg-gray-900 flex-1 flex flex-col justify-between">
+              <div>
+                <h3 className="text-sm font-bold uppercase tracking-wider text-gray-400 pb-3 mb-2 border-b border-gray-100 dark:border-gray-800">
+                  Thông tin chi tiết mẫu fit
+                </h3>
+                <dl className="divide-y divide-gray-100 dark:divide-gray-800">
+                  <div className="flex py-4 items-center">
+                    <dt className="w-1/3 shrink-0 text-sm font-bold text-gray-500 dark:text-gray-400">Mã mẫu Fit</dt>
+                    <dd className="w-2/3 min-w-0 break-all font-mono text-xl font-black text-blue-600 dark:text-blue-400">
+                      {style.styleCode}
+                    </dd>
+                  </div>
+                  <div className="flex py-4 items-center">
+                    <dt className="w-1/3 shrink-0 text-sm font-bold text-gray-500 dark:text-gray-400">Tên mẫu Fit</dt>
+                    <dd className="w-2/3 min-w-0 break-words text-lg font-bold text-gray-900 dark:text-white">
+                      {style.styleName}
+                    </dd>
+                  </div>
+                  <div className="flex py-4 items-center">
+                    <dt className="w-1/3 shrink-0 text-sm font-bold text-gray-500 dark:text-gray-400">Dòng sản phẩm</dt>
+                    <dd className="w-2/3 min-w-0 break-words text-base font-semibold text-gray-800 dark:text-gray-200">
+                      {style.category || "—"}
+                    </dd>
+                  </div>
+                  <div className="flex items-center py-4">
+                    <dt className="w-1/3 shrink-0 text-sm font-bold text-gray-500 dark:text-gray-400">Trạng thái</dt>
+                    <dd className="flex w-2/3 min-w-0 items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => void handleToggleStatus()}
+                        disabled={statusUpdate.isPending}
+                        className={`relative inline-flex h-6 w-10 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                          style.status === "active" ? "bg-emerald-500" : "bg-gray-300 dark:bg-gray-700"
                         }`}
-                      />
-                    </button>
-                    <StyleStatusBadge status={style.status} />
-                  </dd>
-                </div>
-                <div className="flex py-4">
-                  <dt className="w-1/3 shrink-0 text-sm font-semibold text-gray-500 dark:text-gray-400">Mô tả đặc điểm</dt>
-                  <dd className="w-2/3 min-w-0 break-words text-base font-medium text-gray-900 dark:text-white whitespace-pre-wrap leading-relaxed">
-                    {style.description || "Chưa có mô tả chi tiết."}
-                  </dd>
-                </div>
-              </dl>
-            </div>
+                        title={
+                          style.status === "active"
+                            ? "Đang Hoạt động (Bấm để chuyển về Nháp)"
+                            : "Đang Nháp (Bấm để kích hoạt)"
+                        }
+                      >
+                        <span
+                          className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-xs ring-0 transition duration-200 ease-in-out ${
+                            style.status === "active" ? "translate-x-4" : "translate-x-0"
+                          }`}
+                        />
+                      </button>
+                      <StyleStatusBadge status={style.status} />
+                    </dd>
+                  </div>
+                  <div className="flex py-4">
+                    <dt className="w-1/3 shrink-0 text-sm font-bold text-gray-500 dark:text-gray-400">Mô tả đặc điểm</dt>
+                    <dd className="w-2/3 min-w-0 break-words text-base font-medium text-gray-800 dark:text-gray-200 whitespace-pre-wrap leading-relaxed">
+                      {style.description || "Chưa có mô tả chi tiết."}
+                    </dd>
+                  </div>
+                </dl>
+              </div>
 
-            <div className="pt-6 border-t border-gray-100 dark:border-gray-800">
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-400 dark:text-gray-500 font-medium">
-                <span>Tạo lúc: {new Date(style.createdAt).toLocaleString("vi-VN")}</span>
-                <span>•</span>
-                <span>Cập nhật: {new Date(style.updatedAt).toLocaleString("vi-VN")}</span>
+              <div className="mt-6 pt-4 border-t border-gray-100 dark:border-gray-800">
+                <div className="flex flex-wrap items-center justify-between text-xs text-gray-400 dark:text-gray-500 font-medium">
+                  <span>Tạo lúc: {new Date(style.createdAt).toLocaleString("vi-VN")}</span>
+                  <span>•</span>
+                  <span>Cập nhật: {new Date(style.updatedAt).toLocaleString("vi-VN")}</span>
+                </div>
               </div>
             </div>
           </div>
@@ -344,6 +395,10 @@ export default function StyleDetailPage() {
           cmBaseDays={style.as3bCmBaseDays || 30}
           canEdit={true}
           onSave={handleSaveSteps}
+          imageUrl={imageUrl}
+          styleCode={style.styleCode}
+          styleName={style.styleName}
+          onImageChange={(file) => void uploadAndSaveImage(file)}
         />
       )}
 
