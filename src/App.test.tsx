@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createMemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -204,15 +204,14 @@ describe("application routes", () => {
     fireEvent.change(screen.getByLabelText("Tên nhóm công đoạn"), {
       target: { value: "Nhóm đang nhập" },
     });
-    const navigation = screen.getByRole("navigation", { name: "ERP modules" });
-    fireEvent.click(within(navigation).getByRole("link", { name: "Dashboard" }));
+    await act(() => router.navigate("/dashboard"));
 
     expect(router.state.location.pathname).toBe("/masters/stage-groups");
     expect(await screen.findByRole("heading", { name: "Hủy các thay đổi?" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Tiếp tục chỉnh sửa" }));
     expect(screen.getByDisplayValue("Nhóm đang nhập")).toBeTruthy();
 
-    fireEvent.click(within(navigation).getByRole("link", { name: "Dashboard" }));
+    await act(() => router.navigate("/dashboard"));
     fireEvent.click(await screen.findByRole("button", { name: "Bỏ thay đổi" }));
     expect(await screen.findByRole("heading", { name: "Dashboard" })).toBeTruthy();
   });

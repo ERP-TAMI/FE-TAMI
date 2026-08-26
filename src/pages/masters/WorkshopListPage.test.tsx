@@ -160,6 +160,7 @@ describe("WorkshopListPage", () => {
         id: workshops[0].id,
         status: "inactive",
       });
+      expect(screen.queryByRole("dialog")).toBeNull();
     });
 
     hooks.updateStatus.mutateAsync.mockClear();
