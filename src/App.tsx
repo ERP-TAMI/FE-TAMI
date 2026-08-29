@@ -49,6 +49,8 @@ export function AppRoutes() {
             <Route path="dashboard" element={<DashboardPage />} />
             <Route path="styles" element={<StyleListPage />} />
             <Route path="styles/:id" element={<StyleDetailPage />} />
+            <Route path="styles/:id/detail" element={<StyleDetailPage />} />
+            <Route path="styles/:id/production-doc" element={<StyleDetailPage />} />
             <Route path="bom" element={<BomPage />} />
             <Route path="po" element={<PoPage />} />
             <Route path="masters" element={<Navigate to="/masters/materials" replace />} />
