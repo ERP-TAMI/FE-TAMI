@@ -39,7 +39,12 @@ export function getApiError(
     : typeof rawMessage === "string"
       ? rawMessage
       : undefined;
-  const message = overrides?.[code] ?? serverMessage ?? defaultApiErrorMessages[code];
+  const message =
+    overrides?.[code] ??
+    defaultApiErrorMessages[code] ??
+    (code === "VALIDATION_ERROR" || code === "BAD_REQUEST" || Array.isArray(rawMessage)
+      ? serverMessage
+      : undefined);
 
   return { code, message: message ?? fallback };
 }
