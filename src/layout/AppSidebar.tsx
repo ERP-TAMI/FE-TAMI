@@ -33,8 +33,11 @@ const navItems: NavItem[] = [
     children: [
       { name: "Vật tư", path: "/masters/materials" },
       { name: "Nhóm vật tư", path: "/masters/material-groups" },
-      { name: "Giai đoạn công đoạn", path: "/masters/stages" },
+      { name: "Công đoạn", path: "/masters/stages" },
+      { name: "Nhóm công đoạn", path: "/masters/stage-groups" },
       { name: "Đơn vị tính", path: "/masters/units" },
+      { name: "Xưởng sản xuất", path: "/masters/workshops" },
+      { name: "Bảng Size", path: "/masters/size-charts" },
     ],
   },
   { name: "Administration", path: "/admin", icon: <UserCircleIcon /> },
@@ -98,9 +101,7 @@ export default function AppSidebar() {
               <div key={item.name}>
                 <button
                   type="button"
-                  onClick={() =>
-                    setOpenGroup((prev) => (prev === item.name ? null : item.name))
-                  }
+                  onClick={() => setOpenGroup((prev) => (prev === item.name ? null : item.name))}
                   aria-expanded={isOpen}
                   className={`menu-item group w-full ${
                     isChildActive(item) ? "menu-item-active" : "menu-item-inactive"

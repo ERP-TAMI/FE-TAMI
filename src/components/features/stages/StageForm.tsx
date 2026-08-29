@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { Alert, Button, ConfirmDialog, Input, Modal } from "@/components/shared";
+import { Alert, Button, CodeLockToggle, ConfirmDialog, Input, Modal } from "@/components/shared";
 import type { ApiError } from "@/lib/apiError";
 import { STAGE_SSV_PATTERN, type Stage, type StageInput } from "@/types/stage";
 
@@ -18,6 +18,13 @@ const schema = z.object({
     .string()
     .trim()
     .regex(STAGE_SSV_PATTERN, "SSV phải là số không âm, tối đa 3 chữ số thập phân"),
+});
+const editSchema = schema.extend({
+  stageCode: z
+    .string()
+    .trim()
+    .min(1, "Mã công đoạn là bắt buộc")
+    .max(50, "Mã công đoạn không được vượt quá 50 ký tự"),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -41,8 +48,9 @@ export function StageForm({
   onDirtyChange,
 }: StageFormProps) {
   const [discardDialogOpen, setDiscardDialogOpen] = useState(false);
-  const { register, handleSubmit, formState } = useForm<FormValues>({
-    resolver: zodResolver(schema),
+  const [isCodeLocked, setIsCodeLocked] = useState(mode === "edit");
+  const { register, handleSubmit, formState, setFocus } = useForm<FormValues>({
+    resolver: zodResolver(mode === "edit" ? editSchema : schema),
     defaultValues: stage
       ? {
           stageCode: stage.stageCode,
@@ -54,6 +62,9 @@ export function StageForm({
   });
 
   useEffect(() => onDirtyChange?.(formState.isDirty), [formState.isDirty, onDirtyChange]);
+  useEffect(() => {
+    if (mode === "edit" && !isCodeLocked) setFocus("stageCode");
+  }, [isCodeLocked, mode, setFocus]);
 
   const requestClose = () => {
     if (formState.isDirty) {
@@ -99,11 +110,29 @@ export function StageForm({
           <div className="grid gap-4 sm:grid-cols-2">
             <Input
               label="Mã công đoạn"
+              labelAction={
+                mode === "edit" ? (
+                  <CodeLockToggle
+                    codeLabel="mã công đoạn"
+                    isLocked={isCodeLocked}
+                    onToggle={() => setIsCodeLocked((current) => !current)}
+                  />
+                ) : undefined
+              }
               placeholder="Ví dụ: GD-CAT"
               hint={
-                mode === "create" ? "Để trống để hệ thống tự tạo mã từ tên công đoạn." : undefined
+                mode === "create"
+                  ? "Để trống để hệ thống tự tạo mã từ tên công đoạn."
+                  : isCodeLocked
+                    ? "Nhấn biểu tượng khóa để chỉnh sửa mã công đoạn."
+                    : "Mã công đoạn đang mở khóa và có thể chỉnh sửa."
               }
-              disabled={mode === "edit"}
+              disabled={mode === "edit" && isCodeLocked}
+              className={
+                mode === "edit" && isCodeLocked
+                  ? "disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-500 disabled:opacity-100 dark:disabled:bg-gray-800/80 dark:disabled:text-gray-400"
+                  : undefined
+              }
               error={formState.errors.stageCode?.message}
               {...register("stageCode")}
             />
