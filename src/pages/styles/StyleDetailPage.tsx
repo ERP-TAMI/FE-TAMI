@@ -31,6 +31,36 @@ export default function StyleDetailPage() {
 
   const [isProductionDocEditing, setIsProductionDocEditing] = useState(false);
   const [pendingTab, setPendingTab] = useState<"general" | "production_doc" | null>(null);
+  const [pendingNavigation, setPendingNavigation] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isProductionDocEditing) return;
+
+    const handleDocumentClick = (event: MouseEvent) => {
+      if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+        return;
+      }
+      const target = event.target as HTMLElement | null;
+      const link = target?.closest("a[href]") as HTMLAnchorElement | null;
+      if (!link || link.target === "_blank" || link.download) return;
+      const url = new URL(link.href, window.location.href);
+      if (url.origin !== window.location.origin || url.href === window.location.href) return;
+      event.preventDefault();
+      setPendingNavigation(`${url.pathname}${url.search}${url.hash}`);
+    };
+
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+
+    document.addEventListener("click", handleDocumentClick, true);
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => {
+      document.removeEventListener("click", handleDocumentClick, true);
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, [isProductionDocEditing]);
 
   const navigateToTab = (tab: "general" | "production_doc") => {
     if (!id) return;
@@ -50,7 +80,13 @@ export default function StyleDetailPage() {
   };
 
   const handleConfirmLeaveTab = () => {
-    if (pendingTab) navigateToTab(pendingTab);
+    if (pendingNavigation) {
+      const nextPath = pendingNavigation;
+      setPendingNavigation(null);
+      navigate(nextPath);
+    } else if (pendingTab) {
+      navigateToTab(pendingTab);
+    }
     setPendingTab(null);
   };
 
@@ -217,14 +253,8 @@ export default function StyleDetailPage() {
         <StyleHeader
           styleCode={style.styleCode}
           styleName={style.styleName}
-          category={style.category}
           status={style.status}
-          activeTabLabel={
-            activeTab === "general"
-              ? "Chi tiết"
-              : "Tài liệu sản xuất Tiếng Việt"
-          }
-          onEditClick={() => setIsEditModalOpen(true)}
+          onEditClick={activeTab === "general" ? () => setIsEditModalOpen(true) : undefined}
         />
 
         {/* Primary Navigation Tabs */}
@@ -250,16 +280,18 @@ export default function StyleDetailPage() {
         <StyleProductionDocTab
           styleId={style.id}
           styleName={style.styleName}
-          styleDescription={style.description}
           styleImageUrl={imageUrl || style.baseImageVersionId || undefined}
           onEditingChange={setIsProductionDocEditing}
         />
       )}
 
       <UnsavedChangesDialog
-        isOpen={pendingTab !== null}
+        isOpen={pendingTab !== null || pendingNavigation !== null}
         onConfirmLeave={handleConfirmLeaveTab}
-        onCancel={() => setPendingTab(null)}
+        onCancel={() => {
+          setPendingTab(null);
+          setPendingNavigation(null);
+        }}
       />
 
       {/* Edit Modal */}

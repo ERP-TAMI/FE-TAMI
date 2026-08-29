@@ -22,22 +22,24 @@ export function DocumentStatusSelector({ status, onChange }: Props) {
   };
 
   return (
-    <div className="relative inline-flex items-center">
-      <span
-        className={`absolute left-2.5 h-1.5 w-1.5 rounded-full pointer-events-none ${dotStyles[status]}`}
-      />
+    <label className="inline-flex items-center gap-2">
+      <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Trạng thái</span>
+      <div className="relative inline-flex items-center">
+        <span
+          className={`pointer-events-none absolute left-3 h-2 w-2 rounded-full ${dotStyles[status]}`}
+        />
       <select
         value={status}
         onChange={(e) => onChange(e.target.value as ProductionDocStatus)}
-        className={`appearance-none rounded-lg border pl-5 pr-6 py-1 text-xs font-semibold focus:outline-none transition-colors cursor-pointer ${statusStyles[status]}`}
+        aria-label="Trạng thái tài liệu"
+        className={`h-9 appearance-none rounded-lg border pl-7 pr-8 text-sm font-semibold transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none dark:focus:ring-blue-950 ${statusStyles[status]}`}
       >
         <option value="draft">Nháp</option>
         <option value="in_progress">Đang soạn</option>
         <option value="completed">Hoàn tất</option>
       </select>
-      <span className="absolute right-2 text-[9px] text-gray-400 pointer-events-none">
-        ▼
-      </span>
-    </div>
+        <span className="pointer-events-none absolute right-3 text-xs text-gray-400">⌄</span>
+      </div>
+    </label>
   );
 }

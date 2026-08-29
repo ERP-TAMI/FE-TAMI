@@ -1,7 +1,9 @@
 export type ProductionDocStatus = "draft" | "in_progress" | "completed";
 
 export interface ProductionDocImageGroup {
+  kind?: "text" | "image";
   heading: string;
+  content?: string | null;
   headingColor: "red" | "black";
   imageUrls: string[];
   orderIndex?: number;

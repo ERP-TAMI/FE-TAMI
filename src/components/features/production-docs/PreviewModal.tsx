@@ -1,4 +1,4 @@
-import type { StyleProductionDocDetail } from "@/types/production-doc";
+import type { ProductionDocImageGroup, StyleProductionDocDetail } from "@/types/production-doc";
 import { SizeSpecTable } from "./SizeSpecTable";
 
 interface Props {
@@ -29,8 +29,13 @@ export function PreviewModal({ doc, styleName, onClose }: Props) {
   const dynamicSections = (doc.sections || []).filter((s) => !s.isFixed);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
-      <div className="flex max-h-[92vh] w-full max-w-4xl flex-col rounded-2xl bg-white shadow-2xl dark:bg-gray-900 overflow-hidden">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
+      <div className="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl dark:bg-gray-900">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4 dark:border-gray-800">
           <div>
@@ -63,7 +68,7 @@ export function PreviewModal({ doc, styleName, onClose }: Props) {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
               {/* Section 01 */}
               <div className="space-y-2">
-                <h4 className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider">
+                <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider dark:text-white">
                   01. MÔ TẢ HÌNH DÁNG
                 </h4>
                 {doc.section1ImageUrl && (
@@ -82,11 +87,11 @@ export function PreviewModal({ doc, styleName, onClose }: Props) {
 
               {/* Section 02 */}
               <div className="space-y-2">
-                <h4 className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider">
+                <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider dark:text-white">
                   02. PHỤ LIỆU
                 </h4>
                 <div className="rounded-xl border border-gray-100 bg-gray-50/60 p-3.5 dark:border-gray-800 dark:bg-gray-900/60">
-                  <pre className="text-xs font-mono whitespace-pre-wrap text-gray-700 dark:text-gray-300 leading-relaxed">
+                  <pre className="text-xs whitespace-pre-wrap text-gray-700 dark:text-gray-300 leading-relaxed">
                     {doc.section2Accessories || "—"}
                   </pre>
                 </div>
@@ -95,7 +100,7 @@ export function PreviewModal({ doc, styleName, onClose }: Props) {
 
             {/* Section 03 */}
             <div className="space-y-2 pt-4 border-t border-gray-100 dark:border-gray-800">
-              <h4 className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider">
+              <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider dark:text-white">
                 03. LƯU Ý TRẢI CẮT
               </h4>
               <p className="text-xs text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
@@ -105,7 +110,7 @@ export function PreviewModal({ doc, styleName, onClose }: Props) {
 
             {/* Section 04 */}
             <div className="space-y-2 pt-4 border-t border-gray-100 dark:border-gray-800">
-              <h4 className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider">
+              <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider dark:text-white">
                 04. COMMENT GÓP Ý KHÁCH HÀNG
               </h4>
               <p className="text-xs text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
@@ -115,7 +120,7 @@ export function PreviewModal({ doc, styleName, onClose }: Props) {
 
             {/* Section 05: THÔNG SỐ FULL SIZE */}
             <div className="space-y-4 pt-4 border-t border-gray-100 dark:border-gray-800">
-              <h4 className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider">
+              <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider dark:text-white">
                 05. THÔNG SỐ FULL SIZE
               </h4>
 
@@ -143,12 +148,25 @@ export function PreviewModal({ doc, styleName, onClose }: Props) {
             {/* Dynamic Custom Sections 06+ */}
             {dynamicSections.map((sec, idx) => {
               const secNum = String(idx + 6).padStart(2, "0");
+              const imageGroupRows: ProductionDocImageGroup[][] = [];
+              const groups = sec.imageGroups || [];
+              for (let groupIndex = 0; groupIndex < groups.length; ) {
+                if (groups[groupIndex].kind === "text") {
+                  imageGroupRows.push([groups[groupIndex]]);
+                  groupIndex++;
+                  continue;
+                }
+                const nextGroup = groups[groupIndex + 1];
+                const pairSize = nextGroup && nextGroup.kind !== "text" ? 2 : 1;
+                imageGroupRows.push(groups.slice(groupIndex, groupIndex + pairSize));
+                groupIndex += pairSize;
+              }
               return (
                 <div
                   key={sec.id || idx}
                   className="space-y-3 pt-4 border-t border-gray-100 dark:border-gray-800"
                 >
-                  <h4 className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider">
+                  <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider dark:text-white">
                     {secNum}. {sec.title || `MỤC ${secNum}`}
                   </h4>
 
@@ -158,31 +176,43 @@ export function PreviewModal({ doc, styleName, onClose }: Props) {
                     </p>
                   )}
 
-                  {(sec.imageGroups || []).map((grp, grpIdx) => (
-                    <div key={grpIdx} className="space-y-2 pt-1">
-                      {grp.heading && (
-                        <h5
-                          className={`text-xs font-bold underline ${
-                            grp.headingColor === "red"
-                              ? "text-red-600"
-                              : "text-gray-900 dark:text-white"
-                          }`}
-                        >
-                          {grp.heading}
-                        </h5>
-                      )}
-                      {grp.imageUrls && grp.imageUrls.length > 0 && (
-                        <div className="flex flex-wrap gap-3">
-                          {grp.imageUrls.map((url, i) => (
-                            <img
-                              key={i}
-                              src={url}
-                              alt=""
-                              className="w-28 h-28 object-cover rounded-lg border border-gray-200 dark:border-gray-700"
-                            />
-                          ))}
+                  {imageGroupRows.map((pair, pairIndex) => (
+                    <div
+                      key={pairIndex}
+                      className={`grid items-start gap-4 ${pair.length > 1 ? "grid-cols-2" : "grid-cols-1"}`}
+                    >
+                      {pair.map((grp, grpIdx) => (
+                        <div key={grpIdx} className="min-w-0 space-y-2 pt-1">
+                          {grp.heading && (
+                            <h5
+                              className={`text-xs font-bold ${grp.kind === "text" ? "" : "underline"} ${
+                                grp.headingColor === "red"
+                                  ? "text-red-600"
+                                  : "text-gray-900 dark:text-white"
+                              }`}
+                            >
+                              {grp.heading}
+                            </h5>
+                          )}
+                          {grp.kind === "text" && grp.content && (
+                            <p className="text-xs leading-relaxed whitespace-pre-wrap text-gray-700 dark:text-gray-300">
+                              {grp.content}
+                            </p>
+                          )}
+                          {grp.imageUrls && grp.imageUrls.length > 0 && (
+                            <div className="flex flex-wrap gap-3">
+                              {grp.imageUrls.map((url, i) => (
+                                <img
+                                  key={i}
+                                  src={url}
+                                  alt=""
+                                  className="h-28 w-28 rounded-lg border border-gray-200 object-cover dark:border-gray-700"
+                                />
+                              ))}
+                            </div>
+                          )}
                         </div>
-                      )}
+                      ))}
                     </div>
                   ))}
                 </div>
@@ -192,7 +222,7 @@ export function PreviewModal({ doc, styleName, onClose }: Props) {
             {/* Document Attachments preview */}
             {doc.attachments && doc.attachments.length > 0 && (
               <div className="space-y-2 pt-4 border-t border-gray-100 dark:border-gray-800">
-                <h4 className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider">
+                <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider dark:text-white">
                   TÀI LIỆU ĐÍNH KÈM ({doc.attachments.length})
                 </h4>
                 <ul className="divide-y divide-gray-100 rounded-xl border border-gray-200 dark:divide-gray-800 dark:border-gray-800">

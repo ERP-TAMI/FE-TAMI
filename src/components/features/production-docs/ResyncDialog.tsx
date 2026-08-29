@@ -6,7 +6,12 @@ interface Props {
 
 export function ResyncDialog({ isPending, onConfirm, onClose }: Props) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
       <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl dark:bg-gray-900 space-y-4 border border-gray-200 dark:border-gray-800">
         <h3 className="text-base font-bold text-gray-900 dark:text-white">
           Đồng bộ lại tài liệu?

@@ -3,7 +3,6 @@ import { DocumentStatusSelector } from "./DocumentStatusSelector";
 import type { ProductionDocStatus } from "@/types/production-doc";
 
 interface Props {
-  docName: string;
   status: ProductionDocStatus;
   updatedAt?: string;
   copiedFromStyleId?: string | null;
@@ -22,7 +21,6 @@ interface Props {
 }
 
 export function DocumentToolbar({
-  docName,
   status,
   updatedAt,
   copiedFromStyleId,
@@ -67,33 +65,28 @@ export function DocumentToolbar({
 
   return (
     <div className="-mx-4 md:-mx-6 px-4 md:px-6 py-3.5 bg-white dark:bg-gray-900 border-b border-gray-200/80 dark:border-gray-800 flex flex-wrap items-center justify-between gap-4">
-      {/* Title & Metadata */}
+      {/* Document status & metadata */}
       <div className="space-y-1">
-        <div className="flex items-center gap-3">
-          <h2 className="text-lg font-bold tracking-tight text-gray-900 dark:text-white">
-            {docName}
-          </h2>
+        <div className="flex flex-wrap items-center gap-3">
           <DocumentStatusSelector status={status} onChange={onStatusChange} />
+          {formattedDate && <span className="text-xs text-gray-500 dark:text-gray-400">Cập nhật {formattedDate}</span>}
         </div>
-        <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
-          {formattedDate && <span>Cập nhật {formattedDate}</span>}
-          {copiedFromStyleId && (
-            <span className="text-blue-600 dark:text-blue-400 font-medium">
-              Copy từ: {copiedFromStyleId}
-            </span>
-          )}
-        </div>
+        {copiedFromStyleId && (
+          <span className="text-xs font-medium text-blue-600 dark:text-blue-400">
+            Copy từ: {copiedFromStyleId}
+          </span>
+        )}
       </div>
 
       {/* Action Hierarchy */}
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center justify-end gap-2">
         {isEditing ? (
           <>
             <button
               type="button"
               onClick={onCancelEdit}
               disabled={isSaving}
-              className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 transition-colors"
+              className="inline-flex min-h-10 items-center justify-center rounded-xl border border-gray-300 bg-white px-4 text-sm font-semibold text-gray-900 transition-colors hover:bg-gray-50 focus:ring-4 focus:ring-gray-200 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
             >
               Hủy
             </button>
@@ -101,7 +94,7 @@ export function DocumentToolbar({
               type="button"
               onClick={onSaveClick}
               disabled={isSaving}
-              className="rounded-lg bg-blue-600 px-4 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 transition-colors shadow-xs"
+              className="inline-flex min-h-10 min-w-32 items-center justify-center rounded-xl bg-gray-900 px-5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-gray-800 focus:ring-4 focus:ring-gray-300 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-200"
             >
               {isSaving ? "Đang lưu..." : "Lưu tài liệu"}
             </button>
@@ -112,7 +105,7 @@ export function DocumentToolbar({
             <button
               type="button"
               onClick={onPreviewClick}
-              className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 transition-colors"
+              className="inline-flex min-h-10 items-center justify-center rounded-xl border border-gray-300 bg-white px-4 text-sm font-semibold text-gray-900 transition-colors hover:bg-gray-50 focus:ring-4 focus:ring-gray-200 focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-white"
             >
               Xem trước
             </button>
@@ -120,7 +113,7 @@ export function DocumentToolbar({
               type="button"
               onClick={onExportExcelClick}
               disabled={isExporting}
-              className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 dark:border-gray-700 dark:bg-gray-800 dark:text-emerald-400 transition-colors"
+              className="inline-flex min-h-10 items-center justify-center rounded-xl border border-gray-300 bg-white px-4 text-sm font-semibold text-gray-900 transition-colors hover:bg-gray-50 focus:ring-4 focus:ring-gray-200 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
             >
               {isExporting ? "Đang xuất..." : "Xuất Excel"}
             </button>
@@ -129,7 +122,7 @@ export function DocumentToolbar({
             <button
               type="button"
               onClick={onEditClick}
-              className="rounded-lg bg-blue-600 px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 transition-colors shadow-xs"
+              className="inline-flex min-h-10 min-w-28 items-center justify-center rounded-xl bg-gray-900 px-5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-gray-800 focus:ring-4 focus:ring-gray-300 focus:outline-none dark:bg-white dark:text-gray-900 dark:hover:bg-gray-200"
             >
               Chỉnh sửa
             </button>
@@ -139,7 +132,7 @@ export function DocumentToolbar({
               <button
                 type="button"
                 onClick={() => setOverflowOpen(!overflowOpen)}
-                className="rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 transition-colors"
+                className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-xl border border-gray-300 bg-white px-3 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50 focus:ring-4 focus:ring-gray-200 focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
                 title="Tùy chọn khác"
               >
                 •••
