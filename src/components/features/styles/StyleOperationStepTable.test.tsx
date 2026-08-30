@@ -75,9 +75,9 @@ describe("StyleOperationStepTable", () => {
 
     expect(screen.getByDisplayValue("Cắt vải")).toBeTruthy();
     expect(screen.getByText("Nhóm may cổ")).toBeTruthy();
-    expect(screen.getByText("Tổng thời gian")).toBeTruthy();
-    expect(screen.getByText("SP/người/ngày")).toBeTruthy();
-    expect(screen.getAllByText("CM Công Nghệ").length).toBeGreaterThan(0);
+    expect(screen.getByText("TỔNG")).toBeTruthy();
+    expect(screen.getByText("SP/NGƯỜI/NGÀY")).toBeTruthy();
+    expect(screen.getByText("CÔNG ĐOẠN 1K")).toBeTruthy();
   });
 
 
