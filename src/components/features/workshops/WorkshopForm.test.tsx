@@ -66,6 +66,33 @@ describe("WorkshopForm", () => {
     expect(codeInput.disabled).toBe(true);
   });
 
+  it("submits an edit without workshopCode while the code remains locked", async () => {
+    const onSubmit = vi.fn();
+    render(
+      <WorkshopForm
+        mode="edit"
+        workshop={workshop}
+        isSubmitting={false}
+        onClose={vi.fn()}
+        onSubmit={onSubmit}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText("Tên xưởng"), {
+      target: { value: "Xưởng May Chính" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Lưu xưởng" }));
+
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalledWith({
+        name: "Xưởng May Chính",
+        manager: "Nguyễn Văn A",
+        location: "Khu A",
+        capacity: 500,
+      });
+    });
+  });
+
   it("submits a normalized workshop code after unlocking it", async () => {
     const onSubmit = vi.fn();
     render(

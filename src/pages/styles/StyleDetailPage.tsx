@@ -6,61 +6,119 @@ import {
   useStyleOperationSteps,
   useBulkSaveStyleOperationSteps,
 } from "@/hooks/useStyleOperationSteps";
+import { useUploadImage } from "@/hooks/useUploadImage";
 import { useToast } from "@/hooks/useToast";
-import { PageHeader, Toast } from "@/components/shared";
-import { StyleStatusBadge } from "@/components/features/styles/StyleStatusBadge";
+import { Toast } from "@/components/shared";
 import { StyleFormModal } from "@/components/features/styles/StyleFormModal";
-import { StyleImagePlaceholder } from "@/components/features/styles/StyleImagePlaceholder";
 import { StyleOperationStepTable } from "@/components/features/styles/StyleOperationStepTable";
+import { UnsavedChangesDialog } from "@/components/features/styles/UnsavedChangesDialog";
+import { StyleHeader } from "@/components/features/styles/StyleHeader";
+import { GeneralTab } from "@/components/features/styles/GeneralTab";
+import { StyleProductionDocTab } from "@/components/features/production-docs/StyleProductionDocTab";
 import { getApiError, isConflictError } from "@/lib/apiError";
-import { DocsIcon, InfoIcon } from "@/icons";
-
-
-import { stylesApi } from "@/api/stylesApi";
+import { validateImageFile } from "@/lib/validateImageFile";
 import type { StyleOperationStepItem } from "@/api/styleOperationStepsApi";
-import { resolveImageUrl } from "@/lib/imageUtils";
+import { InfoIcon, DocsIcon, PageIcon } from "@/icons";
 
 export default function StyleDetailPage() {
   const { id } = useParams<{ id: string }>();
   const location = useLocation();
   const navigate = useNavigate();
 
+  const isStepsTab =
+    location.pathname.endsWith("/operation-steps") ||
+    location.pathname.endsWith("/steps");
+  const isProductionDocTab = location.pathname.endsWith("/production-doc");
+
+  const activeTab: "general" | "steps" | "production_doc" = isStepsTab
+    ? "steps"
+    : isProductionDocTab
+    ? "production_doc"
+    : "general";
+
+  const [isProductionDocEditing, setIsProductionDocEditing] = useState(false);
+  const [pendingTab, setPendingTab] = useState<"general" | "steps" | "production_doc" | null>(null);
+  const [pendingNavigation, setPendingNavigation] = useState<string | null>(null);
+
   useEffect(() => {
-    if (
-      id &&
-      !location.pathname.endsWith("/detail") &&
-      !location.pathname.endsWith("/operation-steps") &&
-      !location.pathname.endsWith("/steps")
-    ) {
-      navigate(`/styles/${id}/detail`, { replace: true });
-    }
-  }, [id, location.pathname, navigate]);
+    if (!isProductionDocEditing) return;
 
-  const detail = useStyle(id);
-  const style = detail.data;
-  const update = useUpdateStyle();
-  const statusUpdate = useUpdateStyle();
+    const handleDocumentClick = (event: MouseEvent) => {
+      if (
+        event.defaultPrevented ||
+        event.button !== 0 ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.shiftKey ||
+        event.altKey
+      ) {
+        return;
+      }
+      const target = event.target as HTMLElement | null;
+      const link = target?.closest("a[href]") as HTMLAnchorElement | null;
+      if (!link || link.target === "_blank" || link.download) return;
+      const url = new URL(link.href, window.location.href);
+      if (url.origin !== window.location.origin || url.href === window.location.href) return;
+      event.preventDefault();
+      setPendingNavigation(`${url.pathname}${url.search}${url.hash}`);
+    };
 
-  const stepsQuery = useStyleOperationSteps(id);
-  const bulkSaveSteps = useBulkSaveStyleOperationSteps(id || "");
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
 
-  const isStepsTab = location.pathname.endsWith("/operation-steps") || location.pathname.endsWith("/steps");
-  const activeTab: "info" | "steps" = isStepsTab ? "steps" : "info";
+    document.addEventListener("click", handleDocumentClick, true);
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => {
+      document.removeEventListener("click", handleDocumentClick, true);
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, [isProductionDocEditing]);
 
-  const handleTabChange = (tab: "info" | "steps") => {
+  const navigateToTab = (tab: "general" | "steps" | "production_doc") => {
     if (!id) return;
-    if (tab === "steps") {
+    if (tab === "production_doc") {
+      navigate(`/styles/${id}/production-doc`);
+    } else if (tab === "steps") {
       navigate(`/styles/${id}/operation-steps`);
     } else {
       navigate(`/styles/${id}/detail`);
     }
   };
 
+  const handleTabChange = (tab: "general" | "steps" | "production_doc") => {
+    if (isProductionDocEditing && tab !== activeTab) {
+      setPendingTab(tab);
+      return;
+    }
+    navigateToTab(tab);
+  };
+
+  const handleConfirmLeaveTab = () => {
+    if (pendingNavigation) {
+      const nextPath = pendingNavigation;
+      setPendingNavigation(null);
+      navigate(nextPath);
+    } else if (pendingTab) {
+      navigateToTab(pendingTab);
+    }
+    setPendingTab(null);
+  };
+
+  const detail = useStyle(id);
+  const style = detail.data;
+  const update = useUpdateStyle();
+  const statusUpdate = useUpdateStyle();
+  const uploadImage = useUploadImage();
+
+  const stepsQuery = useStyleOperationSteps(id);
+  const bulkSaveSteps = useBulkSaveStyleOperationSteps(id || "");
+
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const { toast, showToast, hideToast } = useToast();
 
   const [imageUrl, setImageUrl] = useState<string | null>(null);
-  const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -68,57 +126,56 @@ export default function StyleDetailPage() {
     if (style?.baseImageVersionId) setImageUrl(style.baseImageVersionId);
   }, [style?.baseImageVersionId]);
 
-  const uploadAndSaveImage = useCallback(
+  const handleUploadAndSaveImage = useCallback(
     async (file: File) => {
-      if (!id) return;
-      setIsUploadingImage(true);
+      if (!style) return;
+      const validationError = validateImageFile(file);
+      if (validationError) {
+        showToast(validationError, "error");
+        return;
+      }
       try {
-        const { fileUrl } = await stylesApi.uploadImage(file, "style-images");
+        const res = await uploadImage.mutateAsync(file);
+        setImageUrl(res.url);
         await update.mutateAsync({
-          id,
-          payload: { baseImageVersionId: fileUrl },
+          id: style.id,
+          payload: { baseImageVersionId: res.url },
         });
-        setImageUrl(fileUrl);
-        showToast("Đã tải lên và lưu ảnh mẫu Fit thành công!");
-      } catch (err: unknown) {
-        console.error("Failed to upload style image:", err);
-        showToast(getApiError(err, "Không thể tải và lưu ảnh mẫu Fit.").message, "error");
-      } finally {
-        setIsUploadingImage(false);
+        showToast("Đã tải và lưu ảnh mẫu Fit thành công.");
+      } catch (err) {
+        showToast(getApiError(err, "Tải ảnh mẫu thất bại.").message, "error");
       }
     },
-    [id, update, showToast],
+    [style, uploadImage, update, showToast],
   );
 
-  const clearAndSaveImage = useCallback(async () => {
-    if (!id) return;
-    setIsUploadingImage(true);
+  const clearLocalImage = useCallback(async () => {
+    if (!style) return;
     try {
-      await update.mutateAsync({
-        id,
-        payload: { baseImageVersionId: undefined },
-      });
       setImageUrl(null);
+      await update.mutateAsync({
+        id: style.id,
+        payload: { baseImageVersionId: null },
+      });
       showToast("Đã xóa ảnh mẫu Fit.");
-    } catch (err: unknown) {
-      showToast(getApiError(err, "Không thể xóa ảnh mẫu Fit.").message, "error");
-    } finally {
-      setIsUploadingImage(false);
+    } catch (err) {
+      showToast(getApiError(err, "Xóa ảnh mẫu thất bại.").message, "error");
     }
-  }, [id, update, showToast]);
+  }, [style, update, showToast]);
 
   const handlePaste = useCallback(
     (e: ClipboardEvent) => {
+      if (activeTab !== "general") return;
       const items = e.clipboardData?.items;
       if (!items) return;
       for (let i = 0; i < items.length; i++) {
         if (items[i].type.indexOf("image") !== -1) {
           const file = items[i].getAsFile();
-          if (file) void uploadAndSaveImage(file);
+          if (file) void handleUploadAndSaveImage(file);
         }
       }
     },
-    [uploadAndSaveImage],
+    [activeTab, handleUploadAndSaveImage],
   );
 
   useEffect(() => {
@@ -128,14 +185,14 @@ export default function StyleDetailPage() {
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) void uploadAndSaveImage(file);
+    if (file) void handleUploadAndSaveImage(file);
   };
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
     const file = e.dataTransfer.files?.[0];
-    if (file && file.type.startsWith("image/")) void uploadAndSaveImage(file);
+    if (file && file.type.startsWith("image/")) void handleUploadAndSaveImage(file);
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -150,16 +207,30 @@ export default function StyleDetailPage() {
 
   const handleToggleStatus = async () => {
     if (!style) return;
-    const nextStatus: StyleStatus = style.status === "active" ? "draft" : "active";
+    const nextStatus: StyleStatus =
+      style.status === "active" ? "draft" : "active";
     try {
-      await statusUpdate.mutateAsync({ id: style.id, payload: { status: nextStatus } });
-      showToast(nextStatus === "active" ? "Đã kích hoạt mẫu Fit." : "Đã chuyển mẫu Fit về nháp.");
+      await statusUpdate.mutateAsync({
+        id: style.id,
+        payload: { status: nextStatus },
+      });
+      showToast(
+        nextStatus === "active"
+          ? "Đã kích hoạt mẫu Fit."
+          : "Đã chuyển mẫu Fit về nháp.",
+      );
     } catch (err: unknown) {
-      showToast(getApiError(err, "Cập nhật trạng thái thất bại.").message, "error");
+      showToast(
+        getApiError(err, "Cập nhật trạng thái thất bại.").message,
+        "error",
+      );
     }
   };
 
-  const handleSaveSteps = async (stepsData: Partial<StyleOperationStepItem>[], baseDays?: number) => {
+  const handleSaveSteps = async (
+    stepsData: Partial<StyleOperationStepItem>[],
+    baseDays?: number,
+  ) => {
     if (!id) return;
     try {
       await bulkSaveSteps.mutateAsync({ steps: stepsData, as3bCmBaseDays: baseDays });
@@ -176,9 +247,10 @@ export default function StyleDetailPage() {
 
   if (detail.isLoading) {
     return (
-      <div className="space-y-4 animate-pulse">
-        <div className="h-6 w-1/4 rounded bg-gray-200 dark:bg-gray-800" />
-        <div className="h-96 w-full rounded-xl bg-gray-100 dark:bg-gray-800/60" />
+      <div className="space-y-4 animate-pulse pt-2">
+        <div className="h-12 w-1/3 rounded-lg bg-gray-200 dark:bg-gray-800" />
+        <div className="h-8 w-1/4 rounded bg-gray-200 dark:bg-gray-800" />
+        <div className="h-96 w-full rounded-2xl bg-gray-100 dark:bg-gray-800/60" />
       </div>
     );
   }
@@ -193,6 +265,7 @@ export default function StyleDetailPage() {
             : "Mẫu Fit không tồn tại."}
         </p>
         <button
+          type="button"
           onClick={() => navigate("/styles")}
           className="mt-4 rounded-md bg-red-600 px-4 py-2 text-xs font-medium text-white hover:bg-red-700 transition-colors cursor-pointer"
         >
@@ -202,194 +275,78 @@ export default function StyleDetailPage() {
     );
   }
 
-  const currentTabLabel = activeTab === "steps" ? "Phân bổ công đoạn" : "Chi tiết";
-  const currentTabUrl = activeTab === "steps" ? `/styles/${style.id}/operation-steps` : `/styles/${style.id}/detail`;
-
   return (
-    <div className="space-y-4">
-      <PageHeader
-        breadcrumb={[
-          { label: "Dashboard", to: "/dashboard" },
-          { label: "Mẫu Fit", to: "/styles" },
-          { label: style.styleName || style.styleCode, to: currentTabUrl },
-          { label: currentTabLabel },
-        ]}
-        title={style.styleName}
-        action={{ label: "Chỉnh sửa", onClick: () => setIsEditModalOpen(true) }}
-      />
+    <div className="space-y-5">
+      <div className="space-y-4">
+        <StyleHeader
+          styleCode={style.styleCode}
+          styleName={style.styleName}
+          status={style.status}
+          onEditClick={activeTab === "general" ? () => setIsEditModalOpen(true) : undefined}
+        />
 
-      {/* Tabs Header */}
-      <div className="border-b border-gray-200 dark:border-gray-800">
-        <nav className="flex space-x-6" aria-label="Tabs">
-          <button
-            type="button"
-            onClick={() => handleTabChange("info")}
-            className={`flex items-center gap-2 border-b-2 py-2.5 px-1 text-sm font-semibold transition-colors cursor-pointer ${
-              activeTab === "info"
-                ? "border-brand-500 text-brand-600 dark:text-brand-400"
-                : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-            }`}
-          >
-            <InfoIcon className="w-4 h-4" />
-            Thông tin mẫu Fit
-          </button>
-          <button
-            type="button"
-            onClick={() => handleTabChange("steps")}
-            className={`flex items-center gap-2 border-b-2 py-2.5 px-1 text-sm font-semibold transition-colors cursor-pointer ${
-              activeTab === "steps"
-                ? "border-brand-500 text-brand-600 dark:text-brand-400"
-                : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-            }`}
-          >
-            <DocsIcon className="w-4 h-4" />
-            Phân bổ công đoạn &amp; Tính KIM
-
-            {(stepsQuery.data?.length ?? 0) > 0 && (
-              <span className="ml-1.5 rounded-full bg-brand-50 dark:bg-brand-950/60 px-2 py-0.5 text-xs text-brand-600 dark:text-brand-400">
-                {stepsQuery.data?.length}
-              </span>
-            )}
-          </button>
-        </nav>
+        <div className="border-b border-gray-200 dark:border-gray-800">
+          <nav className="flex space-x-6" aria-label="Tabs">
+            <button
+              type="button"
+              onClick={() => handleTabChange("general")}
+              className={`flex items-center gap-2 border-b-2 py-2.5 px-1 text-sm font-semibold transition-colors cursor-pointer ${
+                activeTab === "general"
+                  ? "border-brand-500 text-brand-600 dark:text-brand-400"
+                  : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              }`}
+            >
+              <InfoIcon className="w-4 h-4" />
+              Thông tin mẫu Fit
+            </button>
+            <button
+              type="button"
+              onClick={() => handleTabChange("steps")}
+              className={`flex items-center gap-2 border-b-2 py-2.5 px-1 text-sm font-semibold transition-colors cursor-pointer ${
+                activeTab === "steps"
+                  ? "border-brand-500 text-brand-600 dark:text-brand-400"
+                  : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              }`}
+            >
+              <DocsIcon className="w-4 h-4" />
+              Quy trình công đoạn &amp; KIM
+              {(stepsQuery.data?.length ?? 0) > 0 && (
+                <span className="ml-1.5 rounded-full bg-brand-50 dark:bg-brand-950/60 px-2 py-0.5 text-xs text-brand-600 dark:text-brand-400">
+                  {stepsQuery.data?.length}
+                </span>
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => handleTabChange("production_doc")}
+              className={`flex items-center gap-2 border-b-2 py-2.5 px-1 text-sm font-semibold transition-colors cursor-pointer ${
+                activeTab === "production_doc"
+                  ? "border-brand-500 text-brand-600 dark:text-brand-400"
+                  : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              }`}
+            >
+              <PageIcon className="w-4 h-4" />
+              Tài liệu sản xuất
+            </button>
+          </nav>
+        </div>
       </div>
 
-      {/* Tab 1: Info Tab */}
-      {activeTab === "info" && (
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 items-stretch min-h-[calc(100vh-240px)]">
-          <div className="lg:col-span-5 flex flex-col">
-            <div className="overflow-hidden rounded-2xl border border-gray-200/80 bg-white p-4 shadow-xs dark:border-gray-800 dark:bg-gray-900 flex-1 flex flex-col justify-center">
-              {imageUrl ? (
-                <div className="relative overflow-hidden rounded-xl bg-gray-50 dark:bg-gray-800 flex-1 flex items-center justify-center min-h-[350px] p-2">
-                  <img
-                    src={resolveImageUrl(imageUrl) || ""}
-                    alt={style.styleName}
-                    className="max-h-[450px] w-full object-contain mx-auto"
-                  />
-                  <div className="absolute bottom-3 right-3 flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={isUploadingImage}
-                      className="rounded-lg bg-white/90 px-3.5 py-2 text-xs font-semibold text-gray-700 shadow-sm hover:bg-white backdrop-blur-xs dark:bg-gray-900/90 dark:text-gray-200 dark:hover:bg-gray-900 transition-colors cursor-pointer disabled:opacity-50"
-                    >
-                      {isUploadingImage ? "Đang tải..." : "Thay ảnh"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => void clearAndSaveImage()}
-                      disabled={isUploadingImage}
-                      className="rounded-lg bg-white/90 px-3.5 py-2 text-xs font-semibold text-red-600 shadow-sm hover:bg-white backdrop-blur-xs dark:bg-gray-900/90 dark:text-red-400 dark:hover:bg-gray-900 transition-colors cursor-pointer disabled:opacity-50"
-                    >
-                      Xóa
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div
-                  onDrop={handleDrop}
-                  onDragOver={handleDragOver}
-                  onDragLeave={handleDragLeave}
-                  onClick={() => fileInputRef.current?.click()}
-                  className={`relative flex min-h-[350px] flex-1 w-full cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed p-8 text-center transition-colors ${
-                    isDragging
-                      ? "border-blue-500 bg-blue-50/50 dark:bg-blue-950/30"
-                      : "border-gray-200 hover:border-gray-300 bg-gray-50/50 dark:border-gray-800 dark:bg-gray-800/40"
-                  }`}
-                >
-                  <StyleImagePlaceholder styleCode={style.styleCode} className="h-28 w-28 text-gray-300 dark:text-gray-600 mb-3" />
-                  <p className="text-sm font-bold text-gray-700 dark:text-gray-200">
-                    Tải ảnh mẫu hoặc Dán trực tiếp (Ctrl+V)
-                  </p>
-                  <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">
-                    Kéo thả file ảnh kỹ thuật hoặc bấm vào đây để chọn file
-                  </p>
-                </div>
-              )}
-            </div>
-
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              onChange={handleFileSelect}
-              className="hidden"
-            />
-          </div>
-
-          <div className="lg:col-span-7 flex flex-col">
-            <div className="overflow-hidden rounded-2xl border border-gray-200/80 bg-white p-6 shadow-xs dark:border-gray-800 dark:bg-gray-900 flex-1 flex flex-col justify-between">
-              <div>
-                <h3 className="text-sm font-bold uppercase tracking-wider text-gray-400 pb-3 mb-2 border-b border-gray-100 dark:border-gray-800">
-                  Thông tin chi tiết mẫu fit
-                </h3>
-                <dl className="divide-y divide-gray-100 dark:divide-gray-800">
-                  <div className="flex py-4 items-center">
-                    <dt className="w-1/3 shrink-0 text-sm font-bold text-gray-500 dark:text-gray-400">Mã mẫu Fit</dt>
-                    <dd className="w-2/3 min-w-0 break-all font-mono text-xl font-black text-blue-600 dark:text-blue-400">
-                      {style.styleCode}
-                    </dd>
-                  </div>
-                  <div className="flex py-4 items-center">
-                    <dt className="w-1/3 shrink-0 text-sm font-bold text-gray-500 dark:text-gray-400">Tên mẫu Fit</dt>
-                    <dd className="w-2/3 min-w-0 break-words text-lg font-bold text-gray-900 dark:text-white">
-                      {style.styleName}
-                    </dd>
-                  </div>
-                  <div className="flex py-4 items-center">
-                    <dt className="w-1/3 shrink-0 text-sm font-bold text-gray-500 dark:text-gray-400">Dòng sản phẩm</dt>
-                    <dd className="w-2/3 min-w-0 break-words text-base font-semibold text-gray-800 dark:text-gray-200">
-                      {style.category || "—"}
-                    </dd>
-                  </div>
-                  <div className="flex items-center py-4">
-                    <dt className="w-1/3 shrink-0 text-sm font-bold text-gray-500 dark:text-gray-400">Trạng thái</dt>
-                    <dd className="flex w-2/3 min-w-0 items-center gap-3">
-                      <button
-                        type="button"
-                        onClick={() => void handleToggleStatus()}
-                        disabled={statusUpdate.isPending}
-                        className={`relative inline-flex h-6 w-10 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                          style.status === "active" ? "bg-emerald-500" : "bg-gray-300 dark:bg-gray-700"
-                        }`}
-                        title={
-                          style.status === "active"
-                            ? "Đang Hoạt động (Bấm để chuyển về Nháp)"
-                            : "Đang Nháp (Bấm để kích hoạt)"
-                        }
-                      >
-                        <span
-                          className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-xs ring-0 transition duration-200 ease-in-out ${
-                            style.status === "active" ? "translate-x-4" : "translate-x-0"
-                          }`}
-                        />
-                      </button>
-                      <StyleStatusBadge status={style.status} />
-                    </dd>
-                  </div>
-                  <div className="flex py-4">
-                    <dt className="w-1/3 shrink-0 text-sm font-bold text-gray-500 dark:text-gray-400">Mô tả đặc điểm</dt>
-                    <dd className="w-2/3 min-w-0 break-words text-base font-medium text-gray-800 dark:text-gray-200 whitespace-pre-wrap leading-relaxed">
-                      {style.description || "Chưa có mô tả chi tiết."}
-                    </dd>
-                  </div>
-                </dl>
-              </div>
-
-              <div className="mt-6 pt-4 border-t border-gray-100 dark:border-gray-800">
-                <div className="flex flex-wrap items-center justify-between text-xs text-gray-400 dark:text-gray-500 font-medium">
-                  <span>Tạo lúc: {new Date(style.createdAt).toLocaleString("vi-VN")}</span>
-                  <span>•</span>
-                  <span>Cập nhật: {new Date(style.updatedAt).toLocaleString("vi-VN")}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Tab 2: Steps Tab */}
-      {activeTab === "steps" && (
+      {activeTab === "general" ? (
+        <GeneralTab
+          style={style}
+          imageUrl={imageUrl}
+          isDragging={isDragging}
+          fileInputRef={fileInputRef}
+          onFileSelect={handleFileSelect}
+          onDrop={handleDrop}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onClearImage={clearLocalImage}
+          onToggleStatus={() => void handleToggleStatus()}
+          isStatusPending={statusUpdate.isPending}
+        />
+      ) : activeTab === "steps" ? (
         <StyleOperationStepTable
           styleId={style.id}
           steps={stepsQuery.data || []}
@@ -399,11 +356,26 @@ export default function StyleDetailPage() {
           imageUrl={imageUrl}
           styleCode={style.styleCode}
           styleName={style.styleName}
-          onImageChange={(file) => void uploadAndSaveImage(file)}
+          onImageChange={(file) => void handleUploadAndSaveImage(file)}
+        />
+      ) : (
+        <StyleProductionDocTab
+          styleId={style.id}
+          styleName={style.styleName}
+          styleImageUrl={imageUrl || style.baseImageVersionId || undefined}
+          onEditingChange={setIsProductionDocEditing}
         />
       )}
 
-      {/* Edit Form Modal */}
+      <UnsavedChangesDialog
+        isOpen={pendingTab !== null || pendingNavigation !== null}
+        onConfirmLeave={handleConfirmLeaveTab}
+        onCancel={() => {
+          setPendingTab(null);
+          setPendingNavigation(null);
+        }}
+      />
+
       {isEditModalOpen && (
         <StyleFormModal
           isOpen
@@ -423,6 +395,7 @@ export default function StyleDetailPage() {
           }
         />
       )}
+
       <Toast
         open={Boolean(toast)}
         message={toast?.message ?? ""}

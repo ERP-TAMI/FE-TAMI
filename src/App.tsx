@@ -21,6 +21,7 @@ import StageListPage from "@/pages/masters/StageListPage";
 import StageGroupListPage from "@/pages/masters/StageGroupListPage";
 import UnitListPage from "@/pages/masters/UnitListPage";
 import WorkshopListPage from "@/pages/masters/WorkshopListPage";
+import SizeChartListPage from "@/pages/masters/SizeChartListPage";
 import UsersPage from "@/pages/admin/UsersPage";
 import StyleListPage from "@/pages/styles/StyleListPage";
 import StyleDetailPage from "@/pages/styles/StyleDetailPage";
@@ -51,6 +52,7 @@ export function AppRoutes() {
             <Route path="styles/:id/operation-steps" element={<StyleDetailPage />} />
             <Route path="styles/:id/steps" element={<StyleDetailPage />} />
             <Route path="styles/:id" element={<StyleDetailPage />} />
+            <Route path="styles/:id/production-doc" element={<StyleDetailPage />} />
             <Route path="bom" element={<BomPage />} />
             <Route path="po" element={<PoPage />} />
             <Route path="masters" element={<Navigate to="/masters/materials" replace />} />
@@ -60,6 +62,7 @@ export function AppRoutes() {
             <Route path="masters/stage-groups" element={<StageGroupListPage />} />
             <Route path="masters/units" element={<UnitListPage />} />
             <Route path="masters/workshops" element={<WorkshopListPage />} />
+            <Route path="masters/size-charts" element={<SizeChartListPage />} />
             <Route path="admin" element={<Navigate to="/admin/users" replace />} />
             <Route path="admin/users" element={<UsersPage />} />
             <Route path="audit-log" element={<AuditLogPage />} />

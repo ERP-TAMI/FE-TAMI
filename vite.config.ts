@@ -30,6 +30,10 @@ export default defineConfig(({ mode }) => {
       alias: {
         "@": path.resolve(rootDir, "src"),
       },
+      "/uploads": {
+        target: "http://localhost:3000",
+        changeOrigin: true,
+      },
     },
     server: {
       host: "127.0.0.1",
