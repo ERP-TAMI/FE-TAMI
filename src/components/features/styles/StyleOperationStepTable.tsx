@@ -543,89 +543,6 @@ export function StyleOperationStepTable({
       {/* CỘT PHẢI: Bảng phân bổ công đoạn */}
       <div className="lg:col-span-8 xl:col-span-9 space-y-6">
 
-        {/* Top Metric Cards */}
-        {rows.length > 0 && (
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-            <div className="rounded-2xl border border-gray-200/80 bg-white p-4 shadow-xs dark:border-gray-800 dark:bg-gray-900">
-              <div className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                Tổng thời gian
-              </div>
-              <div className="mt-2 font-mono tabular-nums text-2xl font-bold text-gray-900 dark:text-white">
-                {totalTime.toFixed(1)} <span className="text-xs font-normal text-gray-500">giây</span>
-              </div>
-            </div>
-            <div className="rounded-2xl border border-gray-200/80 bg-white p-4 shadow-xs dark:border-gray-800 dark:bg-gray-900">
-              <div className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                SP/người/ngày
-              </div>
-              <div className="mt-2 font-mono tabular-nums text-2xl font-bold text-gray-900 dark:text-white">
-                {formatMetric(productPerPersonDay, 0)}
-              </div>
-            </div>
-            <div className="rounded-2xl border border-gray-200/80 bg-white p-4 shadow-xs dark:border-gray-800 dark:bg-gray-900">
-              <div className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                Công đoạn 1K
-              </div>
-              <div className="mt-2 font-mono tabular-nums text-2xl font-bold text-gray-900 dark:text-white">
-                {formatMetric(oneKProductPerDay, 0)}
-              </div>
-            </div>
-            <div className="relative rounded-2xl border border-brand-200/80 bg-brand-50/30 p-4 shadow-xs dark:border-brand-900/40 dark:bg-brand-950/20">
-              <div className="pr-24">
-                <div className="text-xs font-bold uppercase tracking-wider text-brand-700 dark:text-brand-400">
-                  CM Công Nghệ
-                </div>
-                <div className="absolute right-3 top-3 flex items-center gap-2">
-                  {customDaysMode ? (
-                    <input
-                      type="number"
-                      min={1}
-                      max={365}
-                      value={baseDays}
-                      disabled={!canEdit}
-                      onChange={(e) => setBaseDays(Number(e.target.value) || 30)}
-                      onBlur={() => commitBaseDays(baseDays)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") commitBaseDays(baseDays);
-                      }}
-                      className="w-14 h-7 rounded-md border border-brand-300 bg-white dark:bg-gray-800 text-center text-xs font-bold text-brand-700 dark:text-brand-300 focus:outline-none"
-                    />
-                  ) : (
-                    <span className="inline-flex items-center rounded-md bg-brand-600 text-white px-2.5 py-0.5 text-xs font-bold shadow-xs">
-                      30 ngày
-                    </span>
-                  )}
-                  {canEdit && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (customDaysMode) {
-                          setCustomDaysMode(false);
-                          setBaseDays(30);
-                          commitBaseDays(30);
-                        } else {
-                          setCustomDaysMode(true);
-                        }
-                      }}
-                      className={`relative inline-flex h-4 w-8 shrink-0 items-center rounded-full transition-colors cursor-pointer ${customDaysMode ? "bg-brand-600" : "bg-gray-300 dark:bg-gray-700"
-                        }`}
-                      title={customDaysMode ? "Reset về 30 ngày" : "Tùy chỉnh số ngày"}
-                    >
-                      <span
-                        className={`inline-block h-3 w-3 rounded-full bg-white shadow-xs transition-transform ${customDaysMode ? "translate-x-4" : "translate-x-0.5"
-                          }`}
-                      />
-                    </button>
-                  )}
-                </div>
-              </div>
-              <div className="mt-2 font-mono tabular-nums text-2xl font-bold text-brand-600 dark:text-brand-400">
-                $ {formatMetric(commonCmTechnology, 2)}
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* Main Table Card */}
         <div className="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-xs dark:border-gray-800 dark:bg-gray-900">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 p-4 dark:border-gray-800">
@@ -678,7 +595,7 @@ export function StyleOperationStepTable({
             </div>
           </div>
 
-          <div className="max-h-[calc(100vh-360px)] min-h-[290px] overflow-y-auto overflow-x-auto">
+          <div className="max-h-[calc(100vh-300px)] min-h-[290px] overflow-y-auto overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead className="sticky top-0 z-20 bg-gray-50/95 dark:bg-gray-800/95 shadow-xs">
                 <tr className="border-b border-gray-200 dark:border-gray-800 text-gray-500 dark:text-gray-400 font-semibold">
@@ -690,7 +607,54 @@ export function StyleOperationStepTable({
                   <th className="py-3 px-2 text-center w-24">% từng công đoạn</th>
                   <th className="py-3 px-2 text-center w-24">SP/1H</th>
                   <th className="py-3 px-3 min-w-[140px]">Ghi chú</th>
-                  <th className="py-3 px-2 text-center w-28">CM Công Nghệ</th>
+                  <th className="py-3 px-2 text-center min-w-[130px] w-36">
+                    <div className="flex flex-col items-center gap-1">
+                      <span className="leading-tight">CM Công Nghệ</span>
+                      <div className="flex items-center justify-center gap-1">
+                        {customDaysMode ? (
+                          <input
+                            type="number"
+                            min={1}
+                            max={365}
+                            value={baseDays}
+                            disabled={!canEdit}
+                            onChange={(e) => setBaseDays(Number(e.target.value) || 30)}
+                            onBlur={() => commitBaseDays(baseDays)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") commitBaseDays(baseDays);
+                            }}
+                            className="w-12 h-6 rounded border border-brand-300 bg-white dark:bg-gray-800 text-center text-[11px] font-bold text-brand-700 dark:text-brand-300 focus:outline-none shadow-xs"
+                          />
+                        ) : (
+                          <span className="inline-flex items-center rounded bg-brand-600 text-white px-1.5 py-0.5 text-[10px] font-bold shadow-xs">
+                            30 ngày
+                          </span>
+                        )}
+                        {canEdit && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (customDaysMode) {
+                                setCustomDaysMode(false);
+                                setBaseDays(30);
+                                commitBaseDays(30);
+                              } else {
+                                setCustomDaysMode(true);
+                              }
+                            }}
+                            className={`relative inline-flex h-3.5 w-7 shrink-0 items-center rounded-full transition-colors cursor-pointer ${customDaysMode ? "bg-brand-600" : "bg-gray-300 dark:bg-gray-700"
+                              }`}
+                            title={customDaysMode ? "Reset về 30 ngày" : "Tùy chỉnh số ngày"}
+                          >
+                            <span
+                              className={`inline-block h-2.5 w-2.5 rounded-full bg-white shadow-xs transition-transform ${customDaysMode ? "translate-x-3.5" : "translate-x-0.5"
+                                }`}
+                            />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </th>
                   <th className="py-3 px-2 text-center w-20">Số người</th>
                   <th className="py-3 px-2 text-center w-28">
                     <div className="mb-1 leading-tight">Chỉ tiêu tổng</div>
@@ -966,44 +930,46 @@ export function StyleOperationStepTable({
                 )}
               </tbody>
               {rows.length > 0 && (
-                <tfoot className="sticky bottom-0 z-20 border-t-2 border-brand-500/30 bg-brand-50/90 dark:border-brand-500/40 dark:bg-brand-950/90 shadow-xs">
-                  <tr>
-                    <td colSpan={2} className="py-3 px-4 text-right font-bold uppercase tracking-wider text-xs text-brand-900 dark:text-brand-100">
+                <tfoot className="sticky bottom-0 z-20 border-t-4 border-brand-500 bg-brand-50/95 dark:border-brand-500 dark:bg-brand-950/95 shadow-md">
+                  <tr className="divide-x divide-brand-200/40 dark:divide-brand-900/40">
+                    <td colSpan={2} className="py-4 px-4 text-right font-black uppercase tracking-wider text-xs text-brand-900 dark:text-brand-100">
                       TỔNG THỜI GIAN
                     </td>
-                    <td className="py-3 px-2 text-center font-mono font-bold text-brand-900 dark:text-brand-100 text-sm">
-                      {totalTime.toFixed(1)} giây
+                    <td className="py-4 px-3 text-center">
+                      <span className="font-mono font-black text-brand-900 dark:text-brand-100 text-base bg-brand-100/70 dark:bg-brand-900/60 py-1 px-3 rounded-lg border border-brand-300/50 dark:border-brand-700/50 shadow-xs inline-block">
+                        {totalTime.toFixed(1)} giây
+                      </span>
                     </td>
-                    <td className="py-3 px-2 text-center font-mono font-bold text-brand-900 dark:text-brand-100 text-xs">
+                    <td className="py-4 px-2 text-center font-mono font-black text-brand-900 dark:text-brand-100 text-sm">
                       100%
                     </td>
-                    <td className="py-3 px-2 text-center">
-                      <div className="text-[10px] font-bold uppercase tracking-wider text-brand-700 dark:text-brand-300">
+                    <td className="py-4 px-3 text-center">
+                      <div className="text-[11px] font-extrabold uppercase tracking-wider text-brand-700 dark:text-brand-300 mb-0.5">
                         SP/NGƯỜI/NGÀY
                       </div>
-                      <div className="font-mono font-bold text-brand-900 dark:text-brand-100 text-sm">
+                      <div className="font-mono font-black text-brand-900 dark:text-brand-100 text-base">
                         {formatMetric(productPerPersonDay, 0)}
                       </div>
                     </td>
-                    <td className="py-3 px-2 text-center">
-                      <div className="text-[10px] font-bold uppercase tracking-wider text-brand-700 dark:text-brand-300">
+                    <td className="py-4 px-3 text-center">
+                      <div className="text-[11px] font-extrabold uppercase tracking-wider text-brand-700 dark:text-brand-300 mb-0.5">
                         CÔNG ĐOẠN 1K
                       </div>
-                      <div className="font-mono font-bold text-brand-900 dark:text-brand-100 text-sm">
+                      <div className="font-mono font-black text-brand-900 dark:text-brand-100 text-base">
                         {formatMetric(oneKProductPerDay, 0)}
                       </div>
                     </td>
-                    <td className="py-3 px-2 text-center">
-                      <div className="text-[10px] font-bold uppercase tracking-wider text-brand-700 dark:text-brand-300">
+                    <td className="py-4 px-3 text-center">
+                      <div className="text-[11px] font-extrabold uppercase tracking-wider text-brand-700 dark:text-brand-300 mb-0.5">
                         CM CÔNG NGHỆ
                       </div>
-                      <div className="font-mono font-bold text-brand-900 dark:text-brand-100 text-sm">
+                      <div className="font-mono font-black text-brand-900 dark:text-brand-100 text-base bg-brand-100/70 dark:bg-brand-900/60 py-1 px-3 rounded-lg border border-brand-300/50 dark:border-brand-700/50 shadow-xs inline-block">
                         $ {formatMetric(commonCmTechnology, 2)}
                       </div>
                     </td>
-                    <td className="py-3 px-2 text-center text-brand-400/60">—</td>
-                    <td className="py-3 px-2 text-center text-brand-400/60">—</td>
-                    {canEdit && <td className="py-3 px-2 text-center" />}
+                    <td className="py-4 px-2 text-center text-brand-400/60 font-mono font-bold">—</td>
+                    <td className="py-4 px-2 text-center text-brand-400/60 font-mono font-bold">—</td>
+                    {canEdit && <td className="py-4 px-2 text-center" />}
                   </tr>
                 </tfoot>
               )}
