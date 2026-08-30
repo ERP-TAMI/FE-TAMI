@@ -951,20 +951,13 @@ export function StyleOperationStepTable({
                         {formatMetric(productPerPersonDay, 0)}
                       </div>
                     </td>
+                    <td className="py-4 px-2 text-center text-brand-400/60 font-mono font-bold">—</td>
                     <td className="py-4 px-3 text-center">
                       <div className="text-[11px] font-extrabold uppercase tracking-wider text-brand-700 dark:text-brand-300 mb-0.5">
                         CÔNG ĐOẠN 1K
                       </div>
-                      <div className="font-mono font-black text-brand-900 dark:text-brand-100 text-base">
-                        {formatMetric(oneKProductPerDay, 0)}
-                      </div>
-                    </td>
-                    <td className="py-4 px-3 text-center">
-                      <div className="text-[11px] font-extrabold uppercase tracking-wider text-brand-700 dark:text-brand-300 mb-0.5">
-                        CM CÔNG NGHỆ
-                      </div>
                       <div className="font-mono font-black text-brand-900 dark:text-brand-100 text-base bg-brand-100/70 dark:bg-brand-900/60 py-1 px-3 rounded-lg border border-brand-300/50 dark:border-brand-700/50 shadow-xs inline-block">
-                        $ {formatMetric(commonCmTechnology, 2)}
+                        {formatMetric(oneKProductPerDay, 0)}
                       </div>
                     </td>
                     <td className="py-4 px-2 text-center text-brand-400/60 font-mono font-bold">—</td>
