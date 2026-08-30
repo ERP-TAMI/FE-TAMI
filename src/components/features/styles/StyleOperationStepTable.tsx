@@ -966,43 +966,43 @@ export function StyleOperationStepTable({
                 )}
               </tbody>
               {rows.length > 0 && (
-                <tfoot className="sticky bottom-0 z-20 border-t-2 border-brand-200 bg-brand-50/95 dark:border-brand-900/60 dark:bg-brand-950/95 shadow-xs">
+                <tfoot className="sticky bottom-0 z-20 border-t-2 border-brand-500/30 bg-brand-50/90 dark:border-brand-500/40 dark:bg-brand-950/90 shadow-xs">
                   <tr>
-                    <td colSpan={2} className="py-3 px-4 text-right font-bold uppercase tracking-wider text-xs text-gray-900 dark:text-white">
+                    <td colSpan={2} className="py-3 px-4 text-right font-bold uppercase tracking-wider text-xs text-brand-900 dark:text-brand-100">
                       TỔNG THỜI GIAN
                     </td>
-                    <td className="py-3 px-2 text-center font-mono font-black text-amber-700 dark:text-amber-400 text-sm">
+                    <td className="py-3 px-2 text-center font-mono font-bold text-brand-900 dark:text-brand-100 text-sm">
                       {totalTime.toFixed(1)} giây
                     </td>
-                    <td className="py-3 px-2 text-center font-mono font-black text-gray-900 dark:text-white text-xs">
+                    <td className="py-3 px-2 text-center font-mono font-bold text-brand-900 dark:text-brand-100 text-xs">
                       100%
                     </td>
                     <td className="py-3 px-2 text-center">
-                      <div className="text-[10px] font-bold uppercase tracking-wider text-brand-600 dark:text-brand-400">
+                      <div className="text-[10px] font-bold uppercase tracking-wider text-brand-700 dark:text-brand-300">
                         SP/NGƯỜI/NGÀY
                       </div>
-                      <div className="font-mono font-black text-brand-700 dark:text-brand-300 text-sm">
+                      <div className="font-mono font-bold text-brand-900 dark:text-brand-100 text-sm">
                         {formatMetric(productPerPersonDay, 0)}
                       </div>
                     </td>
                     <td className="py-3 px-2 text-center">
-                      <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                      <div className="text-[10px] font-bold uppercase tracking-wider text-brand-700 dark:text-brand-300">
                         CÔNG ĐOẠN 1K
                       </div>
-                      <div className="font-mono font-black text-emerald-700 dark:text-emerald-300 text-sm">
+                      <div className="font-mono font-bold text-brand-900 dark:text-brand-100 text-sm">
                         {formatMetric(oneKProductPerDay, 0)}
                       </div>
                     </td>
                     <td className="py-3 px-2 text-center">
-                      <div className="text-[10px] font-bold uppercase tracking-wider text-brand-600 dark:text-brand-400">
+                      <div className="text-[10px] font-bold uppercase tracking-wider text-brand-700 dark:text-brand-300">
                         CM CÔNG NGHỆ
                       </div>
-                      <div className="font-mono font-black text-brand-900 dark:text-brand-200 text-sm">
+                      <div className="font-mono font-bold text-brand-900 dark:text-brand-100 text-sm">
                         $ {formatMetric(commonCmTechnology, 2)}
                       </div>
                     </td>
-                    <td className="py-3 px-2 text-center text-gray-400">—</td>
-                    <td className="py-3 px-2 text-center text-gray-400">—</td>
+                    <td className="py-3 px-2 text-center text-brand-400/60">—</td>
+                    <td className="py-3 px-2 text-center text-brand-400/60">—</td>
                     {canEdit && <td className="py-3 px-2 text-center" />}
                   </tr>
                 </tfoot>
