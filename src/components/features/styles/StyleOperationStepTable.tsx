@@ -932,37 +932,69 @@ export function StyleOperationStepTable({
               {rows.length > 0 && (
                 <tfoot className="sticky bottom-0 z-20 border-t-4 border-brand-500 bg-brand-50/95 dark:border-brand-500 dark:bg-brand-950/95 shadow-md">
                   <tr className="divide-x divide-brand-200/40 dark:divide-brand-900/40">
-                    <td colSpan={2} className="py-4 px-4 text-right font-black uppercase tracking-wider text-xs text-brand-900 dark:text-brand-100">
-                      TỔNG THỜI GIAN
-                    </td>
-                    <td className="py-4 px-3 text-center">
-                      <span className="font-mono font-black text-brand-900 dark:text-brand-100 text-base bg-brand-100/70 dark:bg-brand-900/60 py-1 px-3 rounded-lg border border-brand-300/50 dark:border-brand-700/50 shadow-xs inline-block">
-                        {totalTime.toFixed(1)} giây
-                      </span>
-                    </td>
-                    <td className="py-4 px-2 text-center font-mono font-black text-brand-900 dark:text-brand-100 text-sm">
-                      100%
-                    </td>
-                    <td className="py-4 px-3 text-center">
-                      <div className="text-[11px] font-extrabold uppercase tracking-wider text-brand-700 dark:text-brand-300 mb-0.5">
-                        SP/NGƯỜI/NGÀY
-                      </div>
-                      <div className="font-mono font-black text-brand-900 dark:text-brand-100 text-base">
-                        {formatMetric(productPerPersonDay, 0)}
+                    <td colSpan={2} className="py-3 px-4 text-center align-middle">
+                      <div className="flex flex-col items-center justify-center gap-1 min-h-[52px]">
+                        <div className="h-4" />
+                        <span className="text-brand-400/60 font-mono font-bold h-7 flex items-center justify-center">—</span>
                       </div>
                     </td>
-                    <td className="py-4 px-2 text-center text-brand-400/60 font-mono font-bold">—</td>
-                    <td className="py-4 px-3 text-center">
-                      <div className="text-[11px] font-extrabold uppercase tracking-wider text-brand-700 dark:text-brand-300 mb-0.5">
-                        CÔNG ĐOẠN 1K
-                      </div>
-                      <div className="font-mono font-black text-brand-900 dark:text-brand-100 text-base bg-brand-100/70 dark:bg-brand-900/60 py-1 px-3 rounded-lg border border-brand-300/50 dark:border-brand-700/50 shadow-xs inline-block">
-                        {formatMetric(oneKProductPerDay, 0)}
+                    <td className="py-3 px-3 text-center align-middle">
+                      <div className="flex flex-col items-center justify-center gap-1 min-h-[52px]">
+                        <div className="h-4 flex items-center justify-center text-[10px] font-extrabold uppercase tracking-wider text-brand-700 dark:text-brand-300 leading-none">
+                          TỔNG
+                        </div>
+                        <span className="inline-flex items-center justify-center font-mono font-black text-brand-900 dark:text-brand-100 text-sm bg-brand-100/80 dark:bg-brand-900/70 py-1 px-3 rounded-lg border border-brand-300/60 dark:border-brand-700/60 shadow-xs h-7">
+                          {totalTime.toFixed(1)} giây
+                        </span>
                       </div>
                     </td>
-                    <td className="py-4 px-2 text-center text-brand-400/60 font-mono font-bold">—</td>
-                    <td className="py-4 px-2 text-center text-brand-400/60 font-mono font-bold">—</td>
-                    {canEdit && <td className="py-4 px-2 text-center" />}
+                    <td className="py-3 px-3 text-center align-middle">
+                      <div className="flex flex-col items-center justify-center gap-1 min-h-[52px]">
+                        <div className="h-4" />
+                        <span className="inline-flex items-center justify-center font-mono font-black text-brand-900 dark:text-brand-100 text-sm bg-brand-100/80 dark:bg-brand-900/70 py-1 px-3 rounded-lg border border-brand-300/60 dark:border-brand-700/60 shadow-xs h-7">
+                          100%
+                        </span>
+                      </div>
+                    </td>
+                    <td className="py-3 px-3 text-center align-middle">
+                      <div className="flex flex-col items-center justify-center gap-1 min-h-[52px]">
+                        <div className="h-4 flex items-center justify-center text-[10px] font-extrabold uppercase tracking-wider text-brand-700 dark:text-brand-300 leading-none">
+                          SP/NGƯỜI/NGÀY
+                        </div>
+                        <span className="inline-flex items-center justify-center font-mono font-black text-brand-900 dark:text-brand-100 text-sm bg-brand-100/80 dark:bg-brand-900/70 py-1 px-3 rounded-lg border border-brand-300/60 dark:border-brand-700/60 shadow-xs h-7">
+                          {formatMetric(productPerPersonDay, 0)}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="py-3 px-2 text-center align-middle">
+                      <div className="flex flex-col items-center justify-center gap-1 min-h-[52px]">
+                        <div className="h-4" />
+                        <span className="text-brand-400/60 font-mono font-bold h-7 flex items-center justify-center">—</span>
+                      </div>
+                    </td>
+                    <td className="py-3 px-3 text-center align-middle">
+                      <div className="flex flex-col items-center justify-center gap-1 min-h-[52px]">
+                        <div className="h-4 flex items-center justify-center text-[10px] font-extrabold uppercase tracking-wider text-brand-700 dark:text-brand-300 leading-none">
+                          CÔNG ĐOẠN 1K
+                        </div>
+                        <span className="inline-flex items-center justify-center font-mono font-black text-brand-900 dark:text-brand-100 text-sm bg-brand-100/80 dark:bg-brand-900/70 py-1 px-3 rounded-lg border border-brand-300/60 dark:border-brand-700/60 shadow-xs h-7">
+                          {formatMetric(oneKProductPerDay, 0)}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="py-3 px-2 text-center align-middle">
+                      <div className="flex flex-col items-center justify-center gap-1 min-h-[52px]">
+                        <div className="h-4" />
+                        <span className="text-brand-400/60 font-mono font-bold h-7 flex items-center justify-center">—</span>
+                      </div>
+                    </td>
+                    <td className="py-3 px-2 text-center align-middle">
+                      <div className="flex flex-col items-center justify-center gap-1 min-h-[52px]">
+                        <div className="h-4" />
+                        <span className="text-brand-400/60 font-mono font-bold h-7 flex items-center justify-center">—</span>
+                      </div>
+                    </td>
+                    {canEdit && <td className="py-3 px-2 text-center align-middle" />}
                   </tr>
                 </tfoot>
               )}
