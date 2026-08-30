@@ -1,5 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
+const browserExecutable = process.env.PLAYWRIGHT_EXECUTABLE_PATH;
+
 /**
  * Drives a real browser against the FE dev server (proxying to a real,
  * already-running BE) to verify the login/session flow end-to-end —
@@ -19,6 +21,7 @@ export default defineConfig({
     baseURL: "http://127.0.0.1:5173",
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
+    launchOptions: browserExecutable ? { executablePath: browserExecutable } : undefined,
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
 });

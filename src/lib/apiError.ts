@@ -7,6 +7,7 @@ export type ApiError = {
 
 type ErrorResponse = {
   code?: unknown;
+  message?: unknown;
 };
 
 const defaultApiErrorMessages: Record<string, string> = {
@@ -32,7 +33,18 @@ export function getApiError(
 
   const rawCode = error.response?.data?.code;
   const code = typeof rawCode === "string" ? rawCode : "UNKNOWN";
-  const message = overrides?.[code] ?? defaultApiErrorMessages[code];
+  const rawMessage = error.response?.data?.message;
+  const serverMessage = Array.isArray(rawMessage)
+    ? rawMessage.filter((item): item is string => typeof item === "string").join("; ")
+    : typeof rawMessage === "string"
+      ? rawMessage
+      : undefined;
+  const message =
+    overrides?.[code] ??
+    defaultApiErrorMessages[code] ??
+    (code === "VALIDATION_ERROR" || code === "BAD_REQUEST" || Array.isArray(rawMessage)
+      ? serverMessage
+      : undefined);
 
   return { code, message: message ?? fallback };
 }

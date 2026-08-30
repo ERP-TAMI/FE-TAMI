@@ -124,11 +124,19 @@ describe("StageListPage", () => {
     });
   });
 
-  it("edits mutable fields without sending the immutable stage code", async () => {
-    hooks.update.mutateAsync.mockResolvedValue({ ...stages[0], stageName: "Cắt laser" });
+  it("updates the stage code after the user unlocks it", async () => {
+    hooks.update.mutateAsync.mockResolvedValue({
+      ...stages[0],
+      stageCode: "GD-CAT-LASER",
+      stageName: "Cắt laser",
+    });
     renderPage();
 
     fireEvent.click(screen.getAllByRole("button", { name: "Sửa" })[0]);
+    fireEvent.click(screen.getByRole("button", { name: "Mở khóa mã công đoạn" }));
+    fireEvent.change(screen.getByLabelText("Mã công đoạn"), {
+      target: { value: "GD-CAT-LASER" },
+    });
     fireEvent.change(screen.getByLabelText("Tên công đoạn"), { target: { value: "Cắt laser" } });
     fireEvent.click(screen.getByRole("button", { name: "Lưu công đoạn" }));
 
@@ -136,6 +144,7 @@ describe("StageListPage", () => {
       expect(hooks.update.mutateAsync).toHaveBeenCalledWith({
         id: stages[0].id,
         input: {
+          stageCode: "GD-CAT-LASER",
           stageName: "Cắt laser",
           description: "Cắt chi tiết theo sơ đồ",
           ssv: "12.500",

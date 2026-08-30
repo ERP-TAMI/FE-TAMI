@@ -28,7 +28,7 @@ export function StyleTable({
       width: "w-[16%]",
       render: (style) => (
         <Link
-          to={`/styles/${style.id}`}
+          to={`/styles/${style.id}/detail`}
           title={style.styleCode}
           className="text-brand-600 dark:text-brand-400 block max-w-full truncate font-mono text-sm font-semibold hover:underline"
         >
@@ -109,7 +109,7 @@ export function StyleTable({
       render: (style) => (
         <div className="flex items-center justify-center gap-1">
           <Link
-            to={`/styles/${style.id}`}
+            to={`/styles/${style.id}/detail`}
             title="Xem chi tiết"
             className="inline-flex items-center gap-1 rounded-lg border border-blue-200 bg-blue-50/60 px-2 py-1 text-xs font-medium text-blue-700 transition-colors hover:bg-blue-100 dark:border-blue-900/40 dark:bg-blue-950/40 dark:text-blue-300 dark:hover:bg-blue-900/60"
           >

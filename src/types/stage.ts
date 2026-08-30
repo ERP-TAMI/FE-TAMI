@@ -12,7 +12,7 @@ export type Stage = {
 export type StageInput = Pick<Stage, "stageName" | "description" | "ssv"> & {
   stageCode?: string;
 };
-export type StageUpdateInput = Partial<Omit<StageInput, "stageCode">>;
+export type StageUpdateInput = Partial<StageInput>;
 export type StageListParams = { search?: string; status?: StageStatus };
 export type StageSsvBulkInput = { items: Array<Pick<Stage, "id" | "ssv">> };
 

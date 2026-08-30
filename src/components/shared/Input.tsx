@@ -1,13 +1,14 @@
-import { forwardRef, useId, type InputHTMLAttributes } from "react";
+import { forwardRef, useId, type InputHTMLAttributes, type ReactNode } from "react";
 
 export type InputProps = InputHTMLAttributes<HTMLInputElement> & {
-  label?: string;
+  label?: ReactNode;
+  labelAction?: ReactNode;
   hint?: string;
   error?: string;
 };
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
-  { id, label, hint, error, className = "", ...props },
+  { id, label, labelAction, hint, error, className = "", ...props },
   ref,
 ) {
   const generatedId = useId();
@@ -18,12 +19,15 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
   return (
     <div className="space-y-2">
       {label && (
-        <label
-          htmlFor={inputId}
-          className="text-theme-sm block font-medium text-gray-700 dark:text-gray-300"
-        >
-          {label}
-        </label>
+        <div className="flex items-center gap-1.5">
+          <label
+            htmlFor={inputId}
+            className="text-theme-sm block font-medium text-gray-700 dark:text-gray-300"
+          >
+            {label}
+          </label>
+          {labelAction}
+        </div>
       )}
       <input
         ref={ref}

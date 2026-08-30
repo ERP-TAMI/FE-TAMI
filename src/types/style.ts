@@ -19,18 +19,18 @@ export interface Style {
 export interface CreateStylePayload {
   styleCode: string;
   styleName: string;
-  description?: string;
-  category?: string;
-  baseImageVersionId?: string;
+  description?: string | null;
+  category?: string | null;
+  baseImageVersionId?: string | null;
   status?: StyleStatus;
 }
 
 export interface UpdateStylePayload {
   styleCode?: string;
   styleName?: string;
-  description?: string;
-  category?: string;
-  baseImageVersionId?: string;
+  description?: string | null;
+  category?: string | null;
+  baseImageVersionId?: string | null;
   status?: StyleStatus;
 }
 

@@ -331,7 +331,7 @@ export default function StyleListPage() {
                       </span>
                       <div className="flex items-center gap-2">
                         <Link
-                          to={`/styles/${style.id}`}
+                          to={`/styles/${style.id}/detail`}
                           className="inline-flex items-center gap-1 rounded-md border border-blue-200 bg-blue-50/60 px-2 py-0.5 text-xs font-medium text-blue-700 hover:bg-blue-100 dark:border-blue-900/40 dark:bg-blue-950/40 dark:text-blue-300"
                         >
                           <EyeIcon className="h-3 w-3" />

@@ -70,10 +70,21 @@ describe("MaterialForm", () => {
     expect(screen.getByText("Đơn vị tính là bắt buộc")).toBeTruthy();
   });
 
-  it("disables the material code field once a material already exists", () => {
+  it("toggles the material code between locked and editable states", () => {
     renderForm({ mode: "edit", material });
 
-    expect(screen.getByLabelText("Mã vật tư")).toHaveProperty("disabled", true);
+    const codeInput = screen.getByLabelText("Mã vật tư") as HTMLInputElement;
+
+    expect(codeInput.disabled).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: "Mở khóa mã vật tư" }));
+
+    expect(codeInput.disabled).toBe(false);
+    expect(document.activeElement).toBe(codeInput);
+    expect(screen.getByRole("button", { name: "Khóa mã vật tư" })).toBeTruthy();
+    expect(screen.getByText("Mã vật tư đang mở khóa và có thể chỉnh sửa.")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Khóa mã vật tư" }));
+    expect(codeInput.disabled).toBe(true);
   });
 
   it("does not pre-select a unit when creating a new material", () => {
@@ -182,6 +193,21 @@ describe("MaterialForm", () => {
 
     await waitFor(() => {
       expect(onSubmit).toHaveBeenCalledWith({ materialName: "Vải chính (đổi tên)" });
+    });
+  });
+
+  it("submits a normalized material code after unlocking it", async () => {
+    const onSubmit = vi.fn();
+    renderForm({ mode: "edit", material, onSubmit });
+
+    fireEvent.click(screen.getByRole("button", { name: "Mở khóa mã vật tư" }));
+    fireEvent.change(screen.getByLabelText("Mã vật tư"), {
+      target: { value: " fab-002 " },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Lưu vật tư" }));
+
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalledWith({ materialCode: "FAB-002" });
     });
   });
 

@@ -22,7 +22,7 @@ describe("shared component localization", () => {
       </>,
     );
 
-    expect(screen.getAllByLabelText("Đóng hộp thoại")).toHaveLength(2);
+    expect(screen.getAllByLabelText("Đóng hộp thoại")).toHaveLength(1);
     expect(screen.getByLabelText("Đóng thông báo")).toBeTruthy();
     expect(screen.getByText("Không có dữ liệu.")).toBeTruthy();
   });

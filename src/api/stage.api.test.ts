@@ -40,6 +40,15 @@ describe("stageApi", () => {
     expect(apiClient.patch).toHaveBeenCalledWith("/masters/stages/bulk-ssv", input);
   });
 
+  it("updates a stage code through the stage endpoint", async () => {
+    const input = { stageCode: "GD-CAT-LASER" };
+    const updated = { ...stage, ...input };
+    vi.mocked(apiClient.patch).mockResolvedValue({ data: updated });
+
+    await expect(stageApi.update(stage.id, input)).resolves.toEqual(updated);
+    expect(apiClient.patch).toHaveBeenCalledWith(`/masters/stages/${stage.id}`, input);
+  });
+
   it("deletes a stage through the stage endpoint", async () => {
     vi.mocked(apiClient.delete).mockResolvedValue({ data: undefined });
 
