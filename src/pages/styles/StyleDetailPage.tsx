@@ -233,7 +233,23 @@ export default function StyleDetailPage() {
   ) => {
     if (!id) return;
     try {
-      await bulkSaveSteps.mutateAsync({ steps: stepsData, as3bCmBaseDays: baseDays });
+      const cleanedSteps = (stepsData || []).map((step, orderIndex) => ({
+        id: step.id ? String(step.id) : undefined,
+        stepName: step.stepName || "",
+        description: step.description || undefined,
+        timePerPiece: Number(step.timePerPiece) || 0,
+        ssv: Number(step.ssv) || 0,
+        targetTotal: Number(step.targetTotal) || 0,
+        note: step.note || undefined,
+        orderIndex: step.orderIndex ?? orderIndex,
+        isGroup: Boolean(step.isGroup),
+        stageId: step.stageId ? String(step.stageId) : undefined,
+        groupId: step.groupId ? String(step.groupId) : undefined,
+        parentStepId: step.parentStepId ? String(step.parentStepId) : undefined,
+        groupItems: step.groupItems || undefined,
+      }));
+
+      await bulkSaveSteps.mutateAsync({ steps: cleanedSteps, as3bCmBaseDays: baseDays });
       showToast("Đã lưu quy trình công đoạn mẫu Fit thành công.");
     } catch (err) {
       showToast(getApiError(err, "Lưu quy trình công đoạn thất bại.").message, "error");

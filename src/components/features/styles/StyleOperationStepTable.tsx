@@ -8,6 +8,7 @@ import {
   CheckLineIcon,
   DocsIcon,
   EyeIcon,
+  PencilIcon,
 } from "@/icons";
 
 
@@ -164,6 +165,19 @@ export function StyleOperationStepTable({
     setIsDirty(false);
     const firstTarget = steps.find((row) => Number(row.targetTotal) > 0)?.targetTotal;
     setBulkTargetTotal(firstTarget ? String(firstTarget) : "");
+
+    // Tự động mở rộng tất cả nhóm có công đoạn con sau khi dữ liệu từ server về
+    // (quan trọng: backend tạo lại rows với UUID mới sau mỗi lần lưu)
+    const newExpanded: Record<string, boolean> = {};
+    const childParentIds = new Set(
+      steps.filter((r) => r.parentStepId).map((r) => r.parentStepId as string)
+    );
+    steps.forEach((r) => {
+      if (r.isGroup && r.id && childParentIds.has(r.id)) {
+        newExpanded[r.id] = true;
+      }
+    });
+    setExpandedGroups(newExpanded);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rowKeys]);
 
@@ -286,12 +300,27 @@ export function StyleOperationStepTable({
     setPickerOpen(true);
   }
 
-  function handleAddGroupItems(selectedItems: StageGroupSubItem[]) {
-    if (!selectedItems?.length) {
-      setPickerOpen(false);
-      return;
-    }
+  function openGroupPicker(row: Partial<StyleOperationStepItem>) {
+    const currentRows = getCurrentRows();
+    const existing = currentRows
+      .filter((r) => r.parentStepId === row.id)
+      .map((r) => (r.stepName || "").toLowerCase().trim())
+      .filter(Boolean);
 
+    pickerGroupRowId.current = row.id || null;
+    setExistingStageNames(existing);
+    setPickerGroup({
+      id: row.groupId || "",
+      code: "",
+      name: row.stepName || "",
+      description: row.description || undefined,
+      isGroup: true,
+      items: row.groupItems || [],
+    });
+    setPickerOpen(true);
+  }
+
+  function handleAddGroupItems(selectedItems: StageGroupSubItem[]) {
     const parentStepId = pickerGroupRowId.current;
     if (!parentStepId) {
       setPickerOpen(false);
@@ -299,30 +328,100 @@ export function StyleOperationStepTable({
     }
 
     const currentRows = rowsRef.current;
-    const itemsToAdd: Partial<StyleOperationStepItem>[] = selectedItems.map((item) => ({
+    const newRows = [...currentRows];
+
+    // Selected names (lowercased for matching)
+    const checkedNamesSet = new Set(
+      (selectedItems || []).map((item) => item.name.toLowerCase().trim())
+    );
+
+    // 1. Remove child rows under parentStepId whose stepName is NOT in checkedNamesSet
+    const filteredRows = newRows.filter((r) => {
+      if (r.parentStepId === parentStepId) {
+        const name = (r.stepName || "").toLowerCase().trim();
+        return checkedNamesSet.has(name);
+      }
+      return true;
+    });
+
+    // 2. Find existing names remaining under parentStepId
+    const remainingChildNames = new Set(
+      filteredRows
+        .filter((r) => r.parentStepId === parentStepId)
+        .map((r) => (r.stepName || "").toLowerCase().trim())
+    );
+
+    // 3. Create new child rows for items that are checked but NOT yet in child rows
+    const itemsToAdd: Partial<StyleOperationStepItem>[] = (selectedItems || [])
+      .filter((item) => !remainingChildNames.has(item.name.toLowerCase().trim()))
+      .map((item) => ({
+        id: `child-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+        stepName: item.name,
+        description: item.description || undefined,
+        timePerPiece: Number(item.ssv) || 0,
+        ssv: Number(item.ssv) || 0,
+        targetTotal: Number(bulkTargetTotal) || 0,
+        note: "",
+        stageId: null,
+        parentStepId: parentStepId,
+        isGroup: false,
+      }));
+
+    const finalRows = [...filteredRows];
+    const groupIdx = finalRows.findIndex((r) => r.id === parentStepId);
+    if (groupIdx >= 0) {
+      let insertIdx = groupIdx + 1;
+      while (
+        insertIdx < finalRows.length &&
+        finalRows[insertIdx].parentStepId === parentStepId
+      ) {
+        insertIdx++;
+      }
+      finalRows.splice(insertIdx, 0, ...itemsToAdd);
+    } else {
+      finalRows.push(...itemsToAdd);
+    }
+
+    setExpandedGroups((prev) => ({ ...prev, [parentStepId]: true }));
+    applyRows(finalRows);
+    setPickerOpen(false);
+  }
+
+  function addChildRowToGroup(parentRow: Partial<StyleOperationStepItem>) {
+    const parentStepId = parentRow.id;
+    if (!parentStepId) return;
+
+    const currentRows = rowsRef.current;
+    const newChildRow: Partial<StyleOperationStepItem> = {
       id: `child-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
-      stepName: item.name,
-      description: item.description || undefined,
-      timePerPiece: Number(item.ssv) || 0,
-      ssv: Number(item.ssv) || 0,
+      stepName: "",
+      description: undefined,
+      timePerPiece: 0,
+      ssv: 0,
       targetTotal: Number(bulkTargetTotal) || 0,
       note: "",
       stageId: null,
       parentStepId: parentStepId,
       isGroup: false,
-    }));
+    };
 
     const newRows = [...currentRows];
     const groupIdx = newRows.findIndex((r) => r.id === parentStepId);
     if (groupIdx >= 0) {
-      newRows.splice(groupIdx + 1, 0, ...itemsToAdd);
+      let insertIdx = groupIdx + 1;
+      while (
+        insertIdx < newRows.length &&
+        newRows[insertIdx].parentStepId === parentStepId
+      ) {
+        insertIdx++;
+      }
+      newRows.splice(insertIdx, 0, newChildRow);
     } else {
-      newRows.push(...itemsToAdd);
+      newRows.push(newChildRow);
     }
 
     setExpandedGroups((prev) => ({ ...prev, [parentStepId]: true }));
     applyRows(newRows);
-    setPickerOpen(false);
   }
 
   function commitOnBlur() {
@@ -599,15 +698,15 @@ export function StyleOperationStepTable({
             <table className="w-full text-left text-xs">
               <thead className="sticky top-0 z-20 bg-gray-50/95 dark:bg-gray-800/95 shadow-xs">
                 <tr className="border-b border-gray-200 dark:border-gray-800 text-gray-500 dark:text-gray-400 font-semibold">
-                  <th className="py-3 px-3 text-center w-12">#</th>
-                  <th className="py-3 px-3 min-w-[220px]">Tên công đoạn quy trình</th>
-                  <th className="py-3 px-2 text-center min-w-[130px] w-36 bg-amber-50/40 dark:bg-amber-950/10">
+                  <th className="py-2.5 px-2 text-center w-10">#</th>
+                  <th className="py-2.5 px-2 min-w-[180px]">Tên công đoạn quy trình</th>
+                  <th className="py-2.5 px-1.5 text-center min-w-[110px] w-28 bg-amber-50/40 dark:bg-amber-950/10">
                     Thời gian (giây/SP)
                   </th>
-                  <th className="py-3 px-2 text-center w-24">% từng công đoạn</th>
-                  <th className="py-3 px-2 text-center w-24">SP/1H</th>
-                  <th className="py-3 px-3 min-w-[140px]">Ghi chú</th>
-                  <th className="py-3 px-2 text-center min-w-[130px] w-36">
+                  <th className="py-2.5 px-1.5 text-center w-20">% công đoạn</th>
+                  <th className="py-2.5 px-1.5 text-center w-20">SP/1H</th>
+                  <th className="py-2.5 px-2 min-w-[110px] w-28">Ghi chú</th>
+                  <th className="py-2.5 px-1.5 text-center min-w-[110px] w-28">
                     <div className="flex flex-col items-center gap-1">
                       <span className="leading-tight">CM Công Nghệ</span>
                       <div className="flex items-center justify-center gap-1">
@@ -655,8 +754,8 @@ export function StyleOperationStepTable({
                       </div>
                     </div>
                   </th>
-                  <th className="py-3 px-2 text-center w-20">Số người</th>
-                  <th className="py-3 px-2 text-center w-28">
+                  <th className="py-2.5 px-1.5 text-center w-16">Số người</th>
+                  <th className="py-2.5 px-1.5 text-center w-24">
                     <div className="mb-1 leading-tight">Chỉ tiêu tổng</div>
                     {canEdit && (
                       <Input
@@ -670,7 +769,11 @@ export function StyleOperationStepTable({
                       />
                     )}
                   </th>
-                  {canEdit && <th className="py-3 px-2 text-center w-12" />}
+                  {canEdit && (
+                    <th className="py-2.5 px-1 text-center w-10 sticky right-0 bg-gray-50 dark:bg-gray-800 z-20 border-l border-gray-200 dark:border-gray-800 shadow-xs">
+                      Xóa
+                    </th>
+                  )}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
@@ -694,6 +797,7 @@ export function StyleOperationStepTable({
 
                     const isGroupRow = !!row.isGroup;
                     const isChildRow = !!row.parentStepId;
+                    const parentRow = isChildRow ? rows.find((r) => r.id === row.parentStepId) : null;
                     const isCollapsed = !expandedGroups[row.id || ""];
 
                     let displayTime = Number(row.timePerPiece) || 0;
@@ -742,7 +846,7 @@ export function StyleOperationStepTable({
                         className={`transition-colors ${rowBg}`}
                       >
                         <td className="py-2.5 px-3 text-center font-mono text-gray-400">
-                          {isChildRow ? "├" : visibleRowCount}
+                          {isChildRow ? "" : visibleRowCount}
                         </td>
 
                         <td className="py-2 px-3">
@@ -783,15 +887,43 @@ export function StyleOperationStepTable({
                                       ({childrenCount})
                                     </span>
                                   )}
+                                  <div className="flex items-center gap-1.5 ml-2">
+                                    <button
+                                      type="button"
+                                      onClick={() => openGroupPicker(row)}
+                                      className="h-6 w-6 rounded-md bg-white dark:bg-gray-800 text-brand-600 dark:text-brand-400 border border-brand-200 dark:border-brand-800 hover:bg-brand-50 dark:hover:bg-brand-950 flex items-center justify-center transition-all cursor-pointer shadow-2xs"
+                                      title="Sửa nhóm công đoạn"
+                                    >
+                                      <PencilIcon className="h-3.5 w-3.5" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => addChildRowToGroup(row)}
+                                      className="h-6 w-6 rounded-md bg-brand-500 hover:bg-brand-600 text-white flex items-center justify-center transition-all cursor-pointer shadow-2xs"
+                                      title="Thêm một dòng công đoạn mới vào nhóm"
+                                    >
+                                      <PlusIcon className="h-3.5 w-3.5" />
+                                    </button>
+                                  </div>
                                 </div>
                               ) : (
                                 <div className="flex-1 min-w-0">
                                   <StageCombobox
                                     value={row.stepName || ""}
                                     stageId={row.stageId}
-                                    onNameChange={(val) =>
-                                      updateLocal(idx, "stepName", val)
-                                    }
+                                    allowGroupSelection={!isChildRow}
+                                    groupItems={parentRow?.groupItems}
+                                    parentGroupName={parentRow?.stepName}
+                                    parentGroupId={parentRow?.groupId || parentRow?.id}
+                                    onNameChange={(val) => {
+                                      updateLocal(idx, "stepName", val);
+                                      if (!val) {
+                                        updateLocal(idx, "stageId", null);
+                                      }
+                                    }}
+                                    onClear={() => {
+                                      updateLocal(idx, "stageId", null);
+                                    }}
                                     onCommit={(stageData) =>
                                       commitStage(idx, stageData)
                                     }
@@ -805,35 +937,6 @@ export function StyleOperationStepTable({
                               <span className="font-medium text-gray-900 dark:text-white">
                                 {row.stepName}
                               </span>
-                            )}
-
-                            {canEdit && isGroupRow && !isCollapsed && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-6 w-6 p-0 text-gray-400 hover:text-gray-700"
-                                onClick={() => {
-                                  const existing = rows
-                                    .filter((r) => r.parentStepId === row.id)
-                                    .map((r) => (r.stepName || "").toLowerCase().trim())
-                                    .filter(Boolean);
-
-                                  pickerGroupRowId.current = row.id || null;
-                                  setExistingStageNames(existing);
-                                  setPickerGroup({
-                                    id: row.groupId || "",
-                                    code: "",
-                                    name: row.stepName || "",
-                                    description: row.description || undefined,
-                                    isGroup: true,
-                                    items: row.groupItems || [],
-                                  });
-                                  setPickerOpen(true);
-                                }}
-                                title="Thêm công đoạn con vào nhóm"
-                              >
-                                <PlusIcon className="h-3.5 w-3.5" />
-                              </Button>
                             )}
                           </div>
                         </td>
@@ -913,7 +1016,7 @@ export function StyleOperationStepTable({
                         </td>
 
                         {canEdit && (
-                          <td className="py-2 px-2 text-center">
+                          <td className="py-2 px-1 text-center sticky right-0 bg-white dark:bg-gray-900 z-10 border-l border-gray-100 dark:border-gray-800">
                             <button
                               type="button"
                               onClick={() => setDeletingRowIndex(idx)}
@@ -930,71 +1033,65 @@ export function StyleOperationStepTable({
                 )}
               </tbody>
               {rows.length > 0 && (
-                <tfoot className="sticky bottom-0 z-20 border-t-4 border-brand-500 bg-brand-50/95 dark:border-brand-500 dark:bg-brand-950/95 shadow-md">
+                <tfoot className="sticky bottom-0 z-20 border-t-2 border-brand-500 bg-brand-50/95 dark:border-brand-500 dark:bg-brand-950/95 shadow-md">
                   <tr className="divide-x divide-brand-200/40 dark:divide-brand-900/40">
-                    <td colSpan={2} className="py-3 px-4 text-center align-middle">
-                      <div className="flex flex-col items-center justify-center gap-1 min-h-[52px]">
-                        <div className="h-4" />
-                        <span className="text-brand-400/60 font-mono font-bold h-7 flex items-center justify-center">—</span>
-                      </div>
+                    <td colSpan={2} className="py-2 px-3 text-right align-middle">
+                      <span className="text-xs font-black uppercase text-brand-900 dark:text-brand-100 tracking-wider">
+                        TỔNG CỘNG
+                      </span>
                     </td>
-                    <td className="py-3 px-3 text-center align-middle">
-                      <div className="flex flex-col items-center justify-center gap-1 min-h-[52px]">
-                        <div className="h-4 flex items-center justify-center text-[10px] font-extrabold uppercase tracking-wider text-brand-700 dark:text-brand-300 leading-none">
+                    <td className="py-2 px-1 text-center align-middle">
+                      <div className="flex flex-col items-center justify-center gap-1 min-h-[44px]">
+                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-brand-700 dark:text-brand-300 leading-none whitespace-nowrap">
                           TỔNG
-                        </div>
-                        <span className="inline-flex items-center justify-center font-mono font-black text-brand-900 dark:text-brand-100 text-sm bg-brand-100/80 dark:bg-brand-900/70 py-1 px-3 rounded-lg border border-brand-300/60 dark:border-brand-700/60 shadow-xs h-7">
-                          {totalTime.toFixed(1)} giây
+                        </span>
+                        <span className="inline-flex items-center justify-center font-mono font-black text-brand-900 dark:text-brand-100 text-xs bg-white dark:bg-gray-800 px-2 py-0.5 rounded-md border border-brand-200 dark:border-brand-800 shadow-xs whitespace-nowrap">
+                          {totalTime.toFixed(1)}s
                         </span>
                       </div>
                     </td>
-                    <td className="py-3 px-3 text-center align-middle">
-                      <div className="flex flex-col items-center justify-center gap-1 min-h-[52px]">
-                        <div className="h-4" />
-                        <span className="inline-flex items-center justify-center font-mono font-black text-brand-900 dark:text-brand-100 text-sm bg-brand-100/80 dark:bg-brand-900/70 py-1 px-3 rounded-lg border border-brand-300/60 dark:border-brand-700/60 shadow-xs h-7">
+                    <td className="py-2 px-1 text-center align-middle">
+                      <div className="flex flex-col items-center justify-center gap-1 min-h-[44px]">
+                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-brand-700 dark:text-brand-300 leading-none whitespace-nowrap">
+                          TỶ LỆ
+                        </span>
+                        <span className="inline-flex items-center justify-center font-mono font-black text-brand-900 dark:text-brand-100 text-xs bg-white dark:bg-gray-800 px-2 py-0.5 rounded-md border border-brand-200 dark:border-brand-800 shadow-xs whitespace-nowrap">
                           100%
                         </span>
                       </div>
                     </td>
-                    <td className="py-3 px-3 text-center align-middle">
-                      <div className="flex flex-col items-center justify-center gap-1 min-h-[52px]">
-                        <div className="h-4 flex items-center justify-center text-[10px] font-extrabold uppercase tracking-wider text-brand-700 dark:text-brand-300 leading-none">
+                    <td className="py-2 px-1 text-center align-middle">
+                      <div className="flex flex-col items-center justify-center gap-1 min-h-[44px]">
+                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-brand-700 dark:text-brand-300 leading-none whitespace-nowrap">
                           SP/NGƯỜI/NGÀY
-                        </div>
-                        <span className="inline-flex items-center justify-center font-mono font-black text-brand-900 dark:text-brand-100 text-sm bg-brand-100/80 dark:bg-brand-900/70 py-1 px-3 rounded-lg border border-brand-300/60 dark:border-brand-700/60 shadow-xs h-7">
+                        </span>
+                        <span className="inline-flex items-center justify-center font-mono font-black text-brand-900 dark:text-brand-100 text-xs bg-white dark:bg-gray-800 px-2 py-0.5 rounded-md border border-brand-200 dark:border-brand-800 shadow-xs whitespace-nowrap">
                           {formatMetric(productPerPersonDay, 0)}
                         </span>
                       </div>
                     </td>
-                    <td className="py-3 px-2 text-center align-middle">
-                      <div className="flex flex-col items-center justify-center gap-1 min-h-[52px]">
-                        <div className="h-4" />
-                        <span className="text-brand-400/60 font-mono font-bold h-7 flex items-center justify-center">—</span>
-                      </div>
+                    <td className="py-2 px-1 text-center align-middle">
+                      <span className="text-brand-400/60 font-mono font-bold">—</span>
                     </td>
-                    <td className="py-3 px-3 text-center align-middle">
-                      <div className="flex flex-col items-center justify-center gap-1 min-h-[52px]">
-                        <div className="h-4 flex items-center justify-center text-[10px] font-extrabold uppercase tracking-wider text-brand-700 dark:text-brand-300 leading-none">
+                    <td className="py-2 px-1 text-center align-middle">
+                      <div className="flex flex-col items-center justify-center gap-1 min-h-[44px]">
+                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-brand-700 dark:text-brand-300 leading-none whitespace-nowrap">
                           CÔNG ĐOẠN 1K
-                        </div>
-                        <span className="inline-flex items-center justify-center font-mono font-black text-brand-900 dark:text-brand-100 text-sm bg-brand-100/80 dark:bg-brand-900/70 py-1 px-3 rounded-lg border border-brand-300/60 dark:border-brand-700/60 shadow-xs h-7">
+                        </span>
+                        <span className="inline-flex items-center justify-center font-mono font-black text-brand-900 dark:text-brand-100 text-xs bg-white dark:bg-gray-800 px-2 py-0.5 rounded-md border border-brand-200 dark:border-brand-800 shadow-xs whitespace-nowrap">
                           {formatMetric(oneKProductPerDay, 0)}
                         </span>
                       </div>
                     </td>
-                    <td className="py-3 px-2 text-center align-middle">
-                      <div className="flex flex-col items-center justify-center gap-1 min-h-[52px]">
-                        <div className="h-4" />
-                        <span className="text-brand-400/60 font-mono font-bold h-7 flex items-center justify-center">—</span>
-                      </div>
+                    <td className="py-2 px-1 text-center align-middle font-mono font-bold text-xs text-brand-900 dark:text-brand-100">
+                      —
                     </td>
-                    <td className="py-3 px-2 text-center align-middle">
-                      <div className="flex flex-col items-center justify-center gap-1 min-h-[52px]">
-                        <div className="h-4" />
-                        <span className="text-brand-400/60 font-mono font-bold h-7 flex items-center justify-center">—</span>
-                      </div>
+                    <td className="py-2 px-1 text-center align-middle font-mono font-bold text-xs text-brand-900 dark:text-brand-100">
+                      —
                     </td>
-                    {canEdit && <td className="py-3 px-2 text-center align-middle" />}
+                    {canEdit && (
+                      <td className="py-2 px-1 text-center align-middle sticky right-0 bg-brand-50 dark:bg-brand-950 z-20 border-l border-brand-200/60 dark:border-brand-800/60" />
+                    )}
                   </tr>
                 </tfoot>
               )}

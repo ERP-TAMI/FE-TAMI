@@ -75,34 +75,13 @@ export function StageGroupPickerDialog({
 
   const currentGroup = activeGroup || group;
   const items = currentGroup.items || [];
-  const normalizedExisting = existingStageNames.map((n) =>
-    n.toLowerCase().trim(),
-  );
 
-  const selectableItems = items.filter((item) => {
-    const normalizedName = item.name?.toLowerCase().trim();
-    return !normalizedExisting.includes(normalizedName);
-  });
-
-  const selectableCount = selectableItems.length;
-  const existingCount = items.length - selectableCount;
-
-  const selectableSelectedCount = selectableItems.filter(
-    (item) => selectedItems[item.id],
-  ).length;
-  const allSelectableSelected =
-    selectableCount > 0 && selectableSelectedCount === selectableCount;
+  const totalSelectedCount = items.filter((item) => selectedItems[item.id]).length;
+  const allSelected = items.length > 0 && totalSelectedCount === items.length;
 
   function handleToggleAll() {
-    if (allSelectableSelected) {
-      const newSel: Record<string, boolean> = {};
-      items.forEach((item) => {
-        const normalizedName = item.name?.toLowerCase().trim();
-        if (normalizedExisting.includes(normalizedName)) {
-          newSel[item.id] = true;
-        }
-      });
-      setSelectedItems(newSel);
+    if (allSelected) {
+      setSelectedItems({});
     } else {
       const newSel: Record<string, boolean> = {};
       items.forEach((item) => {
@@ -113,14 +92,6 @@ export function StageGroupPickerDialog({
   }
 
   function handleToggleItem(id: string) {
-    const item = items.find((i) => i.id === id);
-    if (item) {
-      const normalizedName = item.name?.toLowerCase().trim();
-      if (normalizedExisting.includes(normalizedName)) {
-        return;
-      }
-    }
-
     setSelectedItems((prev) => ({
       ...prev,
       [id]: !prev[id],
@@ -128,27 +99,15 @@ export function StageGroupPickerDialog({
   }
 
   function handleConfirm() {
-    const newSelected = items.filter((item) => {
-      const normalizedName = item.name?.toLowerCase().trim();
-      return (
-        !normalizedExisting.includes(normalizedName) && selectedItems[item.id]
-      );
-    });
-    onConfirm(newSelected);
+    const selected = items.filter((item) => selectedItems[item.id]);
+    onConfirm(selected);
     onOpenChange(false);
   }
 
   const modalFooter = (
     <div className="flex items-center justify-between w-full">
-      <div className="text-xs text-gray-500 dark:text-gray-400">
-        {selectableSelectedCount > 0 && (
-          <span className="text-emerald-600 dark:text-emerald-400 font-medium">
-            +{selectableSelectedCount} công đoạn mới
-          </span>
-        )}
-        {existingCount > 0 && (
-          <span className="ml-2">({existingCount} đã có trong nhóm)</span>
-        )}
+      <div className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+        <span>Đã chọn {totalSelectedCount} / {items.length} công đoạn</span>
       </div>
       <div className="flex gap-2">
         <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
@@ -158,10 +117,10 @@ export function StageGroupPickerDialog({
           variant="primary"
           size="sm"
           onClick={handleConfirm}
-          disabled={selectableSelectedCount === 0 || loading}
+          disabled={loading}
         >
           <CheckLineIcon className="w-4 h-4" />
-          Thêm {selectableSelectedCount} công đoạn
+          Cập nhật nhóm ({totalSelectedCount})
         </Button>
       </div>
     </div>
@@ -170,7 +129,7 @@ export function StageGroupPickerDialog({
   return (
     <Modal
       open={open}
-      title={`Thêm nhóm: ${currentGroup.name || currentGroup.code || ""}`}
+      title={`Sửa công đoạn nhóm: ${currentGroup.name || currentGroup.code || ""}`}
       onClose={() => onOpenChange(false)}
       footer={modalFooter}
     >
@@ -185,20 +144,20 @@ export function StageGroupPickerDialog({
           <input
             type="checkbox"
             id="selectAll"
-            checked={allSelectableSelected}
+            checked={allSelected}
             onChange={handleToggleAll}
-            className="h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500"
+            className="h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500 cursor-pointer"
             disabled={loading}
           />
           <label
             htmlFor="selectAll"
-            className="text-xs font-semibold text-gray-700 dark:text-gray-200 cursor-pointer"
+            className="text-xs font-semibold text-gray-700 dark:text-gray-200 cursor-pointer select-none"
           >
-            Chọn tất cả ({selectableCount} công đoạn mới)
+            Chọn tất cả ({items.length} công đoạn)
           </label>
         </div>
 
-        <div className="max-h-60 overflow-y-auto space-y-1.5 pr-1">
+        <div className="max-h-64 overflow-y-auto space-y-1.5 pr-1">
           {loading ? (
             <p className="text-xs text-gray-400 text-center py-6">
               Đang tải danh sách công đoạn...
@@ -206,36 +165,29 @@ export function StageGroupPickerDialog({
           ) : (
             <>
               {items.map((item) => {
-                const normalizedName = item.name?.toLowerCase().trim();
-                const isExisting = normalizedExisting.includes(normalizedName);
+                const isChecked = !!selectedItems[item.id];
 
                 return (
                   <div
                     key={item.id}
-                    onClick={() => !isExisting && handleToggleItem(item.id)}
-                    className={`flex items-center justify-between p-2.5 rounded-lg border transition-colors ${
-                      isExisting
-                        ? "bg-gray-50 dark:bg-gray-800/40 border-gray-100 dark:border-gray-800 cursor-default opacity-70"
-                        : "bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800 hover:border-brand-300 dark:hover:border-brand-700 cursor-pointer"
+                    onClick={() => handleToggleItem(item.id)}
+                    className={`flex items-center justify-between p-2.5 rounded-lg border transition-colors cursor-pointer select-none ${
+                      isChecked
+                        ? "bg-brand-50/60 dark:bg-brand-950/40 border-brand-200 dark:border-brand-900 text-brand-900 dark:text-brand-100 font-medium"
+                        : "bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700 text-gray-700 dark:text-gray-200"
                     }`}
                   >
                     <div className="flex items-center gap-3 min-w-0">
                       <input
                         type="checkbox"
-                        checked={!!selectedItems[item.id]}
-                        disabled={isExisting}
+                        checked={isChecked}
                         onChange={() => handleToggleItem(item.id)}
                         onClick={(e) => e.stopPropagation()}
-                        className="h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500"
+                        className="h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500 cursor-pointer"
                       />
                       <div className="min-w-0">
-                        <p className="text-xs font-semibold text-gray-900 dark:text-white truncate">
+                        <p className="text-xs font-semibold truncate">
                           {item.name}
-                          {isExisting && (
-                            <span className="ml-2 text-[10px] text-emerald-600 dark:text-emerald-400 font-normal">
-                              (đã thêm)
-                            </span>
-                          )}
                         </p>
                         {item.description && (
                           <p className="text-[11px] text-gray-400 dark:text-gray-500 truncate">
