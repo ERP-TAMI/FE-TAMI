@@ -37,11 +37,12 @@ export default function StyleDetailPage() {
     : "general";
 
   const [isProductionDocEditing, setIsProductionDocEditing] = useState(false);
+  const [isOperationStepsEditing, setIsOperationStepsEditing] = useState(false);
   const [pendingTab, setPendingTab] = useState<"general" | "steps" | "production_doc" | null>(null);
   const [pendingNavigation, setPendingNavigation] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!isProductionDocEditing) return;
+    if (!isProductionDocEditing && !isOperationStepsEditing) return;
 
     const handleDocumentClick = (event: MouseEvent) => {
       if (
@@ -74,7 +75,7 @@ export default function StyleDetailPage() {
       document.removeEventListener("click", handleDocumentClick, true);
       window.removeEventListener("beforeunload", handleBeforeUnload);
     };
-  }, [isProductionDocEditing]);
+  }, [isProductionDocEditing, isOperationStepsEditing]);
 
   const navigateToTab = (tab: "general" | "steps" | "production_doc") => {
     if (!id) return;
@@ -88,7 +89,7 @@ export default function StyleDetailPage() {
   };
 
   const handleTabChange = (tab: "general" | "steps" | "production_doc") => {
-    if (isProductionDocEditing && tab !== activeTab) {
+    if ((isProductionDocEditing || isOperationStepsEditing) && tab !== activeTab) {
       setPendingTab(tab);
       return;
     }
@@ -241,7 +242,7 @@ export default function StyleDetailPage() {
         ssv: Number(step.ssv) || 0,
         targetTotal: Number(step.targetTotal) || 0,
         note: step.note || undefined,
-        orderIndex: step.orderIndex ?? orderIndex,
+        orderIndex,
         isGroup: Boolean(step.isGroup),
         stageId: step.stageId ? String(step.stageId) : undefined,
         groupId: step.groupId ? String(step.groupId) : undefined,
@@ -292,7 +293,7 @@ export default function StyleDetailPage() {
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 pt-2 md:pt-3">
       <div className="space-y-4">
         <StyleHeader
           styleCode={style.styleCode}
@@ -368,6 +369,7 @@ export default function StyleDetailPage() {
           steps={stepsQuery.data || []}
           cmBaseDays={style.as3bCmBaseDays || 30}
           canEdit={true}
+          onEditingChange={setIsOperationStepsEditing}
           onSave={handleSaveSteps}
           imageUrl={imageUrl}
           styleCode={style.styleCode}

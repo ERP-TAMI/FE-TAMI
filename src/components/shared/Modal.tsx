@@ -164,7 +164,7 @@ export function Modal({
   return createPortal(
     <div
       ref={rootRef}
-      className="fixed inset-0 z-50 flex items-center justify-center px-4 py-6"
+      className="fixed inset-0 z-[90] flex items-center justify-center px-4 py-6"
       role="presentation"
     >
       <div

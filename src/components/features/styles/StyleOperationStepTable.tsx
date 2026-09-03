@@ -15,7 +15,9 @@ import {
 import { Button } from "@/components/shared/Button";
 import { Input } from "@/components/shared/Input";
 import { Modal } from "@/components/shared/Modal";
+import { Toast } from "@/components/shared/Toast";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
+import { UnsavedChangesDialog } from "./UnsavedChangesDialog";
 import { StageCombobox } from "./StageCombobox";
 import { StageGroupPickerDialog } from "./StageGroupPickerDialog";
 import { CopyOperationStepsDialog } from "./CopyOperationStepsDialog";
@@ -36,6 +38,10 @@ function formatTimeValue(value: number | string) {
   return numericValue.toLocaleString("vi-VN", { maximumFractionDigits: 2 });
 }
 
+function getCommonNote(steps: Partial<StyleOperationStepItem>[]) {
+  return String(steps.find((row) => String(row.note || "").trim())?.note || "");
+}
+
 function isOneKRow(row: Partial<StyleOperationStepItem>) {
   const name = String(row?.stepName || "").toLowerCase();
   return name.includes("1k");
@@ -46,6 +52,7 @@ export interface StyleOperationStepTableProps {
   steps?: StyleOperationStepItem[];
   cmBaseDays?: number;
   canEdit?: boolean;
+  onEditingChange?: (isEditing: boolean) => void;
   onSave?: (steps: Partial<StyleOperationStepItem>[], baseDays?: number) => Promise<void>;
   imageUrl?: string | null;
   styleCode?: string;
@@ -58,13 +65,14 @@ export function StyleOperationStepTable({
   steps = [],
   cmBaseDays = 30,
   canEdit = true,
+  onEditingChange,
   onSave,
   imageUrl,
   styleCode,
   styleName,
   onImageChange,
 }: StyleOperationStepTableProps) {
-  const { showToast } = useToast();
+  const { toast, showToast, hideToast } = useToast();
   const [rows, setRows] = useState<Partial<StyleOperationStepItem>[]>(steps);
   const [baseDays, setBaseDays] = useState<number>(Number(cmBaseDays) || 30);
   const [customDaysMode, setCustomDaysMode] = useState<boolean>(
@@ -74,6 +82,7 @@ export function StyleOperationStepTable({
     const firstTarget = steps.find((row) => Number(row.targetTotal) > 0)?.targetTotal;
     return firstTarget ? String(firstTarget) : "";
   });
+  const [commonNote, setCommonNote] = useState(() => getCommonNote(steps));
 
   const [pickerGroup, setPickerGroup] = useState<StageGroup | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -82,6 +91,8 @@ export function StyleOperationStepTable({
   const [copyDialogOpen, setCopyDialogOpen] = useState(false);
   const [deletingRowIndex, setDeletingRowIndex] = useState<number | null>(null);
   const [zoomOpen, setZoomOpen] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [pendingDiscardOpen, setPendingDiscardOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -131,31 +142,85 @@ export function StyleOperationStepTable({
   const rowsRef = useRef<Partial<StyleOperationStepItem>[]>(steps);
 
   const [isSaving, setIsSaving] = useState(false);
-  const [lastSavedTime, setLastSavedTime] = useState<string | null>(null);
   const [isDirty, setIsDirty] = useState(false);
+  const [invalidRowIndex, setInvalidRowIndex] = useState<number | null>(null);
+
+  const editable = canEdit && isEditing;
+  const showEditButton = canEdit && !isEditing;
+  const rowPaddingY = isEditing ? "py-2" : "py-2.5";
+  const rowPaddingX = isEditing ? "px-1.5" : "px-2";
+  const compactInputClass =
+    "h-7 rounded-md border border-brand-200 bg-brand-50/50 text-xs text-gray-900 shadow-none focus:border-brand-400 focus:ring-1 focus:ring-brand-100 dark:border-brand-800 dark:bg-brand-950/20 dark:text-white";
+
+  useEffect(() => {
+    onEditingChange?.(isEditing);
+    return () => onEditingChange?.(false);
+  }, [isEditing, onEditingChange]);
+
+  useEffect(() => {
+    if (!isEditing) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isEditing]);
+
+  useEffect(() => {
+    if (!isEditing) return;
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [isEditing]);
 
   const triggerSave = useCallback(
     async (rowsToSave?: Partial<StyleOperationStepItem>[], daysToSave?: number) => {
-      if (!onSave) return;
+      if (!onSave) return false;
       const targetRows = rowsToSave || (rowsRef.current.length > 0 ? rowsRef.current : rows);
       const targetDays = daysToSave ?? baseDays;
+      const invalidRowIndex = targetRows.findIndex(
+        (row) => !(String(row.stepName || "").trim()),
+      );
+      if (invalidRowIndex >= 0) {
+        const invalidRow = targetRows[invalidRowIndex];
+        if (invalidRow.parentStepId) {
+          setExpandedGroups((current) => ({
+            ...current,
+            [invalidRow.parentStepId!]: true,
+          }));
+        }
+        setInvalidRowIndex(invalidRowIndex);
+        window.requestAnimationFrame(() => {
+          window.requestAnimationFrame(() => {
+            const rowElement = document.querySelector<HTMLElement>(
+              `[data-operation-row-index="${invalidRowIndex}"]`,
+            );
+            rowElement?.scrollIntoView?.({ behavior: "auto", block: "center" });
+            rowElement?.querySelector<HTMLInputElement>("input")?.focus();
+          });
+        });
+        return false;
+      }
+      setInvalidRowIndex(null);
       setIsSaving(true);
       try {
-        await onSave(targetRows, targetDays);
-        const timeStr = new Date().toLocaleTimeString("vi-VN", {
-          hour: "2-digit",
-          minute: "2-digit",
-          second: "2-digit",
-        });
-        setLastSavedTime(timeStr);
+        await onSave(
+          targetRows.map((row) => ({ ...row, note: commonNote || null })),
+          targetDays,
+        );
         setIsDirty(false);
+        return true;
       } catch (err) {
         console.error("Save failed:", err);
+        return false;
       } finally {
         setIsSaving(false);
       }
     },
-    [onSave, baseDays, rows],
+    [onSave, baseDays, commonNote, rows],
   );
 
   const rowKeys = steps.map((r) => r.id).join(",");
@@ -163,6 +228,7 @@ export function StyleOperationStepTable({
     rowsRef.current = steps;
     setRows(steps);
     setIsDirty(false);
+    setCommonNote(getCommonNote(steps));
     const firstTarget = steps.find((row) => Number(row.targetTotal) > 0)?.targetTotal;
     setBulkTargetTotal(firstTarget ? String(firstTarget) : "");
 
@@ -189,6 +255,7 @@ export function StyleOperationStepTable({
 
   function applyRows(next: Partial<StyleOperationStepItem>[]) {
     setIsDirty(true);
+    setInvalidRowIndex(null);
     rowsRef.current = next;
     setRows(next);
   }
@@ -205,6 +272,9 @@ export function StyleOperationStepTable({
     value: StyleOperationStepItem[K],
   ) {
     setIsDirty(true);
+    if (field === "stepName" && idx === invalidRowIndex && String(value || "").trim()) {
+      setInvalidRowIndex(null);
+    }
     setRows((prev) => {
       const next = prev.map((r, i) => {
         if (i !== idx) return r;
@@ -230,6 +300,11 @@ export function StyleOperationStepTable({
   }
 
   function commitBulkTargetTotal() {
+    setIsDirty(true);
+  }
+
+  function updateCommonNote(value: string) {
+    setCommonNote(value);
     setIsDirty(true);
   }
 
@@ -451,29 +526,109 @@ export function StyleOperationStepTable({
     applyRows(next);
   }
 
-  function removeRow(idx: number) {
+  function handleEditStart() {
+    setRows(steps);
+    rowsRef.current = steps;
+    setIsDirty(false);
+    setIsEditing(true);
+    setPendingDiscardOpen(false);
+    setInvalidRowIndex(null);
+    setCommonNote(getCommonNote(steps));
+  }
+
+  function handleEditClose() {
+    setRows(steps);
+    rowsRef.current = steps;
+    setIsDirty(false);
+    setIsEditing(false);
+    setPendingDiscardOpen(false);
+    setInvalidRowIndex(null);
+    setCommonNote(getCommonNote(steps));
+  }
+
+  function requestCloseEditor() {
+    if (isDirty) {
+      setPendingDiscardOpen(true);
+      return;
+    }
+    handleEditClose();
+  }
+
+  function moveRowByOne(idx: number, direction: -1 | 1) {
+    const sourceRows = getCurrentRows();
+    const currentRow = sourceRows[idx];
+    if (!currentRow || currentRow.parentStepId) return;
+
+    const getBlockEnd = (startIndex: number) => {
+      const row = sourceRows[startIndex];
+      if (!row || !row.isGroup || !row.id) return startIndex;
+      let end = startIndex;
+      while (end + 1 < sourceRows.length && sourceRows[end + 1].parentStepId === row.id) {
+        end++;
+      }
+      return end;
+    };
+
+    const currentEnd = getBlockEnd(idx);
+    const currentBlock = sourceRows.slice(idx, currentEnd + 1);
+
+    if (direction < 0) {
+      let previousStart = idx - 1;
+      while (previousStart >= 0 && sourceRows[previousStart]?.parentStepId) {
+        previousStart--;
+      }
+      if (previousStart < 0) return;
+
+      const previousEnd = getBlockEnd(previousStart);
+      const previousBlock = sourceRows.slice(previousStart, previousEnd + 1);
+      const nextRows = [
+        ...sourceRows.slice(0, previousStart),
+        ...currentBlock,
+        ...previousBlock,
+        ...sourceRows.slice(currentEnd + 1),
+      ];
+      applyRows(nextRows);
+      return;
+    }
+
+    const nextStart = currentEnd + 1;
+    if (nextStart >= sourceRows.length) return;
+    const nextEnd = getBlockEnd(nextStart);
+    const nextBlock = sourceRows.slice(nextStart, nextEnd + 1);
+    const nextRows = [
+      ...sourceRows.slice(0, idx),
+      ...nextBlock,
+      ...currentBlock,
+      ...sourceRows.slice(nextEnd + 1),
+    ];
+    applyRows(nextRows);
+  }
+
+  async function handleDeleteRow(idx: number) {
     const sourceRows = getCurrentRows();
     const rowToRemove = sourceRows[idx];
     if (!rowToRemove) return;
 
     let next = sourceRows.filter((_, i) => i !== idx);
-
     if (rowToRemove.isGroup && rowToRemove.id) {
       next = next.filter((r) => r.parentStepId !== rowToRemove.id);
     }
 
     applyRows(next);
+    showToast("Đã xóa công đoạn.", "success");
   }
 
   function handleCopyFromDialog(newSteps: Partial<StyleOperationStepItem>[]) {
+    setCommonNote(getCommonNote(newSteps));
     applyRows(newSteps);
   }
 
   const handleExportExcel = async () => {
     if (!rows.length) return;
     try {
-      if (isDirty && canEdit) {
-        await triggerSave();
+      if (isDirty && editable) {
+        const saved = await triggerSave();
+        if (!saved) return;
       }
       const blob = await styleOperationStepsApi.exportExcel(styleId);
       const url = URL.createObjectURL(blob);
@@ -534,117 +689,136 @@ export function StyleOperationStepTable({
   let visibleRowCount = 0;
 
   return (
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+    <div
+      onClick={(event) => {
+        if (isEditing && event.target === event.currentTarget) {
+          requestCloseEditor();
+        }
+      }}
+      className={
+        isEditing
+          ? "fixed inset-0 z-[70] flex items-start justify-center overflow-hidden bg-gray-950/45 p-3 pt-6 md:items-center md:p-6"
+          : "grid grid-cols-1 gap-6 lg:grid-cols-12"
+      }
+    >
       {/* CỘT TRÁI: Ảnh rập / Cấu trúc */}
-      <div className="lg:col-span-4 xl:col-span-3">
-        <div className="sticky top-6 space-y-4 rounded-2xl border border-gray-200/80 bg-white p-4 shadow-xs dark:border-gray-800 dark:bg-gray-900">
-          <div className="flex items-center gap-2 border-b border-gray-100 pb-3 dark:border-gray-800">
-            <DocsIcon className="w-4 h-4 text-gray-500 dark:text-gray-400" />
-            <h3 className="text-sm font-bold text-gray-900 dark:text-white">
-              Ảnh rập / Cấu trúc
-            </h3>
-          </div>
+      {!isEditing && (
+        <div className="lg:col-span-3 xl:col-span-2">
+          <div className="sticky top-6 space-y-4 rounded-2xl border border-gray-200/80 bg-white p-3 shadow-xs dark:border-gray-800 dark:bg-gray-900">
+            <div className="flex items-center gap-2 border-b border-gray-100 pb-3 dark:border-gray-800">
+              <DocsIcon className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+              <h3 className="text-sm font-bold text-gray-900 dark:text-white">
+                Ảnh rập / Cấu trúc
+              </h3>
+            </div>
 
-          <div className="pt-1">
-            {imageUrl ? (
-              <div className="space-y-3">
+            <div className="pt-1">
+              {imageUrl ? (
+                <div className="space-y-3">
+                  <div
+                    className="relative group rounded-xl overflow-hidden border border-gray-200/80 bg-gray-50/80 aspect-square dark:border-gray-800 dark:bg-gray-800 focus:outline-none"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.ctrlKey && e.key === "v") void handlePasteImage();
+                    }}
+                  >
+                    <img
+                      src={resolveImageUrl(imageUrl) || ""}
+                      alt={styleName || styleCode || "Cấu trúc SP"}
+                      className="w-full h-full object-contain p-2"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setZoomOpen(true)}
+                      className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white font-medium text-xs gap-1.5 cursor-pointer backdrop-blur-xs"
+                    >
+                      <EyeIcon className="w-4 h-4" /> Phóng to
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 text-xs cursor-pointer"
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      Tải ảnh
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 text-xs cursor-pointer"
+                      onClick={() => void handlePasteImage()}
+                    >
+                      Dán ảnh
+                    </Button>
+                  </div>
+                </div>
+              ) : (
                 <div
-                  className="relative group rounded-xl overflow-hidden border border-gray-200/80 bg-gray-50/80 aspect-square dark:border-gray-800 dark:bg-gray-800 focus:outline-none"
                   tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.ctrlKey && e.key === "v") void handlePasteImage();
-                  }}
+                  onPaste={handlePasteEvent}
+                  onClick={() => fileInputRef.current?.click()}
+                  className="border-2 border-dashed border-gray-200 dark:border-gray-800 rounded-xl aspect-square flex flex-col items-center justify-center p-4 text-center bg-gray-50/50 dark:bg-gray-800/40 cursor-pointer hover:bg-gray-100/60 dark:hover:bg-gray-800 transition-colors"
+                  title="Có thể dán ảnh trực tiếp bằng Ctrl+V"
                 >
-                  <img
-                    src={resolveImageUrl(imageUrl) || ""}
-                    alt={styleName || styleCode || "Cấu trúc SP"}
-                    className="w-full h-full object-contain p-2"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setZoomOpen(true)}
-                    className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white font-medium text-xs gap-1.5 cursor-pointer backdrop-blur-xs"
-                  >
-                    <EyeIcon className="w-4 h-4" /> Phóng to
-                  </button>
-                </div>
+                  <StyleImagePlaceholder className="w-12 h-12 mb-2 text-gray-300 dark:text-gray-600 opacity-60" />
+                  <p className="text-xs font-bold text-gray-700 dark:text-gray-200">
+                    Chưa có ảnh mô tả
+                  </p>
+                  <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-1 max-w-[180px]">
+                    Ảnh kỹ thuật, phác thảo thiết kế rập của Style
+                  </p>
 
-                <div className="grid grid-cols-2 gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8 text-xs cursor-pointer"
-                    onClick={() => fileInputRef.current?.click()}
+                  <div
+                    className="mt-4 grid w-full grid-cols-2 gap-2"
+                    onClick={(e) => e.stopPropagation()}
                   >
-                    Tải ảnh
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8 text-xs cursor-pointer"
-                    onClick={() => void handlePasteImage()}
-                  >
-                    Dán ảnh
-                  </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 text-xs cursor-pointer"
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      Tải ảnh
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 text-xs cursor-pointer"
+                      onClick={() => void handlePasteImage()}
+                    >
+                      Dán ảnh
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            ) : (
-              <div
-                tabIndex={0}
-                onPaste={handlePasteEvent}
-                onClick={() => fileInputRef.current?.click()}
-                className="border-2 border-dashed border-gray-200 dark:border-gray-800 rounded-xl aspect-square flex flex-col items-center justify-center p-4 text-center bg-gray-50/50 dark:bg-gray-800/40 cursor-pointer hover:bg-gray-100/60 dark:hover:bg-gray-800 transition-colors"
-                title="Có thể dán ảnh trực tiếp bằng Ctrl+V"
-              >
-                <StyleImagePlaceholder styleCode={styleCode} className="w-12 h-12 mb-2 text-gray-300 dark:text-gray-600 opacity-60" />
-                <p className="text-xs font-bold text-gray-700 dark:text-gray-200">
-                  Chưa có ảnh mô tả
-                </p>
-                <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-1 max-w-[180px]">
-                  Ảnh kỹ thuật, phác thảo thiết kế rập của Style
-                </p>
+              )}
 
-                <div
-                  className="mt-4 grid w-full grid-cols-2 gap-2"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8 text-xs cursor-pointer"
-                    onClick={() => fileInputRef.current?.click()}
-                  >
-                    Tải ảnh
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8 text-xs cursor-pointer"
-                    onClick={() => void handlePasteImage()}
-                  >
-                    Dán ảnh
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={handleFileSelect}
-            />
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleFileSelect}
+              />
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* CỘT PHẢI: Bảng phân bổ công đoạn */}
-      <div className="lg:col-span-8 xl:col-span-9 space-y-6">
+      <div
+        className={`min-w-0 space-y-6 ${
+          isEditing
+            ? "mx-auto flex max-h-[calc(100dvh-2rem)] w-full max-w-[1320px] flex-col"
+            : "lg:col-span-9 xl:col-span-10"
+        }`}
+      >
 
         {/* Main Table Card */}
-        <div className="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-xs dark:border-gray-800 dark:bg-gray-900">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 p-4 dark:border-gray-800">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-xs dark:border-gray-800 dark:bg-gray-900">
+          <div className="shrink-0 flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 p-4 dark:border-gray-800">
             <div>
               <h3 className="text-base font-bold text-gray-900 dark:text-white">
                 Bảng quy trình công đoạn mẫu Fit
@@ -657,17 +831,17 @@ export function StyleOperationStepTable({
             </div>
 
             <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleExportExcel}
-                disabled={rows.length === 0}
-              >
-                <DownloadIcon className="w-4 h-4" />
-                Xuất Excel
-              </Button>
-              {canEdit && (
+              {!isEditing && (
                 <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleExportExcel}
+                    disabled={rows.length === 0}
+                  >
+                    <DownloadIcon className="w-4 h-4" />
+                    Xuất Excel
+                  </Button>
                   <Button
                     variant="outline"
                     size="sm"
@@ -676,6 +850,19 @@ export function StyleOperationStepTable({
                     <CopyIcon className="w-4 h-4" />
                     Sao chép công đoạn
                   </Button>
+                  {showEditButton && (
+                    <Button variant="primary" size="sm" onClick={handleEditStart}>
+                      <PencilIcon className="w-4 h-4" />
+                      Chỉnh sửa
+                    </Button>
+                  )}
+                </>
+              )}
+              {isEditing && (
+                <>
+                  <Button variant="outline" size="sm" onClick={requestCloseEditor} disabled={isSaving}>
+                    Hủy
+                  </Button>
                   <Button variant="outline" size="sm" onClick={addRow}>
                     <PlusIcon className="w-4 h-4" />
                     Thêm công đoạn
@@ -683,7 +870,10 @@ export function StyleOperationStepTable({
                   <Button
                     variant="primary"
                     size="sm"
-                    onClick={() => void triggerSave()}
+                    onClick={async () => {
+                      const saved = await triggerSave();
+                      if (saved) handleEditClose();
+                    }}
                     disabled={isSaving}
                   >
                     <CheckLineIcon className="w-4 h-4" />
@@ -694,19 +884,19 @@ export function StyleOperationStepTable({
             </div>
           </div>
 
-          <div className="max-h-[calc(100vh-300px)] min-h-[290px] overflow-y-auto overflow-x-auto">
-            <table className="w-full text-left text-xs">
+          <div className="min-h-0 flex-1 overflow-auto">
+            <table className="w-full min-w-[720px] 2xl:min-w-[980px] table-fixed text-left text-xs">
               <thead className="sticky top-0 z-20 bg-gray-50/95 dark:bg-gray-800/95 shadow-xs">
                 <tr className="border-b border-gray-200 dark:border-gray-800 text-gray-500 dark:text-gray-400 font-semibold">
-                  <th className="py-2.5 px-2 text-center w-10">#</th>
-                  <th className="py-2.5 px-2 min-w-[180px]">Tên công đoạn quy trình</th>
-                  <th className="py-2.5 px-1.5 text-center min-w-[110px] w-28 bg-amber-50/40 dark:bg-amber-950/10">
+                  <th className="py-2 px-2 text-center w-10">#</th>
+                  <th className={`w-[180px] px-2 py-2 ${editable ? "bg-brand-50/40 dark:bg-brand-950/15" : ""}`}>Tên công đoạn quy trình</th>
+                  <th className={`w-[80px] px-1.5 py-2 text-center ${editable ? "bg-brand-50/40 dark:bg-brand-950/15" : "bg-amber-50/40 dark:bg-amber-950/10"}`}>
                     Thời gian (giây/SP)
                   </th>
-                  <th className="py-2.5 px-1.5 text-center w-20">% công đoạn</th>
-                  <th className="py-2.5 px-1.5 text-center w-20">SP/1H</th>
-                  <th className="py-2.5 px-2 min-w-[110px] w-28">Ghi chú</th>
-                  <th className="py-2.5 px-1.5 text-center min-w-[110px] w-28">
+                  <th className="py-2 px-1.5 text-center w-[58px]">% công đoạn</th>
+                  <th className="py-2 px-1.5 text-center w-[62px]">SP/1H</th>
+                  <th className={`w-[120px] px-2 py-2 ${editable ? "bg-brand-50/40 dark:bg-brand-950/15" : ""}`}>Ghi chú</th>
+                  <th className={`py-2 px-1 text-center ${editable ? "w-[80px]" : "w-[92px]"}`}>
                     <div className="flex flex-col items-center gap-1">
                       <span className="leading-tight">CM Công Nghệ</span>
                       <div className="flex items-center justify-center gap-1">
@@ -716,23 +906,23 @@ export function StyleOperationStepTable({
                             min={1}
                             max={365}
                             value={baseDays}
-                            disabled={!canEdit}
+                            disabled={!editable}
                             onChange={(e) => setBaseDays(Number(e.target.value) || 30)}
                             onBlur={() => commitBaseDays(baseDays)}
                             onKeyDown={(e) => {
                               if (e.key === "Enter") commitBaseDays(baseDays);
                             }}
-                            className="w-12 h-6 rounded border border-brand-300 bg-white dark:bg-gray-800 text-center text-[11px] font-bold text-brand-700 dark:text-brand-300 focus:outline-none shadow-xs"
+                            className="w-12 h-6 rounded border border-gray-200/80 bg-white/80 text-center text-[11px] font-bold text-gray-800 focus:outline-none shadow-none dark:border-gray-700 dark:bg-gray-900/70 dark:text-gray-100"
                           />
                         ) : (
                           <span className="inline-flex items-center rounded bg-brand-600 text-white px-1.5 py-0.5 text-[10px] font-bold shadow-xs">
                             30 ngày
                           </span>
                         )}
-                        {canEdit && (
-                          <button
-                            type="button"
-                            onClick={() => {
+                  {editable && (
+                    <button
+                      type="button"
+                      onClick={() => {
                               if (customDaysMode) {
                                 setCustomDaysMode(false);
                                 setBaseDays(30);
@@ -741,7 +931,7 @@ export function StyleOperationStepTable({
                                 setCustomDaysMode(true);
                               }
                             }}
-                            className={`relative inline-flex h-3.5 w-7 shrink-0 items-center rounded-full transition-colors cursor-pointer ${customDaysMode ? "bg-brand-600" : "bg-gray-300 dark:bg-gray-700"
+                            className={`relative inline-flex h-3.5 w-7 shrink-0 items-center rounded-full transition-colors cursor-pointer ${customDaysMode ? "bg-brand-500" : "bg-gray-300 dark:bg-gray-700"
                               }`}
                             title={customDaysMode ? "Reset về 30 ngày" : "Tùy chỉnh số ngày"}
                           >
@@ -754,25 +944,36 @@ export function StyleOperationStepTable({
                       </div>
                     </div>
                   </th>
-                  <th className="py-2.5 px-1.5 text-center w-16">Số người</th>
-                  <th className="py-2.5 px-1.5 text-center w-24">
+                  <th className="hidden w-[60px] bg-gray-100/80 px-1.5 py-2 text-center 2xl:table-cell dark:bg-gray-800/70">
+                    <div>Số người</div>
+                    {editable && <div className="mt-0.5 text-[9px] font-medium uppercase tracking-wide text-gray-400">Tự tính</div>}
+                  </th>
+                  <th className={`hidden w-[80px] px-1.5 py-2 text-center 2xl:table-cell ${editable ? "bg-brand-50/40 dark:bg-brand-950/15" : ""}`}>
                     <div className="mb-1 leading-tight">Chỉ tiêu tổng</div>
-                    {canEdit && (
-                      <Input
-                        type="number"
-                        min="0"
-                        value={bulkTargetTotal}
-                        onChange={(e) => updateBulkTargetTotal(e.target.value)}
-                        onBlur={commitBulkTargetTotal}
-                        className="h-7 w-20 px-1 text-center text-xs font-mono font-bold mx-auto [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                        placeholder="Nhập"
-                      />
+                    {editable && (
+                      <>
+                        <div className="mb-1 text-[9px] font-medium uppercase tracking-wide text-brand-600">Nhập chung</div>
+                        <Input
+                          type="number"
+                          min="0"
+                          value={bulkTargetTotal}
+                          onChange={(e) => updateBulkTargetTotal(e.target.value)}
+                          onBlur={commitBulkTargetTotal}
+                          className={`${compactInputClass} w-16 px-1.5 text-center font-mono font-bold mx-auto [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
+                          placeholder="Nhập"
+                        />
+                      </>
                     )}
                   </th>
-                  {canEdit && (
-                    <th className="py-2.5 px-1 text-center w-10 sticky right-0 bg-gray-50 dark:bg-gray-800 z-20 border-l border-gray-200 dark:border-gray-800 shadow-xs">
-                      Xóa
-                    </th>
+                  {editable && (
+                    <>
+                      <th className="w-[76px] border-l border-gray-200 bg-gray-50 px-1 py-2 text-center dark:border-gray-700 dark:bg-gray-800">
+                        Thứ tự
+                      </th>
+                      <th className="sticky right-0 z-20 w-12 border-l border-gray-200 bg-gray-50 px-1 py-2 text-center shadow-xs dark:border-gray-700 dark:bg-gray-800">
+                        Xóa
+                      </th>
+                    </>
                   )}
                 </tr>
               </thead>
@@ -780,7 +981,7 @@ export function StyleOperationStepTable({
                 {rows.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={canEdit ? 10 : 9}
+                      colSpan={editable ? 11 : 9}
                       className="py-12 text-center text-gray-400 dark:text-gray-500"
                     >
                       Chưa có công đoạn nào. Hãy bấm "Thêm công đoạn" hoặc "Sao chép công đoạn" để bắt đầu.
@@ -831,8 +1032,8 @@ export function StyleOperationStepTable({
 
                     let rowBg = "";
                     if (isGroupRow) {
-                      rowBg =
-                        "bg-brand-50/40 dark:bg-brand-950/20 border-l-4 border-brand-500";
+                    rowBg =
+                        "bg-gray-50/70 dark:bg-gray-800/40 border-l-4 border-gray-300 dark:border-gray-700";
                     } else if (isChildRow) {
                       rowBg =
                         "bg-white dark:bg-gray-900 border-l-4 border-transparent";
@@ -843,13 +1044,14 @@ export function StyleOperationStepTable({
                     return (
                       <tr
                         key={row.id || idx}
+                        data-operation-row-index={idx}
                         className={`transition-colors ${rowBg}`}
                       >
-                        <td className="py-2.5 px-3 text-center font-mono text-gray-400">
+                        <td className={`${rowPaddingY} px-2 text-center font-mono text-gray-400`}>
                           {isChildRow ? "" : visibleRowCount}
                         </td>
 
-                        <td className="py-2 px-3">
+                        <td className={`${rowPaddingY} ${rowPaddingX} overflow-hidden`}>
                           <div
                             className={`flex items-center gap-2 ${isChildRow ? "pl-6" : ""
                               }`}
@@ -860,7 +1062,7 @@ export function StyleOperationStepTable({
                                 onClick={() => toggleGroup(row.id!)}
                                 className={`w-5 h-5 rounded flex items-center justify-center transition-transform ${isCollapsed
                                     ? "-rotate-90 bg-gray-100 dark:bg-gray-800 text-gray-500"
-                                    : "bg-brand-100 text-brand-700 dark:bg-brand-950 dark:text-brand-300"
+                                    : "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300"
                                   }`}
                               >
                                 <ChevronDownIcon className="w-3.5 h-3.5" />
@@ -873,13 +1075,13 @@ export function StyleOperationStepTable({
                               </span>
                             )}
 
-                            {canEdit ? (
+                            {editable ? (
                               isGroupRow ? (
-                                <div className="flex items-center gap-2 flex-1">
-                                  <span className="font-bold text-gray-800 dark:text-gray-200">
+                                <div className="flex min-w-0 items-center gap-2 flex-1">
+                                  <span className="min-w-0 truncate font-bold text-gray-800 dark:text-gray-200">
                                     {row.stepName}
                                   </span>
-                                  <span className="rounded bg-brand-100 dark:bg-brand-950 text-brand-700 dark:text-brand-300 px-1.5 py-0.5 text-[10px] font-bold">
+                                  <span className="rounded bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 px-1.5 py-0.5 text-[10px] font-bold">
                                     NHÓM
                                   </span>
                                   {childrenCount > 0 && (
@@ -891,7 +1093,7 @@ export function StyleOperationStepTable({
                                     <button
                                       type="button"
                                       onClick={() => openGroupPicker(row)}
-                                      className="h-6 w-6 rounded-md bg-white dark:bg-gray-800 text-brand-600 dark:text-brand-400 border border-brand-200 dark:border-brand-800 hover:bg-brand-50 dark:hover:bg-brand-950 flex items-center justify-center transition-all cursor-pointer shadow-2xs"
+                                      className="h-6 w-6 rounded-md bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center justify-center transition-all cursor-pointer shadow-none"
                                       title="Sửa nhóm công đoạn"
                                     >
                                       <PencilIcon className="h-3.5 w-3.5" />
@@ -899,7 +1101,7 @@ export function StyleOperationStepTable({
                                     <button
                                       type="button"
                                       onClick={() => addChildRowToGroup(row)}
-                                      className="h-6 w-6 rounded-md bg-brand-500 hover:bg-brand-600 text-white flex items-center justify-center transition-all cursor-pointer shadow-2xs"
+                                      className="h-6 w-6 rounded-md bg-gray-800 hover:bg-gray-700 text-white flex items-center justify-center transition-all cursor-pointer shadow-none"
                                       title="Thêm một dòng công đoạn mới vào nhóm"
                                     >
                                       <PlusIcon className="h-3.5 w-3.5" />
@@ -910,11 +1112,17 @@ export function StyleOperationStepTable({
                                 <div className="flex-1 min-w-0">
                                   <StageCombobox
                                     value={row.stepName || ""}
+                                    highlightEditable
                                     stageId={row.stageId}
                                     allowGroupSelection={!isChildRow}
                                     groupItems={parentRow?.groupItems}
                                     parentGroupName={parentRow?.stepName}
                                     parentGroupId={parentRow?.groupId || parentRow?.id}
+                                    error={
+                                      invalidRowIndex === idx
+                                        ? "Vui lòng chọn tên công đoạn"
+                                        : undefined
+                                    }
                                     onNameChange={(val) => {
                                       updateLocal(idx, "stepName", val);
                                       if (!val) {
@@ -934,15 +1142,15 @@ export function StyleOperationStepTable({
                                 </div>
                               )
                             ) : (
-                              <span className="font-medium text-gray-900 dark:text-white">
+                              <span className="truncate font-medium text-gray-900 dark:text-white">
                                 {row.stepName}
                               </span>
                             )}
                           </div>
                         </td>
 
-                        <td className="py-2 px-2 text-center bg-amber-50/20 dark:bg-amber-950/5">
-                          {canEdit ? (
+                        <td className={`${rowPaddingY} px-1.5 text-center bg-amber-50/15 dark:bg-amber-950/5`}>
+                          {editable ? (
                             <Input
                               type="number"
                               min="0"
@@ -957,7 +1165,7 @@ export function StyleOperationStepTable({
                               }
                               onBlur={commitOnBlur}
                               disabled={isGroupRow}
-                              className={`mx-auto h-8 w-24 px-1 text-center font-mono font-bold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${isGroupRow ? "bg-transparent border-transparent cursor-not-allowed" : ""
+                              className={`mx-auto ${compactInputClass} w-16 px-1.5 text-center font-mono font-bold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${isGroupRow ? "bg-transparent border-transparent cursor-not-allowed" : ""
                                 }`}
                               placeholder="0"
                             />
@@ -970,62 +1178,96 @@ export function StyleOperationStepTable({
                           )}
                         </td>
 
-                        <td className="py-2 px-2 text-center font-mono font-semibold text-gray-700 dark:text-gray-300">
+                        <td className={`${rowPaddingY} px-1.5 text-center font-mono font-semibold text-gray-700 dark:text-gray-300`}>
                           {percentOfTotal > 0 ? `${percentOfTotal.toFixed(0)}%` : "—"}
                         </td>
 
-                        <td className="py-2 px-2 text-center font-mono font-bold text-brand-600 dark:text-brand-400">
+                        <td className={`${rowPaddingY} px-1.5 text-center font-mono font-bold text-brand-600 dark:text-brand-400`}>
                           {formatMetric(spPerHour, 2)}
-                        </td>
-
-                        <td className="py-2 px-3">
-                          {canEdit && !isGroupRow ? (
-                            <Input
-                              value={row.note || ""}
-                              onChange={(e) =>
-                                updateLocal(idx, "note", e.target.value)
-                              }
-                              onBlur={commitOnBlur}
-                              className="h-8 w-full text-xs"
-                              placeholder="Ghi chú..."
-                            />
-                          ) : (
-                            <span className="text-gray-500 dark:text-gray-400">
-                              {isGroupRow ? "—" : row.note}
-                            </span>
-                          )}
                         </td>
 
                         {idx === visibleRows[0]?.idx && (
                           <td
                             rowSpan={visibleRows.length}
-                            className="border-l border-r border-brand-100 bg-brand-50/40 dark:border-brand-900/40 dark:bg-brand-950/20 px-3 py-3 text-center align-middle"
+                            data-common-note
+                            className={`${rowPaddingY} ${rowPaddingX} overflow-hidden border-l border-r border-gray-200 bg-gray-50/40 text-center align-middle dark:border-gray-700 dark:bg-gray-800/30`}
                           >
-                            <div className="font-mono tabular-nums text-2xl font-black text-brand-900 dark:text-brand-200">
+                            {editable ? (
+                              <textarea
+                                value={commonNote}
+                                onChange={(event) => updateCommonNote(event.target.value)}
+                                className="mx-auto min-h-20 w-full resize-y rounded-lg border border-brand-200 bg-brand-50/50 px-2 py-2 text-xs text-gray-900 outline-none focus:border-brand-400 focus:ring-1 focus:ring-brand-100 dark:border-brand-800 dark:bg-brand-950/20 dark:text-white"
+                                placeholder="Nhập ghi chú chung..."
+                                aria-label="Ghi chú chung"
+                              />
+                            ) : (
+                              <span
+                                className="line-clamp-4 max-w-full break-words text-gray-500 dark:text-gray-400"
+                                title={commonNote || undefined}
+                              >
+                                {commonNote || "—"}
+                              </span>
+                            )}
+                          </td>
+                        )}
+
+                        {idx === visibleRows[0]?.idx && (
+                          <td
+                            rowSpan={visibleRows.length}
+                            className="border-l border-r border-gray-200 dark:border-gray-700 bg-gray-50/70 dark:bg-gray-800/40 px-2 py-2 text-center align-middle"
+                          >
+                            <div className="font-mono tabular-nums text-xl font-black text-gray-900 dark:text-gray-100">
                               $ {formatMetric(commonCmTechnology, 2)}
                             </div>
                           </td>
                         )}
 
-                        <td className="py-2 px-2 text-center font-mono font-medium text-gray-600 dark:text-gray-300">
-                          {formatMetric(peopleNeeded, 1)}
+                        <td className={`${rowPaddingY} hidden bg-gray-100/60 px-1.5 text-center font-mono font-medium text-gray-600 2xl:table-cell dark:bg-gray-800/50 dark:text-gray-300`}>
+                          {formatMetric(peopleNeeded, 2)}
                         </td>
 
-                        <td className="py-2 px-2 text-center font-mono font-bold">
+                        <td className={`${rowPaddingY} hidden 2xl:table-cell px-1.5 text-center font-mono font-bold`}>
                           {displayTargetTotal > 0 ? displayTargetTotal : "—"}
                         </td>
 
-                        {canEdit && (
-                          <td className="py-2 px-1 text-center sticky right-0 bg-white dark:bg-gray-900 z-10 border-l border-gray-100 dark:border-gray-800">
-                            <button
-                              type="button"
-                              onClick={() => setDeletingRowIndex(idx)}
-                              className="text-gray-400 hover:text-red-500 transition-colors p-1 cursor-pointer"
-                              title="Xóa công đoạn"
-                            >
-                              <TrashBinIcon className="w-4 h-4" />
-                            </button>
-                          </td>
+                        {editable && (
+                          <>
+                            <td className={`${rowPaddingY} border-l border-gray-200 bg-gray-50/50 px-1 text-center dark:border-gray-700 dark:bg-gray-800/50`}>
+                              <div className="flex items-center justify-center gap-1">
+                              <button
+                                type="button"
+                                onClick={() => moveRowByOne(idx, -1)}
+                                disabled={idx === 0 || Boolean(row.parentStepId)}
+                                className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-700 transition-none hover:border-gray-400 hover:bg-gray-100 hover:text-gray-950 disabled:cursor-not-allowed disabled:opacity-25 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:border-gray-500 dark:hover:bg-gray-800 dark:hover:text-white"
+                                title="Đưa công đoạn lên"
+                                aria-label="Đưa công đoạn lên"
+                              >
+                                <ChevronDownIcon className="h-4 w-4 rotate-180" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => moveRowByOne(idx, 1)}
+                                disabled={idx === rows.length - 1 || Boolean(row.parentStepId)}
+                                className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-700 transition-none hover:border-gray-400 hover:bg-gray-100 hover:text-gray-950 disabled:cursor-not-allowed disabled:opacity-25 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:border-gray-500 dark:hover:bg-gray-800 dark:hover:text-white"
+                                title="Đưa công đoạn xuống"
+                                aria-label="Đưa công đoạn xuống"
+                              >
+                                <ChevronDownIcon className="h-4 w-4" />
+                              </button>
+                              </div>
+                            </td>
+                            <td className={`${rowPaddingY} sticky right-0 z-10 border-l border-gray-200 bg-gray-50/95 px-1 text-center dark:border-gray-700 dark:bg-gray-800/95`}>
+                              <button
+                                type="button"
+                                onClick={() => setDeletingRowIndex(idx)}
+                                className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-600 transition-none hover:border-red-300 hover:bg-red-50 hover:text-red-600 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:border-red-900/50 dark:hover:bg-red-950/30 dark:hover:text-red-400"
+                                title="Xóa công đoạn"
+                                aria-label="Xóa công đoạn"
+                              >
+                                <TrashBinIcon className="h-4 w-4" />
+                              </button>
+                            </td>
+                          </>
                         )}
                       </tr>
                     );
@@ -1035,7 +1277,7 @@ export function StyleOperationStepTable({
               {rows.length > 0 && (
                 <tfoot className="sticky bottom-0 z-20 border-t-2 border-brand-500 bg-brand-50/95 dark:border-brand-500 dark:bg-brand-950/95 shadow-md">
                   <tr className="divide-x divide-brand-200/40 dark:divide-brand-900/40">
-                    <td colSpan={2} className="py-2 px-3 text-right align-middle">
+                    <td colSpan={2} className="py-2 px-2 text-right align-middle">
                       <span className="text-xs font-black uppercase text-brand-900 dark:text-brand-100 tracking-wider">
                         TỔNG CỘNG
                       </span>
@@ -1083,14 +1325,17 @@ export function StyleOperationStepTable({
                         </span>
                       </div>
                     </td>
-                    <td className="py-2 px-1 text-center align-middle font-mono font-bold text-xs text-brand-900 dark:text-brand-100">
+                    <td className="hidden 2xl:table-cell py-2 px-1 text-center align-middle font-mono font-bold text-xs text-brand-900 dark:text-brand-100">
                       —
                     </td>
-                    <td className="py-2 px-1 text-center align-middle font-mono font-bold text-xs text-brand-900 dark:text-brand-100">
+                    <td className="hidden 2xl:table-cell py-2 px-1 text-center align-middle font-mono font-bold text-xs text-brand-900 dark:text-brand-100">
                       —
                     </td>
-                    {canEdit && (
-                      <td className="py-2 px-1 text-center align-middle sticky right-0 bg-brand-50 dark:bg-brand-950 z-20 border-l border-brand-200/60 dark:border-brand-800/60" />
+                    {editable && (
+                      <>
+                        <td className="border-l border-brand-200/60 bg-brand-50 px-1 py-2 text-center align-middle dark:border-brand-800/60 dark:bg-brand-950" />
+                        <td className="sticky right-0 z-20 border-l border-brand-200/60 bg-brand-50 px-1 py-2 text-center align-middle dark:border-brand-800/60 dark:bg-brand-950" />
+                      </>
                     )}
                   </tr>
                 </tfoot>
@@ -1099,57 +1344,13 @@ export function StyleOperationStepTable({
           </div>
         </div>
 
-        {/* Bottom Action Bar */}
-        {canEdit && (
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-gray-200/80 bg-gray-50/90 p-4 shadow-xs dark:border-gray-800 dark:bg-gray-800/60">
-            {/* Trạng thái lưu */}
-            <div className="flex items-center gap-2 text-xs">
-              {isSaving ? (
-                <span className="flex items-center gap-1.5 font-medium text-amber-600 dark:text-amber-400">
-                  <span className="relative flex h-2 w-2">
-                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-75" />
-                    <span className="relative inline-flex h-2 w-2 rounded-full bg-amber-500" />
-                  </span>
-                  Đang lưu dữ liệu...
-                </span>
-              ) : isDirty ? (
-                <span className="flex items-center gap-1.5 font-medium text-blue-600 dark:text-blue-400">
-                  <span className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
-                  Có thay đổi chưa lưu (nhấn "Lưu quy trình" để lưu)
-                </span>
-              ) : lastSavedTime ? (
-                <span className="flex items-center gap-1.5 font-medium text-emerald-600 dark:text-emerald-400">
-                  <CheckLineIcon className="h-3.5 w-3.5" />
-                  Đã lưu tất cả thay đổi ({lastSavedTime})
-                </span>
-              ) : (
-                <span className="text-gray-400 dark:text-gray-500">
-                  Nhấn "Lưu quy trình" khi hoàn tất chỉnh sửa
-                </span>
-              )}
-            </div>
-
-            {/* Nút hành động phía dưới */}
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={addRow}>
-                <PlusIcon className="w-4 h-4" />
-                Thêm công đoạn
-              </Button>
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={() => void triggerSave()}
-                disabled={isSaving}
-              >
-                <CheckLineIcon className="w-4 h-4" />
-                {isSaving ? "Đang lưu..." : "Lưu quy trình"}
-              </Button>
-            </div>
-          </div>
-        )}
-
-
       </div>
+
+      <UnsavedChangesDialog
+        isOpen={pendingDiscardOpen}
+        onConfirmLeave={handleEditClose}
+        onCancel={() => setPendingDiscardOpen(false)}
+      />
 
       {/* Dialogs */}
       <StageGroupPickerDialog
@@ -1228,11 +1429,18 @@ export function StyleOperationStepTable({
           onConfirm={() => {
             const idx = deletingRowIndex;
             setDeletingRowIndex(null);
-            removeRow(idx);
+            void handleDeleteRow(idx);
           }}
           onClose={() => setDeletingRowIndex(null)}
         />
       )}
+
+      <Toast
+        open={Boolean(toast)}
+        message={toast?.message ?? ""}
+        variant={toast?.variant}
+        onClose={hideToast}
+      />
     </div>
   );
 }

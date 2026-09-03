@@ -58,7 +58,7 @@ async function getStageOptions(): Promise<{ options: StageComboboxOption[]; grou
       } else {
         result.push({
           id: g.id,
-          name: g.name,
+          name: `${g.name} (Nhóm công đoạn)`,
           code: g.code,
           description: g.description,
           isGroup: true,
@@ -142,6 +142,8 @@ export interface StageComboboxProps {
   onClear?: () => void;
   onGroupPick?: (group: StageGroup) => void;
   onNameChange?: (val: string) => void;
+  error?: string;
+  highlightEditable?: boolean;
 }
 
 export function StageCombobox({
@@ -155,6 +157,8 @@ export function StageCombobox({
   onClear,
   onGroupPick,
   onNameChange,
+  error,
+  highlightEditable = false,
 }: StageComboboxProps) {
   const [stages, setStages] = useState<StageComboboxOption[]>(_cache || []);
   const [rawGroups, setRawGroups] = useState<StageGroup[]>(_rawGroups || []);
@@ -474,12 +478,18 @@ export function StageCombobox({
       document.body
     );
 
+  const errorId = error ? `stage-combobox-error-${parentGroupId || "row"}` : undefined;
+
   return (
     <div ref={wrapRef} className="relative w-full font-outfit">
       <div
         className={`flex items-center rounded-2xl border bg-white dark:bg-gray-900 transition-all duration-200 ${
           open
             ? "border-brand-500 ring-4 ring-brand-500/10 shadow-xs"
+            : error
+            ? "border-red-500 ring-2 ring-red-500/10"
+            : highlightEditable
+            ? "border-brand-200 bg-brand-50/50 hover:border-brand-300 dark:border-brand-800 dark:bg-brand-950/20"
             : "border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700"
         }`}
       >
@@ -494,6 +504,8 @@ export function StageCombobox({
           onKeyDown={handleKeyDown}
           autoComplete="off"
           spellCheck={false}
+          aria-invalid={Boolean(error)}
+          aria-describedby={errorId}
           placeholder="Tìm công đoạn..."
           className="h-10 flex-1 min-w-0 bg-transparent text-sm text-gray-900 dark:text-white font-medium px-3 placeholder:text-gray-400 focus:outline-none"
         />
@@ -522,6 +534,11 @@ export function StageCombobox({
           />
         </button>
       </div>
+      {error && (
+        <p id={errorId} className="mt-1 px-1 text-xs font-medium text-red-600" role="alert">
+          {error}
+        </p>
+      )}
       {dropdown}
     </div>
   );

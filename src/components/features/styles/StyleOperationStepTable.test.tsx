@@ -1,7 +1,17 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { StyleOperationStepTable } from "./StyleOperationStepTable";
 import type { StyleOperationStepItem } from "@/api/styleOperationStepsApi";
+
+const showToastMock = vi.hoisted(() => vi.fn());
+
+vi.mock("@/hooks/useToast", () => ({
+  useToast: () => ({
+    toast: null,
+    showToast: showToastMock,
+    hideToast: vi.fn(),
+  }),
+}));
 
 const mockSteps: StyleOperationStepItem[] = [
   {
@@ -45,43 +55,32 @@ const mockSteps: StyleOperationStepItem[] = [
 ];
 
 describe("StyleOperationStepTable", () => {
-  afterEach(cleanup);
-
-  it("renders empty state message when steps array is empty", () => {
-    render(
-      <StyleOperationStepTable
-        styleId="style-1"
-        steps={[]}
-        canEdit={true}
-        onSave={vi.fn()}
-      />,
-    );
-
-    expect(
-      screen.getByText("Chưa có công đoạn nào được tạo"),
-    ).toBeTruthy();
+  afterEach(() => {
+    cleanup();
+    vi.restoreAllMocks();
   });
 
-  it("renders table rows and metric summary cards", () => {
+  it("shows edit controls only after clicking Chỉnh sửa", () => {
     render(
       <StyleOperationStepTable
         styleId="style-1"
         steps={mockSteps}
-        cmBaseDays={30}
         canEdit={true}
-        onSave={vi.fn()}
+        onSave={vi.fn().mockResolvedValue(undefined)}
       />,
     );
 
-    expect(screen.getByDisplayValue("Cắt vải")).toBeTruthy();
-    expect(screen.getByText("Nhóm may cổ")).toBeTruthy();
-    expect(screen.getByText("TỔNG")).toBeTruthy();
-    expect(screen.getByText("SP/NGƯỜI/NGÀY")).toBeTruthy();
-    expect(screen.getByText("CÔNG ĐOẠN 1K")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Chỉnh sửa" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Lưu quy trình/i })).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Chỉnh sửa" }));
+
+    expect(screen.queryByRole("button", { name: "Chỉnh sửa" })).toBeNull();
+    expect(screen.getByRole("button", { name: /Lưu quy trình/i })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Thêm công đoạn/i })).toBeTruthy();
   });
 
-
-  it("adds a new row locally when clicking Thêm công đoạn and saves on Lưu quy trình click", () => {
+  it("keeps delete local until the final save", async () => {
     const onSave = vi.fn().mockResolvedValue(undefined);
     render(
       <StyleOperationStepTable
@@ -92,62 +91,92 @@ describe("StyleOperationStepTable", () => {
       />,
     );
 
-    const addButtons = screen.getAllByRole("button", { name: "Thêm công đoạn" });
-    expect(addButtons.length).toBeGreaterThan(0);
-    fireEvent.click(addButtons[0]);
-
-    // onSave is not called immediately on addRow
-    expect(onSave).not.toHaveBeenCalled();
-
-    // Clicking Lưu quy trình triggers onSave with newly added row
-    const saveButtons = screen.getAllByRole("button", { name: /Lưu quy trình/i });
-    fireEvent.click(saveButtons[0]);
-    expect(onSave).toHaveBeenCalled();
-  });
-
-  it("triggers triggerSave when clicking Lưu quy trình", () => {
-    const onSave = vi.fn().mockResolvedValue(undefined);
-    render(
-      <StyleOperationStepTable
-        styleId="style-1"
-        steps={mockSteps}
-        canEdit={true}
-        onSave={onSave}
-      />,
-    );
-
-    const saveButtons = screen.getAllByRole("button", { name: /Lưu quy trình/i });
-    expect(saveButtons.length).toBe(2);
-    fireEvent.click(saveButtons[0]);
-
-    expect(onSave).toHaveBeenCalled();
-  });
-
-  it("removes row locally when clicking delete button and saves on Lưu quy trình click", () => {
-    const onSave = vi.fn().mockResolvedValue(undefined);
-    render(
-      <StyleOperationStepTable
-        styleId="style-1"
-        steps={mockSteps}
-        canEdit={true}
-        onSave={onSave}
-      />,
-    );
+    fireEvent.click(screen.getByRole("button", { name: "Chỉnh sửa" }));
 
     const deleteButtons = screen.getAllByTitle("Xóa công đoạn");
-    expect(deleteButtons.length).toBeGreaterThan(0);
     fireEvent.click(deleteButtons[0]);
 
-    // Confirm in dialog (select modal confirm button)
     const confirmButtons = screen.getAllByRole("button", { name: "Xóa công đoạn" });
     fireEvent.click(confirmButtons[confirmButtons.length - 1]);
 
-    // onSave is not called immediately on removeRow
     expect(onSave).not.toHaveBeenCalled();
 
-    // Clicking Lưu quy trình triggers onSave with updated rows
-    const saveButtons = screen.getAllByRole("button", { name: /Lưu quy trình/i });
-    fireEvent.click(saveButtons[0]);
-    expect(onSave).toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: /Lưu quy trình/i }));
+
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+    const savedSteps = onSave.mock.calls[0][0] as Partial<StyleOperationStepItem>[];
+    expect(savedSteps).toHaveLength(2);
+    expect(savedSteps.map((step) => step.stepName)).toEqual(["Nhóm may cổ", "May xẻ cổ"]);
+  });
+
+  it("saves rows in the current order after moving a block", async () => {
+    const onSave = vi.fn().mockResolvedValue(undefined);
+    render(
+      <StyleOperationStepTable
+        styleId="style-1"
+        steps={mockSteps}
+        canEdit={true}
+        onSave={onSave}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Chỉnh sửa" }));
+
+    const downButtons = screen.getAllByTitle("Đưa công đoạn xuống");
+    fireEvent.click(downButtons[0]);
+
+    fireEvent.click(screen.getByRole("button", { name: /Lưu quy trình/i }));
+
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+    const savedSteps = onSave.mock.calls[0][0] as Partial<StyleOperationStepItem>[];
+    expect(savedSteps.map((step) => step.stepName)).toEqual([
+      "Nhóm may cổ",
+      "May xẻ cổ",
+      "Cắt vải",
+    ]);
+  });
+
+  it("edits one common note and applies it to every saved row", async () => {
+    const onSave = vi.fn().mockResolvedValue(undefined);
+    render(
+      <StyleOperationStepTable
+        styleId="style-1"
+        steps={mockSteps}
+        canEdit={true}
+        onSave={onSave}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Chỉnh sửa" }));
+    const noteInput = screen.getByRole("textbox", { name: "Ghi chú chung" });
+    expect((noteInput as HTMLTextAreaElement).value).toBe("Ghi chú cắt");
+    fireEvent.change(noteInput, { target: { value: "Ghi chú chung" } });
+    fireEvent.click(screen.getByRole("button", { name: /Lưu quy trình/i }));
+
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+    const savedSteps = onSave.mock.calls[0][0] as Partial<StyleOperationStepItem>[];
+    expect(savedSteps.every((step) => step.note === "Ghi chú chung")).toBe(true);
+  });
+
+  it("jumps to and marks the first row with an empty operation name", async () => {
+    const onSave = vi.fn().mockResolvedValue(undefined);
+    render(
+      <StyleOperationStepTable
+        styleId="style-1"
+        steps={mockSteps}
+        canEdit={true}
+        onSave={onSave}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Chỉnh sửa" }));
+    fireEvent.click(screen.getByRole("button", { name: /Thêm công đoạn/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Lưu quy trình/i }));
+
+    const error = await screen.findByRole("alert");
+    expect(onSave).not.toHaveBeenCalled();
+    expect(showToastMock).not.toHaveBeenCalled();
+    expect(error.textContent).toContain("Vui lòng chọn tên công đoạn");
+    await waitFor(() => expect(document.activeElement?.getAttribute("placeholder")).toBe("Tìm công đoạn..."));
   });
 });
