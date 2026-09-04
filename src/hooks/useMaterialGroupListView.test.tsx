@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { MaterialGroup } from "@/types/material-group";
 import { useMaterialGroupListView } from "./useMaterialGroupListView";
 
-const groups: MaterialGroup[] = Array.from({ length: 6 }, (_, index) => ({
+const groups: MaterialGroup[] = Array.from({ length: 12 }, (_, index) => ({
   id: `group-${index + 1}`,
   name: `Nhóm ${index + 1}`,
   status: "active",

@@ -31,7 +31,7 @@ type Dialog =
   | undefined;
 
 const emptyMaterials: Material[] = [];
-const pageSize = 5;
+const pageSize = 10;
 
 export default function MaterialsPage() {
   const [filters, setFilters] = useState<MaterialFilters>({});

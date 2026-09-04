@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import type { MaterialGroup, MaterialGroupStatus } from "@/types/material-group";
 
-const pageSize = 5;
+const pageSize = 10;
 
 export function useMaterialGroupListView(materialGroups: MaterialGroup[]) {
   const [search, setSearch] = useState("");

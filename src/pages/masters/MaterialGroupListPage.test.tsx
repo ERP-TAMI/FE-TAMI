@@ -243,7 +243,7 @@ describe("MaterialGroupListPage", () => {
   });
 
   it("phân trang danh sách và quay lại trang đầu khi tìm kiếm", () => {
-    const materialGroups = Array.from({ length: 6 }, (_, index) => ({
+    const materialGroups = Array.from({ length: 11 }, (_, index) => ({
       ...materialGroup,
       id: `e41a0a7d-28b1-4d78-9c26-b017f5c5f8${index}`,
       name: `Nhóm vật tư ${index + 1}`,
@@ -258,17 +258,17 @@ describe("MaterialGroupListPage", () => {
 
     renderPage();
 
-    expect(screen.getByText("Hiển thị 1–5 trên 6 nhóm vật tư")).toBeTruthy();
-    expect(screen.queryByText("Nhóm vật tư 6")).toBeNull();
+    expect(screen.getByText("Hiển thị 1–10 trên 11 nhóm vật tư")).toBeTruthy();
+    expect(screen.queryByText("Nhóm vật tư 11")).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "Trang sau" }));
-    expect(screen.getByText("Nhóm vật tư 6")).toBeTruthy();
+    expect(screen.getByText("Nhóm vật tư 11")).toBeTruthy();
     expect(screen.queryByText("Nhóm vật tư 1")).toBeNull();
 
     fireEvent.change(screen.getByLabelText("Tìm kiếm nhóm vật tư"), {
-      target: { value: "Nhóm vật tư 1" },
+      target: { value: "Nhóm vật tư 11" },
     });
-    expect(screen.getByText("Nhóm vật tư 1")).toBeTruthy();
+    expect(screen.getByText("Nhóm vật tư 11")).toBeTruthy();
     expect(screen.getByText("Hiển thị 1–1 trên 1 nhóm vật tư")).toBeTruthy();
   });
 });
