@@ -287,7 +287,7 @@ export default function StyleListPage() {
                   >
                     <div>
                       <div className="relative overflow-hidden rounded-lg">
-                        <StyleImagePlaceholder styleCode={style.styleCode} className="transition-transform duration-200 group-hover:scale-[1.02]" />
+                        <StyleImagePlaceholder className="transition-transform duration-200 group-hover:scale-[1.02]" />
                       </div>
 
                       <div className="mt-3 space-y-1.5">

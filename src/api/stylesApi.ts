@@ -36,4 +36,20 @@ export const stylesApi = {
   deleteStyle: async (id: string): Promise<void> => {
     await apiClient.delete(`/styles/${id}`);
   },
+
+  uploadImage: async (
+    file: File,
+    folder = "style-images",
+  ): Promise<{ fileUrl: string; fileKey: string }> => {
+    const formData = new FormData();
+    formData.append("file", file);
+    const res = await apiClient.post<{ fileUrl: string; fileKey: string }>(
+      `/uploads?folder=${folder}`,
+      formData,
+      {
+        headers: { "Content-Type": "multipart/form-data" },
+      },
+    );
+    return res.data;
+  },
 };

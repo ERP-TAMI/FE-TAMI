@@ -8,7 +8,7 @@ export function UnsavedChangesDialog({ isOpen, onConfirmLeave, onCancel }: Props
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 animate-in fade-in duration-150">
+    <div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 animate-in fade-in duration-150">
       <div className="w-full max-w-sm rounded-xl border border-gray-200 bg-white p-5 shadow-lg dark:border-gray-800 dark:bg-gray-900">
         <h3 className="text-base font-semibold text-gray-900 dark:text-white">
           Bạn có thay đổi chưa được lưu

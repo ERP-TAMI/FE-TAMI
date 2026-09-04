@@ -2,42 +2,57 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import type { StyleStatus } from "@/types/style";
 import { useStyle, useUpdateStyle } from "@/hooks/useStyles";
+import {
+  useStyleOperationSteps,
+  useBulkSaveStyleOperationSteps,
+} from "@/hooks/useStyleOperationSteps";
 import { useUploadImage } from "@/hooks/useUploadImage";
 import { useToast } from "@/hooks/useToast";
 import { Toast } from "@/components/shared";
 import { StyleFormModal } from "@/components/features/styles/StyleFormModal";
+import { StyleOperationStepTable } from "@/components/features/styles/StyleOperationStepTable";
 import { UnsavedChangesDialog } from "@/components/features/styles/UnsavedChangesDialog";
 import { StyleHeader } from "@/components/features/styles/StyleHeader";
-import { StyleTabs } from "@/components/features/styles/StyleTabs";
 import { GeneralTab } from "@/components/features/styles/GeneralTab";
 import { StyleProductionDocTab } from "@/components/features/production-docs/StyleProductionDocTab";
 import { getApiError, isConflictError } from "@/lib/apiError";
 import { validateImageFile } from "@/lib/validateImageFile";
+import type { StyleOperationStepItem } from "@/api/styleOperationStepsApi";
+import { InfoIcon, DocsIcon, PageIcon } from "@/icons";
 
 export default function StyleDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
   const location = useLocation();
+  const navigate = useNavigate();
 
-  const activeTab: "general" | "production_doc" = location.pathname.endsWith("/production-doc")
+  const isStepsTab =
+    location.pathname.endsWith("/operation-steps") ||
+    location.pathname.endsWith("/steps");
+  const isProductionDocTab = location.pathname.endsWith("/production-doc");
+
+  const activeTab: "general" | "steps" | "production_doc" = isStepsTab
+    ? "steps"
+    : isProductionDocTab
     ? "production_doc"
     : "general";
 
-  useEffect(() => {
-    if (id && !location.pathname.endsWith("/detail") && !location.pathname.endsWith("/production-doc")) {
-      navigate(`/styles/${id}/detail`, { replace: true });
-    }
-  }, [id, location.pathname, navigate]);
-
   const [isProductionDocEditing, setIsProductionDocEditing] = useState(false);
-  const [pendingTab, setPendingTab] = useState<"general" | "production_doc" | null>(null);
+  const [isOperationStepsEditing, setIsOperationStepsEditing] = useState(false);
+  const [pendingTab, setPendingTab] = useState<"general" | "steps" | "production_doc" | null>(null);
   const [pendingNavigation, setPendingNavigation] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!isProductionDocEditing) return;
+    if (!isProductionDocEditing && !isOperationStepsEditing) return;
 
     const handleDocumentClick = (event: MouseEvent) => {
-      if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+      if (
+        event.defaultPrevented ||
+        event.button !== 0 ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.shiftKey ||
+        event.altKey
+      ) {
         return;
       }
       const target = event.target as HTMLElement | null;
@@ -60,19 +75,21 @@ export default function StyleDetailPage() {
       document.removeEventListener("click", handleDocumentClick, true);
       window.removeEventListener("beforeunload", handleBeforeUnload);
     };
-  }, [isProductionDocEditing]);
+  }, [isProductionDocEditing, isOperationStepsEditing]);
 
-  const navigateToTab = (tab: "general" | "production_doc") => {
+  const navigateToTab = (tab: "general" | "steps" | "production_doc") => {
     if (!id) return;
     if (tab === "production_doc") {
       navigate(`/styles/${id}/production-doc`);
+    } else if (tab === "steps") {
+      navigate(`/styles/${id}/operation-steps`);
     } else {
       navigate(`/styles/${id}/detail`);
     }
   };
 
-  const handleTabChange = (tab: "general" | "production_doc") => {
-    if (isProductionDocEditing && tab !== activeTab) {
+  const handleTabChange = (tab: "general" | "steps" | "production_doc") => {
+    if ((isProductionDocEditing || isOperationStepsEditing) && tab !== activeTab) {
       setPendingTab(tab);
       return;
     }
@@ -95,6 +112,9 @@ export default function StyleDetailPage() {
   const update = useUpdateStyle();
   const statusUpdate = useUpdateStyle();
   const uploadImage = useUploadImage();
+
+  const stepsQuery = useStyleOperationSteps(id);
+  const bulkSaveSteps = useBulkSaveStyleOperationSteps(id || "");
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const { toast, showToast, hideToast } = useToast();
@@ -146,8 +166,6 @@ export default function StyleDetailPage() {
 
   const handlePaste = useCallback(
     (e: ClipboardEvent) => {
-      // Chỉ áp dụng cho ảnh chính của Style ở tab "Thông tin chung" — tránh ghi đè nhầm
-      // baseImageVersionId khi người dùng đang paste ảnh vào tab Tài liệu sản xuất.
       if (activeTab !== "general") return;
       const items = e.clipboardData?.items;
       if (!items) return;
@@ -210,6 +228,35 @@ export default function StyleDetailPage() {
     }
   };
 
+  const handleSaveSteps = async (
+    stepsData: Partial<StyleOperationStepItem>[],
+    baseDays?: number,
+  ) => {
+    if (!id) return;
+    try {
+      const cleanedSteps = (stepsData || []).map((step, orderIndex) => ({
+        id: step.id ? String(step.id) : undefined,
+        stepName: step.stepName || "",
+        description: step.description || undefined,
+        timePerPiece: Number(step.timePerPiece) || 0,
+        ssv: Number(step.ssv) || 0,
+        targetTotal: Number(step.targetTotal) || 0,
+        note: step.note || undefined,
+        orderIndex,
+        isGroup: Boolean(step.isGroup),
+        stageId: step.stageId ? String(step.stageId) : undefined,
+        groupId: step.groupId ? String(step.groupId) : undefined,
+        parentStepId: step.parentStepId ? String(step.parentStepId) : undefined,
+        groupItems: step.groupItems || undefined,
+      }));
+
+      await bulkSaveSteps.mutateAsync({ steps: cleanedSteps, as3bCmBaseDays: baseDays });
+      showToast("Đã lưu quy trình công đoạn mẫu Fit thành công.");
+    } catch (err) {
+      showToast(getApiError(err, "Lưu quy trình công đoạn thất bại.").message, "error");
+    }
+  };
+
   const formError = update.error
     ? getApiError(update.error, "Có lỗi xảy ra khi lưu thông tin mẫu Fit.").message
     : null;
@@ -237,7 +284,7 @@ export default function StyleDetailPage() {
         <button
           type="button"
           onClick={() => navigate("/styles")}
-          className="mt-4 rounded-md bg-red-600 px-4 py-2 text-xs font-medium text-white hover:bg-red-700 transition-colors"
+          className="mt-4 rounded-md bg-red-600 px-4 py-2 text-xs font-medium text-white hover:bg-red-700 transition-colors cursor-pointer"
         >
           Quay lại danh sách
         </button>
@@ -246,10 +293,8 @@ export default function StyleDetailPage() {
   }
 
   return (
-    <div className="space-y-5">
-      {/* Top Header Container — cuộn tự nhiên theo trang, không sticky (khớp UX bản gốc) */}
+    <div className="space-y-5 pt-2 md:pt-3">
       <div className="space-y-4">
-        {/* Enterprise Compact Header */}
         <StyleHeader
           styleCode={style.styleCode}
           styleName={style.styleName}
@@ -257,11 +302,53 @@ export default function StyleDetailPage() {
           onEditClick={activeTab === "general" ? () => setIsEditModalOpen(true) : undefined}
         />
 
-        {/* Primary Navigation Tabs */}
-        <StyleTabs activeTab={activeTab} onTabChange={handleTabChange} />
+        <div className="border-b border-gray-200 dark:border-gray-800">
+          <nav className="flex space-x-6" aria-label="Tabs">
+            <button
+              type="button"
+              onClick={() => handleTabChange("general")}
+              className={`flex items-center gap-2 border-b-2 py-2.5 px-1 text-sm font-semibold transition-colors cursor-pointer ${
+                activeTab === "general"
+                  ? "border-brand-500 text-brand-600 dark:text-brand-400"
+                  : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              }`}
+            >
+              <InfoIcon className="w-4 h-4" />
+              Thông tin mẫu Fit
+            </button>
+            <button
+              type="button"
+              onClick={() => handleTabChange("steps")}
+              className={`flex items-center gap-2 border-b-2 py-2.5 px-1 text-sm font-semibold transition-colors cursor-pointer ${
+                activeTab === "steps"
+                  ? "border-brand-500 text-brand-600 dark:text-brand-400"
+                  : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              }`}
+            >
+              <DocsIcon className="w-4 h-4" />
+              Quy trình công đoạn &amp; KIM
+              {(stepsQuery.data?.length ?? 0) > 0 && (
+                <span className="ml-1.5 rounded-full bg-brand-50 dark:bg-brand-950/60 px-2 py-0.5 text-xs text-brand-600 dark:text-brand-400">
+                  {stepsQuery.data?.length}
+                </span>
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => handleTabChange("production_doc")}
+              className={`flex items-center gap-2 border-b-2 py-2.5 px-1 text-sm font-semibold transition-colors cursor-pointer ${
+                activeTab === "production_doc"
+                  ? "border-brand-500 text-brand-600 dark:text-brand-400"
+                  : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              }`}
+            >
+              <PageIcon className="w-4 h-4" />
+              Tài liệu sản xuất
+            </button>
+          </nav>
+        </div>
       </div>
 
-      {/* Tab Content */}
       {activeTab === "general" ? (
         <GeneralTab
           style={style}
@@ -275,6 +362,19 @@ export default function StyleDetailPage() {
           onClearImage={clearLocalImage}
           onToggleStatus={() => void handleToggleStatus()}
           isStatusPending={statusUpdate.isPending}
+        />
+      ) : activeTab === "steps" ? (
+        <StyleOperationStepTable
+          styleId={style.id}
+          steps={stepsQuery.data || []}
+          cmBaseDays={style.as3bCmBaseDays || 30}
+          canEdit={true}
+          onEditingChange={setIsOperationStepsEditing}
+          onSave={handleSaveSteps}
+          imageUrl={imageUrl}
+          styleCode={style.styleCode}
+          styleName={style.styleName}
+          onImageChange={(file) => void handleUploadAndSaveImage(file)}
         />
       ) : (
         <StyleProductionDocTab
@@ -294,7 +394,6 @@ export default function StyleDetailPage() {
         }}
       />
 
-      {/* Edit Modal */}
       {isEditModalOpen && (
         <StyleFormModal
           isOpen
@@ -310,9 +409,7 @@ export default function StyleDetailPage() {
                 showToast("Đã cập nhật mẫu Fit.");
                 setIsEditModalOpen(false);
               })
-              .catch(() => {
-                /* Error handled via update.error */
-              })
+              .catch(() => {})
           }
         />
       )}

@@ -88,7 +88,6 @@ export function GeneralTab({
               }`}
             >
               <StyleImagePlaceholder
-                styleCode={style.styleCode}
                 className="h-32 w-32 text-gray-300 dark:text-gray-600 mb-4"
               />
               <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">
