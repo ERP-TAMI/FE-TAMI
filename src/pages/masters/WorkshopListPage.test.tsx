@@ -168,7 +168,8 @@ describe("WorkshopListPage", () => {
     });
 
     hooks.updateStatus.mutateAsync.mockClear();
-    fireEvent.click(screen.getByRole("switch", { name: "Bật Xưởng Cắt" }));
+    const switchToggle = await screen.findByRole("switch", { name: "Bật Xưởng Cắt" });
+    fireEvent.click(switchToggle);
     await waitFor(() => {
       expect(hooks.updateStatus.mutateAsync).toHaveBeenCalledWith({
         id: workshops[1].id,

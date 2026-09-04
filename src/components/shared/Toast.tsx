@@ -41,7 +41,7 @@ export function Toast({
     <div
       role="status"
       aria-live="polite"
-      className={`text-theme-sm shadow-theme-lg fixed right-4 bottom-4 z-50 flex max-w-sm items-center gap-4 rounded-xl border px-4 py-3 ${variantClasses[variant]}`}
+      className={`text-theme-sm shadow-theme-lg fixed right-4 bottom-4 z-[100] flex max-w-sm items-center gap-4 rounded-xl border px-4 py-3 ${variantClasses[variant]}`}
     >
       <span>{message}</span>
       <Button variant="ghost" size="sm" onClick={onClose} aria-label={closeLabel}>

@@ -48,8 +48,10 @@ export function AppRoutes() {
             <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="dashboard" element={<DashboardPage />} />
             <Route path="styles" element={<StyleListPage />} />
-            <Route path="styles/:id" element={<StyleDetailPage />} />
             <Route path="styles/:id/detail" element={<StyleDetailPage />} />
+            <Route path="styles/:id/operation-steps" element={<StyleDetailPage />} />
+            <Route path="styles/:id/steps" element={<StyleDetailPage />} />
+            <Route path="styles/:id" element={<StyleDetailPage />} />
             <Route path="styles/:id/production-doc" element={<StyleDetailPage />} />
             <Route path="bom" element={<BomPage />} />
             <Route path="po" element={<PoPage />} />
