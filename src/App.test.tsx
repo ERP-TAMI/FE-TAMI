@@ -108,7 +108,7 @@ function signIn() {
       fullName: "Quản trị hệ thống",
       roleCode: "SA",
       roleName: "Quản trị hệ thống",
-      permissions: [],
+      permissions: ["management.area.access"],
     },
   });
 }
@@ -164,7 +164,45 @@ describe("application routes", () => {
     window.history.pushState({}, "", "/login");
     renderApp();
 
-    expect(screen.getByRole("heading", { name: "Dashboard" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Dashboard quản lý" })).toBeTruthy();
+  });
+
+  it("lets an admin switch areas without replacing the session", async () => {
+    signIn();
+    const session = useAuthStore.getState().user;
+    window.history.pushState({}, "", "/management/dashboard");
+    const { router } = renderApp();
+    expect(screen.getByRole("navigation", { name: "Điều hướng Quản lý" })).toBeTruthy();
+    expect(screen.queryByRole("complementary", { name: "Primary navigation" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Tài khoản" }));
+    fireEvent.click(screen.getByRole("link", { name: "Vào hệ thống nhân viên" }));
+    expect(await screen.findByRole("heading", { name: "Dashboard" })).toBeTruthy();
+    expect(router.state.location.pathname).toBe("/dashboard");
+    fireEvent.click(screen.getByRole("button", { name: "Tài khoản" }));
+    fireEvent.click(screen.getByRole("link", { name: "Về khu Quản lý" }));
+    expect(await screen.findByRole("heading", { name: "Dashboard quản lý" })).toBeTruthy();
+    expect(useAuthStore.getState().user).toBe(session);
+    expect(useAuthStore.getState().accessToken).toBe("test-access-token");
+  });
+
+  it("denies employee deep links to management", () => {
+    signIn();
+    useAuthStore.setState({
+      user: { ...useAuthStore.getState().user!, roleCode: "NVKH", permissions: [] },
+    });
+    window.history.pushState({}, "", "/management/purchase-orders");
+    const { router } = renderApp();
+    expect(router.state.location.pathname).toBe("/dashboard");
+    fireEvent.click(screen.getByRole("button", { name: "Tài khoản" }));
+    expect(screen.queryByRole("link", { name: "Về khu Quản lý" })).toBeNull();
+  });
+
+  it("waits for session bootstrap before showing management", () => {
+    useAuthStore.setState({ status: "loading" });
+    window.history.pushState({}, "", "/management/dashboard");
+    renderApp();
+    expect(screen.getByRole("status", { name: "Đang tải" })).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "Dashboard quản lý" })).toBeNull();
   });
 
   it("redirects the masters entry route to materials", () => {
