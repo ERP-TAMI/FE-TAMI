@@ -27,7 +27,7 @@ export function AttachmentsSection({
     try {
       await onLink(documentIdInput.trim());
       setDocumentIdInput("");
-    } catch (err) {
+    } catch {
       setValidationError("Không thể đính kèm tài liệu với ID đã nhập.");
     }
   };
@@ -51,7 +51,7 @@ export function AttachmentsSection({
           if (uploadedDocId) {
             await onLink(uploadedDocId);
           }
-        } catch (uploadErr) {
+        } catch {
           setValidationError(`Tải lên file ${file.name} thất bại.`);
         }
       }
