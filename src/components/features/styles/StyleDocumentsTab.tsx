@@ -1,13 +1,6 @@
 import { useRef, useState } from "react";
-import { Button, ConfirmDialog, FileTypeIcon } from "@/components/shared";
-import {
-  CloseLineIcon,
-  DownloadIcon,
-  EyeIcon,
-  FileIcon,
-  PlusIcon,
-  TrashBinIcon,
-} from "@/icons";
+import { ConfirmDialog, FileTypeIcon } from "@/components/shared";
+import { DownloadIcon, EyeIcon, FileIcon, PlusIcon, TrashBinIcon } from "@/icons";
 import { styleDocumentsApi } from "@/api/style-documents.api";
 import {
   useRemoveStyleDocument,
@@ -65,7 +58,6 @@ export function StyleDocumentsTab({ styleId }: Props) {
   const removeMutation = useRemoveStyleDocument(styleId);
 
   const [isDragOver, setIsDragOver] = useState(false);
-  const [stagedFiles, setStagedFiles] = useState<File[]>([]);
   const [uploadingItems, setUploadingItems] = useState<UploadingItem[]>([]);
   const [pendingRemove, setPendingRemove] = useState<StyleDocumentItem | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -74,49 +66,13 @@ export function StyleDocumentsTab({ styleId }: Props) {
     const files = Array.from(fileList);
     if (files.length === 0) return;
 
-    setStagedFiles((prev) => {
-      const existingKeys = new Set(prev.map((f) => `${f.name}_${f.size}_${f.lastModified}`));
-      const accepted: File[] = [];
-      files.forEach((file) => {
-        const validationError = validateFile(file);
-        if (validationError) {
-          showToast(`${file.name}: ${validationError}`, "error");
-          return;
-        }
-        const key = `${file.name}_${file.size}_${file.lastModified}`;
-        if (!existingKeys.has(key)) {
-          existingKeys.add(key);
-          accepted.push(file);
-        }
-      });
-      return [...prev, ...accepted];
-    });
-  };
+    files.forEach((file) => {
+      const validationError = validateFile(file);
+      if (validationError) {
+        showToast(`${file.name}: ${validationError}`, "error");
+        return;
+      }
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      handleFiles(e.target.files);
-      e.target.value = "";
-    }
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragOver(false);
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      handleFiles(e.dataTransfer.files);
-    }
-  };
-
-  const removeStagedFile = (index: number) => {
-    setStagedFiles((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  const handleConfirmUpload = () => {
-    const filesToUpload = stagedFiles;
-    setStagedFiles([]);
-
-    filesToUpload.forEach((file) => {
       const tempId = `${file.name}_${file.size}_${Date.now()}_${Math.random()}`;
       setUploadingItems((prev) => [
         ...prev,
@@ -137,6 +93,21 @@ export function StyleDocumentsTab({ styleId }: Props) {
           );
         });
     });
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      handleFiles(e.target.files);
+      e.target.value = "";
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      handleFiles(e.dataTransfer.files);
+    }
   };
 
   const dismissUploadError = (tempId: string) => {
@@ -209,48 +180,6 @@ export function StyleDocumentsTab({ styleId }: Props) {
             Kéo thả hoặc nhấn để chọn tệp
           </p>
         </div>
-
-        {stagedFiles.length > 0 && (
-          <div className="mt-4 space-y-3 rounded-xl border border-gray-100 bg-gray-50/80 p-3 dark:border-gray-800 dark:bg-gray-800/60">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="mr-1 text-theme-xs font-semibold text-gray-500 dark:text-gray-400">
-                Tệp chờ tải lên ({stagedFiles.length}):
-              </span>
-              {stagedFiles.map((file, idx) => (
-                <div
-                  key={`${file.name}_${idx}`}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-theme-xs font-medium text-gray-800 shadow-2xs dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
-                >
-                  <FileTypeIcon fileName={file.name} size="xs" />
-                  <span className="max-w-xs truncate" title={file.name}>
-                    {file.name}
-                  </span>
-                  <span className="font-mono text-[11px] text-gray-400">
-                    ({formatBytes(file.size)})
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => removeStagedFile(idx)}
-                    className="ml-1 rounded p-0.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-red-500 dark:hover:bg-gray-800"
-                    title="Bỏ tệp này"
-                  >
-                    <CloseLineIcon className="h-3 w-3" />
-                  </button>
-                </div>
-              ))}
-              <button
-                type="button"
-                onClick={() => setStagedFiles([])}
-                className="ml-2 text-theme-xs font-medium text-red-500 underline hover:text-red-700"
-              >
-                Xóa tất cả
-              </button>
-            </div>
-            <Button size="sm" onClick={handleConfirmUpload}>
-              Tải lên {stagedFiles.length > 1 ? `${stagedFiles.length} tệp` : ""}
-            </Button>
-          </div>
-        )}
 
         {uploadingItems.length > 0 && (
           <div className="mt-4 space-y-2">

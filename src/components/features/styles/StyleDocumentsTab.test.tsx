@@ -64,7 +64,7 @@ describe("StyleDocumentsTab", () => {
     expect(screen.getByText("200.0 KB")).toBeTruthy();
   });
 
-  it("rejects a disallowed file client-side without staging or uploading it", async () => {
+  it("rejects a disallowed file client-side without calling upload", async () => {
     useStyleDocumentsMock.mockReturnValue({ data: [], isLoading: false });
     render(<StyleDocumentsTab styleId={STYLE_ID} />);
 
@@ -73,11 +73,10 @@ describe("StyleDocumentsTab", () => {
     fireEvent.change(input, { target: { files: [badFile] } });
 
     await waitFor(() => expect(showToastMock).toHaveBeenCalled());
-    expect(screen.queryByText("virus.exe")).toBeNull();
     expect(uploadMutateAsyncMock).not.toHaveBeenCalled();
   });
 
-  it("stages a selected file and waits for confirmation before uploading", async () => {
+  it("uploads a valid file selected through the input", async () => {
     useStyleDocumentsMock.mockReturnValue({ data: [], isLoading: false });
     uploadMutateAsyncMock.mockResolvedValue({ documentId: "doc-2" });
     render(<StyleDocumentsTab styleId={STYLE_ID} />);
@@ -86,27 +85,7 @@ describe("StyleDocumentsTab", () => {
     const goodFile = new File(["x"], "report.pdf", { type: "application/pdf" });
     fireEvent.change(input, { target: { files: [goodFile] } });
 
-    expect(await screen.findByText("report.pdf")).toBeTruthy();
-    expect(uploadMutateAsyncMock).not.toHaveBeenCalled();
-
-    fireEvent.click(screen.getByRole("button", { name: /Tải lên/i }));
-
     await waitFor(() => expect(uploadMutateAsyncMock).toHaveBeenCalledWith(goodFile));
-  });
-
-  it("removes a staged file before confirming, so it never gets uploaded", async () => {
-    useStyleDocumentsMock.mockReturnValue({ data: [], isLoading: false });
-    render(<StyleDocumentsTab styleId={STYLE_ID} />);
-
-    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
-    const goodFile = new File(["x"], "report.pdf", { type: "application/pdf" });
-    fireEvent.change(input, { target: { files: [goodFile] } });
-    expect(await screen.findByText("report.pdf")).toBeTruthy();
-
-    fireEvent.click(screen.getByTitle("Bỏ tệp này"));
-
-    expect(screen.queryByText("report.pdf")).toBeNull();
-    expect(uploadMutateAsyncMock).not.toHaveBeenCalled();
   });
 
   it("opens the presigned view-url in a new tab when Xem is clicked", async () => {
