@@ -1,6 +1,13 @@
 import React, { useState, useRef, useMemo, useEffect, useCallback } from "react";
-import { Modal, Button, FileTypeIcon } from "@/components/shared";
-import { CloseLineIcon } from "@/icons";
+import { Modal, Button, FileTypeIcon, ConfirmDialog } from "@/components/shared";
+import {
+  CloseLineIcon,
+  CheckLineIcon,
+  PencilIcon,
+  PlusIcon,
+  ChevronDownIcon,
+  ChevronUpIcon,
+} from "@/icons";
 import type { CreatePoInput, AttachedDocItem } from "@/types/po";
 import {
   PO_DOCUMENT_CATEGORIES,
@@ -102,8 +109,8 @@ interface Props {
 }
 
 export function PoCreateModal({ isOpen, isPending, uploadProgress, onClose, onSubmit }: Props) {
-  // Giai đoạn tạo PO: 1 = Thông tin chung, 2 = Phân loại tài liệu
-  const [currentStep, setCurrentStep] = useState<1 | 2>(1);
+  // Giai đoạn tạo PO: 1 = Thông tin chung, 2 = Thêm tệp, 3 = Xác nhận & tạo
+  const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
 
   // Dữ liệu giai đoạn 1 (Thông tin chung)
   const [poCode, setPoCode] = useState("");
@@ -115,10 +122,13 @@ export function PoCreateModal({ isOpen, isPending, uploadProgress, onClose, onSu
   const [note, setNote] = useState("");
 
   // Dữ liệu giai đoạn 2 (Tài liệu đính kèm)
+  // Một tab danh mục duy nhất: vừa lọc danh sách hiển thị, vừa quyết định
+  // danh mục gán cho tệp mới tải lên (chọn "Tất cả" thì hệ thống tự nhận diện theo tên tệp).
   const [attachedFiles, setAttachedFiles] = useState<AttachedDocItem[]>([]);
-  const [activeCategory, setActiveCategory] = useState<string>("other");
-  const [fileFilterCategory, setFileFilterCategory] = useState<string>("all");
+  const [selectedTab, setSelectedTab] = useState<string>("all");
   const [isDragOver, setIsDragOver] = useState(false);
+  const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
+  const [showFileDetails, setShowFileDetails] = useState(false);
 
   // Stable cache cho preview URLs — dùng useRef để tránh extra render
   const previewCacheRef = useRef<Map<File, string>>(new Map());
@@ -160,7 +170,15 @@ export function PoCreateModal({ isOpen, isPending, uploadProgress, onClose, onSu
   }, []);
 
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<{
+    poCode?: string;
+    customerNameSnapshot?: string;
+    receivedDate?: string;
+  }>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const poCodeInputRef = useRef<HTMLInputElement>(null);
+  const customerNameInputRef = useRef<HTMLInputElement>(null);
+  const receivedDateInputRef = useRef<HTMLInputElement>(null);
 
   const handleResetAndClose = () => {
     setCurrentStep(1);
@@ -170,27 +188,34 @@ export function PoCreateModal({ isOpen, isPending, uploadProgress, onClose, onSu
     setReceivedDate(new Date().toISOString().split("T")[0]);
     setNote("");
     setAttachedFiles([]);
-    setActiveCategory("other");
-    setFileFilterCategory("all");
+    setSelectedTab("all");
+    setShowDeleteAllConfirm(false);
+    setShowFileDetails(false);
     setErrorMsg(null);
+    setFieldErrors({});
     onClose();
   };
 
   const validateStep1 = (): boolean => {
     setErrorMsg(null);
-    if (!poCode.trim()) {
-      setErrorMsg("Vui lòng nhập Mã PO hệ thống.");
-      return false;
+
+    const errors: typeof fieldErrors = {};
+    if (!poCode.trim()) errors.poCode = "Vui lòng nhập Mã PO hệ thống.";
+    if (!customerNameSnapshot.trim())
+      errors.customerNameSnapshot = "Vui lòng nhập Tên khách hàng.";
+    if (!receivedDate) errors.receivedDate = "Vui lòng chọn ngày nhận.";
+
+    setFieldErrors(errors);
+
+    if (errors.poCode) {
+      poCodeInputRef.current?.focus();
+    } else if (errors.customerNameSnapshot) {
+      customerNameInputRef.current?.focus();
+    } else if (errors.receivedDate) {
+      receivedDateInputRef.current?.focus();
     }
-    if (!customerNameSnapshot.trim()) {
-      setErrorMsg("Vui lòng nhập Tên Khách hàng.");
-      return false;
-    }
-    if (!receivedDate) {
-      setErrorMsg("Vui lòng chọn Ngày nhận đơn hàng.");
-      return false;
-    }
-    return true;
+
+    return Object.keys(errors).length === 0;
   };
 
   const handleNextToStep2 = () => {
@@ -199,12 +224,19 @@ export function PoCreateModal({ isOpen, isPending, uploadProgress, onClose, onSu
     }
   };
 
-  const handleAddFiles = useCallback((files: FileList | File[], forceCategory?: string) => {
+  const handleNextToStep3 = () => {
+    if (validateStep1()) {
+      setCurrentStep(3);
+    }
+  };
+
+  const handleAddFiles = useCallback((files: FileList | File[]) => {
     const list = Array.from(files);
     if (list.length === 0) return;
 
     const newItems: AttachedDocItem[] = list.map((file) => {
-      const purpose = forceCategory || activeCategory || detectDocumentPurpose(file.name);
+      const purpose =
+        selectedTab === "all" ? detectDocumentPurpose(file.name) : selectedTab;
       return {
         file,
         purpose,
@@ -212,7 +244,7 @@ export function PoCreateModal({ isOpen, isPending, uploadProgress, onClose, onSu
     });
 
     setAttachedFiles((prev) => [...prev, ...newItems]);
-  }, [activeCategory]);
+  }, [selectedTab]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -282,18 +314,13 @@ export function PoCreateModal({ isOpen, isPending, uploadProgress, onClose, onSu
     [attachedFiles],
   );
 
-  const activeCategoryInfo = getDocumentCategoryInfo(activeCategory);
-
-  // Danh sách tệp được lọc hiển thị (memoized)
+  // Danh sách tệp được lọc hiển thị theo tab đang chọn (memoized)
   const filteredFiles = useMemo(
     () =>
       attachedFiles
         .map((item, originalIndex) => ({ item, originalIndex }))
-        .filter(({ item }) => {
-          if (fileFilterCategory === "all") return true;
-          return item.purpose === fileFilterCategory;
-        }),
-    [attachedFiles, fileFilterCategory],
+        .filter(({ item }) => selectedTab === "all" || item.purpose === selectedTab),
+    [attachedFiles, selectedTab],
   );
 
   return (
@@ -304,19 +331,19 @@ export function PoCreateModal({ isOpen, isPending, uploadProgress, onClose, onSu
       size="lg"
     >
       <div className="space-y-6">
-        {/* Stepper Wizard Indicator - Kích thước lớn, rõ ràng */}
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 border-b border-gray-200 pb-5 dark:border-gray-800">
+        {/* Stepper Wizard Indicator - 3 bước, to rõ, dùng chung 1 tông xanh brand */}
+        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3 border-b border-gray-200 pb-5 dark:border-gray-800">
           <button
             type="button"
             onClick={() => setCurrentStep(1)}
-            className={`flex items-center gap-3.5 rounded-2xl p-4 text-left transition-all cursor-pointer border ${
+            className={`flex items-center gap-3 rounded-2xl p-3.5 text-left transition-all cursor-pointer border ${
               currentStep === 1
                 ? "bg-brand-50/90 border-brand-300 text-brand-700 shadow-sm dark:bg-brand-950/50 dark:border-brand-700 dark:text-brand-300"
                 : "bg-gray-50 border-gray-200/80 hover:bg-gray-100 hover:border-gray-300 text-gray-600 dark:bg-gray-800/60 dark:border-gray-800 dark:hover:bg-gray-800 dark:text-gray-400"
             }`}
           >
             <div
-              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-bold transition-all ${
+              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold transition-all ${
                 currentStep === 1
                   ? "bg-brand-600 text-white shadow-sm"
                   : poCode && customerNameSnapshot
@@ -324,12 +351,16 @@ export function PoCreateModal({ isOpen, isPending, uploadProgress, onClose, onSu
                     : "bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-300"
               }`}
             >
-              {poCode && customerNameSnapshot && currentStep !== 1 ? "✓" : "1"}
+              {poCode && customerNameSnapshot && currentStep !== 1 ? (
+                <CheckLineIcon className="h-3.5 w-3.5" />
+              ) : (
+                "1"
+              )}
             </div>
             <div className="min-w-0 flex-1">
-              <div className="text-sm font-bold">Giai đoạn 1: Thông tin chung</div>
-              <div className="text-xs opacity-80 mt-0.5">
-                Mã PO, Khách hàng, Ngày nhận & Ghi chú
+              <div className="text-sm font-bold">Thông tin chung</div>
+              <div className="text-xs opacity-80 mt-0.5 truncate">
+                Mã PO, khách hàng, ngày nhận
               </div>
             </div>
           </button>
@@ -337,33 +368,59 @@ export function PoCreateModal({ isOpen, isPending, uploadProgress, onClose, onSu
           <button
             type="button"
             onClick={handleNextToStep2}
-            className={`flex items-center gap-3.5 rounded-2xl p-4 text-left transition-all cursor-pointer border ${
+            className={`flex items-center gap-3 rounded-2xl p-3.5 text-left transition-all cursor-pointer border ${
               currentStep === 2
                 ? "bg-brand-50/90 border-brand-300 text-brand-700 shadow-sm dark:bg-brand-950/50 dark:border-brand-700 dark:text-brand-300"
                 : "bg-gray-50 border-gray-200/80 hover:bg-gray-100 hover:border-gray-300 text-gray-600 dark:bg-gray-800/60 dark:border-gray-800 dark:hover:bg-gray-800 dark:text-gray-400"
             }`}
           >
             <div
-              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-bold transition-all ${
+              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold transition-all ${
                 currentStep === 2
                   ? "bg-brand-600 text-white shadow-sm"
-                  : attachedFiles.length > 0
-                    ? "bg-brand-500 text-white"
+                  : currentStep === 3
+                    ? "bg-emerald-500 text-white"
                     : "bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-300"
               }`}
             >
-              {attachedFiles.length > 0 && currentStep !== 2 ? (
-                <span>{attachedFiles.length}</span>
+              {currentStep === 3 ? (
+                <CheckLineIcon className="h-3.5 w-3.5" />
               ) : (
                 "2"
               )}
             </div>
             <div className="min-w-0 flex-1">
-              <div className="text-sm font-bold">Giai đoạn 2: Phân loại tài liệu</div>
-              <div className="text-xs opacity-80 mt-0.5">
+              <div className="text-sm font-bold">Thêm tệp</div>
+              <div className="text-xs opacity-80 mt-0.5 truncate">
                 {attachedFiles.length > 0
-                  ? `Đã chọn ${attachedFiles.length} tệp đính kèm`
-                  : "Tải & phân loại tài liệu theo nhóm"}
+                  ? `Đã chọn ${attachedFiles.length} tệp`
+                  : "Không bắt buộc"}
+              </div>
+            </div>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleNextToStep3}
+            className={`flex items-center gap-3 rounded-2xl p-3.5 text-left transition-all cursor-pointer border ${
+              currentStep === 3
+                ? "bg-brand-50/90 border-brand-300 text-brand-700 shadow-sm dark:bg-brand-950/50 dark:border-brand-700 dark:text-brand-300"
+                : "bg-gray-50 border-gray-200/80 hover:bg-gray-100 hover:border-gray-300 text-gray-600 dark:bg-gray-800/60 dark:border-gray-800 dark:hover:bg-gray-800 dark:text-gray-400"
+            }`}
+          >
+            <div
+              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold transition-all ${
+                currentStep === 3
+                  ? "bg-brand-600 text-white shadow-sm"
+                  : "bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-300"
+              }`}
+            >
+              3
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="text-sm font-bold">Xác nhận</div>
+              <div className="text-xs opacity-80 mt-0.5 truncate">
+                Kiểm tra & tạo PO
               </div>
             </div>
           </button>
@@ -391,13 +448,26 @@ export function PoCreateModal({ isOpen, isPending, uploadProgress, onClose, onSu
                   Mã PO hệ thống <span className="text-error-500">*</span>
                 </label>
                 <input
+                  ref={poCodeInputRef}
                   type="text"
                   value={poCode}
-                  onChange={(e) => setPoCode(e.target.value)}
+                  onChange={(e) => {
+                    setPoCode(e.target.value);
+                    if (fieldErrors.poCode) setFieldErrors((prev) => ({ ...prev, poCode: undefined }));
+                  }}
                   placeholder="Ví dụ: PO-2026-001"
-                  className="w-full rounded-xl border border-gray-250 bg-white px-4 py-3 text-sm text-gray-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-white"
+                  className={`w-full rounded-xl border bg-white px-4 py-3 text-sm text-gray-900 outline-none transition focus:ring-2 dark:bg-gray-800 dark:text-white ${
+                    fieldErrors.poCode
+                      ? "border-error-400 focus:border-error-500 focus:ring-error-500/20 dark:border-error-500"
+                      : "border-gray-250 focus:border-brand-500 focus:ring-brand-500/20 dark:border-gray-800"
+                  }`}
                   autoFocus
                 />
+                {fieldErrors.poCode && (
+                  <p className="mt-1.5 text-xs font-medium text-error-600 dark:text-error-400">
+                    {fieldErrors.poCode}
+                  </p>
+                )}
               </div>
 
               <div>
@@ -420,12 +490,26 @@ export function PoCreateModal({ isOpen, isPending, uploadProgress, onClose, onSu
                   Tên Khách hàng <span className="text-error-500">*</span>
                 </label>
                 <input
+                  ref={customerNameInputRef}
                   type="text"
                   value={customerNameSnapshot}
-                  onChange={(e) => setCustomerNameSnapshot(e.target.value)}
+                  onChange={(e) => {
+                    setCustomerNameSnapshot(e.target.value);
+                    if (fieldErrors.customerNameSnapshot)
+                      setFieldErrors((prev) => ({ ...prev, customerNameSnapshot: undefined }));
+                  }}
                   placeholder="Ví dụ: Tấn Minh Fashion"
-                  className="w-full rounded-xl border border-gray-250 bg-white px-4 py-3 text-sm text-gray-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-white"
+                  className={`w-full rounded-xl border bg-white px-4 py-3 text-sm text-gray-900 outline-none transition focus:ring-2 dark:bg-gray-800 dark:text-white ${
+                    fieldErrors.customerNameSnapshot
+                      ? "border-error-400 focus:border-error-500 focus:ring-error-500/20 dark:border-error-500"
+                      : "border-gray-250 focus:border-brand-500 focus:ring-brand-500/20 dark:border-gray-800"
+                  }`}
                 />
+                {fieldErrors.customerNameSnapshot && (
+                  <p className="mt-1.5 text-xs font-medium text-error-600 dark:text-error-400">
+                    {fieldErrors.customerNameSnapshot}
+                  </p>
+                )}
               </div>
 
               <div>
@@ -433,11 +517,25 @@ export function PoCreateModal({ isOpen, isPending, uploadProgress, onClose, onSu
                   Ngày nhận <span className="text-error-500">*</span>
                 </label>
                 <input
+                  ref={receivedDateInputRef}
                   type="date"
                   value={receivedDate}
-                  onChange={(e) => setReceivedDate(e.target.value)}
-                  className="w-full rounded-xl border border-gray-250 bg-white px-4 py-3 text-sm text-gray-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-white"
+                  onChange={(e) => {
+                    setReceivedDate(e.target.value);
+                    if (fieldErrors.receivedDate)
+                      setFieldErrors((prev) => ({ ...prev, receivedDate: undefined }));
+                  }}
+                  className={`w-full rounded-xl border bg-white px-4 py-3 text-sm text-gray-900 outline-none transition focus:ring-2 dark:bg-gray-800 dark:text-white ${
+                    fieldErrors.receivedDate
+                      ? "border-error-400 focus:border-error-500 focus:ring-error-500/20 dark:border-error-500"
+                      : "border-gray-250 focus:border-brand-500 focus:ring-brand-500/20 dark:border-gray-800"
+                  }`}
                 />
+                {fieldErrors.receivedDate && (
+                  <p className="mt-1.5 text-xs font-medium text-error-600 dark:text-error-400">
+                    {fieldErrors.receivedDate}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -474,33 +572,9 @@ export function PoCreateModal({ isOpen, isPending, uploadProgress, onClose, onSu
           </form>
         )}
 
-        {/* ======================= GIAI ĐOẠN 2: PHÂN LOẠI TÀI LIỆU ======================= */}
+        {/* ======================= GIAI ĐOẠN 2: THÊM TỆP ======================= */}
         {currentStep === 2 && (
           <div className="space-y-5">
-            {/* Tóm tắt nhanh thông tin PO từ Giai đoạn 1 */}
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-gray-50 px-5 py-3.5 border border-gray-200 dark:bg-gray-800/50 dark:border-gray-700/60">
-              <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-sm">
-                <span className="font-semibold text-gray-900 dark:text-white">
-                  Mã PO: <span className="font-mono font-bold text-brand-600 dark:text-brand-400">{poCode}</span>
-                </span>
-                <span className="text-gray-300 dark:text-gray-600">|</span>
-                <span className="text-gray-600 dark:text-gray-300">
-                  Khách hàng: <span className="font-semibold text-gray-900 dark:text-white">{customerNameSnapshot}</span>
-                </span>
-                <span className="text-gray-300 dark:text-gray-600">|</span>
-                <span className="text-gray-600 dark:text-gray-300">
-                  Ngày nhận: <span className="font-semibold text-gray-900 dark:text-white">{receivedDate}</span>
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setCurrentStep(1)}
-                className="text-xs font-semibold text-brand-600 hover:text-brand-700 dark:text-brand-400 cursor-pointer underline"
-              >
-                Chỉnh sửa thông tin
-              </button>
-            </div>
-
             {/* Hidden file input */}
             <input
               ref={fileInputRef}
@@ -510,45 +584,66 @@ export function PoCreateModal({ isOpen, isPending, uploadProgress, onClose, onSu
               className="hidden"
             />
 
-            {/* Bộ chọn danh mục tài liệu (5 danh mục) - Gọn gàng, hiện đại */}
+            {/* Danh mục tài liệu: 1 dải tab duy nhất — vừa lọc danh sách bên dưới,
+                vừa quyết định danh mục của tệp mới tải lên (thay cho 3 khu vực tách rời trước đây) */}
             <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-xs font-bold text-gray-700 dark:text-gray-300">
-                  Chọn danh mục tải lên:
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-sm font-bold text-gray-700 dark:text-gray-300">
+                  Danh mục tài liệu
                 </label>
                 {attachedFiles.length > 0 && (
-                  <span className="text-xs font-semibold text-brand-600 dark:text-brand-400">
+                  <span className="text-sm font-semibold text-brand-600 dark:text-brand-400">
                     Tổng: {attachedFiles.length} tệp
                   </span>
                 )}
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSelectedTab("all")}
+                  className={`flex items-center gap-2 rounded-xl px-3.5 py-2 text-sm font-bold transition cursor-pointer border ${
+                    selectedTab === "all"
+                      ? "border-brand-300 bg-brand-50 text-brand-700 shadow-xs dark:bg-brand-950/50 dark:border-brand-700 dark:text-brand-300"
+                      : "border-gray-200 bg-white text-gray-600 font-semibold hover:bg-gray-50 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-400"
+                  }`}
+                >
+                  Tất cả
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-xs font-bold ${
+                      selectedTab === "all"
+                        ? "bg-brand-600 text-white"
+                        : "bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-200"
+                    }`}
+                  >
+                    {attachedFiles.length}
+                  </span>
+                </button>
                 {PO_DOCUMENT_CATEGORIES.map((cat) => {
                   const count = categoryCounts[cat.key] || 0;
-                  const isActive = activeCategory === cat.key;
+                  const isActive = selectedTab === cat.key;
                   return (
                     <button
                       key={cat.key}
                       type="button"
-                      onClick={() => setActiveCategory(cat.key)}
-                      className={`flex items-center sm:flex-col justify-between sm:justify-center gap-1.5 rounded-xl px-3 py-2 sm:py-2.5 text-center transition-all cursor-pointer border ${
+                      onClick={() => setSelectedTab(cat.key)}
+                      className={`flex items-center gap-2 rounded-xl px-3.5 py-2 text-sm font-bold transition cursor-pointer border ${
                         isActive
-                          ? "border-brand-500 bg-brand-50/90 text-brand-700 dark:bg-brand-950/60 dark:text-brand-300 dark:border-brand-500 font-bold shadow-xs ring-2 ring-brand-500/20"
-                          : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50 hover:border-gray-300 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700/50"
+                          ? "border-brand-300 bg-brand-50 text-brand-700 shadow-xs dark:bg-brand-950/50 dark:border-brand-700 dark:text-brand-300"
+                          : "border-gray-200 bg-white text-gray-600 font-semibold hover:bg-gray-50 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-400"
                       }`}
                     >
-                      <span className="text-xs font-bold">{cat.shortLabel}</span>
-                      <span
-                        className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
-                          isActive
-                            ? "bg-brand-600 text-white dark:bg-brand-500"
-                            : count > 0
-                              ? "bg-brand-100 text-brand-800 dark:bg-brand-900/60 dark:text-brand-200"
-                              : "bg-gray-100 text-gray-400 dark:bg-gray-700 dark:text-gray-400"
-                        }`}
-                      >
-                        {count} tệp
-                      </span>
+                      {cat.shortLabel}
+                      {count > 0 && (
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-xs font-bold ${
+                            isActive
+                              ? "bg-brand-600 text-white"
+                              : "bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-200"
+                          }`}
+                        >
+                          {count}
+                        </span>
+                      )}
                     </button>
                   );
                 })}
@@ -565,42 +660,31 @@ export function PoCreateModal({ isOpen, isPending, uploadProgress, onClose, onSu
                 }}
                 onDragLeave={() => setIsDragOver(false)}
                 onDrop={handleDrop}
-                className={`flex cursor-pointer items-center justify-between gap-3 rounded-xl border-2 border-dashed px-4 py-2.5 transition-all ${
+                className={`flex cursor-pointer items-center justify-between gap-3 rounded-xl border-2 border-dashed px-4 py-3 transition-all ${
                   isDragOver
                     ? "border-brand-500 bg-brand-50/80 dark:bg-brand-950/40"
                     : "border-brand-300 bg-brand-50/30 hover:border-brand-500 hover:bg-brand-50/60 dark:border-brand-800/60 dark:bg-brand-950/20 dark:hover:bg-brand-950/40"
                 }`}
               >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-brand-100 text-brand-600 dark:bg-brand-900/80 dark:text-brand-300">
-                    <svg
-                      className="h-4 w-4"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M12 4v16m8-8H4"
-                      />
-                    </svg>
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-100 text-brand-600 dark:bg-brand-900/80 dark:text-brand-300">
+                    <PlusIcon className="h-4 w-4" />
                   </div>
-                  <div className="min-w-0">
-                    <p className="truncate text-xs font-bold text-gray-800 dark:text-gray-200">
-                      Tải thêm tệp vào mục:{" "}
-                      <span className="text-brand-600 dark:text-brand-400 font-bold">
-                        [{activeCategoryInfo.label}]
-                      </span>
-                    </p>
-                    <p className="text-[11px] text-gray-400 dark:text-gray-500">
-                      Nhấn hoặc kéo thả tệp mới vào đây
-                    </p>
-                  </div>
+                  <p className="truncate text-sm font-semibold text-gray-700 dark:text-gray-200">
+                    {selectedTab === "all" ? (
+                      "Kéo thả hoặc nhấn để thêm tệp"
+                    ) : (
+                      <>
+                        Kéo thả hoặc nhấn để thêm tệp vào{" "}
+                        <span className="text-brand-600 dark:text-brand-400 font-bold">
+                          {getDocumentCategoryInfo(selectedTab).label}
+                        </span>
+                      </>
+                    )}
+                  </p>
                 </div>
 
-                <span className="shrink-0 rounded-lg bg-white px-2.5 py-1 text-[11px] font-semibold text-brand-600 shadow-2xs border border-brand-200 dark:bg-gray-800 dark:border-brand-800 dark:text-brand-300">
+                <span className="shrink-0 rounded-lg bg-white px-3 py-1.5 text-xs font-bold text-brand-600 shadow-2xs border border-brand-200 dark:bg-gray-800 dark:border-brand-800 dark:text-brand-300">
                   + Chọn tệp
                 </span>
               </div>
@@ -619,29 +703,20 @@ export function PoCreateModal({ isOpen, isPending, uploadProgress, onClose, onSu
                     : "border-gray-300 bg-gray-50/50 hover:border-brand-500 hover:bg-white dark:border-gray-700 dark:bg-gray-800/40 dark:hover:border-brand-400 dark:hover:bg-gray-800"
                 }`}
               >
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-50 text-brand-600 dark:bg-brand-950/70 dark:text-brand-400 mb-2">
-                  <svg
-                    className="h-5 w-5"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={1.75}
-                      d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-                    />
-                  </svg>
+                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-brand-100 text-brand-600 dark:bg-brand-900/80 dark:text-brand-300 mb-2.5">
+                  <PlusIcon className="h-5 w-5" />
                 </div>
-                <p className="text-sm font-bold text-gray-800 dark:text-gray-200">
-                  Nhấn để tải hoặc kéo thả tệp vào danh mục{" "}
-                  <span className="text-brand-600 dark:text-brand-400">
-                    [{activeCategoryInfo.label}]
-                  </span>
-                </p>
-                <p className="mt-0.5 text-xs text-gray-400">
-                  {activeCategoryInfo.description} • Hỗ trợ nhiều tệp
+                <p className="text-sm font-bold text-gray-700 dark:text-gray-200">
+                  {selectedTab === "all" ? (
+                    "Kéo thả hoặc nhấn để thêm tệp"
+                  ) : (
+                    <>
+                      Kéo thả hoặc nhấn để thêm tệp vào{" "}
+                      <span className="text-brand-600 dark:text-brand-400 font-bold">
+                        {getDocumentCategoryInfo(selectedTab).label}
+                      </span>
+                    </>
+                  )}
                 </p>
               </div>
             )}
@@ -651,52 +726,21 @@ export function PoCreateModal({ isOpen, isPending, uploadProgress, onClose, onSu
               <div className="flex flex-wrap items-center justify-between gap-2.5 pb-3 border-b border-gray-100 dark:border-gray-800">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-bold text-gray-900 dark:text-gray-100">
-                    Danh sách tệp đính kèm ({attachedFiles.length})
+                    Danh sách tệp đính kèm
+                  </span>
+                  <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-bold text-gray-700 dark:bg-gray-800 dark:text-gray-200">
+                    {filteredFiles.length}
                   </span>
                 </div>
-
-                {/* Bộ lọc xem nhanh theo danh mục */}
-                <div className="flex items-center gap-1.5 overflow-x-auto">
-                  <span className="text-xs text-gray-400 mr-1">Xem:</span>
+                {attachedFiles.length > 0 && (
                   <button
                     type="button"
-                    onClick={() => setFileFilterCategory("all")}
-                    className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition cursor-pointer ${
-                      fileFilterCategory === "all"
-                        ? "bg-gray-900 text-white dark:bg-white dark:text-gray-900"
-                        : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400"
-                    }`}
+                    onClick={() => setShowDeleteAllConfirm(true)}
+                    className="text-xs font-semibold text-error-500 hover:text-error-700 underline cursor-pointer"
                   >
-                    Tất cả ({attachedFiles.length})
+                    Xóa tất cả
                   </button>
-                  {PO_DOCUMENT_CATEGORIES.map((cat) => {
-                    const count = categoryCounts[cat.key] || 0;
-                    if (count === 0 && fileFilterCategory !== cat.key) return null;
-                    return (
-                      <button
-                        key={cat.key}
-                        type="button"
-                        onClick={() => setFileFilterCategory(cat.key)}
-                        className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition cursor-pointer ${
-                          fileFilterCategory === cat.key
-                            ? "bg-brand-600 text-white"
-                            : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400"
-                        }`}
-                      >
-                        {cat.shortLabel} ({count})
-                      </button>
-                    );
-                  })}
-                  {attachedFiles.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => setAttachedFiles([])}
-                      className="ml-2 text-xs font-semibold text-error-500 hover:text-error-700 underline cursor-pointer"
-                    >
-                      Xóa tất cả
-                    </button>
-                  )}
-                </div>
+                )}
               </div>
 
               {/* Tệp list */}
@@ -720,26 +764,179 @@ export function PoCreateModal({ isOpen, isPending, uploadProgress, onClose, onSu
                     : "Không có tệp nào trong danh mục đã chọn."}
                 </div>
               )}
+            </div>
 
-              {/* Tóm tắt các danh mục có tệp */}
-              {attachedFiles.length > 0 && (
-                <div className="flex flex-wrap items-center gap-2 pt-3 mt-3 border-t border-gray-100 dark:border-gray-800">
-                  <span className="text-xs font-semibold text-gray-500 dark:text-gray-400">
-                    Phân bổ:
-                  </span>
-                  {PO_DOCUMENT_CATEGORIES.map((cat) => {
-                    const count = categoryCounts[cat.key] || 0;
-                    if (count === 0) return null;
-                    return (
-                      <span
-                        key={cat.key}
-                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium border ${cat.badgeClass}`}
-                      >
-                        {cat.shortLabel}: {count}
-                      </span>
-                    );
-                  })}
+            <ConfirmDialog
+              open={showDeleteAllConfirm}
+              title="Xóa tất cả tệp đính kèm?"
+              description={`Toàn bộ ${attachedFiles.length} tệp bạn đã chọn ở bước này sẽ bị gỡ khỏi danh sách. Hành động này không thể hoàn tác.`}
+              confirmLabel="Xóa tất cả"
+              variant="danger"
+              onConfirm={() => {
+                setAttachedFiles([]);
+                setShowDeleteAllConfirm(false);
+              }}
+              onClose={() => setShowDeleteAllConfirm(false)}
+            />
+
+            {/* Footer Buttons */}
+            <div className="flex items-center justify-between pt-5 border-t border-gray-200 dark:border-gray-800">
+              <Button
+                variant="outline"
+                size="md"
+                onClick={() => setCurrentStep(1)}
+              >
+                ← Quay lại
+              </Button>
+
+              <div className="flex items-center gap-3">
+                <Button variant="outline" size="md" onClick={handleResetAndClose}>
+                  Hủy
+                </Button>
+                <Button size="md" type="button" onClick={handleNextToStep3}>
+                  Tiếp tục: Xác nhận →
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ======================= GIAI ĐOẠN 3: XÁC NHẬN & TẠO PO ======================= */}
+        {currentStep === 3 && (
+          <div className="space-y-5">
+            {/* Thẻ tóm tắt thông tin chung */}
+            <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900/60">
+              <div className="flex items-center justify-between mb-3.5">
+                <h3 className="text-base font-bold text-gray-900 dark:text-white">
+                  Thông tin đơn hàng
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setCurrentStep(1)}
+                  className="flex items-center gap-1.5 text-sm font-semibold text-brand-600 hover:text-brand-700 dark:text-brand-400 cursor-pointer"
+                >
+                  <PencilIcon className="h-4 w-4" />
+                  Sửa
+                </button>
+              </div>
+              <dl className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
+                <div>
+                  <dt className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
+                    Mã PO
+                  </dt>
+                  <dd className="mt-0.5 font-mono text-base font-bold text-gray-900 dark:text-white">
+                    {poCode}
+                  </dd>
                 </div>
+                <div>
+                  <dt className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
+                    Khách hàng
+                  </dt>
+                  <dd className="mt-0.5 text-base font-semibold text-gray-900 dark:text-white">
+                    {customerNameSnapshot}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
+                    Ngày nhận
+                  </dt>
+                  <dd className="mt-0.5 text-base font-semibold text-gray-900 dark:text-white">
+                    {receivedDate}
+                  </dd>
+                </div>
+                {customerPoCode && (
+                  <div>
+                    <dt className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
+                      Mã PO khách hàng
+                    </dt>
+                    <dd className="mt-0.5 text-base font-semibold text-gray-900 dark:text-white">
+                      {customerPoCode}
+                    </dd>
+                  </div>
+                )}
+                {note && (
+                  <div className="sm:col-span-2">
+                    <dt className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
+                      Ghi chú
+                    </dt>
+                    <dd className="mt-0.5 text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+                      {note}
+                    </dd>
+                  </div>
+                )}
+              </dl>
+            </div>
+
+            {/* Thẻ tóm tắt tệp đính kèm */}
+            <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900/60">
+              <div className="flex items-center justify-between mb-3.5">
+                <h3 className="text-base font-bold text-gray-900 dark:text-white">
+                  Tệp đính kèm
+                </h3>
+                <div className="flex items-center gap-4">
+                  {attachedFiles.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setShowFileDetails((v) => !v)}
+                      className="flex items-center gap-1 text-sm font-semibold text-gray-500 hover:text-gray-700 dark:text-gray-400 cursor-pointer"
+                    >
+                      {showFileDetails ? "Thu gọn" : "Xem chi tiết"}
+                      {showFileDetails ? (
+                        <ChevronUpIcon className="h-4 w-4" />
+                      ) : (
+                        <ChevronDownIcon className="h-4 w-4" />
+                      )}
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setCurrentStep(2)}
+                    className="flex items-center gap-1.5 text-sm font-semibold text-brand-600 hover:text-brand-700 dark:text-brand-400 cursor-pointer"
+                  >
+                    <PencilIcon className="h-4 w-4" />
+                    Sửa
+                  </button>
+                </div>
+              </div>
+              {attachedFiles.length > 0 ? (
+                <>
+                  <div className="flex flex-wrap items-center gap-2.5">
+                    <span className="inline-flex items-center rounded-full border border-brand-200 bg-brand-50 px-3 py-1 text-sm font-bold text-brand-700 dark:border-brand-800 dark:bg-brand-950/50 dark:text-brand-300">
+                      Tổng: {attachedFiles.length} tệp
+                    </span>
+                    {PO_DOCUMENT_CATEGORIES.map((cat) => {
+                      const count = categoryCounts[cat.key] || 0;
+                      if (count === 0) return null;
+                      return (
+                        <span
+                          key={cat.key}
+                          className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-semibold border ${cat.badgeClass}`}
+                        >
+                          {cat.shortLabel}: {count}
+                        </span>
+                      );
+                    })}
+                  </div>
+
+                  {showFileDetails && (
+                    <div className="mt-4 max-h-72 overflow-y-auto space-y-2 pr-1 border-t border-gray-100 dark:border-gray-800 pt-4">
+                      {attachedFiles.map((item, index) => (
+                        <FileRow
+                          key={`${item.file.name}_${index}`}
+                          item={item}
+                          originalIndex={index}
+                          previewUrl={previewUrls.get(item.file)}
+                          onRemove={handleRemoveFile}
+                          onUpdatePurpose={handleUpdateFilePurpose}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <p className="text-sm text-gray-400">
+                  Chưa đính kèm tệp nào. Bạn vẫn có thể tạo PO và bổ sung tệp sau.
+                </p>
               )}
             </div>
 
@@ -801,10 +998,10 @@ export function PoCreateModal({ isOpen, isPending, uploadProgress, onClose, onSu
                 <Button
                   variant="outline"
                   size="md"
-                  onClick={() => setCurrentStep(1)}
+                  onClick={() => setCurrentStep(2)}
                   disabled={isPending}
                 >
-                  ← Quay lại Thông tin chung
+                  ← Quay lại
                 </Button>
 
                 <div className="flex items-center gap-3">
@@ -822,7 +1019,7 @@ export function PoCreateModal({ isOpen, isPending, uploadProgress, onClose, onSu
                     onClick={() => handleSubmit()}
                     disabled={isPending}
                   >
-                    {isPending ? "Đang tạo PO..." : "Hoàn tất & Tạo PO mới"}
+                    {isPending ? "Đang tạo PO..." : "✓ Xác nhận & Tạo PO"}
                   </Button>
                 </div>
               </div>
