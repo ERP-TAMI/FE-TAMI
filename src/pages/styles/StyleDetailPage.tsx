@@ -15,10 +15,11 @@ import { UnsavedChangesDialog } from "@/components/features/styles/UnsavedChange
 import { StyleHeader } from "@/components/features/styles/StyleHeader";
 import { GeneralTab } from "@/components/features/styles/GeneralTab";
 import { StyleProductionDocTab } from "@/components/features/production-docs/StyleProductionDocTab";
+import { StyleDocumentsTab } from "@/components/features/styles/StyleDocumentsTab";
 import { getApiError, isConflictError } from "@/lib/apiError";
 import { validateImageFile } from "@/lib/validateImageFile";
 import type { StyleOperationStepItem } from "@/api/styleOperationStepsApi";
-import { InfoIcon, DocsIcon, PageIcon } from "@/icons";
+import { InfoIcon, DocsIcon, PageIcon, FolderIcon } from "@/icons";
 
 export default function StyleDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -29,16 +30,21 @@ export default function StyleDetailPage() {
     location.pathname.endsWith("/operation-steps") ||
     location.pathname.endsWith("/steps");
   const isProductionDocTab = location.pathname.endsWith("/production-doc");
+  const isDocumentsTab = location.pathname.endsWith("/documents");
 
-  const activeTab: "general" | "steps" | "production_doc" = isStepsTab
+  const activeTab: "general" | "steps" | "production_doc" | "documents" = isStepsTab
     ? "steps"
     : isProductionDocTab
     ? "production_doc"
+    : isDocumentsTab
+    ? "documents"
     : "general";
 
   const [isProductionDocEditing, setIsProductionDocEditing] = useState(false);
   const [isOperationStepsEditing, setIsOperationStepsEditing] = useState(false);
-  const [pendingTab, setPendingTab] = useState<"general" | "steps" | "production_doc" | null>(null);
+  const [pendingTab, setPendingTab] = useState<
+    "general" | "steps" | "production_doc" | "documents" | null
+  >(null);
   const [pendingNavigation, setPendingNavigation] = useState<string | null>(null);
 
   useEffect(() => {
@@ -77,18 +83,20 @@ export default function StyleDetailPage() {
     };
   }, [isProductionDocEditing, isOperationStepsEditing]);
 
-  const navigateToTab = (tab: "general" | "steps" | "production_doc") => {
+  const navigateToTab = (tab: "general" | "steps" | "production_doc" | "documents") => {
     if (!id) return;
     if (tab === "production_doc") {
       navigate(`/styles/${id}/production-doc`);
     } else if (tab === "steps") {
       navigate(`/styles/${id}/operation-steps`);
+    } else if (tab === "documents") {
+      navigate(`/styles/${id}/documents`);
     } else {
       navigate(`/styles/${id}/detail`);
     }
   };
 
-  const handleTabChange = (tab: "general" | "steps" | "production_doc") => {
+  const handleTabChange = (tab: "general" | "steps" | "production_doc" | "documents") => {
     if ((isProductionDocEditing || isOperationStepsEditing) && tab !== activeTab) {
       setPendingTab(tab);
       return;
@@ -345,6 +353,18 @@ export default function StyleDetailPage() {
               <PageIcon className="w-4 h-4" />
               Tài liệu sản xuất
             </button>
+            <button
+              type="button"
+              onClick={() => handleTabChange("documents")}
+              className={`flex items-center gap-2 border-b-2 py-2.5 px-1 text-sm font-semibold transition-colors cursor-pointer ${
+                activeTab === "documents"
+                  ? "border-brand-500 text-brand-600 dark:text-brand-400"
+                  : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              }`}
+            >
+              <FolderIcon className="w-4 h-4" />
+              Tài liệu đính kèm
+            </button>
           </nav>
         </div>
       </div>
@@ -376,13 +396,15 @@ export default function StyleDetailPage() {
           styleName={style.styleName}
           onImageChange={(file) => void handleUploadAndSaveImage(file)}
         />
-      ) : (
+      ) : activeTab === "production_doc" ? (
         <StyleProductionDocTab
           styleId={style.id}
           styleName={style.styleName}
           styleImageUrl={imageUrl || style.baseImageVersionId || undefined}
           onEditingChange={setIsProductionDocEditing}
         />
+      ) : (
+        <StyleDocumentsTab styleId={style.id} />
       )}
 
       <UnsavedChangesDialog
