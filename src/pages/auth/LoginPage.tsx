@@ -2,6 +2,7 @@ import { useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useLocation, useNavigate } from "react-router-dom";
+import { canAccessManagement, getLandingPath } from "@/lib/managementAccess";
 import { z } from "zod";
 import { Alert, Button, Input } from "@/components/shared";
 import PageMeta from "@/components/shared/PageMeta";
@@ -51,7 +52,17 @@ export default function LoginPage() {
     try {
       const result = await authApi.login(values.email, values.password);
       setSession(result.user, result.accessToken);
-      navigate(redirectTo, { replace: true });
+      const safeEmployeePath =
+        redirectTo.startsWith("/") &&
+        !redirectTo.startsWith("//") &&
+        !redirectTo.startsWith("/management") &&
+        redirectTo !== "/login";
+      navigate(
+        canAccessManagement(result.user) || !safeEmployeePath
+          ? getLandingPath(result.user)
+          : redirectTo,
+        { replace: true },
+      );
     } catch (error) {
       setServerError(getApiError(error, NETWORK_ERROR_MESSAGE, LOGIN_ERROR_OVERRIDES));
     } finally {
