@@ -197,6 +197,19 @@ describe("application routes", () => {
     expect(screen.queryByRole("link", { name: "Về khu Quản lý" })).toBeNull();
   });
 
+  it("does not grant management access from the legacy director role name", () => {
+    signIn();
+    useAuthStore.setState({
+      user: { ...useAuthStore.getState().user!, roleCode: "DIRECTOR", permissions: [] },
+    });
+    window.history.pushState({}, "", "/management/dashboard");
+    const { router } = renderApp();
+
+    expect(router.state.location.pathname).toBe("/dashboard");
+    fireEvent.click(screen.getByRole("button", { name: "Tài khoản" }));
+    expect(screen.queryByRole("link", { name: "Về khu Quản lý" })).toBeNull();
+  });
+
   it("waits for session bootstrap before showing management", () => {
     useAuthStore.setState({ status: "loading" });
     window.history.pushState({}, "", "/management/dashboard");
