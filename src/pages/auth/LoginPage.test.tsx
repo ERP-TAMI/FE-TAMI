@@ -52,7 +52,7 @@ describe("LoginPage", () => {
         fullName: "Quản trị hệ thống",
         roleCode: "SA",
         roleName: "Quản trị hệ thống",
-        permissions: [],
+        permissions: ["management.area.access"],
       },
     });
 
@@ -68,7 +68,7 @@ describe("LoginPage", () => {
       expect(authApi.login).toHaveBeenCalledWith("sa@tami.test", "correct-password");
     });
     expect(useAuthStore.getState().status).toBe("authenticated");
-    expect(mockNavigate).toHaveBeenCalledWith("/dashboard", { replace: true });
+    expect(mockNavigate).toHaveBeenCalledWith("/management/dashboard", { replace: true });
   });
 
   it("shows a Vietnamese error for wrong credentials and does not navigate", async () => {

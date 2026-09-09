@@ -8,6 +8,12 @@ import {
   type DataRouter,
 } from "react-router-dom";
 import AppLayout from "@/layout/AppLayout";
+import ManagementLayout from "@/layout/ManagementLayout";
+import ManagementDashboardPage from "@/pages/management/ManagementDashboardPage";
+import ManagementPoOverviewPage from "@/pages/management/ManagementPoOverviewPage";
+import { ManagementRoute } from "@/routes/ManagementRoute";
+import { getLandingPath } from "@/lib/managementAccess";
+import { useAuthStore } from "@/store/authStore";
 import { ScrollToTop } from "@/components/shared/ScrollToTop";
 import { ProtectedRoute } from "@/routes/ProtectedRoute";
 import { useAuthBootstrap } from "@/hooks/useAuthBootstrap";
@@ -15,6 +21,7 @@ import LoginPage from "@/pages/auth/LoginPage";
 import DashboardPage from "@/pages/Dashboard/DashboardPage";
 import BomPage from "@/pages/bom/BomPage";
 import PoPage from "@/pages/po/PoPage";
+import PoDetailPage from "@/pages/po/PoDetailPage";
 import MaterialsPage from "@/pages/masters/MaterialsPage";
 import MaterialGroupListPage from "@/pages/masters/MaterialGroupListPage";
 import StageListPage from "@/pages/masters/StageListPage";
@@ -32,6 +39,7 @@ const AUTH_GUARD_ENABLED = true;
 
 export function AppRoutes() {
   const status = useAuthBootstrap();
+  const user = useAuthStore((state) => state.user);
 
   return (
     <>
@@ -40,12 +48,25 @@ export function AppRoutes() {
         <Route
           path="/login"
           element={
-            status === "authenticated" ? <Navigate to="/dashboard" replace /> : <LoginPage />
+            status === "authenticated" ? (
+              <Navigate to={getLandingPath(user)} replace />
+            ) : status === "idle" || status === "loading" ? (
+              <div role="status">Đang tải phiên đăng nhập…</div>
+            ) : (
+              <LoginPage />
+            )
           }
         />
         <Route element={AUTH_GUARD_ENABLED ? <ProtectedRoute /> : <Outlet />}>
+          <Route path="management" element={<ManagementRoute />}>
+            <Route element={<ManagementLayout />}>
+              <Route index element={<Navigate to="dashboard" replace />} />
+              <Route path="dashboard" element={<ManagementDashboardPage />} />
+              <Route path="purchase-orders" element={<ManagementPoOverviewPage />} />
+            </Route>
+          </Route>
           <Route element={<AppLayout />}>
-            <Route index element={<Navigate to="/dashboard" replace />} />
+            <Route index element={<Navigate to={getLandingPath(user)} replace />} />
             <Route path="dashboard" element={<DashboardPage />} />
             <Route path="styles" element={<StyleListPage />} />
             <Route path="styles/:id/detail" element={<StyleDetailPage />} />
@@ -55,6 +76,7 @@ export function AppRoutes() {
             <Route path="styles/:id/production-doc" element={<StyleDetailPage />} />
             <Route path="bom" element={<BomPage />} />
             <Route path="po" element={<PoPage />} />
+            <Route path="po/:id" element={<PoDetailPage />} />
             <Route path="masters" element={<Navigate to="/masters/materials" replace />} />
             <Route path="masters/materials" element={<MaterialsPage />} />
             <Route path="masters/material-groups" element={<MaterialGroupListPage />} />
