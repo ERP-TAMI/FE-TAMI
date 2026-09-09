@@ -97,8 +97,6 @@ describe("StyleDocumentsTab", () => {
     render(<StyleDocumentsTab styleId={STYLE_ID} />);
     fireEvent.click(screen.getByRole("button", { name: /Xem/i }));
 
-    // window.open must happen synchronously with the click (same user gesture) so
-    // real browsers don't block it as a popup once the URL resolves asynchronously.
     expect(openSpy).toHaveBeenCalledWith("", "_blank");
 
     await waitFor(() =>

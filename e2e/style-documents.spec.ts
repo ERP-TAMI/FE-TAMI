@@ -9,13 +9,7 @@ test("uploads, views, downloads and removes a Fit document without deleting the 
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
 
-  // The "Xem"/"Tải xuống" buttons open a blank popup synchronously (to survive the
-  // browser's popup blocker) then navigate it to a cross-origin S3 URL once the
-  // presigned URL resolves. That cross-origin navigation on an about:blank popup
-  // triggers a Chromium process swap (site isolation), so Playwright's `popup`
-  // event Page object stops reflecting the real navigation — a known CDP/Playwright
-  // limitation, not an app bug. Verifying via the context's own request stream
-  // (tracked independently of any single Page object) sidesteps that limitation.
+  // Popup navigates cross-origin after opening, which Playwright's popup-page tracking misses; verify via requests instead.
   const s3Requests: string[] = [];
   page.context().on("request", (req) => {
     if (req.url().includes(".s3.")) s3Requests.push(req.url());

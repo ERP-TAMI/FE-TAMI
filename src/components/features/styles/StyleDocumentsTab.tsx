@@ -115,8 +115,7 @@ export function StyleDocumentsTab({ styleId }: Props) {
   };
 
   const handleView = async (doc: StyleDocumentItem, download: boolean) => {
-    // No noopener/noreferrer: we need to keep the window handle to navigate it
-    // once the presigned URL resolves, and the target is our own trusted S3 URL.
+    // No noopener/noreferrer: those make window.open() return null, so we couldn't navigate it later.
     const popup = window.open("", "_blank");
     try {
       const { url } = await styleDocumentsApi.getViewUrl(styleId, doc.documentId, download);
