@@ -9,3 +9,4 @@ export { Pagination } from "@/components/shared/Pagination";
 export { Select } from "@/components/shared/Select";
 export { Table } from "@/components/shared/Table";
 export { Toast } from "@/components/shared/Toast";
+export { FileTypeIcon, getFileMeta } from "@/components/shared/FileTypeIcon";
