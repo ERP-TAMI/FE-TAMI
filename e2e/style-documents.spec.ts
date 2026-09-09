@@ -50,8 +50,12 @@ test("uploads, views, downloads and removes a Fit document without deleting the 
 
   await page.locator('input[type="file"]').setInputFiles(filePath);
 
-  await expect(page.getByText("fit-e2e.pdf")).toBeVisible({ timeout: 20000 });
+  await expect(page.getByText("Tệp chờ tải lên (1):")).toBeVisible();
+  await expect(page.getByText("fit-e2e.pdf")).toBeVisible();
+  await page.getByRole("button", { name: /Tải lên/i }).click();
+
   await expect(page.getByText("Đang tải lên...")).toHaveCount(0, { timeout: 20000 });
+  await expect(page.getByRole("cell", { name: "fit-e2e.pdf" })).toBeVisible({ timeout: 20000 });
 
   const viewPopupPromise = page.waitForEvent("popup");
   await page.getByRole("button", { name: "Xem" }).click();
