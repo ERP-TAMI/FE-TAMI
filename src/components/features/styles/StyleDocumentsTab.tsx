@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { ConfirmDialog, FileTypeIcon } from "@/components/shared";
+import { Button, ConfirmDialog, FileTypeIcon } from "@/components/shared";
 import { DownloadIcon, EyeIcon, FileIcon, PlusIcon, TrashBinIcon } from "@/icons";
 import { styleDocumentsApi } from "@/api/style-documents.api";
 import {
@@ -142,29 +142,30 @@ export function StyleDocumentsTab({ styleId }: Props) {
   const documents = documentsQuery.data ?? [];
 
   return (
-    <div className="space-y-5">
-      <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-xs dark:border-gray-800 dark:bg-gray-900">
-        <h4 className="text-theme-base font-bold text-gray-900 dark:text-white">
-          Tải lên tài liệu
-        </h4>
-        <p className="mt-1 text-theme-xs text-gray-500 dark:text-gray-400">
-          Hỗ trợ PDF, Word, Excel, PNG, JPG — tối đa 20MB mỗi tệp. Có thể chọn nhiều tệp cùng lúc.
-        </p>
-
-        <div
-          onClick={() => fileInputRef.current?.click()}
-          onDragOver={(e) => {
-            e.preventDefault();
-            setIsDragOver(true);
-          }}
-          onDragLeave={() => setIsDragOver(false)}
-          onDrop={handleDrop}
-          className={`mt-4 flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed py-6 px-4 text-center transition-all ${
-            isDragOver
-              ? "border-brand-500 bg-brand-50/60 dark:bg-brand-950/30"
-              : "border-gray-300 bg-gray-50/50 hover:border-brand-500 hover:bg-white dark:border-gray-700 dark:bg-gray-800/40 dark:hover:border-brand-400 dark:hover:bg-gray-800"
-          }`}
-        >
+    <div
+      className="space-y-5"
+      onDragOver={(e) => {
+        e.preventDefault();
+        setIsDragOver(true);
+      }}
+      onDragLeave={() => setIsDragOver(false)}
+      onDrop={handleDrop}
+    >
+      <div
+        className={`overflow-hidden rounded-2xl border shadow-xs transition-colors dark:bg-gray-900 ${
+          isDragOver
+            ? "border-brand-400 bg-brand-50/40 dark:border-brand-700"
+            : "border-gray-200 bg-white dark:border-gray-800"
+        }`}
+      >
+        <div className="flex items-center justify-between border-b border-gray-100 p-5 dark:border-gray-800">
+          <h3 className="text-theme-base font-bold text-gray-900 dark:text-white">
+            Danh sách tài liệu ({documents.length})
+          </h3>
+          <Button size="sm" onClick={() => fileInputRef.current?.click()}>
+            <PlusIcon className="h-4 w-4" />
+            Tải tài liệu lên
+          </Button>
           <input
             ref={fileInputRef}
             type="file"
@@ -173,16 +174,10 @@ export function StyleDocumentsTab({ styleId }: Props) {
             onChange={handleFileChange}
             className="hidden"
           />
-          <div className="flex h-11 w-11 items-center justify-center rounded-full bg-brand-100 text-brand-600 dark:bg-brand-900/80 dark:text-brand-300 mb-2.5">
-            <PlusIcon className="h-5 w-5" />
-          </div>
-          <p className="text-sm font-bold text-gray-700 dark:text-gray-200">
-            Kéo thả hoặc nhấn để chọn tệp
-          </p>
         </div>
 
         {uploadingItems.length > 0 && (
-          <div className="mt-4 space-y-2">
+          <div className="space-y-2 border-b border-gray-100 p-3 dark:border-gray-800">
             {uploadingItems.map((item) => (
               <div
                 key={item.tempId}
@@ -219,14 +214,6 @@ export function StyleDocumentsTab({ styleId }: Props) {
             ))}
           </div>
         )}
-      </div>
-
-      <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xs dark:border-gray-800 dark:bg-gray-900">
-        <div className="flex items-center justify-between border-b border-gray-100 p-5 dark:border-gray-800">
-          <h3 className="text-theme-base font-bold text-gray-900 dark:text-white">
-            Danh sách tài liệu ({documents.length})
-          </h3>
-        </div>
 
         {documentsQuery.isLoading ? (
           <div className="p-10 text-center text-theme-sm text-gray-500 dark:text-gray-400">
@@ -241,7 +228,7 @@ export function StyleDocumentsTab({ styleId }: Props) {
               Chưa có tài liệu nào được đính kèm.
             </p>
             <p className="mt-1 text-theme-xs text-gray-500 dark:text-gray-400">
-              Sử dụng khung tải lên ở trên để đính kèm tài liệu vào mẫu Fit này.
+              Bấm "Tải tài liệu lên" hoặc kéo thả tệp vào đây để đính kèm vào mẫu Fit này.
             </p>
           </div>
         ) : (
