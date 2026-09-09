@@ -81,13 +81,17 @@ export interface PurchaseOrderListItem {
 export interface PurchaseOrderProductItem {
   id: string;
   purchaseOrderId?: string;
+  sourceStyleId?: string | null;
   styleId?: string | null;
-  styleCode: string;
+  productCode: string;
+  styleCode?: string;
   productName: string;
   category?: string | null;
+  materialNote?: string | null;
   colorName?: string | null;
   deadline?: string | null;
   status?: string | null;
+  as3bCmBaseDays?: number | null;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -95,23 +99,23 @@ export interface PurchaseOrderProductItem {
 export type PurchaseOrderLineItem = PurchaseOrderProductItem;
 
 export interface CreatePoProductInput {
-  styleCode: string;
+  productCode: string;
   productName: string;
+  sourceStyleId?: string;
   category?: string;
-  colorName?: string;
+  materialNote?: string;
   deadline?: string;
-  status?: string;
-  styleId?: string;
+  as3bCmBaseDays?: number;
 }
 
 export interface UpdatePoProductInput {
-  styleCode?: string;
+  productCode?: string;
   productName?: string;
+  sourceStyleId?: string;
   category?: string;
-  colorName?: string;
+  materialNote?: string;
   deadline?: string;
-  status?: string;
-  styleId?: string;
+  as3bCmBaseDays?: number;
 }
 
 export interface PurchaseOrderDetail extends PurchaseOrderListItem {

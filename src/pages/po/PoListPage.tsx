@@ -48,6 +48,9 @@ export default function PoListPage() {
   const handleCreateSubmit = async (input: CreatePoInput, files: AttachedDocItem[]) => {
     try {
       const created = await createMutation.mutateAsync(input);
+      let successCount = 0;
+      const failedFiles: string[] = [];
+
       if (files && files.length > 0) {
         setUploadProgress({ total: files.length, completed: 0 });
         for (let i = 0; i < files.length; i++) {
@@ -59,17 +62,34 @@ export default function PoListPage() {
           });
           try {
             await poApi.uploadDocument(created.id, item.file, item.purpose);
+            successCount++;
           } catch (uploadErr) {
             console.error("Lỗi khi tải tệp đính kèm:", uploadErr);
+            failedFiles.push(item.file.name);
           }
         }
         setUploadProgress({ total: files.length, completed: files.length });
       }
-      showToast(
-        files && files.length > 0
-          ? `Đã tạo đơn hàng PO ${created.poCode} và đính kèm ${files.length} tài liệu phân loại thành công.`
-          : `Đã tạo đơn hàng PO ${created.poCode} thành công.`
-      );
+
+      if (failedFiles.length > 0) {
+        if (successCount === 0) {
+          showToast(
+            `Đã tạo PO ${created.poCode} nhưng không thể tải lên ${failedFiles.length} tài liệu đính kèm. Vui lòng tải lại trong trang chi tiết.`,
+            "error"
+          );
+        } else {
+          showToast(
+            `Đã tạo PO ${created.poCode}, đính kèm thành công ${successCount}/${files.length} tài liệu. Có ${failedFiles.length} tệp thất bại: ${failedFiles.join(", ")}.`,
+            "error"
+          );
+        }
+      } else {
+        showToast(
+          files && files.length > 0
+            ? `Đã tạo đơn hàng PO ${created.poCode} và đính kèm ${files.length} tài liệu phân loại thành công.`
+            : `Đã tạo đơn hàng PO ${created.poCode} thành công.`
+        );
+      }
       setUploadProgress(null);
       setIsCreateOpen(false);
     } catch (err: unknown) {

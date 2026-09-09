@@ -1,3 +1,8 @@
+export function getApiBaseUrl(): string {
+  const rawApiUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000";
+  return rawApiUrl.replace(/\/api(?:\/v\d+)?\/?$/, "");
+}
+
 export function resolveImageUrl(url?: string | null): string | null {
   if (!url) return null;
   if (
@@ -10,8 +15,7 @@ export function resolveImageUrl(url?: string | null): string | null {
   }
   // Nếu là đường dẫn tương đối bắt đầu bằng /
   if (url.startsWith("/")) {
-    const rawApiUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000";
-    const origin = rawApiUrl.replace(/\/api(?:\/v\d+)?\/?$/, "");
+    const origin = getApiBaseUrl();
     return `${origin}${url}`;
   }
   return url;

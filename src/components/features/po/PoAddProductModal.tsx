@@ -12,36 +12,34 @@ interface Props {
 
 export function PoAddProductModal({ isOpen, isPending, onClose, onSubmit }: Props) {
   const [mode, setMode] = useState<"select" | "manual">("select");
-  const [selectedStyleId, setSelectedStyleId] = useState("");
-  const [styleCode, setStyleCode] = useState("");
+  const [sourceStyleId, setSourceStyleId] = useState("");
+  const [productCode, setProductCode] = useState("");
   const [productName, setProductName] = useState("");
   const [category, setCategory] = useState("");
-  const [colorName, setColorName] = useState("");
+  const [materialNote, setMaterialNote] = useState("");
   const [deadline, setDeadline] = useState("");
-  const [status, setStatus] = useState("Hoạt động");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const { data: stylesData } = useStyles({ limit: 100 });
   const styleList = stylesData?.data || [];
 
   const handleSelectStyle = (id: string) => {
-    setSelectedStyleId(id);
+    setSourceStyleId(id);
     const found = styleList.find((s) => s.id === id);
     if (found) {
-      setStyleCode(found.styleCode);
+      setProductCode(found.styleCode);
       setProductName(found.styleName);
       setCategory(found.category || "");
     }
   };
 
   const handleReset = () => {
-    setSelectedStyleId("");
-    setStyleCode("");
+    setSourceStyleId("");
+    setProductCode("");
     setProductName("");
     setCategory("");
-    setColorName("");
+    setMaterialNote("");
     setDeadline("");
-    setStatus("Hoạt động");
     setErrorMsg(null);
   };
 
@@ -54,8 +52,8 @@ export function PoAddProductModal({ isOpen, isPending, onClose, onSubmit }: Prop
     e.preventDefault();
     setErrorMsg(null);
 
-    if (!styleCode.trim()) {
-      setErrorMsg("Mã Style/Sản phẩm không được để trống.");
+    if (!productCode.trim()) {
+      setErrorMsg("Mã sản phẩm không được để trống.");
       return;
     }
     if (!productName.trim()) {
@@ -65,13 +63,12 @@ export function PoAddProductModal({ isOpen, isPending, onClose, onSubmit }: Prop
 
     try {
       await onSubmit({
-        styleCode: styleCode.trim(),
+        productCode: productCode.trim(),
         productName: productName.trim(),
+        sourceStyleId: sourceStyleId || undefined,
         category: category.trim() || undefined,
-        colorName: colorName.trim() || undefined,
+        materialNote: materialNote.trim() || undefined,
         deadline: deadline || undefined,
-        status: status.trim() || "Hoạt động",
-        styleId: selectedStyleId || undefined,
       });
       handleClose();
     } catch (err: unknown) {
@@ -129,7 +126,7 @@ export function PoAddProductModal({ isOpen, isPending, onClose, onSubmit }: Prop
               Chọn mẫu Fit
             </label>
             <select
-              value={selectedStyleId}
+              value={sourceStyleId}
               onChange={(e) => handleSelectStyle(e.target.value)}
               className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3.5 py-2 text-theme-sm text-gray-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-white"
             >
@@ -146,13 +143,13 @@ export function PoAddProductModal({ isOpen, isPending, onClose, onSubmit }: Prop
         <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
           <div>
             <label className="block text-theme-xs font-semibold text-gray-700 dark:text-gray-300">
-              Mã Style / SP <span className="text-error-500">*</span>
+              Mã sản phẩm / Style <span className="text-error-500">*</span>
             </label>
             <input
               type="text"
-              placeholder="VD: ST-2026-001"
-              value={styleCode}
-              onChange={(e) => setStyleCode(e.target.value)}
+              placeholder="VD: PROD-2026-001"
+              value={productCode}
+              onChange={(e) => setProductCode(e.target.value)}
               className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3.5 py-2 text-theme-sm font-mono text-gray-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-white"
             />
           </div>
@@ -187,46 +184,28 @@ export function PoAddProductModal({ isOpen, isPending, onClose, onSubmit }: Prop
 
           <div>
             <label className="block text-theme-xs font-semibold text-gray-700 dark:text-gray-300">
-              Màu sắc
+              Ghi chú chất liệu / Màu sắc
             </label>
             <input
               type="text"
-              placeholder="VD: Navy, White, Đen..."
-              value={colorName}
-              onChange={(e) => setColorName(e.target.value)}
+              placeholder="VD: Cotton 100%, Navy..."
+              value={materialNote}
+              onChange={(e) => setMaterialNote(e.target.value)}
               className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3.5 py-2 text-theme-sm text-gray-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-white"
             />
           </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
-          <div>
-            <label className="block text-theme-xs font-semibold text-gray-700 dark:text-gray-300">
-              Hạn giao (Deadline)
-            </label>
-            <input
-              type="date"
-              value={deadline}
-              onChange={(e) => setDeadline(e.target.value)}
-              className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3.5 py-2 text-theme-sm text-gray-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-white"
-            />
-          </div>
-
-          <div>
-            <label className="block text-theme-xs font-semibold text-gray-700 dark:text-gray-300">
-              Trạng thái dòng SP
-            </label>
-            <select
-              value={status}
-              onChange={(e) => setStatus(e.target.value)}
-              className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3.5 py-2 text-theme-sm text-gray-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-white"
-            >
-              <option value="Hoạt động">Hoạt động</option>
-              <option value="Đang may mẫu">Đang may mẫu</option>
-              <option value="Chờ duyệt">Chờ duyệt</option>
-              <option value="Đã duyệt">Đã duyệt</option>
-            </select>
-          </div>
+        <div>
+          <label className="block text-theme-xs font-semibold text-gray-700 dark:text-gray-300">
+            Hạn giao (Deadline)
+          </label>
+          <input
+            type="date"
+            value={deadline}
+            onChange={(e) => setDeadline(e.target.value)}
+            className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3.5 py-2 text-theme-sm text-gray-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-white"
+          />
         </div>
 
         <div className="flex items-center justify-end gap-3 border-t border-gray-100 pt-4 dark:border-gray-800">

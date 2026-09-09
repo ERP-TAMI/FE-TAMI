@@ -74,19 +74,35 @@ describe("poApi", () => {
     expect(res).toEqual(mockProducts);
   });
 
-  it("addProduct calls POST /purchase-orders/:id/products", async () => {
-    const mockProduct = { id: "prod-1", styleCode: "ST-01", productName: "Polo" };
+  it("addProduct calls POST /purchase-orders/:id/products conforming to BE CreatePoProductDto contract", async () => {
+    const mockProduct = {
+      id: "prod-1",
+      productCode: "PROD-2026-001",
+      productName: "Polo Regular Fit",
+      sourceStyleId: "style-uuid-1",
+      category: "Polo",
+      materialNote: "Cotton 100%",
+      deadline: "2026-10-01",
+    };
     vi.mocked(apiClient.post).mockResolvedValueOnce({ data: mockProduct });
 
-    const res = await poApi.addProduct("po-1", {
-      styleCode: "ST-01",
-      productName: "Polo",
-    });
+    const input = {
+      productCode: "PROD-2026-001",
+      productName: "Polo Regular Fit",
+      sourceStyleId: "style-uuid-1",
+      category: "Polo",
+      materialNote: "Cotton 100%",
+      deadline: "2026-10-01",
+    };
 
-    expect(apiClient.post).toHaveBeenCalledWith("/purchase-orders/po-1/products", {
-      styleCode: "ST-01",
-      productName: "Polo",
-    });
+    const res = await poApi.addProduct("po-1", input);
+
+    expect(apiClient.post).toHaveBeenCalledWith("/purchase-orders/po-1/products", input);
+    // Ensure no forbidden fields are sent
+    expect((input as Record<string, unknown>).styleCode).toBeUndefined();
+    expect((input as Record<string, unknown>).styleId).toBeUndefined();
+    expect((input as Record<string, unknown>).colorName).toBeUndefined();
+    expect((input as Record<string, unknown>).status).toBeUndefined();
     expect(res).toEqual(mockProduct);
   });
 

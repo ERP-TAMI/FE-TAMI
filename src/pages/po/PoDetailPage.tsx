@@ -83,7 +83,7 @@ export default function PoDetailPage() {
     actionText: "",
   });
 
-  const isLocked = po?.status === "closed";
+  const isLocked = po?.status === "closed" || po?.status === "cancelled";
 
   const startEdit = () => {
     if (!po) return;
@@ -611,10 +611,10 @@ export default function PoDetailPage() {
               <table className="w-full text-left text-theme-sm text-gray-700 dark:text-gray-300">
                 <thead className="border-b border-gray-200 bg-gray-50/80 text-theme-xs font-semibold uppercase tracking-wider text-gray-500 dark:border-gray-800 dark:bg-gray-800/60 dark:text-gray-400">
                   <tr>
-                    <th className="px-5 py-3.5">Mã Style / SP</th>
+                    <th className="px-5 py-3.5">Mã sản phẩm / Style</th>
                     <th className="px-5 py-3.5">Tên sản phẩm</th>
                     <th className="px-5 py-3.5">Danh mục</th>
-                    <th className="px-5 py-3.5">Màu sắc</th>
+                    <th className="px-5 py-3.5">Ghi chú / Phụ liệu</th>
                     <th className="px-5 py-3.5">Hạn giao</th>
                     <th className="px-5 py-3.5">Trạng thái</th>
                     <th className="px-5 py-3.5 text-right">Thao tác</th>
@@ -627,7 +627,7 @@ export default function PoDetailPage() {
                       className="transition-colors hover:bg-gray-50/70 dark:hover:bg-gray-800/40"
                     >
                       <td className="px-5 py-4 font-mono font-semibold text-brand-600 dark:text-brand-400">
-                        {line.styleCode}
+                        {line.productCode || line.styleCode}
                       </td>
                       <td className="px-5 py-4 font-medium text-gray-900 dark:text-white">
                         {line.productName}
@@ -636,7 +636,7 @@ export default function PoDetailPage() {
                         {line.category || "—"}
                       </td>
                       <td className="px-5 py-4 text-theme-xs text-gray-700 dark:text-gray-300">
-                        {line.colorName || "—"}
+                        {line.materialNote || line.colorName || "—"}
                       </td>
                       <td className="px-5 py-4 text-theme-xs text-gray-500 dark:text-gray-400">
                         {formatDate(line.deadline)}

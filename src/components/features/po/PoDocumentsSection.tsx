@@ -3,6 +3,8 @@ import { createPortal } from "react-dom";
 import { Button, Modal, FileTypeIcon } from "@/components/shared";
 import { FileIcon, DownloadIcon, TrashBinIcon, EyeIcon, CloseLineIcon, AngleDownIcon } from "@/icons";
 import { poApi } from "@/api/po.api";
+import { getApiBaseUrl } from "@/lib/imageUtils";
+import { sanitizeHtml } from "@/lib/sanitizeHtml";
 import type { PurchaseOrderDocumentItem, PoDocumentPreviewResponse } from "@/types/po";
 
 interface Props {
@@ -490,10 +492,11 @@ export function PoDocumentsSection({
               <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
                 {filteredDocuments.map((doc) => {
                   const catInfo = getDocumentCategoryInfo(doc.purpose);
+                  const apiBaseUrl = getApiBaseUrl();
                   const fullUrl = doc.fileUrl
                     ? doc.fileUrl.startsWith("http")
                       ? doc.fileUrl
-                      : `http://localhost:3000${doc.fileUrl}`
+                      : `${apiBaseUrl}${doc.fileUrl}`
                     : null;
 
                   return (
@@ -839,7 +842,7 @@ export function PoDocumentsSection({
                 <div className="max-h-[68vh] overflow-y-auto rounded-xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900 shadow-xs">
                   <div
                     className="prose dark:prose-invert max-w-none text-theme-sm space-y-2 leading-relaxed"
-                    dangerouslySetInnerHTML={{ __html: previewData.html }}
+                    dangerouslySetInnerHTML={{ __html: sanitizeHtml(previewData.html) }}
                   />
                 </div>
               );
