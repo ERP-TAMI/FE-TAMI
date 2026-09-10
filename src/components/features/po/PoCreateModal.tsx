@@ -163,11 +163,12 @@ export function PoCreateModal({ isOpen, isPending, uploadProgress, onClose, onSu
 
   // Cleanup tất cả URLs khi component unmount
   useEffect(() => {
+    const cache = previewCacheRef.current;
     return () => {
-      for (const url of previewCacheRef.current.values()) {
+      for (const url of cache.values()) {
         URL.revokeObjectURL(url);
       }
-      previewCacheRef.current.clear();
+      cache.clear();
     };
   }, []);
 
