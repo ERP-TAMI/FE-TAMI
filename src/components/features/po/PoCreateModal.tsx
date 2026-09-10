@@ -7,6 +7,7 @@ import {
   PlusIcon,
   ChevronDownIcon,
   ChevronUpIcon,
+  CalenderIcon,
 } from "@/icons";
 import type { CreatePoInput, AttachedDocItem } from "@/types/po";
 import {
@@ -119,6 +120,7 @@ export function PoCreateModal({ isOpen, isPending, uploadProgress, onClose, onSu
   const [receivedDate, setReceivedDate] = useState(
     new Date().toISOString().split("T")[0],
   );
+  const [deadline, setDeadline] = useState("");
   const [note, setNote] = useState("");
 
   // Dữ liệu giai đoạn 2 (Tài liệu đính kèm)
@@ -174,11 +176,13 @@ export function PoCreateModal({ isOpen, isPending, uploadProgress, onClose, onSu
     poCode?: string;
     customerNameSnapshot?: string;
     receivedDate?: string;
+    deadline?: string;
   }>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
   const poCodeInputRef = useRef<HTMLInputElement>(null);
   const customerNameInputRef = useRef<HTMLInputElement>(null);
   const receivedDateInputRef = useRef<HTMLInputElement>(null);
+  const deadlineInputRef = useRef<HTMLInputElement>(null);
 
   const handleResetAndClose = () => {
     setCurrentStep(1);
@@ -186,6 +190,7 @@ export function PoCreateModal({ isOpen, isPending, uploadProgress, onClose, onSu
     setCustomerPoCode("");
     setCustomerNameSnapshot("");
     setReceivedDate(new Date().toISOString().split("T")[0]);
+    setDeadline("");
     setNote("");
     setAttachedFiles([]);
     setSelectedTab("all");
@@ -200,10 +205,18 @@ export function PoCreateModal({ isOpen, isPending, uploadProgress, onClose, onSu
     setErrorMsg(null);
 
     const errors: typeof fieldErrors = {};
+    const todayStr = new Date().toISOString().split("T")[0];
     if (!poCode.trim()) errors.poCode = "Vui lòng nhập Mã PO hệ thống.";
     if (!customerNameSnapshot.trim())
       errors.customerNameSnapshot = "Vui lòng nhập Tên khách hàng.";
     if (!receivedDate) errors.receivedDate = "Vui lòng chọn ngày nhận.";
+    if (!deadline) {
+      errors.deadline = "Vui lòng chọn hạn hoàn thành (deadline).";
+    } else if (deadline < todayStr) {
+      errors.deadline = "Hạn hoàn thành không được ở trong quá khứ.";
+    } else if (receivedDate && deadline <= receivedDate) {
+      errors.deadline = "Hạn hoàn thành phải sau ngày nhận PO.";
+    }
 
     setFieldErrors(errors);
 
@@ -213,6 +226,8 @@ export function PoCreateModal({ isOpen, isPending, uploadProgress, onClose, onSu
       customerNameInputRef.current?.focus();
     } else if (errors.receivedDate) {
       receivedDateInputRef.current?.focus();
+    } else if (errors.deadline) {
+      deadlineInputRef.current?.focus();
     }
 
     return Object.keys(errors).length === 0;
@@ -289,6 +304,7 @@ export function PoCreateModal({ isOpen, isPending, uploadProgress, onClose, onSu
           customerPoCode: customerPoCode.trim() || undefined,
           customerNameSnapshot: customerNameSnapshot.trim(),
           receivedDate,
+          deadline,
           note: note.trim() || undefined,
         },
         attachedFiles,
@@ -351,7 +367,7 @@ export function PoCreateModal({ isOpen, isPending, uploadProgress, onClose, onSu
                     : "bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-300"
               }`}
             >
-              {poCode && customerNameSnapshot && currentStep !== 1 ? (
+              {poCode && customerNameSnapshot && receivedDate && deadline && currentStep !== 1 ? (
                 <CheckLineIcon className="h-3.5 w-3.5" />
               ) : (
                 "1"
@@ -485,7 +501,7 @@ export function PoCreateModal({ isOpen, isPending, uploadProgress, onClose, onSu
             </div>
 
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-              <div>
+              <div className="sm:col-span-2">
                 <label className="block text-sm font-semibold text-gray-800 dark:text-gray-200 mb-1.5">
                   Tên Khách hàng <span className="text-error-500">*</span>
                 </label>
@@ -513,27 +529,122 @@ export function PoCreateModal({ isOpen, isPending, uploadProgress, onClose, onSu
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-800 dark:text-gray-200 mb-1.5">
-                  Ngày nhận <span className="text-error-500">*</span>
-                </label>
-                <input
-                  ref={receivedDateInputRef}
-                  type="date"
-                  value={receivedDate}
-                  onChange={(e) => {
-                    setReceivedDate(e.target.value);
-                    if (fieldErrors.receivedDate)
-                      setFieldErrors((prev) => ({ ...prev, receivedDate: undefined }));
-                  }}
-                  className={`w-full rounded-xl border bg-white px-4 py-3 text-sm text-gray-900 outline-none transition focus:ring-2 dark:bg-gray-800 dark:text-white ${
-                    fieldErrors.receivedDate
-                      ? "border-error-400 focus:border-error-500 focus:ring-error-500/20 dark:border-error-500"
-                      : "border-gray-250 focus:border-brand-500 focus:ring-brand-500/20 dark:border-gray-800"
-                  }`}
-                />
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-sm font-semibold text-gray-800 dark:text-gray-200">
+                    Ngày nhận <span className="text-error-500">*</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const today = new Date().toISOString().split("T")[0];
+                      setReceivedDate(today);
+                      if (fieldErrors.receivedDate)
+                        setFieldErrors((prev) => ({ ...prev, receivedDate: undefined }));
+                    }}
+                    className="text-xs font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400 hover:underline cursor-pointer"
+                    title="Gán nhanh bằng ngày hiện tại"
+                  >
+                    Hôm nay
+                  </button>
+                </div>
+                <div className="relative flex items-center">
+                  <input
+                    ref={receivedDateInputRef}
+                    type="date"
+                    value={receivedDate}
+                    onClick={(e) => {
+                      try {
+                        e.currentTarget.showPicker?.();
+                      } catch {}
+                    }}
+                    onChange={(e) => {
+                      setReceivedDate(e.target.value);
+                      if (fieldErrors.receivedDate)
+                        setFieldErrors((prev) => ({ ...prev, receivedDate: undefined }));
+                    }}
+                    className={`w-full rounded-xl border bg-white px-4 py-3 pr-11 text-sm text-gray-900 outline-none transition focus:ring-2 dark:bg-gray-800 dark:text-white cursor-pointer ${
+                      fieldErrors.receivedDate
+                        ? "border-error-400 focus:border-error-500 focus:ring-error-500/20 dark:border-error-500"
+                        : "border-gray-250 focus:border-brand-500 focus:ring-brand-500/20 dark:border-gray-800"
+                    }`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      try {
+                        receivedDateInputRef.current?.showPicker?.();
+                      } catch {}
+                    }}
+                    className="absolute right-3 p-1 text-gray-400 hover:text-brand-600 transition-colors dark:hover:text-brand-400 cursor-pointer"
+                    title="Bấm để mở lịch chọn ngày"
+                  >
+                    <CalenderIcon className="h-5 w-5" />
+                  </button>
+                </div>
                 {fieldErrors.receivedDate && (
                   <p className="mt-1.5 text-xs font-medium text-error-600 dark:text-error-400">
                     {fieldErrors.receivedDate}
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-sm font-semibold text-gray-800 dark:text-gray-200">
+                    Hạn hoàn thành (Deadline) <span className="text-error-500">*</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const today = new Date().toISOString().split("T")[0];
+                      setDeadline(today);
+                      if (fieldErrors.deadline)
+                        setFieldErrors((prev) => ({ ...prev, deadline: undefined }));
+                    }}
+                    className="text-xs font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400 hover:underline cursor-pointer"
+                    title="Gán nhanh bằng ngày hiện tại"
+                  >
+                    Hôm nay
+                  </button>
+                </div>
+                <div className="relative flex items-center">
+                  <input
+                    ref={deadlineInputRef}
+                    type="date"
+                    min={new Date().toISOString().split("T")[0]}
+                    value={deadline}
+                    onClick={(e) => {
+                      try {
+                        e.currentTarget.showPicker?.();
+                      } catch {}
+                    }}
+                    onChange={(e) => {
+                      setDeadline(e.target.value);
+                      if (fieldErrors.deadline)
+                        setFieldErrors((prev) => ({ ...prev, deadline: undefined }));
+                    }}
+                    className={`w-full rounded-xl border bg-white px-4 py-3 pr-11 text-sm text-gray-900 outline-none transition focus:ring-2 dark:bg-gray-800 dark:text-white cursor-pointer ${
+                      fieldErrors.deadline
+                        ? "border-error-400 focus:border-error-500 focus:ring-error-500/20 dark:border-error-500"
+                        : "border-gray-250 focus:border-brand-500 focus:ring-brand-500/20 dark:border-gray-800"
+                    }`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      try {
+                        deadlineInputRef.current?.showPicker?.();
+                      } catch {}
+                    }}
+                    className="absolute right-3 p-1 text-gray-400 hover:text-brand-600 transition-colors dark:hover:text-brand-400 cursor-pointer"
+                    title="Bấm để mở lịch chọn ngày"
+                  >
+                    <CalenderIcon className="h-5 w-5" />
+                  </button>
+                </div>
+                {fieldErrors.deadline && (
+                  <p className="mt-1.5 text-xs font-medium text-error-600 dark:text-error-400">
+                    {fieldErrors.deadline}
                   </p>
                 )}
               </div>
@@ -844,6 +955,16 @@ export function PoCreateModal({ isOpen, isPending, uploadProgress, onClose, onSu
                     {receivedDate}
                   </dd>
                 </div>
+                {deadline && (
+                  <div>
+                    <dt className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
+                      Hạn hoàn thành
+                    </dt>
+                    <dd className="mt-0.5 text-base font-semibold text-brand-600 dark:text-brand-400">
+                      {deadline}
+                    </dd>
+                  </div>
+                )}
                 {customerPoCode && (
                   <div>
                     <dt className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
