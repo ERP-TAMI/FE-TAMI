@@ -21,6 +21,7 @@ import LoginPage from "@/pages/auth/LoginPage";
 import DashboardPage from "@/pages/Dashboard/DashboardPage";
 import BomPage from "@/pages/bom/BomPage";
 import PoPage from "@/pages/po/PoPage";
+import PoDetailPage from "@/pages/po/PoDetailPage";
 import MaterialsPage from "@/pages/masters/MaterialsPage";
 import MaterialGroupListPage from "@/pages/masters/MaterialGroupListPage";
 import StageListPage from "@/pages/masters/StageListPage";
@@ -75,6 +76,7 @@ export function AppRoutes() {
             <Route path="styles/:id/production-doc" element={<StyleDetailPage />} />
             <Route path="bom" element={<BomPage />} />
             <Route path="po" element={<PoPage />} />
+            <Route path="po/:id" element={<PoDetailPage />} />
             <Route path="masters" element={<Navigate to="/masters/materials" replace />} />
             <Route path="masters/materials" element={<MaterialsPage />} />
             <Route path="masters/material-groups" element={<MaterialGroupListPage />} />

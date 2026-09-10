@@ -76,7 +76,7 @@ export type ModalProps = {
   children: ReactNode;
   footer?: ReactNode;
   closeLabel?: string;
-  size?: "md" | "xl" | "2xl";
+  size?: "sm" | "md" | "lg" | "xl" | "2xl";
   onClose: () => void;
 };
 
@@ -156,7 +156,9 @@ export function Modal({
 
   if (!open) return null;
   const sizeClass = {
-    md: "max-w-lg",
+    sm: "max-w-md",
+    md: "max-w-xl",
+    lg: "max-w-4xl",
     xl: "max-w-5xl",
     "2xl": "max-w-7xl",
   }[size];
