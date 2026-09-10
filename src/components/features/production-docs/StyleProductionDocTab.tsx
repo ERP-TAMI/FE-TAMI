@@ -9,6 +9,10 @@ import {
   useCopyProductionDoc,
   useExportProductionDocExcel,
 } from "@/hooks/useProductionDocs";
+import {
+  useProductProductionDoc,
+  useUpdateProductProductionDoc,
+} from "@/hooks/usePurchaseOrders";
 import { useStyles } from "@/hooks/useStyles";
 import { useUploadImage } from "@/hooks/useUploadImage";
 import { useToast } from "@/hooks/useToast";
@@ -27,11 +31,14 @@ import type {
   ProductionDocSection,
   ProductionDocSizeRow,
   ProductionDocStatus,
+  StyleProductionDocDetail,
   CopyMode,
 } from "@/types/production-doc";
 
 interface Props {
-  styleId: string;
+  styleId?: string;
+  poId?: string;
+  productId?: string;
   styleName: string;
   styleImageUrl?: string | null;
   onEditingChange?: (isEditing: boolean) => void;
@@ -290,11 +297,24 @@ const EMPTY_SECTION = (): ProductionDocSection => ({
 
 export function StyleProductionDocTab({
   styleId,
+  poId,
+  productId,
   styleName,
   styleImageUrl,
   onEditingChange,
 }: Props) {
-  const { data: doc, isLoading, isError, error, refetch } = useProductionDoc(styleId);
+  const isProductMode = Boolean(poId && productId);
+  const styleQuery = useProductionDoc(isProductMode ? undefined : styleId);
+  const productQuery = useProductProductionDoc(
+    isProductMode ? poId : undefined,
+    isProductMode ? productId : undefined,
+  );
+  const doc = (isProductMode ? productQuery.data : styleQuery.data) as StyleProductionDocDetail | null;
+  const isLoading = isProductMode ? productQuery.isLoading : styleQuery.isLoading;
+  const isError = isProductMode ? productQuery.isError : styleQuery.isError;
+  const error = isProductMode ? productQuery.error : styleQuery.error;
+  const refetch = isProductMode ? productQuery.refetch : styleQuery.refetch;
+
   const stylesQuery = useStyles({ limit: 100 });
   const createDoc = useCreateProductionDoc();
   const updateDoc = useUpdateProductionDoc();
@@ -302,6 +322,7 @@ export function StyleProductionDocTab({
   const resyncDoc = useResyncProductionDoc();
   const copyDoc = useCopyProductionDoc();
   const exportExcel = useExportProductionDocExcel();
+  const updateProductDoc = useUpdateProductProductionDoc();
   const uploadImage = useUploadImage();
   const { toast, showToast, hideToast } = useToast();
 
@@ -350,32 +371,32 @@ export function StyleProductionDocTab({
       const imgsFromData = Array.isArray(doc.sizeData)
         ? doc.sizeData
             .filter(
-              (r: unknown): r is { imageUrl: string } =>
+              (r: any): r is { imageUrl: string } =>
                 typeof r === "object" &&
                 r !== null &&
                 "imageUrl" in r &&
                 typeof (r as { imageUrl: unknown }).imageUrl === "string",
             )
-            .map((r) => r.imageUrl)
+            .map((r: any) => r.imageUrl)
         : [];
       const imgsFromRows = Array.isArray(doc.sizeRows)
         ? doc.sizeRows
-            .filter((r): r is typeof r & { imageUrl: string } => typeof r?.imageUrl === "string")
-            .map((r) => r.imageUrl)
+            .filter((r: any): r is typeof r & { imageUrl: string } => typeof r?.imageUrl === "string")
+            .map((r: any) => r.imageUrl)
         : [];
       const combinedImgs = Array.from(new Set([...imgsFromData, ...imgsFromRows]));
       setSec5SizeImages(combinedImgs.slice(0, 1));
 
       setSections(
         doc.sections
-          .filter((s) => !s.isFixed)
-          .map((s) => ({
+          .filter((s: ProductionDocSection) => !s.isFixed)
+          .map((s: ProductionDocSection) => ({
             ...s,
             imageGroups: s.imageGroups || [],
           })),
       );
       setForcedNewRowGroups({});
-      setSizeRows(doc.sizeRows ? doc.sizeRows.map((sr) => ({ ...sr })) : []);
+      setSizeRows(doc.sizeRows ? doc.sizeRows.map((sr: ProductionDocSizeRow) => ({ ...sr })) : []);
     }
   }, [doc]);
 
@@ -488,47 +509,41 @@ export function StyleProductionDocTab({
         }
       });
 
-      if (!doc) {
+      const payload = {
+        name: docName || doc?.name || `Tài liệu sản xuất - ${styleName}`,
+        description: doc?.description || null,
+        status: (doc?.status as ProductionDocStatus) || "draft",
+        section1Description: null,
+        section1ImageUrl: sec1Image || null,
+        section2Accessories: sec2Accessories || null,
+        section3Notes: sec3Notes || null,
+        section4CustomerFeedback: sec4Feedback || null,
+        sizeData: sec5SizeImages.map((img) => ({ imageUrl: img })),
+        sections: sections.map((s, idx) => ({
+          ...s,
+          orderIndex: idx + 5,
+        })),
+        sizeRows: sanitizedSizeRows,
+      };
+
+      if (isProductMode) {
+        await updateProductDoc.mutateAsync({
+          poId: poId!,
+          productId: productId!,
+          data: payload,
+        });
+        showToast("Đã lưu tài liệu sản xuất thành công.");
+      } else if (!doc) {
         await createDoc.mutateAsync({
-          styleId,
-          input: {
-            name: docName || `Tài liệu sản xuất - ${styleName}`,
-            description: null,
-            status: "draft" as ProductionDocStatus,
-            section1Description: null,
-            section1ImageUrl: sec1Image || null,
-            section2Accessories: sec2Accessories || null,
-            section3Notes: sec3Notes || null,
-            section4CustomerFeedback: sec4Feedback || null,
-            sizeData: sec5SizeImages.map((img) => ({ imageUrl: img })),
-            sections: sections.map((s, idx) => ({
-              ...s,
-              orderIndex: idx + 5,
-            })),
-            sizeRows: sanitizedSizeRows,
-          },
+          styleId: styleId!,
+          input: payload as any,
         });
         showToast("Đã tạo mới tài liệu sản xuất thành công.");
       } else {
         await updateDoc.mutateAsync({
-          styleId,
+          styleId: styleId!,
           docId: doc.id,
-          input: {
-            name: docName || doc.name,
-            description: doc.description,
-            status: doc.status as ProductionDocStatus,
-            section1Description: null,
-            section1ImageUrl: sec1Image || null,
-            section2Accessories: sec2Accessories || null,
-            section3Notes: sec3Notes || null,
-            section4CustomerFeedback: sec4Feedback || null,
-            sizeData: sec5SizeImages.map((img) => ({ imageUrl: img })),
-            sections: sections.map((s, idx) => ({
-              ...s,
-              orderIndex: idx + 5,
-            })),
-            sizeRows: sanitizedSizeRows,
-          },
+          input: payload as any,
         });
         showToast("Đã lưu tài liệu sản xuất.");
       }
@@ -563,11 +578,19 @@ export function StyleProductionDocTab({
   const handleStatusChange = async (newStatus: ProductionDocStatus) => {
     if (!doc) return;
     try {
-      await updateStatus.mutateAsync({
-        styleId,
-        docId: doc.id,
-        status: newStatus,
-      });
+      if (isProductMode) {
+        await updateProductDoc.mutateAsync({
+          poId: poId!,
+          productId: productId!,
+          data: { status: newStatus },
+        });
+      } else {
+        await updateStatus.mutateAsync({
+          styleId: styleId!,
+          docId: doc.id,
+          status: newStatus,
+        });
+      }
       showToast("Đã cập nhật trạng thái tài liệu.");
     } catch (err) {
       showToast(getApiError(err, "Đổi trạng thái thất bại.").message, "error");
@@ -575,7 +598,7 @@ export function StyleProductionDocTab({
   };
 
   const handleResync = async () => {
-    if (!doc) return;
+    if (!doc || !styleId) return;
     try {
       await resyncDoc.mutateAsync({
         styleId,
@@ -595,7 +618,7 @@ export function StyleProductionDocTab({
     excludeSections?: string[],
     confirmOverwrite = false,
   ) => {
-    if (!doc || !targetStyleId) return;
+    if (!doc || !targetStyleId || !styleId) return;
     try {
       await copyDoc.mutateAsync({
         styleId,
@@ -622,6 +645,7 @@ export function StyleProductionDocTab({
   };
 
   const handleExportExcel = async () => {
+    if (!styleId) return;
     try {
       await exportExcel.mutateAsync({ styleId, styleCode: styleName });
       showToast("Đã xuất file Excel tài liệu sản xuất thành công.");
@@ -684,7 +708,9 @@ export function StyleProductionDocTab({
         updatedAt={doc?.updatedAt}
         copiedFromStyleId={doc?.copiedFromStyleId}
         isEditing={isEditing}
-        isSaving={createDoc.isPending || updateDoc.isPending}
+        isSaving={
+          createDoc.isPending || updateDoc.isPending || updateProductDoc.isPending
+        }
         isExporting={exportExcel.isPending}
         isResyncing={resyncDoc.isPending}
         onStatusChange={(s) => void handleStatusChange(s)}
@@ -692,9 +718,9 @@ export function StyleProductionDocTab({
         onCancelEdit={() => setIsEditing(false)}
         onSaveClick={() => void handleSave()}
         onPreviewClick={() => setPreviewOpen(true)}
-        onExportExcelClick={() => void handleExportExcel()}
-        onResyncClick={() => setResyncOpen(true)}
-        onCopyClick={() => setCopyOpen(true)}
+        onExportExcelClick={isProductMode ? undefined : () => void handleExportExcel()}
+        onResyncClick={isProductMode ? undefined : () => setResyncOpen(true)}
+        onCopyClick={isProductMode ? undefined : () => setCopyOpen(true)}
       />
 
       {/* Document Workspace Structure */}
@@ -1406,7 +1432,7 @@ export function StyleProductionDocTab({
                 }
               : {
                   id: "preview",
-                  styleId,
+                  styleId: styleId || null,
                   name: docName || `Tài liệu sản xuất - ${styleName}`,
                   description: null,
                   status: "draft",
@@ -1438,7 +1464,7 @@ export function StyleProductionDocTab({
         />
       )}
 
-      {copyOpen && (
+      {copyOpen && styleId && (
         <CopyDialog
           currentStyleId={styleId}
           styles={stylesQuery.data?.data ?? []}

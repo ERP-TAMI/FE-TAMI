@@ -176,9 +176,189 @@ export const poApi = {
   async previewDocument(
     poId: string,
     documentId: string,
+    versionId?: string,
   ): Promise<PoDocumentPreviewResponse> {
     const response = await apiClient.get<PoDocumentPreviewResponse>(
       `/purchase-orders/${poId}/documents/${documentId}/preview`,
+      { params: versionId ? { versionId } : undefined },
+    );
+    return response.data;
+  },
+
+  // ─── Fit Import Preview ───────────────────────────────────────────────────
+
+  async getImportFitPreview(
+    styleId: string,
+  ): Promise<import("@/types/po").ImportFitPreviewResponse> {
+    const response = await apiClient.get<import("@/types/po").ImportFitPreviewResponse>(
+      `/purchase-orders/import-fit-preview/${styleId}`,
+    );
+    return response.data;
+  },
+
+  // ─── PO Product Detail & Sub-resources ─────────────────────────────────────
+
+  async getProductDetail(
+    poId: string,
+    productId: string,
+  ): Promise<import("@/types/po").PurchaseOrderProductDetail> {
+    const response = await apiClient.get<import("@/types/po").PurchaseOrderProductDetail>(
+      `/purchase-orders/${poId}/products/${productId}`,
+    );
+    return response.data;
+  },
+
+  async updateProductStatus(
+    poId: string,
+    productId: string,
+    status: string,
+    reason?: string,
+  ): Promise<PurchaseOrderProductItem> {
+    const response = await apiClient.patch<PurchaseOrderProductItem>(
+      `/purchase-orders/${poId}/products/${productId}/status`,
+      { status, reason },
+    );
+    return response.data;
+  },
+
+  async linkProductDocument(
+    poId: string,
+    productId: string,
+    documentId: string,
+    purpose?: string,
+  ): Promise<void> {
+    await apiClient.post(
+      `/purchase-orders/${poId}/products/${productId}/documents/${documentId}`,
+      { purpose },
+      { params: purpose ? { purpose } : undefined },
+    );
+  },
+
+  async updateProductDocumentPurpose(
+    poId: string,
+    productId: string,
+    documentId: string,
+    purpose: string,
+  ): Promise<void> {
+    await apiClient.patch(
+      `/purchase-orders/${poId}/products/${productId}/documents/${documentId}/purpose`,
+      { purpose },
+    );
+  },
+
+  async unlinkProductDocument(
+    poId: string,
+    productId: string,
+    documentId: string,
+  ): Promise<void> {
+    await apiClient.delete(
+      `/purchase-orders/${poId}/products/${productId}/documents/${documentId}`,
+    );
+  },
+
+  async uploadProductDocument(
+    poId: string,
+    productId: string,
+    file: File,
+    purpose: string = "other",
+  ): Promise<import("@/types/po").ProductDocumentItem> {
+    const formData = new FormData();
+    formData.append("file", file);
+    const response = await apiClient.post<import("@/types/po").ProductDocumentItem>(
+      `/purchase-orders/${poId}/products/${productId}/documents/upload`,
+      formData,
+      {
+        params: { purpose },
+        headers: { "Content-Type": "multipart/form-data" },
+      },
+    );
+    return response.data;
+  },
+
+  async uploadProductDocumentVersion(
+    poId: string,
+    productId: string,
+    documentId: string,
+    file: File,
+    changeReason?: string,
+  ): Promise<import("@/types/po").ProductDocumentItem> {
+    const formData = new FormData();
+    formData.append("file", file);
+    if (changeReason?.trim()) {
+      formData.append("changeReason", changeReason.trim());
+    }
+    const response = await apiClient.post<import("@/types/po").ProductDocumentItem>(
+      `/purchase-orders/${poId}/products/${productId}/documents/${documentId}/versions`,
+      formData,
+      {
+        headers: { "Content-Type": "multipart/form-data" },
+      },
+    );
+    return response.data;
+  },
+
+  async getProductOperationSteps(
+    poId: string,
+    productId: string,
+  ): Promise<import("@/types/po").ProductOperationStep[]> {
+    const response = await apiClient.get<import("@/types/po").ProductOperationStep[]>(
+      `/purchase-orders/${poId}/products/${productId}/operation-steps`,
+    );
+    return response.data;
+  },
+
+  async saveProductOperationSteps(
+    poId: string,
+    productId: string,
+    input: import("@/types/po").SaveProductOperationStepsInput,
+  ): Promise<import("@/types/po").ProductOperationStep[]> {
+    const response = await apiClient.put<import("@/types/po").ProductOperationStep[]>(
+      `/purchase-orders/${poId}/products/${productId}/operation-steps`,
+      input,
+    );
+    return response.data;
+  },
+
+  async getProductSampleRounds(
+    poId: string,
+    productId: string,
+  ): Promise<import("@/types/po").ProductSampleRound[]> {
+    const response = await apiClient.get<import("@/types/po").ProductSampleRound[]>(
+      `/purchase-orders/${poId}/products/${productId}/sample-rounds`,
+    );
+    return response.data;
+  },
+
+  async createProductSampleRound(
+    poId: string,
+    productId: string,
+    input: import("@/types/po").CreateProductSampleRoundInput,
+  ): Promise<import("@/types/po").ProductSampleRound> {
+    const response = await apiClient.post<import("@/types/po").ProductSampleRound>(
+      `/purchase-orders/${poId}/products/${productId}/sample-rounds`,
+      input,
+    );
+    return response.data;
+  },
+
+  async getProductProductionDoc(
+    poId: string,
+    productId: string,
+  ): Promise<import("@/types/po").ProductProductionDoc> {
+    const response = await apiClient.get<import("@/types/po").ProductProductionDoc>(
+      `/purchase-orders/${poId}/products/${productId}/production-doc`,
+    );
+    return response.data;
+  },
+
+  async updateProductProductionDoc(
+    poId: string,
+    productId: string,
+    data: any,
+  ): Promise<import("@/types/po").ProductProductionDoc> {
+    const response = await apiClient.patch<import("@/types/po").ProductProductionDoc>(
+      `/purchase-orders/${poId}/products/${productId}/production-doc`,
+      data,
     );
     return response.data;
   },
