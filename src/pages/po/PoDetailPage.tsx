@@ -70,6 +70,9 @@ export default function PoDetailPage() {
   const [deadline, setDeadline] = useState("");
   const [note, setNote] = useState("");
   const [isEditing, setIsEditing] = useState(false);
+  const [generalFieldErrors, setGeneralFieldErrors] = useState<{
+    deadline?: string;
+  }>({});
 
   // Reason Modal state
   const [reasonModalState, setReasonModalState] = useState<{
@@ -97,12 +100,23 @@ export default function PoDetailPage() {
       po.deadline ? new Date(po.deadline).toISOString().split("T")[0] : "",
     );
     setNote(po.note || "");
+    setGeneralFieldErrors({});
     setIsEditing(true);
   };
 
   const handleSaveGeneral = async () => {
     if (!po || !id) return;
-    if (deadline && receivedDate && deadline <= receivedDate) {
+    if (!deadline) {
+      setGeneralFieldErrors({
+        deadline: "Hạn hoàn thành (deadline) là bắt buộc, không được để trống.",
+      });
+      showToast("Vui lòng chọn hạn hoàn thành (deadline).", "error");
+      return;
+    }
+    if (receivedDate && deadline <= receivedDate) {
+      setGeneralFieldErrors({
+        deadline: "Hạn hoàn thành (deadline) phải sau ngày nhận PO.",
+      });
       showToast("Hạn hoàn thành (deadline) phải sau ngày nhận PO.", "error");
       return;
     }
@@ -113,11 +127,12 @@ export default function PoDetailPage() {
           customerPoCode: customerPoCode.trim() || undefined,
           customerNameSnapshot: customerNameSnapshot.trim() || undefined,
           receivedDate: receivedDate || undefined,
-          deadline: deadline || undefined,
+          deadline,
           note: note.trim() || undefined,
         },
       });
       showToast("Đã cập nhật thông tin đơn hàng PO thành công.");
+      setGeneralFieldErrors({});
       setIsEditing(false);
     } catch (err: unknown) {
       const apiErr = getApiError(err, "Cập nhật đơn hàng PO thất bại.");
@@ -479,7 +494,12 @@ export default function PoDetailPage() {
                             /* ignore when unsupported */
                           }
                         }}
-                        onChange={(e) => setReceivedDate(e.target.value)}
+                        onChange={(e) => {
+                          setReceivedDate(e.target.value);
+                          if (generalFieldErrors.deadline) {
+                            setGeneralFieldErrors((prev) => ({ ...prev, deadline: undefined }));
+                          }
+                        }}
                         className="w-full rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 pr-10 text-theme-base text-gray-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-white cursor-pointer"
                       />
                       <CalenderIcon className="pointer-events-none absolute right-3 h-5 w-5 text-gray-400" />
@@ -488,11 +508,16 @@ export default function PoDetailPage() {
                   <div>
                     <div className="flex items-center justify-between">
                       <label className="block text-theme-xs font-bold uppercase tracking-wider text-gray-600 dark:text-gray-400">
-                        Hạn hoàn thành (Deadline)
+                        Hạn hoàn thành (Deadline) <span className="text-error-500">*</span>
                       </label>
                       <button
                         type="button"
-                        onClick={() => setDeadline(new Date().toISOString().split("T")[0])}
+                        onClick={() => {
+                          setDeadline(new Date().toISOString().split("T")[0]);
+                          if (generalFieldErrors.deadline) {
+                            setGeneralFieldErrors((prev) => ({ ...prev, deadline: undefined }));
+                          }
+                        }}
                         className="text-theme-xs font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400 hover:underline cursor-pointer"
                       >
                         Hôm nay
@@ -509,11 +534,25 @@ export default function PoDetailPage() {
                             /* ignore when unsupported */
                           }
                         }}
-                        onChange={(e) => setDeadline(e.target.value)}
-                        className="w-full rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 pr-10 text-theme-base text-gray-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-white cursor-pointer"
+                        onChange={(e) => {
+                          setDeadline(e.target.value);
+                          if (generalFieldErrors.deadline) {
+                            setGeneralFieldErrors((prev) => ({ ...prev, deadline: undefined }));
+                          }
+                        }}
+                        className={`w-full rounded-xl border bg-white px-3.5 py-2.5 pr-10 text-theme-base text-gray-900 outline-none transition focus:ring-2 dark:bg-gray-800 dark:text-white cursor-pointer ${
+                          generalFieldErrors.deadline
+                            ? "border-error-400 focus:border-error-500 focus:ring-error-500/20 dark:border-error-500"
+                            : "border-gray-200 focus:border-brand-500 focus:ring-brand-500/20 dark:border-gray-800"
+                        }`}
                       />
                       <CalenderIcon className="pointer-events-none absolute right-3 h-5 w-5 text-gray-400" />
                     </div>
+                    {generalFieldErrors.deadline && (
+                      <p className="mt-1 text-theme-xs font-medium text-error-600 dark:text-error-400">
+                        {generalFieldErrors.deadline}
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -534,7 +573,10 @@ export default function PoDetailPage() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setIsEditing(false)}
+                    onClick={() => {
+                      setGeneralFieldErrors({});
+                      setIsEditing(false);
+                    }}
                     disabled={updateMutation.isPending}
                   >
                     Hủy
