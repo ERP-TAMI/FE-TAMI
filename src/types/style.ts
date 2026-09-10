@@ -7,7 +7,7 @@ export interface Style {
   description: string | null;
   category: string | null;
   status: StyleStatus;
-  baseImageVersionId: string | null;
+  baseImageKey: string | null;
   as3bCmBaseDays: number;
   rowVersion: number;
   createdBy: string | null;
@@ -21,7 +21,7 @@ export interface CreateStylePayload {
   styleName: string;
   description?: string | null;
   category?: string | null;
-  baseImageVersionId?: string | null;
+  baseImageKey?: string | null;
   status?: StyleStatus;
 }
 
@@ -30,7 +30,7 @@ export interface UpdateStylePayload {
   styleName?: string;
   description?: string | null;
   category?: string | null;
-  baseImageVersionId?: string | null;
+  baseImageKey?: string | null;
   status?: StyleStatus;
 }
 
