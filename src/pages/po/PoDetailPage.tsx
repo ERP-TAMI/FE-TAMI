@@ -475,7 +475,9 @@ export default function PoDetailPage() {
                         onClick={(e) => {
                           try {
                             e.currentTarget.showPicker?.();
-                          } catch {}
+                          } catch {
+                            /* ignore when unsupported */
+                          }
                         }}
                         onChange={(e) => setReceivedDate(e.target.value)}
                         className="w-full rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 pr-10 text-theme-base text-gray-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-white cursor-pointer"
@@ -503,7 +505,9 @@ export default function PoDetailPage() {
                         onClick={(e) => {
                           try {
                             e.currentTarget.showPicker?.();
-                          } catch {}
+                          } catch {
+                            /* ignore when unsupported */
+                          }
                         }}
                         onChange={(e) => setDeadline(e.target.value)}
                         className="w-full rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 pr-10 text-theme-base text-gray-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-white cursor-pointer"

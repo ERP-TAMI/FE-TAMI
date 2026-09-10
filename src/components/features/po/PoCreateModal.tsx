@@ -555,7 +555,9 @@ export function PoCreateModal({ isOpen, isPending, uploadProgress, onClose, onSu
                     onClick={(e) => {
                       try {
                         e.currentTarget.showPicker?.();
-                      } catch {}
+                      } catch {
+                        /* ignore when unsupported */
+                      }
                     }}
                     onChange={(e) => {
                       setReceivedDate(e.target.value);
@@ -573,7 +575,9 @@ export function PoCreateModal({ isOpen, isPending, uploadProgress, onClose, onSu
                     onClick={() => {
                       try {
                         receivedDateInputRef.current?.showPicker?.();
-                      } catch {}
+                      } catch {
+                        /* ignore when unsupported */
+                      }
                     }}
                     className="absolute right-3 p-1 text-gray-400 hover:text-brand-600 transition-colors dark:hover:text-brand-400 cursor-pointer"
                     title="Bấm để mở lịch chọn ngày"
@@ -616,7 +620,9 @@ export function PoCreateModal({ isOpen, isPending, uploadProgress, onClose, onSu
                     onClick={(e) => {
                       try {
                         e.currentTarget.showPicker?.();
-                      } catch {}
+                      } catch {
+                        /* ignore when unsupported */
+                      }
                     }}
                     onChange={(e) => {
                       setDeadline(e.target.value);
@@ -634,7 +640,9 @@ export function PoCreateModal({ isOpen, isPending, uploadProgress, onClose, onSu
                     onClick={() => {
                       try {
                         deadlineInputRef.current?.showPicker?.();
-                      } catch {}
+                      } catch {
+                        /* ignore when unsupported */
+                      }
                     }}
                     className="absolute right-3 p-1 text-gray-400 hover:text-brand-600 transition-colors dark:hover:text-brand-400 cursor-pointer"
                     title="Bấm để mở lịch chọn ngày"
