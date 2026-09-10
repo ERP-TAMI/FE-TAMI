@@ -49,7 +49,7 @@ export function PoAddProductForm({
   const [isDragOverDropzone, setIsDragOverDropzone] = useState(false);
 
   const { data: stylesData } = useStyles({ limit: 100 });
-  const styleList = stylesData?.data || [];
+  const styleList = useMemo(() => stylesData?.data || [], [stylesData?.data]);
 
   const { data: fitPreview, isLoading: isPreviewLoading } = useImportFitPreview(
     mode === "select" && sourceStyleId ? sourceStyleId : undefined,

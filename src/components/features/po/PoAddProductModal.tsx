@@ -63,7 +63,7 @@ export function PoAddProductModal({
   const [isDragOverDropzone, setIsDragOverDropzone] = useState(false);
 
   const { data: stylesData } = useStyles({ limit: 100 });
-  const styleList = stylesData?.data || [];
+  const styleList = useMemo(() => stylesData?.data || [], [stylesData?.data]);
 
   // Fetch preview data when sourceStyleId is selected
   const { data: fitPreview, isLoading: isPreviewLoading } = useImportFitPreview(
