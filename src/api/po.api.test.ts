@@ -37,6 +37,7 @@ describe("poApi", () => {
       customerId: "cust-1",
       customerNameSnapshot: "Customer A",
       receivedDate: "2026-09-07",
+      deadline: "2026-10-15",
     });
 
     expect(apiClient.post).toHaveBeenCalledWith("/purchase-orders", {
@@ -44,6 +45,7 @@ describe("poApi", () => {
       customerId: "cust-1",
       customerNameSnapshot: "Customer A",
       receivedDate: "2026-09-07",
+      deadline: "2026-10-15",
     });
     expect(res).toEqual(mockPo);
   });
