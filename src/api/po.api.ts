@@ -354,7 +354,7 @@ export const poApi = {
   async updateProductProductionDoc(
     poId: string,
     productId: string,
-    data: any,
+    data: Record<string, unknown>,
   ): Promise<import("@/types/po").ProductProductionDoc> {
     const response = await apiClient.patch<import("@/types/po").ProductProductionDoc>(
       `/purchase-orders/${poId}/products/${productId}/production-doc`,

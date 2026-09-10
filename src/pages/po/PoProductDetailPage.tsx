@@ -503,7 +503,7 @@ export default function PoProductDetailPage() {
         await updateProductMutation.mutateAsync({
           id: poId,
           productId,
-          input: { structureImageVersionId: res.url } as any,
+          input: { structureImageVersionId: res.url },
         });
         showToast("Đã tải và lưu ảnh sản phẩm thành công.");
       } catch (err) {
@@ -520,7 +520,7 @@ export default function PoProductDetailPage() {
       await updateProductMutation.mutateAsync({
         id: poId,
         productId,
-        input: { structureImageVersionId: null } as any,
+        input: { structureImageVersionId: null },
       });
       showToast("Đã xóa ảnh sản phẩm.");
     } catch (err) {
@@ -817,7 +817,7 @@ export default function PoProductDetailPage() {
       orderIndex: step.orderIndex ?? idx,
       isGroup: Boolean(step.isGroup),
       stageId: step.stageId ? String(step.stageId) : undefined,
-      groupId: (step as any).groupId ? String((step as any).groupId) : undefined,
+      groupId: step.groupId ? String(step.groupId) : undefined,
       parentStepId: step.parentStepId ? String(step.parentStepId) : undefined,
     }),
   );
@@ -2777,7 +2777,7 @@ export default function PoProductDetailPage() {
           <div className="min-h-[500px]">
             <PoSplitDocumentPreview
               poId={poId || ""}
-              document={previewDocItem as any}
+              document={previewDocItem}
               onBack={() => setPreviewDocItem(null)}
             />
           </div>

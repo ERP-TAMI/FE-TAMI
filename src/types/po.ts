@@ -221,7 +221,7 @@ export interface UpdatePoProductInput {
   deadline?: string;
   as3bCmBaseDays?: number;
   reason?: string;
-  structureImageVersionId?: string;
+  structureImageVersionId?: string | null;
   colors?: Array<{
     id?: string;
     colorName: string;
@@ -235,6 +235,7 @@ export interface ProductOperationStep {
   productId: string;
   parentStepId?: string | null;
   stageId?: string | null;
+  groupId?: string | null;
   stepName: string;
   description?: string;
   timePerPiece?: number;
@@ -311,13 +312,13 @@ export interface ProductProductionDoc {
   section2Accessories?: string;
   section3Notes?: string;
   section4CustomerFeedback?: string;
-  sizeData?: any;
+  sizeData?: unknown;
   sections?: Array<{
     id: string;
     sectionCode: string;
     title: string;
     content?: string;
-    imageGroups?: any;
+    imageGroups?: unknown;
     orderIndex: number;
     isFixed: boolean;
   }>;

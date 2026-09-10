@@ -33,6 +33,8 @@ import type {
   ProductionDocStatus,
   StyleProductionDocDetail,
   CopyMode,
+  CreateStyleProductionDocInput,
+  UpdateStyleProductionDocInput,
 } from "@/types/production-doc";
 
 interface Props {
@@ -370,19 +372,17 @@ export function StyleProductionDocTab({
 
       const imgsFromData = Array.isArray(doc.sizeData)
         ? doc.sizeData
-            .filter(
-              (r: any): r is { imageUrl: string } =>
-                typeof r === "object" &&
-                r !== null &&
-                "imageUrl" in r &&
-                typeof (r as { imageUrl: unknown }).imageUrl === "string",
+            .map((r) =>
+              typeof r === "object" && r !== null && "imageUrl" in r
+                ? (r as { imageUrl?: unknown }).imageUrl
+                : null,
             )
-            .map((r: any) => r.imageUrl)
+            .filter((url): url is string => typeof url === "string" && url.length > 0)
         : [];
       const imgsFromRows = Array.isArray(doc.sizeRows)
         ? doc.sizeRows
-            .filter((r: any): r is typeof r & { imageUrl: string } => typeof r?.imageUrl === "string")
-            .map((r: any) => r.imageUrl)
+            .map((r) => r.imageUrl)
+            .filter((url): url is string => typeof url === "string" && url.length > 0)
         : [];
       const combinedImgs = Array.from(new Set([...imgsFromData, ...imgsFromRows]));
       setSec5SizeImages(combinedImgs.slice(0, 1));
@@ -536,14 +536,14 @@ export function StyleProductionDocTab({
       } else if (!doc) {
         await createDoc.mutateAsync({
           styleId: styleId!,
-          input: payload as any,
+          input: payload as CreateStyleProductionDocInput,
         });
         showToast("Đã tạo mới tài liệu sản xuất thành công.");
       } else {
         await updateDoc.mutateAsync({
           styleId: styleId!,
           docId: doc.id,
-          input: payload as any,
+          input: payload as UpdateStyleProductionDocInput,
         });
         showToast("Đã lưu tài liệu sản xuất.");
       }

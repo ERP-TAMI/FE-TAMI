@@ -6,9 +6,21 @@ import { DownloadIcon, EyeIcon } from "@/icons";
 import { FileTypeIcon } from "@/components/shared";
 import type { PurchaseOrderDocumentItem, PoDocumentPreviewResponse } from "@/types/po";
 
+export interface PreviewDocumentLike {
+  documentId: string;
+  title?: string;
+  fileName?: string | null;
+  fileUrl?: string | null;
+  fileSize?: number | null;
+  purpose?: string | null;
+  versionId?: string | null;
+  versionNo?: number | null;
+  linkedAt?: string | null;
+}
+
 interface Props {
   poId: string;
-  document: PurchaseOrderDocumentItem;
+  document: PurchaseOrderDocumentItem | PreviewDocumentLike;
   onBack: () => void;
   onAttachToQuickForm?: (docId: string) => void;
   isSelectedInQuickForm?: boolean;
@@ -57,6 +69,8 @@ export function PoSplitDocumentPreview({
         : `/${doc.fileUrl}`
     : null;
 
+  const versionId = (doc as { versionId?: string }).versionId;
+
   useEffect(() => {
     let isMounted = true;
     setLoading(true);
@@ -64,7 +78,7 @@ export function PoSplitDocumentPreview({
     setActiveSheetIdx(0);
 
     poApi
-      .previewDocument(poId, doc.documentId, (doc as any).versionId)
+      .previewDocument(poId, doc.documentId, versionId)
       .then((res) => {
         if (isMounted) {
           setPreviewData(res);
@@ -87,7 +101,7 @@ export function PoSplitDocumentPreview({
     return () => {
       isMounted = false;
     };
-  }, [poId, doc.documentId, (doc as any).versionId, fileName, doc.fileUrl]);
+  }, [poId, doc.documentId, versionId, fileName, doc.fileUrl]);
 
   const fileType = previewData?.type || getFileType(fileName);
 

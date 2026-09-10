@@ -481,7 +481,7 @@ export function useUpdateProductProductionDoc() {
     }: {
       poId: string;
       productId: string;
-      data: any;
+      data: Record<string, unknown>;
     }) => poApi.updateProductProductionDoc(poId, productId, data),
     onSuccess: (_, { poId, productId }) => {
       void queryClient.invalidateQueries({
