@@ -1,0 +1,164 @@
+import { MemoryRouter } from "react-router-dom";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import UsersPage from "./UsersPage";
+
+const hooks = vi.hoisted(() => ({ useUsers: vi.fn() }));
+
+vi.mock("@/hooks/useUsers", () => ({ useUsers: hooks.useUsers }));
+
+const user = {
+  id: "9fb4d58f-0e6d-4ed5-b122-2b9f61aae115",
+  fullName: "Nhân viên IT",
+  email: "it@tami.test",
+  phone: "0901234567",
+  role: { code: "IT" as const, name: "Công nghệ thông tin" },
+  accountStatus: "active" as const,
+};
+
+function result(overrides = {}) {
+  return {
+    isLoading: false,
+    isFetching: false,
+    isError: false,
+    data: { data: [user], meta: { total: 1, page: 1, limit: 10, totalPages: 1 } },
+    error: null,
+    refetch: vi.fn(),
+    ...overrides,
+  };
+}
+
+function renderPage(path = "/it/users") {
+  return render(
+    <MemoryRouter initialEntries={[path]}>
+      <UsersPage />
+    </MemoryRouter>,
+  );
+}
+
+describe("UsersPage", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    hooks.useUsers.mockReturnValue(result());
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.useRealTimers();
+  });
+
+  it("renders the user list with role and account status", () => {
+    renderPage();
+
+    expect(screen.getByRole("heading", { name: "Quản trị người dùng" })).toBeTruthy();
+    expect(screen.getByText("Nhân viên IT")).toBeTruthy();
+    expect(screen.getByText("it@tami.test")).toBeTruthy();
+    expect(screen.getByText("Công nghệ thông tin")).toBeTruthy();
+    expect(within(screen.getByRole("table")).getByText("Đang hoạt động")).toBeTruthy();
+  });
+
+  it.each([
+    ["/it/users", "/it/dashboard"],
+    ["/management/users", "/management/dashboard"],
+  ])("links the %s breadcrumb to its area dashboard", (path, dashboardPath) => {
+    renderPage(path);
+
+    expect(screen.getByRole("link", { name: "Dashboard" }).getAttribute("href")).toBe(
+      dashboardPath,
+    );
+  });
+
+  it("shows loading, error and retry states", () => {
+    const refetch = vi.fn();
+    hooks.useUsers.mockReturnValue(
+      result({ isLoading: true, isError: false, data: undefined, refetch }),
+    );
+    const view = renderPage();
+    expect(screen.getByLabelText("Đang tải danh sách người dùng")).toBeTruthy();
+
+    view.unmount();
+    hooks.useUsers.mockReturnValue(
+      result({
+        isLoading: false,
+        isError: true,
+        data: undefined,
+        error: new Error("offline"),
+        refetch,
+      }),
+    );
+    renderPage();
+    fireEvent.click(screen.getByRole("button", { name: "Thử lại" }));
+    expect(refetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows an explicit empty state", () => {
+    hooks.useUsers.mockReturnValue(
+      result({ data: { data: [], meta: { total: 0, page: 1, limit: 10, totalPages: 1 } } }),
+    );
+    renderPage();
+    expect(screen.getByText("Không tìm thấy người dùng phù hợp.")).toBeTruthy();
+  });
+
+  it("keeps legacy users visible when phone and role are missing", () => {
+    hooks.useUsers.mockReturnValue(
+      result({
+        data: {
+          data: [{ ...user, phone: null, role: null }],
+          meta: { total: 1, page: 1, limit: 10, totalPages: 1 },
+        },
+      }),
+    );
+    renderPage();
+
+    expect(screen.getByText("Chưa phân vai trò")).toBeTruthy();
+    expect(within(screen.getByRole("table")).getByText("—")).toBeTruthy();
+  });
+
+  it("debounces search before requesting the server", async () => {
+    vi.useFakeTimers();
+    renderPage();
+
+    fireEvent.change(screen.getByLabelText("Tìm kiếm người dùng"), {
+      target: { value: "Nguyễn Văn" },
+    });
+    expect(hooks.useUsers).not.toHaveBeenLastCalledWith(
+      expect.objectContaining({ search: "Nguyễn Văn" }),
+    );
+
+    await act(async () => vi.advanceTimersByTime(300));
+    expect(hooks.useUsers).toHaveBeenLastCalledWith({
+      search: "Nguyễn Văn",
+      role: undefined,
+      status: undefined,
+      page: 1,
+      limit: 10,
+    });
+  });
+
+  it("applies role and status filters and resets pagination", async () => {
+    hooks.useUsers.mockReturnValue(
+      result({ data: { data: [user], meta: { total: 11, page: 1, limit: 10, totalPages: 2 } } }),
+    );
+    renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "Trang sau" }));
+    expect(hooks.useUsers).toHaveBeenLastCalledWith(expect.objectContaining({ page: 2 }));
+
+    fireEvent.change(screen.getByLabelText("Lọc theo vai trò"), { target: { value: "IT" } });
+    const lockedStatusButton = within(
+      screen.getByRole("group", { name: "Lọc theo trạng thái" }),
+    ).getByRole("button", { name: "Bị khóa" });
+    fireEvent.click(lockedStatusButton);
+    expect(lockedStatusButton.getAttribute("aria-pressed")).toBe("true");
+
+    await waitFor(() => {
+      expect(hooks.useUsers).toHaveBeenLastCalledWith({
+        search: "",
+        role: "IT",
+        status: "locked",
+        page: 1,
+        limit: 10,
+      });
+    });
+  });
+});
