@@ -6,7 +6,6 @@ import {
   GridIcon,
   ListIcon,
   PageIcon,
-  UserCircleIcon,
 } from "@/icons";
 import { useSidebar } from "@/context/SidebarContext";
 
@@ -40,7 +39,6 @@ const navItems: NavItem[] = [
       { name: "Bảng Size", path: "/masters/size-charts" },
     ],
   },
-  { name: "Administration", path: "/admin", icon: <UserCircleIcon /> },
   { name: "Audit log", path: "/audit-log", icon: <ListIcon /> },
 ];
 

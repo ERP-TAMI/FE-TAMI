@@ -2,10 +2,10 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { authApi } from "@/api/auth.api";
-import { canAccessManagement } from "@/lib/managementAccess";
+import { canAccessItArea, canAccessManagement } from "@/lib/areaAccess";
 import { useAuthStore } from "@/store/authStore";
 
-export default function AccountMenu({ area }: { area: "management" | "employee" }) {
+export default function AccountMenu({ area }: { area: "management" | "employee" | "it" }) {
   const user = useAuthStore((state) => state.user);
   const clearSession = useAuthStore((state) => state.clearSession);
   const [open, setOpen] = useState(false);
@@ -81,9 +81,13 @@ export default function AccountMenu({ area }: { area: "management" | "employee" 
             <p className="font-medium break-words">{user.fullName}</p>
             <p className="text-xs text-gray-500 dark:text-gray-400">{user.roleName}</p>
           </div>
-          {area === "management" ? (
+          {area === "management" || area === "it" ? (
             <Link className={actionClass} to="/dashboard" onClick={() => setOpen(false)}>
               Vào hệ thống nhân viên
+            </Link>
+          ) : canAccessItArea(user) ? (
+            <Link className={actionClass} to="/it/dashboard" onClick={() => setOpen(false)}>
+              Về khu IT
             </Link>
           ) : (
             canAccessManagement(user) && (

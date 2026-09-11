@@ -108,7 +108,22 @@ function signIn() {
       fullName: "Quản trị hệ thống",
       roleCode: "SA",
       roleName: "Quản trị hệ thống",
-      permissions: ["management.area.access"],
+      permissions: ["management.area.access", "system.users.manage"],
+    },
+  });
+}
+
+function signInAsIt(permissions = ["system.users.manage"]) {
+  useAuthStore.setState({
+    status: "authenticated",
+    accessToken: "it-access-token",
+    user: {
+      id: "22222222-2222-4222-8222-222222222222",
+      email: "it@tami.test",
+      fullName: "Nhân viên IT",
+      roleCode: "IT",
+      roleName: "Công nghệ thông tin",
+      permissions,
     },
   });
 }
@@ -274,11 +289,62 @@ describe("application routes", () => {
     expect(await screen.findByRole("heading", { name: "Dashboard" })).toBeTruthy();
   });
 
-  it("redirects the admin entry route to users", () => {
+  it("lets IT enter its own area and open user management", async () => {
+    signInAsIt();
+    window.history.pushState({}, "", "/it/dashboard");
+    const { router } = renderApp();
+
+    expect(screen.getByRole("heading", { name: "Khu IT" })).toBeTruthy();
+    expect(screen.getByRole("navigation", { name: "Điều hướng IT" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("link", { name: "Quản trị người dùng" }));
+
+    expect(await screen.findByRole("heading", { name: "Quản trị người dùng" })).toBeTruthy();
+    expect(router.state.location.pathname).toBe("/it/users");
+  });
+
+  it("shows user management in the management area for SA", async () => {
     signIn();
-    window.history.pushState({}, "", "/admin");
+    window.history.pushState({}, "", "/management/dashboard");
+    const { router } = renderApp();
+
+    fireEvent.click(screen.getByRole("link", { name: "Quản trị người dùng" }));
+
+    expect(await screen.findByRole("heading", { name: "Quản trị người dùng" })).toBeTruthy();
+    expect(router.state.location.pathname).toBe("/management/users");
+    expect(screen.getByRole("navigation", { name: "Điều hướng Quản lý" })).toBeTruthy();
+  });
+
+  it("blocks user management when the account lacks its permission", () => {
+    signInAsIt([]);
+    window.history.pushState({}, "", "/it/users");
     renderApp();
 
-    expect(screen.getByRole("heading", { name: "Users" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Bạn không có quyền truy cập" })).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "Quản trị người dùng" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Quản trị người dùng" })).toBeNull();
+  });
+
+  it("blocks employee access through new and legacy user routes", async () => {
+    signIn();
+    useAuthStore.setState({
+      user: { ...useAuthStore.getState().user!, roleCode: "NVKH", permissions: [] },
+    });
+    window.history.pushState({}, "", "/admin/users");
+    const { router } = renderApp();
+
+    expect(screen.getByRole("heading", { name: "Bạn không có quyền truy cập" })).toBeTruthy();
+    await act(() => router.navigate("/management/users"));
+    expect(router.state.location.pathname).toBe("/dashboard");
+    await act(() => router.navigate("/it/users"));
+    expect(router.state.location.pathname).toBe("/dashboard");
+  });
+
+  it("redirects the legacy admin route to the authorized area", () => {
+    signIn();
+    window.history.pushState({}, "", "/admin");
+    const { router } = renderApp();
+
+    expect(screen.getByRole("heading", { name: "Quản trị người dùng" })).toBeTruthy();
+    expect(router.state.location.pathname).toBe("/management/users");
   });
 });
