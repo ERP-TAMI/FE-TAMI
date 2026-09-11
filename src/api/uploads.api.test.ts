@@ -78,6 +78,43 @@ describe("uploadsApi", () => {
     expect(result).toBe("https://s3.example/get");
   });
 
+  it("resolves a forced-download view URL with the given file name", async () => {
+    vi.mocked(apiClient.get).mockResolvedValueOnce({
+      data: { url: "https://s3.example/get?disposition=attachment", expiresIn: 3600 },
+    });
+
+    const result = await uploadsApi.getViewUrl("k", { download: true, fileName: "test_v2.pdf" });
+
+    expect(apiClient.get).toHaveBeenCalledWith("/storage/uploads/view-url", {
+      params: { objectKey: "k", download: "true", fileName: "test_v2.pdf" },
+    });
+    expect(result).toBe("https://s3.example/get?disposition=attachment");
+  });
+
+  describe("isRawObjectKey", () => {
+    it("treats absolute and legacy relative URLs as already usable", () => {
+      expect(uploadsApi.isRawObjectKey("https://cdn.example/f.png")).toBe(false);
+      expect(uploadsApi.isRawObjectKey("http://cdn.example/f.png")).toBe(false);
+      expect(uploadsApi.isRawObjectKey("blob:http://localhost/abc")).toBe(false);
+      expect(uploadsApi.isRawObjectKey("data:image/png;base64,AAA")).toBe(false);
+      expect(uploadsApi.isRawObjectKey("/uploads/legacy/file.pdf")).toBe(false);
+    });
+
+    it("treats a bare S3 object key as needing resolution", () => {
+      expect(
+        uploadsApi.isRawObjectKey(
+          "purchase-orders/po-1/products/prod-1/documents/tech_pack/abc.pdf",
+        ),
+      ).toBe(true);
+    });
+
+    it("treats null/undefined/empty as not a raw key", () => {
+      expect(uploadsApi.isRawObjectKey(null)).toBe(false);
+      expect(uploadsApi.isRawObjectKey(undefined)).toBe(false);
+      expect(uploadsApi.isRawObjectKey("")).toBe(false);
+    });
+  });
+
   it("uploadImage runs presign -> PUT -> view-url and returns the key + a preview URL", async () => {
     const file = new File(["dummy content"], "test.png", { type: "image/png" });
     vi.mocked(apiClient.post).mockResolvedValueOnce({

@@ -26,6 +26,7 @@ import DashboardPage from "@/pages/Dashboard/DashboardPage";
 import BomPage from "@/pages/bom/BomPage";
 import PoPage from "@/pages/po/PoPage";
 import PoDetailPage from "@/pages/po/PoDetailPage";
+import PoProductDetailPage from "@/pages/po/PoProductDetailPage";
 import MaterialsPage from "@/pages/masters/MaterialsPage";
 import MaterialGroupListPage from "@/pages/masters/MaterialGroupListPage";
 import StageListPage from "@/pages/masters/StageListPage";
@@ -96,6 +97,16 @@ export function AppRoutes() {
             <Route path="bom" element={<BomPage />} />
             <Route path="po" element={<PoPage />} />
             <Route path="po/:id" element={<PoDetailPage />} />
+            <Route path="po/:id/detail" element={<PoDetailPage />} />
+            <Route path="po/:id/products" element={<PoDetailPage />} />
+            <Route path="po/:id/lines" element={<PoDetailPage />} />
+            <Route path="po/:id/documents" element={<PoDetailPage />} />
+            <Route path="po/:id/files" element={<PoDetailPage />} />
+            <Route path="po/:id/history" element={<PoDetailPage />} />
+            <Route path="po/:id/products/:productId" element={<PoProductDetailPage />} />
+            <Route path="po/:id/products/:productId/:tab" element={<PoProductDetailPage />} />
+            <Route path="po/:id/line/:productId" element={<PoProductDetailPage />} />
+            <Route path="po/:id/line/:productId/:tab" element={<PoProductDetailPage />} />
             <Route path="masters" element={<Navigate to="/masters/materials" replace />} />
             <Route path="masters/materials" element={<MaterialsPage />} />
             <Route path="masters/material-groups" element={<MaterialGroupListPage />} />
