@@ -9,11 +9,17 @@ import {
   ProductDocumentItem,
   PurchaseOrderDocumentVersionItem,
 } from "@/types/po";
+import { uploadsApi } from "@/api/uploads.api";
 
 interface ProductVersionedFileGroupProps {
   doc: ProductDocumentItem;
   canEdit: boolean;
-  onUploadVersion: (documentId: string, currentVersionNo: number, title: string) => void;
+  onUploadVersion: (
+    documentId: string,
+    currentVersionNo: number,
+    title: string,
+    purpose: string,
+  ) => void;
   onDelete: (documentId: string) => void;
   onPreview: (doc: ProductDocumentItem, version?: PurchaseOrderDocumentVersionItem) => void;
 }
@@ -71,13 +77,34 @@ export function ProductVersionedFileGroup({
   const activeUploadedAt = viewingVersion?.uploadedAt || doc.linkedAt;
   const activeChangeReason = viewingVersion?.changeReason || (isLatest ? doc.changeReason : null);
 
-  const fullDownloadUrl = activeFileUrl
-    ? activeFileUrl.startsWith("http")
-      ? activeFileUrl
-      : `${import.meta.env.VITE_API_URL?.replace(/\/api\/?$/, "") || "http://localhost:3000"}${
-          activeFileUrl.startsWith("/") ? "" : "/"
-        }${activeFileUrl}`
-    : undefined;
+  // `activeFileUrl` is a full presigned URL for a document linked in from the
+  // PO's own pool, but a raw (unsigned) S3 object key for a document uploaded
+  // directly to the product — resolve the latter into a real download URL
+  // before it's used, otherwise the link 404s against the frontend origin.
+  const [fullDownloadUrl, setFullDownloadUrl] = useState<string | undefined>(undefined);
+  useEffect(() => {
+    let isMounted = true;
+    if (!activeFileUrl) {
+      setFullDownloadUrl(undefined);
+      return;
+    }
+    if (!uploadsApi.isRawObjectKey(activeFileUrl)) {
+      setFullDownloadUrl(activeFileUrl);
+      return;
+    }
+    setFullDownloadUrl(undefined);
+    uploadsApi
+      .getViewUrl(activeFileUrl, { download: true, fileName: activeFileName })
+      .then((url) => {
+        if (isMounted) setFullDownloadUrl(url);
+      })
+      .catch(() => {
+        if (isMounted) setFullDownloadUrl(undefined);
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, [activeFileUrl, activeFileName]);
 
   return (
     <div className="rounded-xl border border-gray-200 bg-white shadow-xs dark:border-gray-800 dark:bg-gray-900 transition-all hover:border-gray-300 dark:hover:border-gray-700">
@@ -172,7 +199,14 @@ export function ProductVersionedFileGroup({
           {canEdit && (
             <button
               type="button"
-              onClick={() => onUploadVersion(doc.documentId, maxVersion, doc.title || activeFileName)}
+              onClick={() =>
+                onUploadVersion(
+                  doc.documentId,
+                  maxVersion,
+                  doc.title || activeFileName,
+                  doc.purpose || "other",
+                )
+              }
               className="inline-flex items-center gap-1 rounded-lg border border-brand-200 bg-brand-50/50 px-2.5 py-1 text-xs font-semibold text-brand-600 hover:bg-brand-100 hover:border-brand-300 dark:border-brand-800 dark:bg-brand-950/40 dark:text-brand-300 transition cursor-pointer"
               title={`Cập nhật phiên bản mới v${maxVersion + 1}`}
             >

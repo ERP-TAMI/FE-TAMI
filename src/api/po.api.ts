@@ -1,3 +1,4 @@
+import axios from "axios";
 import apiClient from "@/lib/apiClient";
 import type {
   CreatePoInput,
@@ -19,6 +20,20 @@ interface PresignPoDocumentResult {
   objectKey: string;
   uploadUrl: string;
   expiresIn: number;
+}
+
+/**
+ * Detects a NestJS `ValidationPipe({ whitelist: true, forbidNonWhitelisted: true })`
+ * 400 rejection caused specifically by an unrecognized `fieldName` in the
+ * request body (message shape: `["property <field> should not exist"]`).
+ */
+function isWhitelistRejection(error: unknown, fieldName: string): boolean {
+  if (!axios.isAxiosError(error) || error.response?.status !== 400) return false;
+  const rawMessage = error.response?.data?.message;
+  const messages = Array.isArray(rawMessage) ? rawMessage : [rawMessage];
+  return messages.some(
+    (m) => typeof m === "string" && m.includes(fieldName) && m.includes("should not exist"),
+  );
 }
 
 export const poApi = {
@@ -301,23 +316,109 @@ export const poApi = {
     );
   },
 
+  // ─── Product Document Uploads (S3 presign/confirm) ─────────────────────────
+  // Mirrors the top-level presignDocument/confirmDocument/uploadDocument
+  // pattern above, scoped to a single PO product. Reuses poApi.uploadToS3 for
+  // the raw S3 PUT so the fetch-based upload helper isn't duplicated.
+
+  async presignProductDocument(
+    poId: string,
+    productId: string,
+    file: File,
+    purpose: string,
+  ): Promise<PresignPoDocumentResult> {
+    const response = await apiClient.post<PresignPoDocumentResult>(
+      `/purchase-orders/${poId}/products/${productId}/documents/presign`,
+      {
+        fileName: file.name,
+        mimeType: file.type,
+        sizeBytes: file.size,
+        purpose,
+      },
+    );
+    return response.data;
+  },
+
+  async confirmProductDocument(
+    poId: string,
+    productId: string,
+    objectKey: string,
+    file: File,
+    purpose: string,
+  ): Promise<import("@/types/po").ProductDocumentItem> {
+    const response = await apiClient.post<import("@/types/po").ProductDocumentItem>(
+      `/purchase-orders/${poId}/products/${productId}/documents/confirm`,
+      {
+        objectKey,
+        fileName: file.name,
+        mimeType: file.type,
+        sizeBytes: file.size,
+        purpose,
+      },
+    );
+    return response.data;
+  },
+
   async uploadProductDocument(
     poId: string,
     productId: string,
     file: File,
     purpose: string = "other",
   ): Promise<import("@/types/po").ProductDocumentItem> {
-    const formData = new FormData();
-    formData.append("file", file);
-    const response = await apiClient.post<import("@/types/po").ProductDocumentItem>(
-      `/purchase-orders/${poId}/products/${productId}/documents/upload`,
-      formData,
-      {
-        params: { purpose },
-        headers: { "Content-Type": "multipart/form-data" },
-      },
-    );
-    return response.data;
+    const presign = await poApi.presignProductDocument(poId, productId, file, purpose);
+    await poApi.uploadToS3(presign.uploadUrl, file);
+    return poApi.confirmProductDocument(poId, productId, presign.objectKey, file, purpose);
+  },
+
+  async confirmProductDocumentVersion(
+    poId: string,
+    productId: string,
+    documentId: string,
+    objectKey: string,
+    file: File,
+    purpose: string,
+    changeReason?: string,
+  ): Promise<import("@/types/po").ProductDocumentItem> {
+    const url = `/purchase-orders/${poId}/products/${productId}/documents/${documentId}/versions/confirm`;
+    const basePayload = {
+      objectKey,
+      fileName: file.name,
+      mimeType: file.type,
+      sizeBytes: file.size,
+      purpose,
+    };
+    const trimmedReason = changeReason?.trim();
+    if (!trimmedReason) {
+      const response = await apiClient.post<import("@/types/po").ProductDocumentItem>(
+        url,
+        basePayload,
+      );
+      return response.data;
+    }
+    // NOTE: `changeReason` isn't part of the base confirm body shared with
+    // documents/confirm, but the existing version-upload UI requires a
+    // customer change-reason note (see PoProductDetailPage's "Lý do / Ghi
+    // chú thay đổi" field, historically sent to the old multipart versions
+    // endpoint). Try sending it along; the backend's global ValidationPipe
+    // runs with forbidNonWhitelisted, so if the versions/confirm DTO hasn't
+    // been extended to accept it yet, fall back to the base payload rather
+    // than failing the whole upload.
+    try {
+      const response = await apiClient.post<import("@/types/po").ProductDocumentItem>(
+        url,
+        { ...basePayload, changeReason: trimmedReason },
+      );
+      return response.data;
+    } catch (err: unknown) {
+      if (isWhitelistRejection(err, "changeReason")) {
+        const response = await apiClient.post<import("@/types/po").ProductDocumentItem>(
+          url,
+          basePayload,
+        );
+        return response.data;
+      }
+      throw err;
+    }
   },
 
   async uploadProductDocumentVersion(
@@ -325,21 +426,20 @@ export const poApi = {
     productId: string,
     documentId: string,
     file: File,
+    purpose: string,
     changeReason?: string,
   ): Promise<import("@/types/po").ProductDocumentItem> {
-    const formData = new FormData();
-    formData.append("file", file);
-    if (changeReason?.trim()) {
-      formData.append("changeReason", changeReason.trim());
-    }
-    const response = await apiClient.post<import("@/types/po").ProductDocumentItem>(
-      `/purchase-orders/${poId}/products/${productId}/documents/${documentId}/versions`,
-      formData,
-      {
-        headers: { "Content-Type": "multipart/form-data" },
-      },
+    const presign = await poApi.presignProductDocument(poId, productId, file, purpose);
+    await poApi.uploadToS3(presign.uploadUrl, file);
+    return poApi.confirmProductDocumentVersion(
+      poId,
+      productId,
+      documentId,
+      presign.objectKey,
+      file,
+      purpose,
+      changeReason,
     );
-    return response.data;
   },
 
   async getProductOperationSteps(

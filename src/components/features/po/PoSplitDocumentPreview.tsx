@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { poApi } from "@/api/po.api";
+import { uploadsApi } from "@/api/uploads.api";
 import { sanitizeHtml } from "@/lib/sanitizeHtml";
 import { getPurposeLabel } from "@/lib/poDocuments";
 import { DownloadIcon, EyeIcon } from "@/icons";
@@ -61,15 +62,50 @@ export function PoSplitDocumentPreview({
   const fileName = doc.fileName || doc.title || "Tài liệu";
   const ext = fileName.split(".").pop()?.toUpperCase() || "FILE";
 
-  const docUrl = doc.fileUrl
-    ? doc.fileUrl.startsWith("http")
-      ? doc.fileUrl
-      : doc.fileUrl.startsWith("/")
-        ? doc.fileUrl
-        : `/${doc.fileUrl}`
-    : null;
+  const [docUrl, setDocUrl] = useState<string | null>(null);
+  const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
 
   const versionId = (doc as { versionId?: string }).versionId;
+
+  // `doc.fileUrl` is a full presigned URL for PO-level documents, but a raw
+  // (unsigned) S3 object key for PO-product documents — resolve the latter
+  // into a real, browsable URL before it's ever used as an <img>/<iframe>/<a>
+  // src, otherwise it 404s straight against the frontend origin.
+  useEffect(() => {
+    let isMounted = true;
+    if (!doc.fileUrl) {
+      setDocUrl(null);
+      setDownloadUrl(null);
+      return;
+    }
+    if (!uploadsApi.isRawObjectKey(doc.fileUrl)) {
+      setDocUrl(doc.fileUrl);
+      setDownloadUrl(doc.fileUrl);
+      return;
+    }
+    setDocUrl(null);
+    setDownloadUrl(null);
+    const objectKey = doc.fileUrl;
+    uploadsApi
+      .getViewUrl(objectKey)
+      .then((url) => {
+        if (isMounted) setDocUrl(url);
+      })
+      .catch(() => {
+        if (isMounted) setDocUrl(null);
+      });
+    uploadsApi
+      .getViewUrl(objectKey, { download: true, fileName })
+      .then((url) => {
+        if (isMounted) setDownloadUrl(url);
+      })
+      .catch(() => {
+        if (isMounted) setDownloadUrl(null);
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, [doc.fileUrl, fileName]);
 
   useEffect(() => {
     let isMounted = true;
@@ -86,7 +122,15 @@ export function PoSplitDocumentPreview({
       })
       .catch(() => {
         if (isMounted) {
-          // Fallback with direct fileUrl
+          // Fallback: the /preview endpoint only knows documents linked into
+          // the PO's own document pool (see purchase-orders.service.ts
+          // previewDocument) — it 404s for a document that only exists on a
+          // product (sourcePoDocument: false). Degrade to a plain
+          // open/download experience via the resolved file URL instead of
+          // silently showing nothing.
+          setErrorMsg(
+            "Không thể tạo bản xem trước chi tiết cho tài liệu này. Bạn vẫn có thể mở hoặc tải tệp gốc về máy.",
+          );
           setPreviewData({
             type: getFileType(fileName),
             fileName,
@@ -133,9 +177,9 @@ export function PoSplitDocumentPreview({
               </button>
             )}
 
-            {docUrl && (
+            {(downloadUrl || docUrl) && (
               <a
-                href={docUrl}
+                href={downloadUrl || docUrl!}
                 download={fileName}
                 className="inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700 transition"
                 title="Tải tệp về máy"
@@ -181,11 +225,14 @@ export function PoSplitDocumentPreview({
               Đang nạp dữ liệu xem trước tài liệu...
             </p>
           </div>
-        ) : errorMsg ? (
-          <div className="p-4 rounded-xl border border-error-200 bg-error-50 text-xs text-error-700 dark:border-error-900/40 dark:bg-error-950/30 dark:text-error-300">
-            {errorMsg}
-          </div>
-        ) : (() => {
+        ) : (
+          <>
+          {errorMsg && (
+            <div className="mb-3 p-3 rounded-xl border border-warning-200 bg-warning-50 text-xs text-warning-700 dark:border-warning-900/40 dark:bg-warning-950/30 dark:text-warning-300">
+              {errorMsg}
+            </div>
+          )}
+          {(() => {
           // EXCEL PREVIEW
           if (fileType === "excel" && previewData?.sheets && previewData.sheets.length > 0) {
             const currentSheet = previewData.sheets[activeSheetIdx] || previewData.sheets[0];
@@ -365,29 +412,33 @@ export function PoSplitDocumentPreview({
               <p className="mt-1 text-[11px] text-gray-500 dark:text-gray-400">
                 Định dạng {ext} không hỗ trợ hiển thị trực tiếp trong khung.
               </p>
-              {docUrl && (
+              {(downloadUrl || docUrl) && (
                 <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
                   <a
-                    href={docUrl}
+                    href={downloadUrl || docUrl!}
                     download={fileName}
                     className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-brand-700 transition"
                   >
                     <DownloadIcon className="h-3.5 w-3.5" />
                     Tải về máy
                   </a>
-                  <a
-                    href={docUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700 transition shadow-xs"
-                  >
-                    Mở tab mới ↗
-                  </a>
+                  {docUrl && (
+                    <a
+                      href={docUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700 transition shadow-xs"
+                    >
+                      Mở tab mới ↗
+                    </a>
+                  )}
                 </div>
               )}
             </div>
           );
-        })()}
+          })()}
+          </>
+        )}
       </div>
     </div>
   );

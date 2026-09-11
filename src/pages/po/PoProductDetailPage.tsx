@@ -52,12 +52,30 @@ import type {
   PurchaseOrderStatusHistoryItem,
 } from "@/types/po";
 import type { StyleOperationStepItem } from "@/api/styleOperationStepsApi";
+import { createTempIdResolver } from "@/lib/tempId";
 
 function formatDate(dateStr: string | null | undefined): string {
   if (!dateStr) return "—";
   const d = new Date(dateStr);
   if (isNaN(d.getTime())) return dateStr;
   return d.toLocaleDateString("vi-VN");
+}
+
+// Trạng thái đợt may mẫu là free-text (xem select trong modal "Thêm đợt may
+// mẫu"), nhưng vẫn tô màu theo ngữ nghĩa cho nhất quán với các badge trạng
+// thái khác trong app thay vì luôn dùng một màu xanh dương cố định.
+function getSampleRoundBadgeClass(status: string): string {
+  const s = status.trim().toLowerCase();
+  if (s.includes("đạt")) {
+    return "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300";
+  }
+  if (s.includes("hủy") || s.includes("huỷ")) {
+    return "bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300";
+  }
+  if (s.includes("chỉnh sửa") || s.includes("sua")) {
+    return "bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300";
+  }
+  return "bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300";
 }
 
 function formatDateTime(dateStr: string | null | undefined): string {
@@ -271,6 +289,7 @@ export default function PoProductDetailPage() {
     documentId: string;
     currentVersionNo: number;
     title: string;
+    purpose: string;
   } | null>(null);
   const [newVersionFile, setNewVersionFile] = useState<File | null>(null);
   const [newVersionReason, setNewVersionReason] = useState<string>("");
@@ -628,8 +647,18 @@ export default function PoProductDetailPage() {
   ) => {
     if (!poId || !productId) return;
     try {
+      // StyleOperationStepTable generates client-only row ids like "new-<ts>",
+      // "child-<ts>-<rand>" and "group-<ts>" for rows that aren't persisted
+      // yet (see addRow/addChildRowToGroup/handleGroupPick). Unlike the Style
+      // operation-steps endpoint, the PO-product save endpoint does not
+      // validate/remap ids server-side — it inserts/validates `id` as-is
+      // against a `uuid` column, so a client-only id must never be sent
+      // through. Resolve every non-UUID id (and any parentStepId pointing at
+      // one) to a real UUID client-side first, keeping the parent/child link
+      // intact (see src/lib/tempId.ts).
+      const resolveId = createTempIdResolver();
       const cleanedSteps = (stepsData || []).map((step, orderIndex) => ({
-        id: step.id && !step.id.startsWith("temp-") ? String(step.id) : undefined,
+        id: resolveId(step.id),
         stepName: step.stepName || "",
         description: step.description || undefined,
         timePerPiece: Number(step.timePerPiece) || 0,
@@ -639,7 +668,7 @@ export default function PoProductDetailPage() {
         orderIndex,
         isGroup: Boolean(step.isGroup),
         stageId: step.stageId ? String(step.stageId) : undefined,
-        parentStepId: step.parentStepId ? String(step.parentStepId) : undefined,
+        parentStepId: resolveId(step.parentStepId),
       }));
 
       await saveStepsMutation.mutateAsync({
@@ -731,8 +760,9 @@ export default function PoProductDetailPage() {
     documentId: string,
     currentVersionNo: number,
     title: string,
+    purpose: string,
   ) => {
-    setVersionTargetInfo({ documentId, currentVersionNo, title });
+    setVersionTargetInfo({ documentId, currentVersionNo, title, purpose });
     setNewVersionFile(null);
     setNewVersionReason("");
     setIsUploadVersionOpen(true);
@@ -751,6 +781,7 @@ export default function PoProductDetailPage() {
         productId,
         documentId: versionTargetInfo.documentId,
         file: newVersionFile,
+        purpose: versionTargetInfo.purpose,
         changeReason: newVersionReason.trim(),
       });
       showToast(
@@ -1218,37 +1249,13 @@ export default function PoProductDetailPage() {
                   <dt className="w-1/3 shrink-0 font-semibold text-gray-600 dark:text-gray-400">
                     Trạng thái
                   </dt>
-                  <dd className="flex w-2/3 min-w-0 items-center justify-between gap-3">
-                    <div className="flex items-center gap-2">
-                      <ProductStatusBadge status={product.status} />
-                      <span className="text-xs text-gray-500 dark:text-gray-400">
-                        {!isProductLocked
-                          ? "(Đang trong quá trình xử lý dữ liệu)"
-                          : "(Đã khóa sau khi xử lý xong, chế độ chỉ đọc)"}
-                      </span>
-                    </div>
-
-                    {!isProductLocked ? (
-                      <button
-                        type="button"
-                        onClick={() => setIsLockModalOpen(true)}
-                        disabled={updateStatusMutation.isPending}
-                        className="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-100 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300 cursor-pointer transition-colors"
-                      >
-                        <LockIcon className="w-3.5 h-3.5 shrink-0" />
-                        <span>Khóa sản phẩm</span>
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => setIsUnlockModalOpen(true)}
-                        disabled={updateStatusMutation.isPending}
-                        className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 cursor-pointer transition-colors"
-                      >
-                        <UnlockIcon className="w-3.5 h-3.5 shrink-0" />
-                        <span>Mở khoá</span>
-                      </button>
-                    )}
+                  <dd className="flex w-2/3 min-w-0 items-center gap-2">
+                    <ProductStatusBadge status={product.status} />
+                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                      {!isProductLocked
+                        ? "(Đang trong quá trình xử lý dữ liệu — dùng nút \"Khóa sản phẩm\" ở trên để khoá)"
+                        : "(Đã khóa sau khi xử lý xong, chế độ chỉ đọc)"}
+                    </span>
                   </dd>
                 </div>
               </dl>
@@ -1712,7 +1719,9 @@ export default function PoProductDetailPage() {
                         </span>
                       </div>
                     </div>
-                    <span className="rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-semibold text-blue-700 dark:bg-blue-950 dark:text-blue-300">
+                    <span
+                      className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${getSampleRoundBadgeClass(round.status)}`}
+                    >
                       {round.status}
                     </span>
                   </div>
@@ -2242,139 +2251,125 @@ export default function PoProductDetailPage() {
         }}
       />
 
-      {/* ─── MODAL CHỈNH SỬA THÔNG TIN SẢN PHẨM (PHONG CÁCH STYLEFORMMODAL) ────── */}
+      {/* ─── MODAL CHỈNH SỬA THÔNG TIN SẢN PHẨM ─────────────────────────────────── */}
       {isEditModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 animate-in fade-in duration-150">
-          <div className="w-full max-w-4xl max-h-[92vh] overflow-y-auto rounded-2xl border border-gray-200 bg-white p-6 shadow-xl dark:border-gray-800 dark:bg-gray-900">
-            {/* Header */}
-            <div className="flex items-center justify-between border-b border-gray-100 pb-4 dark:border-gray-800">
+        <Modal
+          open={isEditModalOpen}
+          onClose={() => {
+            if (!updateProductMutation.isPending) setIsEditModalOpen(false);
+          }}
+          title="Chỉnh sửa thông tin sản phẩm"
+          size="lg"
+        >
+          <p className="-mt-2 mb-4 text-xs text-gray-500 dark:text-gray-400">
+            Cập nhật các thông số chi tiết và cơ cấu màu sắc / size của sản phẩm.
+          </p>
+          <form onSubmit={handleSaveEditProduct} className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
               <div>
-                <h3 className="text-base font-semibold text-gray-900 dark:text-white">
-                  Chỉnh sửa thông tin sản phẩm
-                </h3>
-                <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-                  Cập nhật các thông số chi tiết và cơ cấu màu sắc / size của sản phẩm.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsEditModalOpen(false)}
-                className="rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-800 dark:hover:text-gray-300 transition-colors cursor-pointer"
-                aria-label="Đóng"
-              >
-                ✕
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveEditProduct} className="mt-4 space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Mã sản phẩm <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={editProductCode}
-                    onChange={(e) => setEditProductCode(e.target.value)}
-                    required
-                    className="mt-1 h-10 w-full rounded-lg border border-gray-300 px-3 font-mono text-sm text-gray-900 dark:text-white dark:bg-gray-800 dark:border-gray-700 transition-colors focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Tên sản phẩm <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={editProductName}
-                    onChange={(e) => setEditProductName(e.target.value)}
-                    required
-                    className="mt-1 h-10 w-full rounded-lg border border-gray-300 px-3 text-sm text-gray-900 dark:text-white dark:bg-gray-800 dark:border-gray-700 transition-colors focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Dòng sản phẩm
-                  </label>
-                  <input
-                    type="text"
-                    value={editCategory}
-                    onChange={(e) => setEditCategory(e.target.value)}
-                    placeholder="VD: Áo polo"
-                    className="mt-1 h-10 w-full rounded-lg border border-gray-300 px-3 text-sm text-gray-900 dark:text-white dark:bg-gray-800 dark:border-gray-700 transition-colors focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Hạn giao hàng
-                  </label>
-                  <input
-                    type="date"
-                    value={editDeadline}
-                    onChange={(e) => setEditDeadline(e.target.value)}
-                    className="mt-1 h-10 w-full rounded-lg border border-gray-300 px-3 text-sm text-gray-900 dark:text-white dark:bg-gray-800 dark:border-gray-700 transition-colors focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Chu kỳ CM (ngày)
-                  </label>
-                  <input
-                    type="number"
-                    min="1"
-                    value={editCmBaseDays}
-                    onChange={(e) => setEditCmBaseDays(Number(e.target.value))}
-                    className="mt-1 h-10 w-full rounded-lg border border-gray-300 px-3 font-mono text-sm text-gray-900 dark:text-white dark:bg-gray-800 dark:border-gray-700 transition-colors focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                  />
-                </div>
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Mã sản phẩm <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={editProductCode}
+                  onChange={(e) => setEditProductCode(e.target.value)}
+                  required
+                  className="mt-1 h-10 w-full rounded-lg border border-gray-300 px-3 font-mono text-sm text-gray-900 dark:text-white dark:bg-gray-800 dark:border-gray-700 transition-colors focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                />
               </div>
 
               <div>
                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Mô tả đặc điểm &amp; Ghi chú chất liệu
+                  Tên sản phẩm <span className="text-red-500">*</span>
                 </label>
-                <textarea
-                  rows={2}
-                  value={editMaterialNote}
-                  onChange={(e) => setEditMaterialNote(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-gray-300 p-3 text-sm text-gray-900 dark:text-white dark:bg-gray-800 dark:border-gray-700 transition-colors focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                  placeholder="Nhập chất liệu, thành phần sợi, lưu ý may hoặc đặc điểm của sản phẩm..."
+                <input
+                  type="text"
+                  value={editProductName}
+                  onChange={(e) => setEditProductName(e.target.value)}
+                  required
+                  className="mt-1 h-10 w-full rounded-lg border border-gray-300 px-3 text-sm text-gray-900 dark:text-white dark:bg-gray-800 dark:border-gray-700 transition-colors focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+              <div>
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Dòng sản phẩm
+                </label>
+                <input
+                  type="text"
+                  value={editCategory}
+                  onChange={(e) => setEditCategory(e.target.value)}
+                  placeholder="VD: Áo polo"
+                  className="mt-1 h-10 w-full rounded-lg border border-gray-300 px-3 text-sm text-gray-900 dark:text-white dark:bg-gray-800 dark:border-gray-700 transition-colors focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                 />
               </div>
 
-              {/* Trình soạn thảo Phân bổ Màu sắc & Cỡ số */}
-              <div className="pt-2 border-t border-gray-100 dark:border-gray-800">
-                <ProductColorSizeEditor
-                  colors={editColors}
-                  onChange={setEditColors}
+              <div>
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Hạn giao hàng
+                </label>
+                <input
+                  type="date"
+                  value={editDeadline}
+                  onChange={(e) => setEditDeadline(e.target.value)}
+                  className="mt-1 h-10 w-full rounded-lg border border-gray-300 px-3 text-sm text-gray-900 dark:text-white dark:bg-gray-800 dark:border-gray-700 transition-colors focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                 />
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-gray-100 dark:border-gray-800">
-                <button
-                  type="button"
-                  onClick={() => setIsEditModalOpen(false)}
-                  className="rounded-lg border border-gray-300 px-4 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800 transition-colors cursor-pointer"
-                >
-                  Hủy
-                </button>
-                <button
-                  type="submit"
-                  disabled={updateProductMutation.isPending}
-                  className="rounded-lg bg-blue-600 px-4 py-2 text-xs font-medium text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-400 transition-colors cursor-pointer disabled:opacity-50"
-                >
-                  {updateProductMutation.isPending ? "Đang lưu..." : "Lưu thay đổi"}
-                </button>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Chu kỳ CM (ngày)
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  value={editCmBaseDays}
+                  onChange={(e) => setEditCmBaseDays(Number(e.target.value))}
+                  className="mt-1 h-10 w-full rounded-lg border border-gray-300 px-3 font-mono text-sm text-gray-900 dark:text-white dark:bg-gray-800 dark:border-gray-700 transition-colors focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                />
               </div>
-            </form>
-          </div>
-        </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Mô tả đặc điểm &amp; Ghi chú chất liệu
+              </label>
+              <textarea
+                rows={2}
+                value={editMaterialNote}
+                onChange={(e) => setEditMaterialNote(e.target.value)}
+                className="mt-1 w-full rounded-lg border border-gray-300 p-3 text-sm text-gray-900 dark:text-white dark:bg-gray-800 dark:border-gray-700 transition-colors focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                placeholder="Nhập chất liệu, thành phần sợi, lưu ý may hoặc đặc điểm của sản phẩm..."
+              />
+            </div>
+
+            {/* Trình soạn thảo Phân bổ Màu sắc & Cỡ số */}
+            <div className="pt-2 border-t border-gray-100 dark:border-gray-800">
+              <ProductColorSizeEditor
+                colors={editColors}
+                onChange={setEditColors}
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-gray-100 dark:border-gray-800">
+              <Button
+                variant="outline"
+                size="sm"
+                type="button"
+                onClick={() => setIsEditModalOpen(false)}
+                disabled={updateProductMutation.isPending}
+              >
+                Hủy
+              </Button>
+              <Button size="sm" type="submit" disabled={updateProductMutation.isPending}>
+                {updateProductMutation.isPending ? "Đang lưu..." : "Lưu thay đổi"}
+              </Button>
+            </div>
+          </form>
+        </Modal>
       )}
 
       {/* ─── MODAL GÁN TÀI LIỆU TỪ KHO PO ───────────────────────────────────────── */}

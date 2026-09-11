@@ -367,12 +367,14 @@ export function useUploadProductDocumentVersion() {
       productId,
       documentId,
       file,
+      purpose,
       changeReason,
     }: {
       poId: string;
       productId: string;
       documentId: string;
       file: File;
+      purpose: string;
       changeReason?: string;
     }) =>
       poApi.uploadProductDocumentVersion(
@@ -380,6 +382,7 @@ export function useUploadProductDocumentVersion() {
         productId,
         documentId,
         file,
+        purpose,
         changeReason,
       ),
     onSuccess: (_, { poId, productId }) => {
