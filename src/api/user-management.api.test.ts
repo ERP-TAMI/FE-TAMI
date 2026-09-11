@@ -50,4 +50,23 @@ describe("userManagementApi", () => {
 
     await expect(userManagementApi.list({ page: 1, limit: 10 })).rejects.toThrow();
   });
+
+  it("accepts additive fields from a backward-compatible server response", async () => {
+    vi.mocked(apiClient.get).mockResolvedValue({
+      data: {
+        ...response,
+        requestId: "req-123",
+        data: [
+          {
+            ...response.data[0],
+            avatarUrl: "https://example.test/avatar.png",
+            role: { ...response.data[0].role, description: "System role" },
+          },
+        ],
+        meta: { ...response.meta, hasNextPage: false },
+      },
+    });
+
+    await expect(userManagementApi.list({ page: 1, limit: 10 })).resolves.toEqual(response);
+  });
 });
