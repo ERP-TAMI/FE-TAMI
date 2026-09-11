@@ -243,14 +243,14 @@ export function PoAddProductModal({
       title="Thêm sản phẩm vào đơn hàng PO"
       size="xl"
     >
-      <div className="space-y-4">
+      <div className="space-y-5">
         {/* Stepper Navigation: 3 Giai đoạn (Cân đối, vừa vặn không tràn khung) */}
         <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
           {/* Step 1 */}
           <button
             type="button"
             onClick={() => setCurrentStep(1)}
-            className={`flex items-center gap-3 rounded-xl p-3 text-left transition-all cursor-pointer border ${
+            className={`flex items-center gap-3 rounded-xl p-3.5 text-left transition-all cursor-pointer border ${
               currentStep === 1
                 ? "bg-brand-50/90 border-brand-300 text-brand-700 shadow-2xs dark:bg-brand-950/50 dark:border-brand-700 dark:text-brand-300"
                 : "bg-gray-50 border-gray-200 hover:bg-gray-100 text-gray-600 dark:bg-gray-800/60 dark:border-gray-800 dark:text-gray-400"
@@ -273,7 +273,7 @@ export function PoAddProductModal({
             </div>
             <div className="min-w-0 flex-1">
               <div className="text-xs font-bold uppercase tracking-wider">Thông tin sản phẩm</div>
-              <div className="text-[11px] opacity-75 truncate">
+              <div className="text-theme-xs opacity-75 truncate">
                 Mã, tên SP, liên kết Style
               </div>
             </div>
@@ -283,7 +283,7 @@ export function PoAddProductModal({
           <button
             type="button"
             onClick={handleNextToStep2}
-            className={`flex items-center gap-3 rounded-xl p-3 text-left transition-all cursor-pointer border ${
+            className={`flex items-center gap-3 rounded-xl p-3.5 text-left transition-all cursor-pointer border ${
               currentStep === 2
                 ? "bg-brand-50/90 border-brand-300 text-brand-700 shadow-2xs dark:bg-brand-950/50 dark:border-brand-700 dark:text-brand-300"
                 : "bg-gray-50 border-gray-200 hover:bg-gray-100 text-gray-600 dark:bg-gray-800/60 dark:border-gray-800 dark:text-gray-400"
@@ -306,7 +306,7 @@ export function PoAddProductModal({
             </div>
             <div className="min-w-0 flex-1">
               <div className="text-xs font-bold uppercase tracking-wider">Gán tài liệu</div>
-              <div className="text-[11px] opacity-75 truncate">
+              <div className="text-theme-xs opacity-75 truncate">
                 {selectedPoDocIds.length > 0
                   ? `Đã chọn ${selectedPoDocIds.length} tệp`
                   : "Không bắt buộc"}
@@ -318,7 +318,7 @@ export function PoAddProductModal({
           <button
             type="button"
             onClick={handleNextToStep3}
-            className={`flex items-center gap-3 rounded-xl p-3 text-left transition-all cursor-pointer border ${
+            className={`flex items-center gap-3 rounded-xl p-3.5 text-left transition-all cursor-pointer border ${
               currentStep === 3
                 ? "bg-brand-50/90 border-brand-300 text-brand-700 shadow-2xs dark:bg-brand-950/50 dark:border-brand-700 dark:text-brand-300"
                 : "bg-gray-50 border-gray-200 hover:bg-gray-100 text-gray-600 dark:bg-gray-800/60 dark:border-gray-800 dark:text-gray-400"
@@ -335,7 +335,7 @@ export function PoAddProductModal({
             </div>
             <div className="min-w-0 flex-1">
               <div className="text-xs font-bold uppercase tracking-wider">Xác nhận</div>
-              <div className="text-[11px] opacity-75 truncate">
+              <div className="text-theme-xs opacity-75 truncate">
                 Kiểm tra & tạo sản phẩm
               </div>
             </div>
@@ -353,13 +353,13 @@ export function PoAddProductModal({
         {/* GIAI ĐOẠN 1: THÔNG TIN SẢN PHẨM                                           */}
         {/* ========================================================================= */}
         {currentStep === 1 && (
-          <div className="space-y-3.5">
+          <div className="space-y-5">
             {/* Tab switch mode */}
             <div className="flex rounded-lg border border-gray-200 bg-gray-50/80 p-0.5 dark:border-gray-800 dark:bg-gray-900">
               <button
                 type="button"
                 onClick={() => setMode("select")}
-                className={`flex-1 rounded-md py-1.5 px-3 text-theme-xs font-semibold transition cursor-pointer ${
+                className={`flex-1 rounded-md py-2 px-3 text-theme-sm font-semibold transition cursor-pointer ${
                   mode === "select"
                     ? "bg-white text-brand-600 shadow-2xs dark:bg-gray-800 dark:text-brand-400"
                     : "text-gray-500 hover:text-gray-700 dark:text-gray-400"
@@ -373,7 +373,7 @@ export function PoAddProductModal({
                   setMode("manual");
                   setSourceStyleId("");
                 }}
-                className={`flex-1 rounded-md py-1.5 px-3 text-theme-xs font-semibold transition cursor-pointer ${
+                className={`flex-1 rounded-md py-2 px-3 text-theme-sm font-semibold transition cursor-pointer ${
                   mode === "manual"
                     ? "bg-white text-brand-600 shadow-2xs dark:bg-gray-800 dark:text-brand-400"
                     : "text-gray-500 hover:text-gray-700 dark:text-gray-400"
@@ -385,15 +385,15 @@ export function PoAddProductModal({
 
             {/* If mode === select: Pick Source Style & View preview */}
             {mode === "select" && (
-              <div className="space-y-2.5 rounded-xl border border-brand-200/80 bg-brand-50/30 p-3 dark:border-brand-900/40 dark:bg-brand-950/20">
+              <div className="space-y-4 rounded-xl border border-brand-200/80 bg-brand-50/30 p-4 dark:border-brand-900/40 dark:bg-brand-950/20">
                 <div>
-                  <label className="block text-theme-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                  <label className="block text-theme-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
                     Chọn Style Mẫu Fit gốc <span className="text-error-500">*</span>
                   </label>
                   <select
                     value={sourceStyleId}
                     onChange={(e) => handleSelectStyle(e.target.value)}
-                    className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-theme-sm text-gray-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-white"
+                    className="w-full rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-theme-sm text-gray-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-white"
                   >
                     <option value="">-- Chọn một Style có sẵn từ danh mục Fit --</option>
                     {styleList.map((s) => (
@@ -405,9 +405,9 @@ export function PoAddProductModal({
                 </div>
 
                 {sourceStyleId && (
-                  <div className="space-y-2 pt-0.5">
+                  <div className="space-y-3 pt-1">
                     <div className="flex items-center justify-between">
-                      <span className="text-theme-xs font-bold text-brand-900 dark:text-brand-300 uppercase tracking-wide">
+                      <span className="text-theme-sm font-bold text-brand-900 dark:text-brand-300 uppercase tracking-wide">
                         Xem trước dữ liệu Fit sẽ import
                       </span>
                       {isPreviewLoading && (
@@ -418,39 +418,39 @@ export function PoAddProductModal({
                     </div>
 
                     {fitPreview && (
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
-                        <div className="rounded-lg bg-white p-2 shadow-2xs dark:bg-gray-800 border border-brand-100 dark:border-gray-700">
-                          <span className="text-lg font-extrabold text-brand-600 dark:text-brand-400">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+                        <div className="rounded-lg bg-white p-3 shadow-2xs dark:bg-gray-800 border border-brand-100 dark:border-gray-700">
+                          <span className="text-xl font-extrabold text-brand-600 dark:text-brand-400">
                             {fitPreview.operationSteps?.length || 0}
                           </span>
-                          <span className="block text-[11px] text-gray-500 dark:text-gray-400">
+                          <span className="block text-theme-xs text-gray-500 dark:text-gray-400 mt-0.5">
                             Bảng công đoạn
                           </span>
                         </div>
 
-                        <div className="rounded-lg bg-white p-2 shadow-2xs dark:bg-gray-800 border border-brand-100 dark:border-gray-700">
-                          <span className="text-lg font-extrabold text-brand-600 dark:text-brand-400">
+                        <div className="rounded-lg bg-white p-3 shadow-2xs dark:bg-gray-800 border border-brand-100 dark:border-gray-700">
+                          <span className="text-xl font-extrabold text-brand-600 dark:text-brand-400">
                             {fitPreview.sampleRounds?.length || 0}
                           </span>
-                          <span className="block text-[11px] text-gray-500 dark:text-gray-400">
+                          <span className="block text-theme-xs text-gray-500 dark:text-gray-400 mt-0.5">
                             Đợt may mẫu
                           </span>
                         </div>
 
-                        <div className="rounded-lg bg-white p-2 shadow-2xs dark:bg-gray-800 border border-brand-100 dark:border-gray-700">
-                          <span className="text-lg font-extrabold text-brand-600 dark:text-brand-400">
+                        <div className="rounded-lg bg-white p-3 shadow-2xs dark:bg-gray-800 border border-brand-100 dark:border-gray-700">
+                          <span className="text-xl font-extrabold text-brand-600 dark:text-brand-400">
                             {fitPreview.productionDocument ? "Có" : "Không"}
                           </span>
-                          <span className="block text-[11px] text-gray-500 dark:text-gray-400">
+                          <span className="block text-theme-xs text-gray-500 dark:text-gray-400 mt-0.5">
                             Tài liệu SX tiếng Việt
                           </span>
                         </div>
 
-                        <div className="rounded-lg bg-white p-2 shadow-2xs dark:bg-gray-800 border border-brand-100 dark:border-gray-700">
-                          <span className="text-lg font-extrabold text-brand-600 dark:text-brand-400">
+                        <div className="rounded-lg bg-white p-3 shadow-2xs dark:bg-gray-800 border border-brand-100 dark:border-gray-700">
+                          <span className="text-xl font-extrabold text-brand-600 dark:text-brand-400">
                             {fitPreview.documents?.length || 0}
                           </span>
-                          <span className="block text-[11px] text-gray-500 dark:text-gray-400">
+                          <span className="block text-theme-xs text-gray-500 dark:text-gray-400 mt-0.5">
                             Tệp tài liệu từ Fit
                           </span>
                         </div>
@@ -458,17 +458,17 @@ export function PoAddProductModal({
                     )}
 
                     {/* Selection Checkboxes for Style components */}
-                    <div className="pt-2 border-t border-brand-200/60 dark:border-brand-900/40">
-                      <span className="block text-[11px] font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
+                    <div className="pt-3 border-t border-brand-200/60 dark:border-brand-900/40">
+                      <span className="block text-theme-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
                         Chọn các thành phần từ Style vào sản phẩm:
                       </span>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-theme-xs">
-                        <label className="flex items-center gap-2 cursor-pointer text-gray-700 dark:text-gray-300">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-theme-sm">
+                        <label className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 cursor-pointer text-gray-700 hover:bg-white/70 dark:text-gray-300 dark:hover:bg-gray-800/60">
                           <input
                             type="checkbox"
                             checked={copySteps}
                             onChange={(e) => setCopySteps(e.target.checked)}
-                            className="rounded text-brand-600 focus:ring-brand-500 h-4 w-4"
+                            className="rounded text-brand-600 focus:ring-brand-500 h-4 w-4 shrink-0"
                           />
                           <span>
                             Bảng công đoạn{" "}
@@ -478,12 +478,12 @@ export function PoAddProductModal({
                           </span>
                         </label>
 
-                        <label className="flex items-center gap-2 cursor-pointer text-gray-700 dark:text-gray-300">
+                        <label className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 cursor-pointer text-gray-700 hover:bg-white/70 dark:text-gray-300 dark:hover:bg-gray-800/60">
                           <input
                             type="checkbox"
                             checked={copySamples}
                             onChange={(e) => setCopySamples(e.target.checked)}
-                            className="rounded text-brand-600 focus:ring-brand-500 h-4 w-4"
+                            className="rounded text-brand-600 focus:ring-brand-500 h-4 w-4 shrink-0"
                           />
                           <span>
                             Đợt may mẫu & ảnh{" "}
@@ -493,22 +493,22 @@ export function PoAddProductModal({
                           </span>
                         </label>
 
-                        <label className="flex items-center gap-2 cursor-pointer text-gray-700 dark:text-gray-300">
+                        <label className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 cursor-pointer text-gray-700 hover:bg-white/70 dark:text-gray-300 dark:hover:bg-gray-800/60">
                           <input
                             type="checkbox"
                             checked={copyProductionDoc}
                             onChange={(e) => setCopyProductionDoc(e.target.checked)}
-                            className="rounded text-brand-600 focus:ring-brand-500 h-4 w-4"
+                            className="rounded text-brand-600 focus:ring-brand-500 h-4 w-4 shrink-0"
                           />
                           <span>Tài liệu sản xuất tiếng Việt</span>
                         </label>
 
-                        <label className="flex items-center gap-2 cursor-pointer text-gray-700 dark:text-gray-300">
+                        <label className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 cursor-pointer text-gray-700 hover:bg-white/70 dark:text-gray-300 dark:hover:bg-gray-800/60">
                           <input
                             type="checkbox"
                             checked={copyDocuments}
                             onChange={(e) => setCopyDocuments(e.target.checked)}
-                            className="rounded text-brand-600 focus:ring-brand-500 h-4 w-4"
+                            className="rounded text-brand-600 focus:ring-brand-500 h-4 w-4 shrink-0"
                           />
                           <span>
                             Tài liệu đính kèm của Style{" "}
@@ -524,10 +524,10 @@ export function PoAddProductModal({
               </div>
             )}
 
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <div className="flex items-center justify-between">
-                  <label className="block text-theme-xs font-semibold text-gray-700 dark:text-gray-300">
+                  <label className="block text-theme-sm font-semibold text-gray-700 dark:text-gray-300">
                     Mã sản phẩm trong PO <span className="text-error-500">*</span>
                   </label>
                   {mode === "select" && (
@@ -541,12 +541,12 @@ export function PoAddProductModal({
                   placeholder="VD: PROD-2026-001"
                   value={productCode}
                   onChange={(e) => setProductCode(e.target.value)}
-                  className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-theme-sm font-mono text-gray-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-white"
+                  className="mt-1.5 w-full rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-theme-sm font-mono text-gray-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-white"
                 />
               </div>
 
               <div>
-                <label className="block text-theme-xs font-semibold text-gray-700 dark:text-gray-300">
+                <label className="block text-theme-sm font-semibold text-gray-700 dark:text-gray-300">
                   Tên sản phẩm <span className="text-error-500">*</span>
                 </label>
                 <input
@@ -554,14 +554,14 @@ export function PoAddProductModal({
                   placeholder="VD: Áo thun Polo Regular"
                   value={productName}
                   onChange={(e) => setProductName(e.target.value)}
-                  className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-theme-sm text-gray-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-white"
+                  className="mt-1.5 w-full rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-theme-sm text-gray-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-white"
                 />
               </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <label className="block text-theme-xs font-semibold text-gray-700 dark:text-gray-300">
+                <label className="block text-theme-sm font-semibold text-gray-700 dark:text-gray-300">
                   Danh mục / Dòng sản phẩm
                 </label>
                 <input
@@ -569,12 +569,12 @@ export function PoAddProductModal({
                   placeholder="VD: Áo thun, Quần Khaki..."
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
-                  className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-theme-sm text-gray-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-white"
+                  className="mt-1.5 w-full rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-theme-sm text-gray-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-white"
                 />
               </div>
 
               <div>
-                <label className="block text-theme-xs font-semibold text-gray-700 dark:text-gray-300">
+                <label className="block text-theme-sm font-semibold text-gray-700 dark:text-gray-300">
                   Ghi chú chất liệu / Màu sắc
                 </label>
                 <input
@@ -582,20 +582,20 @@ export function PoAddProductModal({
                   placeholder="VD: Cotton 100%, Navy..."
                   value={materialNote}
                   onChange={(e) => setMaterialNote(e.target.value)}
-                  className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-theme-sm text-gray-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-white"
+                  className="mt-1.5 w-full rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-theme-sm text-gray-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-white"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-theme-xs font-semibold text-gray-700 dark:text-gray-300">
+              <label className="block text-theme-sm font-semibold text-gray-700 dark:text-gray-300">
                 Hạn giao (Deadline)
               </label>
               <input
                 type="date"
                 value={deadline}
                 onChange={(e) => setDeadline(e.target.value)}
-                className="mt-1 w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-theme-sm text-gray-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-white"
+                className="mt-1.5 w-full rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-theme-sm text-gray-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-white"
               />
             </div>
 
@@ -803,7 +803,7 @@ export function PoAddProductModal({
         {/* GIAI ĐOẠN 3: XÁC NHẬN & HOÀN TẤT                                          */}
         {/* ========================================================================= */}
         {currentStep === 3 && (
-          <div className="space-y-3.5">
+          <div className="space-y-5">
             <div className="rounded-xl border border-brand-200 bg-brand-50/40 p-3 dark:border-brand-900/40 dark:bg-brand-950/30">
               <h4 className="text-theme-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider">
                 Xác nhận thông tin sản phẩm sẽ thêm vào PO
