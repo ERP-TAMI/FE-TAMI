@@ -1,6 +1,18 @@
 import apiClient from "@/lib/apiClient";
-import type { UserListParams, UserListResponse } from "@/types/user-management";
-import { userListResponseSchema } from "./user-management.schema";
+import type {
+  CreateUserResponse,
+  InvitationResponse,
+  UserInput,
+  UserListParams,
+  UserListResponse,
+  UpdateUserResponse,
+} from "@/types/user-management";
+import {
+  createUserResponseSchema,
+  invitationResponseSchema,
+  updateUserResponseSchema,
+  userListResponseSchema,
+} from "./user-management.schema";
 
 const resource = "/system/users";
 
@@ -16,5 +28,17 @@ export const userManagementApi = {
 
     const response = await apiClient.get<UserListResponse>(resource, { params });
     return userListResponseSchema.parse(response.data);
+  },
+  async create(input: UserInput): Promise<CreateUserResponse> {
+    const response = await apiClient.post(resource, input);
+    return createUserResponseSchema.parse(response.data);
+  },
+  async update(id: string, input: UserInput): Promise<UpdateUserResponse> {
+    const response = await apiClient.patch(`${resource}/${id}`, input);
+    return updateUserResponseSchema.parse(response.data);
+  },
+  async resendPasswordSetup(id: string): Promise<InvitationResponse> {
+    const response = await apiClient.post(`${resource}/${id}/password-setup-email`);
+    return invitationResponseSchema.parse(response.data);
   },
 };

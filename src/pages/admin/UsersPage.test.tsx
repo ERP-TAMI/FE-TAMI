@@ -3,9 +3,14 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testi
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import UsersPage from "./UsersPage";
 
-const hooks = vi.hoisted(() => ({ useUsers: vi.fn() }));
+const hooks = vi.hoisted(() => ({
+  useUsers: vi.fn(),
+  useCreateUser: vi.fn(),
+  useUpdateUser: vi.fn(),
+  useResendPasswordSetup: vi.fn(),
+}));
 
-vi.mock("@/hooks/useUsers", () => ({ useUsers: hooks.useUsers }));
+vi.mock("@/hooks/useUsers", () => hooks);
 
 const user = {
   id: "9fb4d58f-0e6d-4ed5-b122-2b9f61aae115",
@@ -14,6 +19,7 @@ const user = {
   phone: "0901234567",
   role: { code: "IT" as const, name: "Công nghệ thông tin" },
   accountStatus: "active" as const,
+  passwordSetupRequired: false,
 };
 
 function result(overrides = {}) {
@@ -40,6 +46,9 @@ describe("UsersPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     hooks.useUsers.mockReturnValue(result());
+    hooks.useCreateUser.mockReturnValue({ mutateAsync: vi.fn(), isPending: false });
+    hooks.useUpdateUser.mockReturnValue({ mutateAsync: vi.fn(), isPending: false });
+    hooks.useResendPasswordSetup.mockReturnValue({ mutateAsync: vi.fn(), isPending: false });
   });
 
   afterEach(() => {

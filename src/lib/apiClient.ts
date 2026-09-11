@@ -18,7 +18,7 @@ apiClient.interceptors.request.use((config) => {
   return config;
 });
 
-const NO_REFRESH_PATHS = ["/auth/login", "/auth/refresh", "/auth/logout"];
+const NO_REFRESH_PATHS = ["/auth/login", "/auth/refresh", "/auth/logout", "/auth/password-setup/"];
 
 let refreshPromise: Promise<string | null> | null = null;
 

@@ -13,7 +13,28 @@ export type UserListItem = {
   phone: string | null;
   role: UserRole | null;
   accountStatus: UserAccountStatus;
+  passwordSetupRequired: boolean;
 };
+
+export type UserInput = {
+  fullName: string;
+  email: string;
+  phone: string | null;
+  roleCode: UserRoleCode;
+  accountStatus: UserAccountStatus;
+};
+
+export type CreateUserResponse = {
+  user: UserListItem;
+  invitationStatus: "sent" | "failed";
+};
+
+export type UpdateUserResponse = {
+  user: UserListItem;
+  invitationStatus: "sent" | "failed" | null;
+};
+
+export type InvitationResponse = { invitationStatus: "sent" | "failed" };
 
 export type UserListParams = {
   search?: string;

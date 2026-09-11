@@ -15,6 +15,21 @@ export const userListItemSchema = z.object({
     })
     .nullable(),
   accountStatus: userAccountStatusSchema,
+  passwordSetupRequired: z.boolean(),
+});
+
+export const createUserResponseSchema = z.object({
+  user: userListItemSchema,
+  invitationStatus: z.enum(["sent", "failed"]),
+});
+
+export const updateUserResponseSchema = z.object({
+  user: userListItemSchema,
+  invitationStatus: z.enum(["sent", "failed"]).nullable(),
+});
+
+export const invitationResponseSchema = z.object({
+  invitationStatus: z.enum(["sent", "failed"]),
 });
 
 export const userListResponseSchema = z.object({
