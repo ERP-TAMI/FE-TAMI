@@ -498,12 +498,17 @@ export default function PoProductDetailPage() {
         return;
       }
       try {
-        const res = await uploadImage.mutateAsync(file);
-        setImageUrl(res.url);
+        const res = await uploadImage.mutateAsync({
+          entityType: "purchase-order",
+          entityId: productId,
+          purpose: "sample_image",
+          file,
+        });
+        setImageUrl(res.previewUrl);
         await updateProductMutation.mutateAsync({
           id: poId,
           productId,
-          input: { structureImageVersionId: res.url },
+          input: { structureImageVersionId: res.objectKey },
         });
         showToast("Đã tải và lưu ảnh sản phẩm thành công.");
       } catch (err) {

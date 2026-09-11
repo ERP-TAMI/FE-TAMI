@@ -341,6 +341,12 @@ export function StyleProductionDocTab({
   const [sec3Notes, setSec3Notes] = useState("");
   const [sec4Feedback, setSec4Feedback] = useState("");
   const [sec5SizeImages, setSec5SizeImages] = useState<string[]>([]);
+  // Freshly uploaded images are stored as S3 object keys (never a URL — a
+  // presigned URL expires). This maps each key to the short-lived preview
+  // URL from the upload response so newly added images render immediately
+  // in this editing session; values loaded from the server are already
+  // resolved URLs, so the map lookup below just falls through to them.
+  const [previewCache, setPreviewCache] = useState<Record<string, string>>({});
   const [uploadingImage, setUploadingImage] = useState(false);
   const [showSec1PasteArea, setShowSec1PasteArea] = useState(false);
   const [showSec5PasteArea, setShowSec5PasteArea] = useState(false);
@@ -553,9 +559,24 @@ export function StyleProductionDocTab({
     }
   };
 
+  // value is an S3 object key once uploaded through this tab, or an already
+  // resolved URL when it came straight from a GET response — either way this
+  // returns something safe to put in an <img src>.
+  const displaySrc = (value?: string | null): string | undefined =>
+    value ? (previewCache[value] ?? value) : undefined;
+
+  const resolvedPreviewSections = (list: ProductionDocSection[]): ProductionDocSection[] =>
+    list.map((s) => ({
+      ...s,
+      imageGroups: (s.imageGroups || []).map((g) => ({
+        ...g,
+        imageUrls: (g.imageUrls || []).map((v) => displaySrc(v) ?? v),
+      })),
+    }));
+
   const uploadPastedImage = async (
     file: File,
-    onUploaded: (url: string) => void,
+    onUploaded: (objectKey: string) => void,
     successMessage: string,
   ) => {
     const validationError = validateImageFile(file);
@@ -565,8 +586,14 @@ export function StyleProductionDocTab({
     }
     try {
       setUploadingImage(true);
-      const res = await uploadImage.mutateAsync(file);
-      onUploaded(res.url);
+      const res = await uploadImage.mutateAsync({
+        entityType: "style",
+        entityId: styleId!,
+        purpose: "production_doc_image",
+        file,
+      });
+      setPreviewCache((prev) => ({ ...prev, [res.objectKey]: res.previewUrl }));
+      onUploaded(res.objectKey);
       showToast(successMessage);
     } catch (err) {
       showToast(getApiError(err, "Tải ảnh thất bại.").message, "error");
@@ -732,8 +759,9 @@ export function StyleProductionDocTab({
             <SectionHeader num="01" title="MÔ TẢ HÌNH DÁNG" />
             {(() => {
               const activeSec1Image = doc
-                ? sec1Image || (sec1ImageCleared ? null : doc.section1ImageUrl || styleImageUrl)
-                : sec1Image || styleImageUrl || null;
+                ? displaySrc(sec1Image) ||
+                  (sec1ImageCleared ? null : doc.section1ImageUrl || styleImageUrl)
+                : displaySrc(sec1Image) || styleImageUrl || null;
 
               return isEditing ? (
                 <div
@@ -970,7 +998,7 @@ export function StyleProductionDocTab({
                   className="group relative overflow-hidden rounded-2xl border border-gray-200 bg-white p-3 shadow-xs dark:border-gray-800 dark:bg-gray-900"
                 >
                   <img
-                    src={url}
+                    src={displaySrc(url)}
                     alt={`Bản vẽ thông số full size ${i + 1}`}
                     className="max-h-[750px] w-full rounded-xl bg-gray-50 object-contain dark:bg-gray-800/60"
                   />
@@ -1258,7 +1286,7 @@ export function StyleProductionDocTab({
 
                         {grp.kind !== "text" && (
                           <CompactImageUploader
-                          images={grp.imageUrls || []}
+                          images={(grp.imageUrls || []).map((v) => displaySrc(v) ?? v)}
                           onAdd={async (file) => {
                             const updated = [...sections];
                             const currentImgs = updated[idx].imageGroups![grpIdx].imageUrls || [];
@@ -1273,10 +1301,19 @@ export function StyleProductionDocTab({
                             }
                             try {
                               setUploadingImage(true);
-                              const res = await uploadImage.mutateAsync(file);
+                              const res = await uploadImage.mutateAsync({
+                                entityType: "style",
+                                entityId: styleId!,
+                                purpose: "production_doc_image",
+                                file,
+                              });
+                              setPreviewCache((prev) => ({
+                                ...prev,
+                                [res.objectKey]: res.previewUrl,
+                              }));
                               updated[idx].imageGroups![grpIdx].imageUrls = [
                                 ...currentImgs,
-                                res.url,
+                                res.objectKey,
                               ];
                               setSections(updated);
                               showToast("Đã tải ảnh nhóm.");
@@ -1375,7 +1412,7 @@ export function StyleProductionDocTab({
                         {grp.imageUrls.map((url, i) => (
                           <img
                             key={i}
-                            src={url}
+                            src={displaySrc(url)}
                             alt=""
                             className="h-28 w-28 rounded-lg border border-gray-200 object-cover dark:border-gray-700"
                           />
@@ -1420,14 +1457,16 @@ export function StyleProductionDocTab({
               ? {
                   ...doc,
                   section1ImageUrl:
-                    sec1Image ||
+                    displaySrc(sec1Image) ||
                     (sec1ImageCleared ? null : doc.section1ImageUrl || styleImageUrl || null),
                   section1Description: null,
                   section2Accessories: sec2Accessories || cleanOptionalText(doc.section2Accessories),
                   section3Notes: sec3Notes || doc.section3Notes,
                   section4CustomerFeedback: sec4Feedback || doc.section4CustomerFeedback,
-                  sizeData: sec5SizeImages.map((img) => ({ imageUrl: img })),
-                  sections: sections.length > 0 ? sections : doc.sections,
+                  sizeData: sec5SizeImages.map((img) => ({ imageUrl: displaySrc(img) ?? img })),
+                  sections: resolvedPreviewSections(
+                    sections.length > 0 ? sections : doc.sections,
+                  ),
                   sizeRows: sizeRows.length > 0 ? sizeRows : doc.sizeRows,
                 }
               : {
@@ -1437,16 +1476,16 @@ export function StyleProductionDocTab({
                   description: null,
                   status: "draft",
                   section1Description: null,
-                  section1ImageUrl: sec1Image || styleImageUrl || null,
+                  section1ImageUrl: displaySrc(sec1Image) || styleImageUrl || null,
                   section2Accessories: sec2Accessories,
                   section3Notes: sec3Notes,
                   section4CustomerFeedback: sec4Feedback,
-                  sizeData: sec5SizeImages.map((img) => ({ imageUrl: img })),
+                  sizeData: sec5SizeImages.map((img) => ({ imageUrl: displaySrc(img) ?? img })),
                   copiedFromStyleId: null,
                   copiedAt: null,
                   createdAt: new Date().toISOString(),
                   updatedAt: new Date().toISOString(),
-                  sections: sections,
+                  sections: resolvedPreviewSections(sections),
                   sizeRows: sizeRows,
                   attachments: [],
                 }

@@ -4,6 +4,7 @@ import type {
   CreatePoProductInput,
   LinkPoDocumentInput,
   PaginatedPoResponse,
+  PoDocumentPreviewResponse,
   PoQuery,
   PurchaseOrderDetail,
   PurchaseOrderDocumentItem,
@@ -12,8 +13,13 @@ import type {
   UpdatePoInput,
   UpdatePoProductInput,
   UpdatePoStatusInput,
-  PoDocumentPreviewResponse,
 } from "@/types/po";
+
+interface PresignPoDocumentResult {
+  objectKey: string;
+  uploadUrl: string;
+  expiresIn: number;
+}
 
 export const poApi = {
   async findAll(query: PoQuery = {}): Promise<PaginatedPoResponse> {
@@ -137,22 +143,61 @@ export const poApi = {
     await apiClient.delete(`/purchase-orders/${id}/products/${productId}`);
   },
 
+  async presignDocument(
+    id: string,
+    file: File,
+    purpose: string,
+  ): Promise<PresignPoDocumentResult> {
+    const response = await apiClient.post<PresignPoDocumentResult>(
+      `/purchase-orders/${id}/documents/presign`,
+      {
+        fileName: file.name,
+        mimeType: file.type,
+        sizeBytes: file.size,
+        purpose,
+      },
+    );
+    return response.data;
+  },
+
+  async uploadToS3(uploadUrl: string, file: File): Promise<void> {
+    const res = await fetch(uploadUrl, {
+      method: "PUT",
+      headers: { "Content-Type": file.type },
+      body: file,
+    });
+    if (!res.ok) {
+      throw new Error(`Tải tệp lên thất bại (HTTP ${res.status}).`);
+    }
+  },
+
+  async confirmDocument(
+    id: string,
+    objectKey: string,
+    file: File,
+    purpose: string,
+  ): Promise<PurchaseOrderDocumentItem> {
+    const response = await apiClient.post<PurchaseOrderDocumentItem>(
+      `/purchase-orders/${id}/documents/confirm`,
+      {
+        objectKey,
+        fileName: file.name,
+        mimeType: file.type,
+        sizeBytes: file.size,
+        purpose,
+      },
+    );
+    return response.data;
+  },
+
   async uploadDocument(
     id: string,
     file: File,
     purpose: string = "po_original",
   ): Promise<PurchaseOrderDocumentItem> {
-    const formData = new FormData();
-    formData.append("file", file);
-    const response = await apiClient.post<PurchaseOrderDocumentItem>(
-      `/purchase-orders/${id}/documents/upload`,
-      formData,
-      {
-        params: { purpose },
-        headers: { "Content-Type": "multipart/form-data" },
-      },
-    );
-    return response.data;
+    const presign = await poApi.presignDocument(id, file, purpose);
+    await poApi.uploadToS3(presign.uploadUrl, file);
+    return poApi.confirmDocument(id, presign.objectKey, file, purpose);
   },
 
   async uploadDocuments(

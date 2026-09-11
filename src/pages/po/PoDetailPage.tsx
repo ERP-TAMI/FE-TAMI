@@ -24,7 +24,16 @@ import {
 } from "@/hooks/usePurchaseOrders";
 import { useToast } from "@/hooks/useToast";
 import { getApiError } from "@/lib/apiError";
-import { TrashBinIcon, EyeIcon, AngleDownIcon, LockIcon, BoltIcon, BoxIcon, InfoIcon } from "@/icons";
+import {
+  TrashBinIcon,
+  EyeIcon,
+  AngleDownIcon,
+  LockIcon,
+  BoltIcon,
+  BoxIcon,
+  InfoIcon,
+  CalenderIcon,
+} from "@/icons";
 import type {
   CreatePoProductInput,
   PoStatus,
@@ -230,8 +239,12 @@ export default function PoDetailPage() {
   const [customerPoCode, setCustomerPoCode] = useState("");
   const [customerNameSnapshot, setCustomerNameSnapshot] = useState("");
   const [receivedDate, setReceivedDate] = useState("");
+  const [deadline, setDeadline] = useState("");
   const [note, setNote] = useState("");
   const [isEditing, setIsEditing] = useState(false);
+  const [generalFieldErrors, setGeneralFieldErrors] = useState<{
+    deadline?: string;
+  }>({});
 
   // Reason Modal state
   const [reasonModalState, setReasonModalState] = useState<{
@@ -255,12 +268,30 @@ export default function PoDetailPage() {
     setReceivedDate(
       po.receivedDate ? new Date(po.receivedDate).toISOString().split("T")[0] : "",
     );
+    setDeadline(
+      po.deadline ? new Date(po.deadline).toISOString().split("T")[0] : "",
+    );
     setNote(po.note || "");
+    setGeneralFieldErrors({});
     setIsEditing(true);
   };
 
   const handleSaveGeneral = async () => {
     if (!po || !id) return;
+    if (!deadline) {
+      setGeneralFieldErrors({
+        deadline: "Hạn hoàn thành (deadline) là bắt buộc, không được để trống.",
+      });
+      showToast("Vui lòng chọn hạn hoàn thành (deadline).", "error");
+      return;
+    }
+    if (receivedDate && deadline <= receivedDate) {
+      setGeneralFieldErrors({
+        deadline: "Hạn hoàn thành (deadline) phải sau ngày nhận PO.",
+      });
+      showToast("Hạn hoàn thành (deadline) phải sau ngày nhận PO.", "error");
+      return;
+    }
     try {
       await updateMutation.mutateAsync({
         id,
@@ -268,10 +299,12 @@ export default function PoDetailPage() {
           customerPoCode: customerPoCode.trim() || undefined,
           customerNameSnapshot: customerNameSnapshot.trim() || undefined,
           receivedDate: receivedDate || undefined,
+          deadline,
           note: note.trim() || undefined,
         },
       });
       showToast("Đã cập nhật thông tin đơn hàng PO thành công.");
+      setGeneralFieldErrors({});
       setIsEditing(false);
     } catch (err: unknown) {
       const apiErr = getApiError(err, "Cập nhật đơn hàng PO thất bại.");
@@ -676,15 +709,88 @@ export default function PoDetailPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-theme-xs font-bold uppercase tracking-wider text-gray-600 dark:text-gray-400">
-                      Ngày nhận đơn
-                    </label>
-                    <input
-                      type="date"
-                      value={receivedDate}
-                      onChange={(e) => setReceivedDate(e.target.value)}
-                      className="mt-1.5 w-full rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-theme-base text-gray-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-white"
-                    />
+                    <div className="flex items-center justify-between">
+                      <label className="block text-theme-xs font-bold uppercase tracking-wider text-gray-600 dark:text-gray-400">
+                        Ngày nhận
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setReceivedDate(new Date().toISOString().split("T")[0])}
+                        className="text-theme-xs font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400 hover:underline cursor-pointer"
+                      >
+                        Hôm nay
+                      </button>
+                    </div>
+                    <div className="relative mt-1.5 flex items-center">
+                      <input
+                        type="date"
+                        value={receivedDate}
+                        onClick={(e) => {
+                          try {
+                            e.currentTarget.showPicker?.();
+                          } catch {
+                            /* ignore when unsupported */
+                          }
+                        }}
+                        onChange={(e) => {
+                          setReceivedDate(e.target.value);
+                          if (generalFieldErrors.deadline) {
+                            setGeneralFieldErrors((prev) => ({ ...prev, deadline: undefined }));
+                          }
+                        }}
+                        className="w-full rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 pr-10 text-theme-base text-gray-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-white cursor-pointer"
+                      />
+                      <CalenderIcon className="pointer-events-none absolute right-3 h-5 w-5 text-gray-400" />
+                    </div>
+                  </div>
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <label className="block text-theme-xs font-bold uppercase tracking-wider text-gray-600 dark:text-gray-400">
+                        Hạn hoàn thành (Deadline) <span className="text-error-500">*</span>
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDeadline(new Date().toISOString().split("T")[0]);
+                          if (generalFieldErrors.deadline) {
+                            setGeneralFieldErrors((prev) => ({ ...prev, deadline: undefined }));
+                          }
+                        }}
+                        className="text-theme-xs font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400 hover:underline cursor-pointer"
+                      >
+                        Hôm nay
+                      </button>
+                    </div>
+                    <div className="relative mt-1.5 flex items-center">
+                      <input
+                        type="date"
+                        value={deadline}
+                        onClick={(e) => {
+                          try {
+                            e.currentTarget.showPicker?.();
+                          } catch {
+                            /* ignore when unsupported */
+                          }
+                        }}
+                        onChange={(e) => {
+                          setDeadline(e.target.value);
+                          if (generalFieldErrors.deadline) {
+                            setGeneralFieldErrors((prev) => ({ ...prev, deadline: undefined }));
+                          }
+                        }}
+                        className={`w-full rounded-xl border bg-white px-3.5 py-2.5 pr-10 text-theme-base text-gray-900 outline-none transition focus:ring-2 dark:bg-gray-800 dark:text-white cursor-pointer ${
+                          generalFieldErrors.deadline
+                            ? "border-error-400 focus:border-error-500 focus:ring-error-500/20 dark:border-error-500"
+                            : "border-gray-200 focus:border-brand-500 focus:ring-brand-500/20 dark:border-gray-800"
+                        }`}
+                      />
+                      <CalenderIcon className="pointer-events-none absolute right-3 h-5 w-5 text-gray-400" />
+                    </div>
+                    {generalFieldErrors.deadline && (
+                      <p className="mt-1 text-theme-xs font-medium text-error-600 dark:text-error-400">
+                        {generalFieldErrors.deadline}
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -705,7 +811,10 @@ export default function PoDetailPage() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setIsEditing(false)}
+                    onClick={() => {
+                      setGeneralFieldErrors({});
+                      setIsEditing(false);
+                    }}
                     disabled={updateMutation.isPending}
                   >
                     Hủy
@@ -720,8 +829,9 @@ export default function PoDetailPage() {
                 </div>
               </div>
             ) : (
-              <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                <div className="rounded-xl border border-gray-100 bg-gray-50/60 p-4.5 dark:border-gray-800 dark:bg-gray-800/40">
+              <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+                {/* Tile 1: Mã PO hệ thống */}
+                <div className="rounded-xl border border-gray-100 bg-gray-50/60 p-4.5 transition-all hover:bg-gray-50 hover:border-gray-200 dark:border-gray-800 dark:bg-gray-800/40 dark:hover:border-gray-700">
                   <span className="block text-theme-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
                     Mã PO nội bộ
                   </span>
@@ -760,6 +870,23 @@ export default function PoDetailPage() {
                   </span>
                 </div>
 
+                {/* Tile 5: Hạn hoàn thành */}
+                <div className="rounded-xl border border-gray-100 bg-gray-50/60 p-4.5 transition-all hover:bg-gray-50 hover:border-gray-200 dark:border-gray-800 dark:bg-gray-800/40 dark:hover:border-gray-700">
+                  <span className="block text-theme-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
+                    Hạn hoàn thành
+                  </span>
+                  <span className="mt-2 block text-lg sm:text-xl font-bold text-gray-900 dark:text-white">
+                    {po.deadline ? (
+                      <span className="text-amber-600 dark:text-amber-400">
+                        {formatDate(po.deadline)}
+                      </span>
+                    ) : (
+                      "—"
+                    )}
+                  </span>
+                </div>
+
+                {/* Locked info tile if locked */}
                 {po.closedAt && (
                   <div className="col-span-1 sm:col-span-2 lg:col-span-4 rounded-xl border border-success-200/80 bg-success-50/60 p-4.5 dark:border-success-900/40 dark:bg-success-950/30">
                     <span className="block text-theme-xs font-semibold uppercase tracking-wider text-success-600 dark:text-success-400">

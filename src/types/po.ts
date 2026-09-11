@@ -67,6 +67,7 @@ export interface PurchaseOrderListItem {
   customerId?: string | null;
   customerNameSnapshot: string;
   receivedDate: string;
+  deadline?: string | null;
   note: string | null;
   status: PoStatus;
   productsCount?: number;
@@ -391,6 +392,7 @@ export interface CreatePoInput {
   customerId?: string;
   customerNameSnapshot: string;
   receivedDate: string;
+  deadline: string;
   note?: string;
 }
 
@@ -399,6 +401,7 @@ export interface UpdatePoInput {
   customerId?: string;
   customerNameSnapshot?: string;
   receivedDate?: string;
+  deadline?: string | null;
   note?: string;
 }
 

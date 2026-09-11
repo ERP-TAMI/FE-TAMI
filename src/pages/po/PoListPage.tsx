@@ -292,6 +292,7 @@ export default function PoListPage() {
                 <th className="px-5 py-3.5">Khách hàng</th>
                 <th className="px-5 py-3.5 text-center">Số SP</th>
                 <th className="px-5 py-3.5">Ngày nhận</th>
+                <th className="px-5 py-3.5">Hạn hoàn thành</th>
                 <th className="px-5 py-3.5">Trạng thái</th>
                 <th className="px-5 py-3.5 text-right">Thao tác</th>
               </tr>
@@ -324,6 +325,15 @@ export default function PoListPage() {
                   </td>
                   <td className="px-5 py-4 text-theme-xs text-gray-500 dark:text-gray-400">
                     {formatDate(po.receivedDate)}
+                  </td>
+                  <td className="px-5 py-4 text-theme-xs font-medium text-gray-700 dark:text-gray-300">
+                    {po.deadline ? (
+                      <span className="inline-flex items-center rounded-md bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
+                        {formatDate(po.deadline)}
+                      </span>
+                    ) : (
+                      "—"
+                    )}
                   </td>
                   <td className="px-5 py-4">
                     <PoStatusBadge status={po.status} />

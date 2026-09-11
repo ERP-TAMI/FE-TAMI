@@ -71,6 +71,30 @@ describe("LoginPage", () => {
     expect(mockNavigate).toHaveBeenCalledWith("/management/dashboard", { replace: true });
   });
 
+  it("redirects an IT login to the IT dashboard", async () => {
+    vi.mocked(authApi.login).mockResolvedValue({
+      accessToken: "signed.it.token",
+      user: {
+        id: "22222222-2222-4222-8222-222222222222",
+        email: "it@tami.test",
+        fullName: "Nhân viên IT",
+        roleCode: "IT",
+        roleName: "Công nghệ thông tin",
+        permissions: ["system.users.manage"],
+      },
+    });
+
+    render(
+      <MemoryRouter>
+        <LoginPage />
+      </MemoryRouter>,
+    );
+    fillAndSubmit("it@tami.test", "correct-password");
+
+    await waitFor(() => expect(mockNavigate).toHaveBeenCalled());
+    expect(mockNavigate).toHaveBeenCalledWith("/it/dashboard", { replace: true });
+  });
+
   it("shows a Vietnamese error for wrong credentials and does not navigate", async () => {
     vi.mocked(authApi.login).mockRejectedValue({
       isAxiosError: true,

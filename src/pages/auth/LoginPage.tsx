@@ -2,7 +2,7 @@ import { useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { useLocation, useNavigate } from "react-router-dom";
-import { canAccessManagement, getLandingPath } from "@/lib/managementAccess";
+import { getPostLoginPath } from "@/lib/areaAccess";
 import { z } from "zod";
 import { Alert, Button, Input } from "@/components/shared";
 import PageMeta from "@/components/shared/PageMeta";
@@ -44,7 +44,7 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const redirectTo = (location.state as LocationState | null)?.from?.pathname ?? "/dashboard";
+  const redirectTo = (location.state as LocationState | null)?.from?.pathname;
 
   const submit = async (values: FormValues) => {
     setServerError(undefined);
@@ -52,17 +52,7 @@ export default function LoginPage() {
     try {
       const result = await authApi.login(values.email, values.password);
       setSession(result.user, result.accessToken);
-      const safeEmployeePath =
-        redirectTo.startsWith("/") &&
-        !redirectTo.startsWith("//") &&
-        !redirectTo.startsWith("/management") &&
-        redirectTo !== "/login";
-      navigate(
-        canAccessManagement(result.user) || !safeEmployeePath
-          ? getLandingPath(result.user)
-          : redirectTo,
-        { replace: true },
-      );
+      navigate(getPostLoginPath(result.user, redirectTo), { replace: true });
     } catch (error) {
       setServerError(getApiError(error, NETWORK_ERROR_MESSAGE, LOGIN_ERROR_OVERRIDES));
     } finally {

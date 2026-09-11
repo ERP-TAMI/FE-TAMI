@@ -9,10 +9,14 @@ import {
 } from "react-router-dom";
 import AppLayout from "@/layout/AppLayout";
 import ManagementLayout from "@/layout/ManagementLayout";
+import ItLayout from "@/layout/ItLayout";
 import ManagementDashboardPage from "@/pages/management/ManagementDashboardPage";
 import ManagementPoOverviewPage from "@/pages/management/ManagementPoOverviewPage";
 import { ManagementRoute } from "@/routes/ManagementRoute";
-import { getLandingPath } from "@/lib/managementAccess";
+import { ItRoute } from "@/routes/ItRoute";
+import { UserManagementRoute } from "@/routes/UserManagementRoute";
+import { UserManagementAlias } from "@/routes/UserManagementAlias";
+import { getLandingPath } from "@/lib/areaAccess";
 import { useAuthStore } from "@/store/authStore";
 import { ScrollToTop } from "@/components/shared/ScrollToTop";
 import { ProtectedRoute } from "@/routes/ProtectedRoute";
@@ -34,6 +38,8 @@ import UsersPage from "@/pages/admin/UsersPage";
 import StyleListPage from "@/pages/styles/StyleListPage";
 import StyleDetailPage from "@/pages/styles/StyleDetailPage";
 import AuditLogPage from "@/pages/audit/AuditLogPage";
+import ItDashboardPage from "@/pages/it/ItDashboardPage";
+import ForbiddenPage from "@/pages/ForbiddenPage";
 import NotFoundPage from "@/pages/NotFoundPage";
 
 const AUTH_GUARD_ENABLED = true;
@@ -64,6 +70,18 @@ export function AppRoutes() {
               <Route index element={<Navigate to="dashboard" replace />} />
               <Route path="dashboard" element={<ManagementDashboardPage />} />
               <Route path="purchase-orders" element={<ManagementPoOverviewPage />} />
+              <Route element={<UserManagementRoute />}>
+                <Route path="users" element={<UsersPage />} />
+              </Route>
+            </Route>
+          </Route>
+          <Route path="it" element={<ItRoute />}>
+            <Route element={<ItLayout />}>
+              <Route index element={<Navigate to="dashboard" replace />} />
+              <Route path="dashboard" element={<ItDashboardPage />} />
+              <Route element={<UserManagementRoute />}>
+                <Route path="users" element={<UsersPage />} />
+              </Route>
             </Route>
           </Route>
           <Route element={<AppLayout />}>
@@ -75,6 +93,7 @@ export function AppRoutes() {
             <Route path="styles/:id/steps" element={<StyleDetailPage />} />
             <Route path="styles/:id" element={<StyleDetailPage />} />
             <Route path="styles/:id/production-doc" element={<StyleDetailPage />} />
+            <Route path="styles/:id/documents" element={<StyleDetailPage />} />
             <Route path="bom" element={<BomPage />} />
             <Route path="po" element={<PoPage />} />
             <Route path="po/:id" element={<PoDetailPage />} />
@@ -96,10 +115,13 @@ export function AppRoutes() {
             <Route path="masters/units" element={<UnitListPage />} />
             <Route path="masters/workshops" element={<WorkshopListPage />} />
             <Route path="masters/size-charts" element={<SizeChartListPage />} />
-            <Route path="admin" element={<Navigate to="/admin/users" replace />} />
-            <Route path="admin/users" element={<UsersPage />} />
             <Route path="audit-log" element={<AuditLogPage />} />
           </Route>
+          <Route element={<UserManagementRoute />}>
+            <Route path="admin" element={<UserManagementAlias />} />
+            <Route path="admin/users" element={<UserManagementAlias />} />
+          </Route>
+          <Route path="forbidden" element={<ForbiddenPage />} />
         </Route>
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
