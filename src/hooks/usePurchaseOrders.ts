@@ -67,6 +67,17 @@ export function useUpdatePurchaseOrder() {
   });
 }
 
+export function useDeletePurchaseOrder() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => poApi.remove(id),
+    onSuccess: (_data, id) => {
+      void queryClient.invalidateQueries({ queryKey: PO_KEYS.lists() });
+      queryClient.removeQueries({ queryKey: PO_KEYS.detail(id) });
+    },
+  });
+}
+
 export function useUpdatePoStatus() {
   const queryClient = useQueryClient();
   return useMutation({

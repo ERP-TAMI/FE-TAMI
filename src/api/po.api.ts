@@ -79,6 +79,10 @@ export const poApi = {
     return response.data;
   },
 
+  async remove(id: string): Promise<void> {
+    await apiClient.delete(`/purchase-orders/${id}`);
+  },
+
   async updateStatus(
     id: string,
     input: UpdatePoStatusInput,

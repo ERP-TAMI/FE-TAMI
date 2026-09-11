@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef, useCallback } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
-import { PageHeader, Toast, Button } from "@/components/shared";
+import { PageHeader, Toast, Button, ConfirmDialog } from "@/components/shared";
 import { PoStatusBadge } from "@/components/features/po/PoStatusBadge";
 import { ProductStatusBadge } from "@/components/features/po/ProductStatusBadge";
 import { PoReasonModal } from "@/components/features/po/PoReasonModal";
@@ -21,6 +21,7 @@ import {
   usePoProducts,
   useAddPoProduct,
   useRemovePoProduct,
+  useDeletePurchaseOrder,
 } from "@/hooks/usePurchaseOrders";
 import { useToast } from "@/hooks/useToast";
 import { getApiError } from "@/lib/apiError";
@@ -74,6 +75,21 @@ export default function PoDetailPage() {
   const { data: productsData } = usePoProducts(id);
   const addProductMutation = useAddPoProduct();
   const removeProductMutation = useRemovePoProduct();
+  const deletePoMutation = useDeletePurchaseOrder();
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+
+  const handleDeletePo = async () => {
+    if (!id) return;
+    try {
+      await deletePoMutation.mutateAsync(id);
+      showToast("Đã xóa đơn hàng PO.");
+      navigate("/po");
+    } catch (err) {
+      const apiErr = getApiError(err, "Xóa đơn hàng PO thất bại.");
+      showToast(apiErr.message, "error");
+      setIsDeleteDialogOpen(false);
+    }
+  };
 
   // Determine active tab from URL path
   const getTabFromPath = (): "general" | "lines" | "documents" | "history" => {
@@ -534,6 +550,15 @@ export default function PoDetailPage() {
                   disabled={updateStatusMutation.isPending}
                 >
                   Hủy PO
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsDeleteDialogOpen(true)}
+                  disabled={updateStatusMutation.isPending}
+                  className="text-red-600 border-red-200 hover:bg-red-50 dark:text-red-400 dark:border-red-900/40"
+                >
+                  Xóa PO
                 </Button>
               </>
             )}
@@ -1950,6 +1975,23 @@ export default function PoDetailPage() {
         poDocuments={po.documents || []}
         onClose={() => setIsAddProductOpen(false)}
         onSubmit={handleAddProduct}
+      />
+
+      {/* Delete PO Confirm Dialog */}
+      <ConfirmDialog
+        open={isDeleteDialogOpen}
+        title="Xóa đơn hàng PO"
+        description={
+          <>
+            Bạn có chắc muốn xóa vĩnh viễn đơn hàng <strong>{po.poCode}</strong> cùng toàn bộ
+            sản phẩm, màu sắc, size và tài liệu bên trong? Hành động này không thể hoàn tác.
+          </>
+        }
+        confirmLabel="Xóa PO"
+        variant="danger"
+        isSubmitting={deletePoMutation.isPending}
+        onConfirm={handleDeletePo}
+        onClose={() => setIsDeleteDialogOpen(false)}
       />
     </div>
   );
