@@ -21,35 +21,6 @@ export interface AttachedDocItem {
   purpose: string;
 }
 
-export interface PoExcelCell {
-  value: string;
-  image?: string;
-  images?: string[];
-  rowSpan?: number;
-  colSpan?: number;
-  isMerged?: boolean;
-  bold?: boolean;
-  align?: "left" | "center" | "right";
-}
-
-export interface PoDocumentPreviewSheet {
-  name: string;
-  rowCount: number;
-  columnCount: number;
-  rows: string[][];
-  cells?: PoExcelCell[][];
-  unanchoredImages?: string[];
-}
-
-export interface PoDocumentPreviewResponse {
-  type: "excel" | "word" | "pdf" | "image" | "text" | "unsupported";
-  fileName: string;
-  fileUrl?: string;
-  sheets?: PoDocumentPreviewSheet[];
-  html?: string;
-  text?: string;
-}
-
 export interface PurchaseOrderStatusHistoryItem {
   id: string;
   oldStatus: PoStatus | null;

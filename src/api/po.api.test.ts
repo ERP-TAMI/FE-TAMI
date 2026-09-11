@@ -116,22 +116,64 @@ describe("poApi", () => {
     expect(apiClient.delete).toHaveBeenCalledWith("/purchase-orders/po-1/products/prod-1");
   });
 
-  it("uploadDocument sends multipart FormData to /purchase-orders/:id/documents/upload", async () => {
-    const mockRes = { id: "doc-1", title: "test.pdf" };
+  it("presignDocument posts file metadata to /purchase-orders/:id/documents/presign", async () => {
+    const mockRes = { objectKey: "k", uploadUrl: "https://s3.example/put", expiresIn: 300 };
     vi.mocked(apiClient.post).mockResolvedValueOnce({ data: mockRes });
 
     const file = new File(["dummy content"], "test.pdf", { type: "application/pdf" });
+    const res = await poApi.presignDocument("po-1", file, "po_original");
+
+    expect(apiClient.post).toHaveBeenCalledWith("/purchase-orders/po-1/documents/presign", {
+      fileName: "test.pdf",
+      mimeType: "application/pdf",
+      sizeBytes: file.size,
+      purpose: "po_original",
+    });
+    expect(res).toEqual(mockRes);
+  });
+
+  it("uploadToS3 PUTs the file straight to S3", async () => {
+    const file = new File(["dummy content"], "test.pdf", { type: "application/pdf" });
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await poApi.uploadToS3("https://s3.example/put", file);
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://s3.example/put",
+      expect.objectContaining({ method: "PUT", headers: { "Content-Type": "application/pdf" } }),
+    );
+  });
+
+  it("confirmDocument posts the objectKey and file metadata to /purchase-orders/:id/documents/confirm", async () => {
+    const mockRes = { documentId: "doc-1", title: "test.pdf" };
+    vi.mocked(apiClient.post).mockResolvedValueOnce({ data: mockRes });
+
+    const file = new File(["dummy content"], "test.pdf", { type: "application/pdf" });
+    const res = await poApi.confirmDocument("po-1", "k", file, "po_original");
+
+    expect(apiClient.post).toHaveBeenCalledWith("/purchase-orders/po-1/documents/confirm", {
+      objectKey: "k",
+      fileName: "test.pdf",
+      mimeType: "application/pdf",
+      sizeBytes: file.size,
+      purpose: "po_original",
+    });
+    expect(res).toEqual(mockRes);
+  });
+
+  it("uploadDocument runs presign -> PUT -> confirm end to end", async () => {
+    const file = new File(["dummy content"], "test.pdf", { type: "application/pdf" });
+    vi.mocked(apiClient.post)
+      .mockResolvedValueOnce({
+        data: { objectKey: "k", uploadUrl: "https://s3.example/put", expiresIn: 300 },
+      })
+      .mockResolvedValueOnce({ data: { documentId: "doc-1", title: "test.pdf" } });
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true }));
+
     const res = await poApi.uploadDocument("po-1", file, "po_original");
 
-    expect(apiClient.post).toHaveBeenCalledWith(
-      "/purchase-orders/po-1/documents/upload",
-      expect.any(FormData),
-      {
-        params: { purpose: "po_original" },
-        headers: { "Content-Type": "multipart/form-data" },
-      }
-    );
-    expect(res).toEqual(mockRes);
+    expect(res).toEqual({ documentId: "doc-1", title: "test.pdf" });
   });
 
   it("updateDocumentPurpose calls PATCH /purchase-orders/:id/documents/:documentId", async () => {
