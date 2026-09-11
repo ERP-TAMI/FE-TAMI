@@ -586,12 +586,21 @@ export function StyleProductionDocTab({
     }
     try {
       setUploadingImage(true);
-      const res = await uploadImage.mutateAsync({
-        entityType: "style",
-        entityId: styleId!,
-        purpose: "production_doc_image",
-        file,
-      });
+      const res = await uploadImage.mutateAsync(
+        isProductMode
+          ? {
+              entityType: "purchase-order",
+              entityId: productId!,
+              purpose: "production_doc_image",
+              file,
+            }
+          : {
+              entityType: "style",
+              entityId: styleId!,
+              purpose: "production_doc_image",
+              file,
+            },
+      );
       setPreviewCache((prev) => ({ ...prev, [res.objectKey]: res.previewUrl }));
       onUploaded(res.objectKey);
       showToast(successMessage);
@@ -1301,12 +1310,21 @@ export function StyleProductionDocTab({
                             }
                             try {
                               setUploadingImage(true);
-                              const res = await uploadImage.mutateAsync({
-                                entityType: "style",
-                                entityId: styleId!,
-                                purpose: "production_doc_image",
-                                file,
-                              });
+                              const res = await uploadImage.mutateAsync(
+                                isProductMode
+                                  ? {
+                                      entityType: "purchase-order",
+                                      entityId: productId!,
+                                      purpose: "production_doc_image",
+                                      file,
+                                    }
+                                  : {
+                                      entityType: "style",
+                                      entityId: styleId!,
+                                      purpose: "production_doc_image",
+                                      file,
+                                    },
+                              );
                               setPreviewCache((prev) => ({
                                 ...prev,
                                 [res.objectKey]: res.previewUrl,

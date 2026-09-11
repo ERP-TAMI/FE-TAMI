@@ -14,6 +14,7 @@ import {
   useUploadProductDocumentVersion,
 } from "@/hooks/usePurchaseOrders";
 import { useUploadImage } from "@/hooks/useUploadImage";
+import { uploadsApi } from "@/api/uploads.api";
 import { useToast } from "@/hooks/useToast";
 import { getApiError } from "@/lib/apiError";
 import { validateImageFile } from "@/lib/validateImageFile";
@@ -340,11 +341,27 @@ export default function PoProductDetailPage() {
   const [expandedHistoryGroups, setExpandedHistoryGroups] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
-    if (product?.structureImageVersionId) {
-      setImageUrl(resolveImageUrl(product.structureImageVersionId));
-    } else {
+    let isMounted = true;
+    const raw = product?.structureImageVersionId;
+    if (!raw) {
       setImageUrl(null);
+      return;
     }
+    if (!uploadsApi.isRawObjectKey(raw)) {
+      setImageUrl(resolveImageUrl(raw));
+      return;
+    }
+    uploadsApi
+      .getViewUrl(raw)
+      .then((url) => {
+        if (isMounted) setImageUrl(url);
+      })
+      .catch(() => {
+        if (isMounted) setImageUrl(null);
+      });
+    return () => {
+      isMounted = false;
+    };
   }, [product?.structureImageVersionId]);
 
   // Danh sách các size duy nhất từ các màu sắc để dựng bảng ma trận
@@ -984,7 +1001,7 @@ export default function PoProductDetailPage() {
 
       {/* ─── 3. THANH TABS GẠCH CHÂN RIÊNG BIỆT ──────────────────── */}
       <div className="flex flex-wrap items-center justify-between border-b border-gray-200 dark:border-gray-800 pt-2 gap-2">
-          <nav className="flex space-x-6 overflow-x-auto" aria-label="Tabs">
+          <nav className="flex min-w-0 flex-wrap items-center gap-x-6 gap-y-2" aria-label="Tabs">
             <button
               type="button"
               onClick={() => handleTabChange("general")}
@@ -1123,28 +1140,30 @@ export default function PoProductDetailPage() {
       {/* ========================================================================= */}
       {activeTab === "general" && (
         <div className="grid grid-cols-1 gap-10 lg:grid-cols-12 items-start pt-3">
-          {/* Cột trái (5 cols / 40%): Visual Focus hình ảnh sản phẩm */}
-          <div className="lg:col-span-5 space-y-4">
-            <div className="overflow-hidden rounded-2xl border border-gray-200/80 bg-white p-4 shadow-xs dark:border-gray-800 dark:bg-gray-900">
+          {/* Cột trái (4 cols / ~33%): Visual Focus hình ảnh sản phẩm */}
+          <div className="lg:col-span-4 space-y-4">
+            <div className="overflow-hidden rounded-2xl border border-gray-200/80 bg-white p-3 shadow-xs dark:border-gray-800 dark:bg-gray-900">
               {imageUrl ? (
-                <div className="relative group overflow-hidden rounded-xl bg-gray-50 dark:bg-gray-800/60 border border-gray-100 dark:border-gray-800">
-                  <img
-                    src={imageUrl}
-                    alt={product.productName}
-                    className="aspect-[4/5] w-full object-contain"
-                  />
-                  <div className="absolute bottom-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-center h-56 overflow-hidden rounded-xl bg-gray-50 dark:bg-gray-800/60 border border-gray-100 dark:border-gray-800">
+                    <img
+                      src={imageUrl}
+                      alt={product.productName}
+                      className="max-h-56 max-w-full object-contain"
+                    />
+                  </div>
+                  <div className="flex gap-2">
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
-                      className="rounded-lg bg-white/90 px-3.5 py-2 text-xs font-semibold text-gray-700 shadow-xs hover:bg-white backdrop-blur-xs dark:bg-gray-900/90 dark:text-gray-200 dark:hover:bg-gray-900 transition-colors cursor-pointer"
+                      className="flex-1 rounded-lg border border-gray-200 bg-white px-3.5 py-2 text-xs font-semibold text-gray-700 shadow-xs hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800 transition-colors cursor-pointer"
                     >
                       Thay ảnh
                     </button>
                     <button
                       type="button"
                       onClick={clearLocalImage}
-                      className="rounded-lg bg-white/90 px-3.5 py-2 text-xs font-semibold text-red-600 shadow-xs hover:bg-white backdrop-blur-xs dark:bg-gray-900/90 dark:text-red-400 dark:hover:bg-gray-900 transition-colors cursor-pointer"
+                      className="flex-1 rounded-lg border border-gray-200 bg-white px-3.5 py-2 text-xs font-semibold text-red-600 shadow-xs hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-red-400 dark:hover:bg-gray-800 transition-colors cursor-pointer"
                     >
                       Xóa
                     </button>
@@ -1156,20 +1175,20 @@ export default function PoProductDetailPage() {
                   onDragOver={handleDragOver}
                   onDragLeave={handleDragLeave}
                   onClick={() => fileInputRef.current?.click()}
-                  className={`relative flex aspect-[4/5] w-full cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed p-8 text-center transition-colors ${
+                  className={`relative flex h-56 w-full cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed p-6 text-center transition-colors ${
                     isDragging
                       ? "border-blue-500 bg-blue-50/50 dark:bg-blue-950/30"
                       : "border-gray-200 hover:border-gray-300 bg-gray-50/50 dark:border-gray-800 dark:bg-gray-800/40"
                   }`}
                 >
-                  <StyleImagePlaceholder className="h-32 w-32 text-gray-300 dark:text-gray-600 mb-4" />
+                  <StyleImagePlaceholder className="h-16 w-16 text-gray-300 dark:text-gray-600 mb-3" />
                   <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">
                     Thêm ảnh sản phẩm
                   </p>
                   <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">
                     Kéo thả ảnh vào đây hoặc nhấn <strong>Ctrl + V</strong>
                   </p>
-                  <span className="mt-4 inline-flex items-center rounded-md bg-white px-3 py-1 text-xs font-medium text-gray-600 shadow-2xs border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
+                  <span className="mt-3 inline-flex items-center rounded-md bg-white px-3 py-1 text-xs font-medium text-gray-600 shadow-2xs border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
                     PNG, JPG, WebP · tối đa 5MB
                   </span>
                 </div>
@@ -1185,119 +1204,82 @@ export default function PoProductDetailPage() {
             />
           </div>
 
-          {/* Cột phải (7 cols / 60%): Chi tiết thông số sản phẩm */}
-          <div className="lg:col-span-7 space-y-7">
-            <div className="space-y-4">
-              <h3 className="text-sm font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                Thông tin sản phẩm
-              </h3>
-              <dl className="divide-y divide-gray-100 dark:divide-gray-800/80 border-t border-b border-gray-100 dark:border-gray-800/80">
-                <div className="flex items-center py-4 text-base">
-                  <dt className="w-1/3 shrink-0 font-semibold text-gray-600 dark:text-gray-400">
-                    Mã sản phẩm
-                  </dt>
-                  <dd className="w-2/3 min-w-0 font-mono text-lg font-bold text-blue-600 dark:text-blue-400">
-                    {product.productCode}
+          {/* Cột phải (8 cols / ~67%): Chi tiết thông số sản phẩm */}
+          <div className="lg:col-span-8 space-y-4">
+            <dl className="grid grid-cols-2 gap-x-4 gap-y-4 rounded-xl border border-gray-100 bg-gray-50/60 p-5 text-base dark:border-gray-800/80 dark:bg-gray-800/20">
+              <div>
+                <dt className="text-sm text-gray-500 dark:text-gray-400">Dòng sản phẩm</dt>
+                <dd className="font-semibold text-gray-800 dark:text-gray-200">
+                  {product.category || "—"}
+                </dd>
+              </div>
+
+              <div>
+                <dt className="text-sm text-gray-500 dark:text-gray-400">Hạn giao</dt>
+                <dd className="font-semibold text-gray-800 dark:text-gray-200">
+                  {formatDate(product.deadline)}
+                </dd>
+              </div>
+
+              <div>
+                <dt className="text-sm text-gray-500 dark:text-gray-400">Trạng thái</dt>
+                <dd
+                  className="mt-0.5"
+                  title={
+                    !isProductLocked
+                      ? "Đang trong quá trình xử lý dữ liệu — dùng nút \"Khóa sản phẩm\" ở trên để khoá"
+                      : "Đã khóa sau khi xử lý xong, chế độ chỉ đọc"
+                  }
+                >
+                  <ProductStatusBadge status={product.status} />
+                </dd>
+              </div>
+
+              {product.sourceStyle && (
+                <div>
+                  <dt className="text-sm text-gray-500 dark:text-gray-400">Mẫu Fit nguồn</dt>
+                  <dd>
+                    <Link
+                      to={`/styles/${product.sourceStyle.id}/detail`}
+                      target="_blank"
+                      className="font-mono text-sm font-semibold text-blue-600 dark:text-blue-300 hover:underline"
+                    >
+                      {product.sourceStyle.styleCode} ↗
+                    </Link>
                   </dd>
                 </div>
-
-                <div className="flex items-center py-4 text-base">
-                  <dt className="w-1/3 shrink-0 font-semibold text-gray-600 dark:text-gray-400">
-                    Tên sản phẩm
-                  </dt>
-                  <dd className="w-2/3 min-w-0 break-words text-xl font-bold text-gray-900 dark:text-white">
-                    {product.productName}
-                  </dd>
-                </div>
-
-                <div className="flex items-center py-4 text-base">
-                  <dt className="w-1/3 shrink-0 font-semibold text-gray-600 dark:text-gray-400">
-                    Dòng sản phẩm
-                  </dt>
-                  <dd className="w-2/3 min-w-0 break-words text-lg font-semibold text-gray-800 dark:text-gray-200">
-                    {product.category || "—"}
-                  </dd>
-                </div>
-
-                <div className="flex items-center py-4 text-base">
-                  <dt className="w-1/3 shrink-0 font-semibold text-gray-600 dark:text-gray-400">
-                    Hạn giao (Deadline)
-                  </dt>
-                  <dd className="w-2/3 min-w-0 text-base font-semibold text-gray-800 dark:text-gray-200">
-                    {formatDate(product.deadline)}
-                  </dd>
-                </div>
-
-                {product.sourceStyle && (
-                  <div className="flex items-center py-4 text-base">
-                    <dt className="w-1/3 shrink-0 font-semibold text-gray-600 dark:text-gray-400">
-                      Mẫu Fit nguồn
-                    </dt>
-                    <dd className="w-2/3 min-w-0 flex items-center gap-2">
-                      <Link
-                        to={`/styles/${product.sourceStyle.id}/detail`}
-                        target="_blank"
-                        className="font-mono text-sm font-semibold text-blue-600 bg-blue-50 dark:bg-blue-950/50 dark:text-blue-300 px-2.5 py-0.5 rounded-md border border-blue-100 dark:border-blue-900/40 hover:underline"
-                      >
-                        {product.sourceStyle.styleCode} - {product.sourceStyle.styleName} ↗
-                      </Link>
-                    </dd>
-                  </div>
-                )}
-
-                <div className="flex items-center py-4 text-base">
-                  <dt className="w-1/3 shrink-0 font-semibold text-gray-600 dark:text-gray-400">
-                    Trạng thái
-                  </dt>
-                  <dd className="flex w-2/3 min-w-0 items-center gap-2">
-                    <ProductStatusBadge status={product.status} />
-                    <span className="text-xs text-gray-500 dark:text-gray-400">
-                      {!isProductLocked
-                        ? "(Đang trong quá trình xử lý dữ liệu — dùng nút \"Khóa sản phẩm\" ở trên để khoá)"
-                        : "(Đã khóa sau khi xử lý xong, chế độ chỉ đọc)"}
-                    </span>
-                  </dd>
-                </div>
-              </dl>
-            </div>
+              )}
+            </dl>
 
             {/* Thẻ liên kết nhanh sang Tab 2: Bảng size */}
-            <div className="rounded-2xl border border-gray-200 bg-gray-50/60 p-5 dark:border-gray-800 dark:bg-gray-800/30 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div>
-                <h4 className="font-bold text-sm text-gray-900 dark:text-white flex items-center gap-2">
-                  <span>Cơ cấu Màu sắc &amp; Kích cỡ</span>
-                  <span className="rounded-full bg-brand-50 px-2 py-0.5 text-xs font-semibold text-brand-600 border border-brand-200 dark:bg-brand-950/40 dark:text-brand-300">
-                    {product.colors?.length || 0} màu • {uniqueSizes.length} size • {(product.totalQuantity || 0).toLocaleString()} pcs
-                  </span>
-                </h4>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  Đã chuyển sang danh mục riêng <strong>"Bảng size"</strong> để theo dõi ma trận chi tiết và quản lý sản lượng.
-                </p>
+            <div className="flex items-center justify-between gap-3 rounded-xl border border-gray-100 bg-gray-50/60 px-5 py-4 text-base dark:border-gray-800/80 dark:bg-gray-800/20">
+              <div className="min-w-0">
+                <span className="font-semibold text-gray-800 dark:text-gray-200">Màu sắc &amp; Kích cỡ</span>
+                <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">
+                  {product.colors?.length || 0} màu · {uniqueSizes.length} size · {(product.totalQuantity || 0).toLocaleString()} pcs
+                </span>
               </div>
-              <Button
-                variant="outline"
-                size="sm"
+              <button
+                type="button"
                 onClick={() => handleTabChange("sizes")}
-                className="shrink-0 text-xs font-semibold text-brand-600 border-brand-200 hover:bg-brand-50 cursor-pointer"
+                className="shrink-0 text-sm font-semibold text-brand-600 hover:underline cursor-pointer"
               >
-                Xem chi tiết Bảng size →
-              </Button>
+                Xem Bảng size →
+              </button>
             </div>
 
             {/* Khối chất liệu & đặc điểm */}
-            <div className="space-y-3">
-              <h4 className="text-sm font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                Mô tả đặc điểm &amp; Ghi chú chất liệu
-              </h4>
-              <div className="rounded-xl border border-gray-200/80 bg-gray-50/50 p-5 dark:border-gray-800 dark:bg-gray-900/60">
-                <p className="text-base text-gray-800 dark:text-gray-200 whitespace-pre-wrap leading-relaxed">
-                  {product.materialNote || "Chưa có ghi chú chất liệu chi tiết cho sản phẩm này."}
+            {product.materialNote && (
+              <div className="rounded-xl border border-gray-100 bg-gray-50/60 p-5 text-base dark:border-gray-800/80 dark:bg-gray-800/20">
+                <dt className="text-sm text-gray-500 dark:text-gray-400 mb-1">Ghi chú chất liệu</dt>
+                <p className="text-gray-800 dark:text-gray-200 whitespace-pre-wrap leading-relaxed">
+                  {product.materialNote}
                 </p>
               </div>
-            </div>
+            )}
 
             {/* Metadata Footer */}
-            <div className="pt-3 text-xs text-gray-400 dark:text-gray-500 flex flex-wrap gap-4 border-t border-gray-100 dark:border-gray-800">
+            <div className="text-xs text-gray-400 dark:text-gray-500 flex flex-wrap gap-3">
               <span>Tạo lúc {formatDateTime(product.createdAt)}</span>
               <span>•</span>
               <span>Cập nhật {formatDateTime(product.updatedAt)}</span>
@@ -1501,14 +1483,6 @@ export default function PoProductDetailPage() {
               onChange={handleUploadPaletteFile}
               className="hidden"
             />
-          </div>
-
-          {/* Banner thông báo phát triển & hướng dẫn */}
-          <div className="rounded-xl border border-blue-200/80 bg-blue-50/50 p-4 text-xs text-blue-900 dark:border-blue-900/60 dark:bg-blue-950/30 dark:text-blue-200 flex items-start gap-3">
-            <InfoIcon className="w-5 h-5 shrink-0 text-blue-600 dark:text-blue-400 mt-0.5" />
-            <div>
-              <strong>Khu vực quản lý hình ảnh bảng màu sản phẩm:</strong> Bạn có thể tải lên các file ảnh bảng màu thực tế từ khách hàng, swatch card vải, hoặc mã màu Pantone/lab-dips. Khu vực này sẵn sàng phục vụ việc mở rộng quản lý màu chi tiết trong tương lai.
-            </div>
           </div>
 
           {/* Khu vực upload ảnh nhanh (Dropzone) */}
