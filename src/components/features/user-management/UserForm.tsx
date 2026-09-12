@@ -9,6 +9,7 @@ import type {
   UserListItem,
   UserRoleCode,
 } from "@/types/user-management";
+import { USER_ROLE_OPTIONS } from "./userRoleOptions";
 
 const schema = z.object({
   fullName: z.string().trim().min(1, "Họ tên là bắt buộc").max(200),
@@ -23,15 +24,7 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>;
 
-const allRoles = [
-  { value: "SA", label: "SA / Giám đốc" },
-  { value: "IT", label: "Công nghệ thông tin" },
-  { value: "TPKH", label: "Trưởng phòng Kế hoạch" },
-  { value: "NVKH", label: "Nhân viên Kế hoạch" },
-  { value: "RD", label: "Nghiên cứu và Phát triển" },
-  { value: "ACCOUNTING", label: "Kế toán" },
-];
-const itRoles = allRoles.filter((role) => !["SA", "IT"].includes(role.value));
+const itRoles = USER_ROLE_OPTIONS.filter((role) => !["SA", "IT"].includes(role.value));
 const statusOptions = [
   { value: "active", label: "Đang hoạt động" },
   { value: "locked", label: "Bị khóa" },
@@ -64,7 +57,7 @@ export function UserForm({
     isSelf && user?.role
       ? [{ value: user.role.code, label: user.role.name }]
       : actorRole === "SA"
-        ? allRoles
+        ? USER_ROLE_OPTIONS
         : itRoles;
   const { register, handleSubmit, formState } = useForm<FormValues>({
     resolver: zodResolver(schema),

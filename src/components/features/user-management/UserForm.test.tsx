@@ -16,6 +16,24 @@ const existing: UserListItem = {
 afterEach(cleanup);
 
 describe("UserForm", () => {
+  it("uses role labels consistent with backend role names", () => {
+    render(
+      <UserForm
+        mode="create"
+        actorId="sa"
+        actorRole="SA"
+        isSubmitting={false}
+        onClose={vi.fn()}
+        onSubmit={vi.fn()}
+      />,
+    );
+
+    const role = screen.getByLabelText("Vai trò");
+    expect(within(role).getByRole("option", { name: "SA / Giám đốc" })).toBeTruthy();
+    expect(within(role).getByRole("option", { name: "IT" })).toBeTruthy();
+    expect(within(role).getByRole("option", { name: "R&D" })).toBeTruthy();
+  });
+
   it("only exposes business roles when the actor is IT", () => {
     render(
       <UserForm
@@ -29,7 +47,7 @@ describe("UserForm", () => {
     );
     const role = screen.getByLabelText("Vai trò");
     expect(within(role).queryByRole("option", { name: "SA / Giám đốc" })).toBeNull();
-    expect(within(role).queryByRole("option", { name: "Công nghệ thông tin" })).toBeNull();
+    expect(within(role).queryByRole("option", { name: "IT" })).toBeNull();
     expect(within(role).getByRole("option", { name: "Kế toán" })).toBeTruthy();
     expect(screen.queryByLabelText("Trạng thái")).toBeNull();
   });

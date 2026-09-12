@@ -57,9 +57,10 @@ export default function UsersPage() {
   };
 
   const canManage = (target: UserListItem) =>
-    currentUser?.roleCode === "SA" ||
-    target.id === currentUser?.id ||
-    !["SA", "IT"].includes(target.role?.code ?? "");
+    target.role !== null &&
+    (currentUser?.roleCode === "SA" ||
+      target.id === currentUser?.id ||
+      !["SA", "IT"].includes(target.role.code));
 
   const sendPasswordSetupEmail = async (target: UserListItem) => {
     try {
@@ -85,8 +86,7 @@ export default function UsersPage() {
         const result = await createUser.mutateAsync(input);
         setForm(null);
         if (result.invitationStatus === "pending") {
-          showToast("Đã tạo người dùng. Hệ thống đang gửi email đặt mật khẩu.", "success");
-          await sendPasswordSetupEmail(result.user);
+          showToast("Đã tạo người dùng. Email đặt mật khẩu đang được gửi.", "success");
         } else {
           showToast(
             result.invitationStatus === "sent"
@@ -100,8 +100,7 @@ export default function UsersPage() {
         const result = await updateUser.mutateAsync({ id: form.id, input });
         setForm(null);
         if (result.invitationStatus === "pending") {
-          showToast("Đã cập nhật người dùng. Hệ thống đang gửi link đến email mới.", "success");
-          await sendPasswordSetupEmail(result.user);
+          showToast("Đã cập nhật người dùng. Link đặt mật khẩu đang được gửi.", "success");
         } else if (result.invitationStatus === "sent") {
           showToast("Đã cập nhật người dùng và gửi link đặt mật khẩu đến email mới.", "success");
         } else if (result.invitationStatus === "failed") {

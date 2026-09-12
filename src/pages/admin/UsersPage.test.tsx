@@ -79,7 +79,7 @@ describe("UsersPage", () => {
     expect(within(screen.getByRole("table")).getByText("Đang hoạt động")).toBeTruthy();
   });
 
-  it("sends the password setup email only after create returns pending", async () => {
+  it("lets the backend deliver a pending invitation without a duplicate resend", async () => {
     const created = {
       ...user,
       id: "22222222-2222-4222-8222-222222222222",
@@ -90,7 +90,7 @@ describe("UsersPage", () => {
       user: created,
       invitationStatus: "pending",
     });
-    const resend = vi.fn().mockResolvedValue({ invitationStatus: "sent" });
+    const resend = vi.fn();
     hooks.useCreateUser.mockReturnValue({ mutateAsync: create, isPending: false });
     hooks.useResendPasswordSetup.mockReturnValue({
       mutateAsync: resend,
@@ -109,8 +109,10 @@ describe("UsersPage", () => {
     fireEvent.click(submitButtons[submitButtons.length - 1]);
 
     await waitFor(() => expect(create).toHaveBeenCalledTimes(1));
-    await waitFor(() => expect(resend).toHaveBeenCalledWith(created.id));
-    expect(await screen.findByText("Đã gửi email đặt mật khẩu.")).toBeTruthy();
+    expect(resend).not.toHaveBeenCalled();
+    expect(
+      await screen.findByText("Đã tạo người dùng. Email đặt mật khẩu đang được gửi."),
+    ).toBeTruthy();
   });
 
   it("does not send a duplicate email when the old backend already returned sent", async () => {
@@ -139,6 +141,66 @@ describe("UsersPage", () => {
     await waitFor(() => expect(create).toHaveBeenCalledTimes(1));
     expect(resend).not.toHaveBeenCalled();
     expect(await screen.findByText("Đã tạo người dùng và gửi email đặt mật khẩu.")).toBeTruthy();
+  });
+
+  it("lets the backend deliver a pending invitation after an email update", async () => {
+    const pendingUser = {
+      ...user,
+      accountStatus: "pending_setup" as const,
+      passwordSetupRequired: true,
+    };
+    hooks.useUsers.mockReturnValue(
+      result({
+        data: {
+          data: [pendingUser],
+          meta: { total: 1, page: 1, limit: 10, totalPages: 1 },
+        },
+      }),
+    );
+    const update = vi.fn().mockResolvedValue({
+      user: { ...pendingUser, email: "new-address@example.com" },
+      invitationStatus: "pending",
+    });
+    const resend = vi.fn();
+    hooks.useUpdateUser.mockReturnValue({ mutateAsync: update, isPending: false });
+    hooks.useResendPasswordSetup.mockReturnValue({ mutateAsync: resend, isPending: false });
+    renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "Sửa" }));
+    fireEvent.change(screen.getByLabelText("Email"), {
+      target: { value: "new-address@example.com" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Lưu thay đổi" }));
+
+    await waitFor(() => expect(update).toHaveBeenCalledTimes(1));
+    expect(resend).not.toHaveBeenCalled();
+    expect(
+      await screen.findByText("Đã cập nhật người dùng. Link đặt mật khẩu đang được gửi."),
+    ).toBeTruthy();
+  });
+
+  it("keeps manual password setup email resend available", async () => {
+    const pendingUser = {
+      ...user,
+      accountStatus: "pending_setup" as const,
+      passwordSetupRequired: true,
+    };
+    hooks.useUsers.mockReturnValue(
+      result({
+        data: {
+          data: [pendingUser],
+          meta: { total: 1, page: 1, limit: 10, totalPages: 1 },
+        },
+      }),
+    );
+    const resend = vi.fn().mockResolvedValue({ invitationStatus: "sent" });
+    hooks.useResendPasswordSetup.mockReturnValue({ mutateAsync: resend, isPending: false });
+    renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "Gửi lại email" }));
+
+    await waitFor(() => expect(resend).toHaveBeenCalledWith(pendingUser.id));
+    expect(await screen.findByText("Đã gửi email đặt mật khẩu.")).toBeTruthy();
   });
 
   it.each([
@@ -195,7 +257,8 @@ describe("UsersPage", () => {
     renderPage();
 
     expect(screen.getByText("Chưa phân vai trò")).toBeTruthy();
-    expect(within(screen.getByRole("table")).getByText("—")).toBeTruthy();
+    expect(within(screen.getByRole("table")).getAllByText("—")).toHaveLength(2);
+    expect(screen.queryByRole("button", { name: /sửa/i })).toBeNull();
   });
 
   it("debounces search before requesting the server", async () => {

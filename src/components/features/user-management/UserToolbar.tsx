@@ -1,6 +1,7 @@
 import { Search, Users, CircleDot, ShieldCheck, Lock, CircleOff, KeyRound } from "lucide-react";
 import { Input, Select } from "@/components/shared";
 import type { UserAccountStatus, UserRoleCode } from "@/types/user-management";
+import { USER_ROLE_OPTIONS } from "./userRoleOptions";
 
 type UserToolbarProps = {
   search: string;
@@ -11,15 +12,7 @@ type UserToolbarProps = {
   onStatusChange: (value: UserAccountStatus | "") => void;
 };
 
-const roleOptions = [
-  { value: "", label: "Tất cả vai trò" },
-  { value: "SA", label: "SA / Giám đốc" },
-  { value: "TPKH", label: "TP Kế hoạch" },
-  { value: "NVKH", label: "NV Kế hoạch" },
-  { value: "RD", label: "R&D" },
-  { value: "ACCOUNTING", label: "Kế toán" },
-  { value: "IT", label: "IT" },
-];
+const roleOptions = [{ value: "", label: "Tất cả vai trò" }, ...USER_ROLE_OPTIONS];
 
 const statusOptions: Array<{
   key: UserAccountStatus | "";
