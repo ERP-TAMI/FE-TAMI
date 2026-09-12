@@ -44,12 +44,59 @@ describe("BomPage", () => {
     });
     vi.clearAllMocks();
 
-    vi.mocked(useNplListModule.useNplList).mockReturnValue({
-      data: mockNplData,
-      isLoading: false,
-      isError: false,
-      refetch: vi.fn(),
-    } as unknown as ReturnType<typeof useNplListModule.useNplList>);
+    vi.mocked(useNplListModule.useNplList).mockImplementation((filter?: any) => {
+      let filtered = [...mockNplData];
+      if (filter?.objectType && filter.objectType !== "all") {
+        filtered = filtered.filter((i) => i.objectType === filter.objectType);
+      }
+      if (filter?.status && filter.status !== "all") {
+        filtered = filtered.filter((i) => i.status === filter.status);
+      }
+      if (filter?.search) {
+        const q = filter.search.toLowerCase();
+        filtered = filtered.filter(
+          (i) =>
+            i.styleCode.toLowerCase().includes(q) ||
+            i.productName.toLowerCase().includes(q) ||
+            i.objectCode.toLowerCase().includes(q),
+        );
+      }
+      if (filter?.colorName) {
+        const c = filter.colorName.toLowerCase();
+        filtered = filtered.filter((i) =>
+          (i.colorName ?? "").toLowerCase().includes(c),
+        );
+      }
+      if (filter?.poCode) {
+        const p = filter.poCode.toLowerCase();
+        filtered = filtered.filter(
+          (i) =>
+            i.objectCode.toLowerCase().includes(p) ||
+            i.poId.toLowerCase().includes(p),
+        );
+      }
+
+      const limit = filter?.limit ?? 10;
+      const total = filtered.length;
+      const totalPages = Math.max(1, Math.ceil(total / limit));
+      const page = Math.min(filter?.page ?? 1, totalPages);
+      const pagedData = filtered.slice((page - 1) * limit, page * limit);
+
+      return {
+        data: {
+          data: pagedData,
+          meta: {
+            total,
+            page,
+            limit,
+            totalPages,
+          },
+        },
+        isLoading: false,
+        isError: false,
+        refetch: vi.fn(),
+      } as unknown as ReturnType<typeof useNplListModule.useNplList>;
+    });
   });
 
   afterEach(() => {

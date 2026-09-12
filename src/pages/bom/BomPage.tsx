@@ -26,7 +26,7 @@ import { useAuthStore } from "@/store/authStore";
 import { canViewNplCost } from "@/lib/nplAccess";
 import { NplStatusBadge } from "@/components/features/npl/NplStatusBadge";
 import { NplObjectTypeBadge } from "@/components/features/npl/NplObjectTypeBadge";
-import type { NplListItem, NplObjectType, NplStatus } from "@/types/npl";
+import type { NplListItem, NplObjectType, NplQueryFilter, NplStatus } from "@/types/npl";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -153,52 +153,55 @@ export default function BomPage() {
     }
   };
 
-  const { data: allItems, isLoading, isError, refetch } = useNplList();
+  const queryFilter = useMemo<NplQueryFilter>(
+    () => ({
+      page,
+      limit: pageSize,
+      objectType: objectTypeFilter === "all" ? undefined : objectTypeFilter,
+      status: statusFilter === "all" ? undefined : statusFilter,
+      poCode: poCodeSearch.trim() || undefined,
+      search: search.trim() || undefined,
+      colorName: colorSearch.trim() || undefined,
+    }),
+    [page, pageSize, objectTypeFilter, statusFilter, poCodeSearch, search, colorSearch],
+  );
 
-  // Client-side filtering
-  const filtered = useMemo(() => {
-    if (!allItems) return [];
-    return allItems.filter((item) => {
-      if (objectTypeFilter !== "all" && item.objectType !== objectTypeFilter) return false;
-      if (statusFilter !== "all" && item.status !== statusFilter) return false;
+  const { data: nplResponse, isLoading, isError, refetch } = useNplList(queryFilter);
+  const { data: statsResponse } = useNplList({ limit: 1000 });
 
-      const poQ = poCodeSearch.trim().toLowerCase();
-      if (
-        poQ &&
-        !item.objectCode.toLowerCase().includes(poQ) &&
-        !item.poId.toLowerCase().includes(poQ)
-      ) {
-        return false;
+  // Items from server-side pagination response (with fallback if raw array is returned)
+  const items: NplListItem[] = Array.isArray(nplResponse)
+    ? nplResponse
+    : nplResponse?.data ?? [];
+
+  const meta = Array.isArray(nplResponse)
+    ? {
+        total: nplResponse.length,
+        page,
+        limit: pageSize,
+        totalPages: Math.max(1, Math.ceil(nplResponse.length / pageSize)),
       }
+    : nplResponse?.meta ?? {
+        total: 0,
+        page: 1,
+        limit: pageSize,
+        totalPages: 1,
+      };
 
-      const q = search.trim().toLowerCase();
-      if (
-        q &&
-        !item.styleCode.toLowerCase().includes(q) &&
-        !item.productName.toLowerCase().includes(q) &&
-        !item.objectCode.toLowerCase().includes(q)
-      ) {
-        return false;
-      }
-
-      const cq = colorSearch.trim().toLowerCase();
-      if (cq && !(item.colorName ?? "").toLowerCase().includes(cq)) {
-        return false;
-      }
-
-      return true;
-    });
-  }, [allItems, objectTypeFilter, statusFilter, poCodeSearch, search, colorSearch]);
+  // Stats items (from full list or fallback to current items)
+  const allItemsForStats: NplListItem[] = Array.isArray(statsResponse)
+    ? statsResponse
+    : statsResponse?.data ?? items;
 
   // Stats period (defaults to current month: YYYY-MM)
   const [period, setPeriod] = useState<string>(() => getCurrentMonthString());
 
   // Stats filtered by selected period (month)
   const statsItems = useMemo(() => {
-    if (!allItems) return [];
-    if (period === "all") return allItems;
-    return allItems.filter((i) => (i.createdAt ?? "").startsWith(period));
-  }, [allItems, period]);
+    if (!allItemsForStats) return [];
+    if (period === "all") return allItemsForStats;
+    return allItemsForStats.filter((i) => (i.createdAt ?? "").startsWith(period));
+  }, [allItemsForStats, period]);
 
   const total = statsItems.length;
   const draftCount = statsItems.filter((i) => i.status === "Draft").length;
@@ -206,11 +209,13 @@ export default function BomPage() {
   const approvedCount =
     statsItems.filter((i) => i.status === "Approved" || i.status === "Locked").length;
 
-  // Pagination
-  const totalFiltered = filtered.length;
-  const totalPages = Math.max(1, Math.ceil(totalFiltered / pageSize));
+  // Server-side pagination
+  const totalFiltered = meta.total;
+  const totalPages = Math.max(1, meta.totalPages);
   const safePage = Math.min(page, totalPages);
-  const paginated = filtered.slice((safePage - 1) * pageSize, safePage * pageSize);
+  const paginated = Array.isArray(nplResponse)
+    ? items.slice((safePage - 1) * pageSize, safePage * pageSize)
+    : items;
 
   const isFiltering =
     objectTypeFilter !== "all" ||

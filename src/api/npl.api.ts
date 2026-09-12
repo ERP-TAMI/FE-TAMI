@@ -1,5 +1,12 @@
 import apiClient from "@/lib/apiClient";
-import type { NplListItem, NplObjectType, NplQueryFilter, RawBomItem } from "@/types/npl";
+import type {
+  NplListItem,
+  NplObjectType,
+  NplQueryFilter,
+  PaginatedNplResponse,
+  PaginationMeta,
+  RawBomItem,
+} from "@/types/npl";
 
 /**
  * Normalize raw BOM entity → NplListItem.
@@ -30,14 +37,43 @@ function toNplItem(raw: RawBomItem): NplListItem {
 
 export const nplApi = {
   /**
-   * Fetch all BOM items from backend `GET /boms`.
-   * Returns normalized NplListItem[].
+   * Fetch paginated BOM items from backend `GET /boms`.
+   * Returns { data: NplListItem[], meta: PaginationMeta }.
    */
-  getNplList: async (filter?: NplQueryFilter): Promise<NplListItem[]> => {
-    const res = await apiClient.get<RawBomItem[]>("/boms", { params: filter });
-    const items = Array.isArray(res.data)
-      ? res.data
-      : (res.data as unknown as { data?: RawBomItem[] })?.data ?? [];
-    return items.map(toNplItem);
+  getNplList: async (filter?: NplQueryFilter): Promise<PaginatedNplResponse> => {
+    const res = await apiClient.get<
+      | { data: RawBomItem[]; meta: PaginationMeta }
+      | RawBomItem[]
+    >("/boms", { params: filter });
+
+    const rawPayload = res.data;
+    if (
+      rawPayload &&
+      !Array.isArray(rawPayload) &&
+      Array.isArray(rawPayload.data) &&
+      rawPayload.meta
+    ) {
+      return {
+        data: rawPayload.data.map(toNplItem),
+        meta: rawPayload.meta,
+      };
+    }
+
+    // Fallback if backend returned raw array
+    const rawItems = Array.isArray(rawPayload)
+      ? rawPayload
+      : (rawPayload as { data?: RawBomItem[] })?.data ?? [];
+    const limit = filter?.limit ?? (rawItems.length || 10);
+    const page = filter?.page ?? 1;
+
+    return {
+      data: rawItems.map(toNplItem),
+      meta: {
+        total: rawItems.length,
+        page,
+        limit,
+        totalPages: Math.max(1, Math.ceil(rawItems.length / limit)),
+      },
+    };
   },
 };

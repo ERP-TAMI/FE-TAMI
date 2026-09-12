@@ -40,6 +40,20 @@ export interface NplListItem {
   imageUrl?: string | null;
 }
 
+/** Metadata phân trang chuẩn từ BE */
+export interface PaginationMeta {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+/** Envelope phân trang trả về từ API NPL */
+export interface PaginatedNplResponse {
+  data: NplListItem[];
+  meta: PaginationMeta;
+}
+
 /** Filter params cho hook useNplList */
 export interface NplQueryFilter {
   objectType?: NplObjectType;
