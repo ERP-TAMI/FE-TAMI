@@ -38,7 +38,9 @@ export const userManagementApi = {
     return updateUserResponseSchema.parse(response.data);
   },
   async resendPasswordSetup(id: string): Promise<InvitationResponse> {
-    const response = await apiClient.post(`${resource}/${id}/password-setup-email`);
+    const response = await apiClient.post(`${resource}/${id}/password-setup-email`, undefined, {
+      timeout: 30000,
+    });
     return invitationResponseSchema.parse(response.data);
   },
 };

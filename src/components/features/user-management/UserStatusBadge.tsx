@@ -9,6 +9,11 @@ const statusConfig: Record<UserAccountStatus, { label: string; className: string
     label: "Bị khóa",
     className: "bg-warning-50 text-warning-700 dark:bg-warning-500/15 dark:text-warning-400",
   },
+  pending_setup: {
+    label: "Chờ đặt mật khẩu",
+    className:
+      "bg-blue-light-50 text-blue-light-700 dark:bg-blue-light-500/15 dark:text-blue-light-400",
+  },
   inactive: {
     label: "Vô hiệu hóa",
     className: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300",

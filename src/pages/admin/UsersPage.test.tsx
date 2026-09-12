@@ -2,6 +2,7 @@ import { MemoryRouter } from "react-router-dom";
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import UsersPage from "./UsersPage";
+import { useAuthStore } from "@/store/authStore";
 
 const hooks = vi.hoisted(() => ({
   useUsers: vi.fn(),
@@ -49,6 +50,18 @@ describe("UsersPage", () => {
     hooks.useCreateUser.mockReturnValue({ mutateAsync: vi.fn(), isPending: false });
     hooks.useUpdateUser.mockReturnValue({ mutateAsync: vi.fn(), isPending: false });
     hooks.useResendPasswordSetup.mockReturnValue({ mutateAsync: vi.fn(), isPending: false });
+    useAuthStore.setState({
+      status: "authenticated",
+      accessToken: "test-token",
+      user: {
+        id: "11111111-1111-4111-8111-111111111111",
+        email: "sa@tami.test",
+        fullName: "Admin",
+        roleCode: "SA",
+        roleName: "Admin",
+        permissions: ["system.users.manage"],
+      },
+    });
   });
 
   afterEach(() => {
@@ -64,6 +77,68 @@ describe("UsersPage", () => {
     expect(screen.getByText("it@tami.test")).toBeTruthy();
     expect(screen.getByText("Công nghệ thông tin")).toBeTruthy();
     expect(within(screen.getByRole("table")).getByText("Đang hoạt động")).toBeTruthy();
+  });
+
+  it("sends the password setup email only after create returns pending", async () => {
+    const created = {
+      ...user,
+      id: "22222222-2222-4222-8222-222222222222",
+      accountStatus: "pending_setup" as const,
+      passwordSetupRequired: true,
+    };
+    const create = vi.fn().mockResolvedValue({
+      user: created,
+      invitationStatus: "pending",
+    });
+    const resend = vi.fn().mockResolvedValue({ invitationStatus: "sent" });
+    hooks.useCreateUser.mockReturnValue({ mutateAsync: create, isPending: false });
+    hooks.useResendPasswordSetup.mockReturnValue({
+      mutateAsync: resend,
+      isPending: false,
+    });
+    renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "Tạo người dùng" }));
+    fireEvent.change(screen.getByLabelText("Họ và tên"), {
+      target: { value: "Nguyễn Văn A" },
+    });
+    fireEvent.change(screen.getByLabelText("Email"), {
+      target: { value: "a@example.com" },
+    });
+    const submitButtons = screen.getAllByRole("button", { name: "Tạo người dùng" });
+    fireEvent.click(submitButtons[submitButtons.length - 1]);
+
+    await waitFor(() => expect(create).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(resend).toHaveBeenCalledWith(created.id));
+    expect(await screen.findByText("Đã gửi email đặt mật khẩu.")).toBeTruthy();
+  });
+
+  it("does not send a duplicate email when the old backend already returned sent", async () => {
+    const create = vi.fn().mockResolvedValue({
+      user,
+      invitationStatus: "sent",
+    });
+    const resend = vi.fn();
+    hooks.useCreateUser.mockReturnValue({ mutateAsync: create, isPending: false });
+    hooks.useResendPasswordSetup.mockReturnValue({
+      mutateAsync: resend,
+      isPending: false,
+    });
+    renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "Tạo người dùng" }));
+    fireEvent.change(screen.getByLabelText("Họ và tên"), {
+      target: { value: "Nguyễn Văn A" },
+    });
+    fireEvent.change(screen.getByLabelText("Email"), {
+      target: { value: "a@example.com" },
+    });
+    const submitButtons = screen.getAllByRole("button", { name: "Tạo người dùng" });
+    fireEvent.click(submitButtons[submitButtons.length - 1]);
+
+    await waitFor(() => expect(create).toHaveBeenCalledTimes(1));
+    expect(resend).not.toHaveBeenCalled();
+    expect(await screen.findByText("Đã tạo người dùng và gửi email đặt mật khẩu.")).toBeTruthy();
   });
 
   it.each([

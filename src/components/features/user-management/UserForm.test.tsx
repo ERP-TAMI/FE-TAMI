@@ -31,6 +31,7 @@ describe("UserForm", () => {
     expect(within(role).queryByRole("option", { name: "SA / Giám đốc" })).toBeNull();
     expect(within(role).queryByRole("option", { name: "Công nghệ thông tin" })).toBeNull();
     expect(within(role).getByRole("option", { name: "Kế toán" })).toBeTruthy();
+    expect(screen.queryByLabelText("Trạng thái")).toBeNull();
   });
 
   it("disables role and status when editing the current account", () => {
@@ -78,6 +79,22 @@ describe("UserForm", () => {
     );
   });
 
+  it("maps the derived pending setup status to the editable active status", () => {
+    render(
+      <UserForm
+        mode="edit"
+        user={{ ...existing, accountStatus: "pending_setup", passwordSetupRequired: true }}
+        actorId="sa"
+        actorRole="SA"
+        isSubmitting={false}
+        onClose={vi.fn()}
+        onSubmit={vi.fn()}
+      />,
+    );
+
+    expect((screen.getByLabelText("Trạng thái") as HTMLSelectElement).value).toBe("active");
+  });
+
   it("normalizes email and empty phone before submit", async () => {
     const onSubmit = vi.fn();
     render(
@@ -95,8 +112,28 @@ describe("UserForm", () => {
     fireEvent.click(screen.getByRole("button", { name: "Tạo người dùng" }));
     await waitFor(() =>
       expect(onSubmit).toHaveBeenCalledWith(
-        expect.objectContaining({ email: "user@example.com", phone: null }),
+        expect.objectContaining({
+          email: "user@example.com",
+          phone: null,
+          accountStatus: "active",
+        }),
       ),
     );
+  });
+
+  it("declares browser autofill semantics for email and phone", () => {
+    render(
+      <UserForm
+        mode="create"
+        actorId="sa"
+        actorRole="SA"
+        isSubmitting={false}
+        onClose={vi.fn()}
+        onSubmit={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByLabelText("Email").getAttribute("autocomplete")).toBe("email");
+    expect(screen.getByLabelText("Số điện thoại").getAttribute("autocomplete")).toBe("tel");
   });
 });

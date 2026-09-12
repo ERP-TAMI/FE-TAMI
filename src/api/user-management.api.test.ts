@@ -73,6 +73,25 @@ describe("userManagementApi", () => {
     await expect(userManagementApi.list({ page: 1, limit: 10 })).resolves.toEqual(response);
   });
 
+  it.each(["sent", "failed"] as const)(
+    "accepts the legacy %s create status during a rolling deployment",
+    async (invitationStatus) => {
+      vi.mocked(apiClient.post).mockResolvedValue({
+        data: { user: response.data[0], invitationStatus },
+      });
+
+      await expect(
+        userManagementApi.create({
+          fullName: "Nguyễn Văn A",
+          email: "a@example.com",
+          phone: null,
+          roleCode: "NVKH",
+          accountStatus: "active",
+        }),
+      ).resolves.toMatchObject({ invitationStatus });
+    },
+  );
+
   it("creates, updates and resends password setup using the agreed contracts", async () => {
     const input = {
       fullName: "Nguyễn Văn A",
@@ -83,7 +102,7 @@ describe("userManagementApi", () => {
     };
     vi.mocked(apiClient.post)
       .mockResolvedValueOnce({
-        data: { user: response.data[0], invitationStatus: "sent" },
+        data: { user: response.data[0], invitationStatus: "pending" },
       })
       .mockResolvedValueOnce({ data: { invitationStatus: "failed" } });
     vi.mocked(apiClient.patch).mockResolvedValue({
@@ -91,7 +110,7 @@ describe("userManagementApi", () => {
     });
 
     await expect(userManagementApi.create(input)).resolves.toMatchObject({
-      invitationStatus: "sent",
+      invitationStatus: "pending",
     });
     await expect(userManagementApi.update(response.data[0].id, input)).resolves.toMatchObject({
       invitationStatus: null,
@@ -101,6 +120,12 @@ describe("userManagementApi", () => {
     });
 
     expect(apiClient.post).toHaveBeenNthCalledWith(1, "/system/users", input);
+    expect(apiClient.post).toHaveBeenNthCalledWith(
+      2,
+      `/system/users/${response.data[0].id}/password-setup-email`,
+      undefined,
+      { timeout: 30000 },
+    );
     expect(apiClient.patch).toHaveBeenCalledWith(`/system/users/${response.data[0].id}`, input);
   });
 });

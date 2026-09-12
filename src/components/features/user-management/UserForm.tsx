@@ -3,7 +3,12 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { Alert, Button, Input, Modal, Select } from "@/components/shared";
 import type { ApiError } from "@/lib/apiError";
-import type { UserInput, UserListItem, UserRoleCode } from "@/types/user-management";
+import type {
+  EditableUserAccountStatus,
+  UserInput,
+  UserListItem,
+  UserRoleCode,
+} from "@/types/user-management";
 
 const schema = z.object({
   fullName: z.string().trim().min(1, "Họ tên là bắt buộc").max(200),
@@ -21,8 +26,8 @@ type FormValues = z.infer<typeof schema>;
 const allRoles = [
   { value: "SA", label: "SA / Giám đốc" },
   { value: "IT", label: "Công nghệ thông tin" },
-  { value: "TPKH", label: "Trưởng phòng Kinh doanh" },
-  { value: "NVKH", label: "Nhân viên Kinh doanh" },
+  { value: "TPKH", label: "Trưởng phòng Kế hoạch" },
+  { value: "NVKH", label: "Nhân viên Kế hoạch" },
   { value: "RD", label: "Nghiên cứu và Phát triển" },
   { value: "ACCOUNTING", label: "Kế toán" },
 ];
@@ -61,7 +66,7 @@ export function UserForm({
       : actorRole === "SA"
         ? allRoles
         : itRoles;
-  const { register, handleSubmit, formState, watch } = useForm<FormValues>({
+  const { register, handleSubmit, formState } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: user
       ? {
@@ -69,7 +74,10 @@ export function UserForm({
           email: user.email,
           phone: user.phone ?? "",
           roleCode: user.role?.code ?? ("NVKH" as UserRoleCode),
-          accountStatus: user.accountStatus,
+          accountStatus:
+            user.accountStatus === "pending_setup"
+              ? ("active" as EditableUserAccountStatus)
+              : user.accountStatus,
         }
       : {
           fullName: "",
@@ -79,8 +87,6 @@ export function UserForm({
           accountStatus: "active",
         },
   });
-  const accountStatus = watch("accountStatus");
-
   const close = () => {
     if (!formState.isDirty || window.confirm("Bạn có muốn hủy các thay đổi chưa lưu không?")) {
       onClose();
@@ -134,11 +140,13 @@ export function UserForm({
         <Input
           label="Email"
           type="email"
+          autoComplete="email"
           error={formState.errors.email?.message}
           {...register("email")}
         />
         <Input
           label="Số điện thoại"
+          autoComplete="tel"
           error={formState.errors.phone?.message}
           {...register("phone")}
         />
@@ -149,17 +157,16 @@ export function UserForm({
           disabled={isSelf || isSubmitting}
           {...register("roleCode")}
         />
-        <Select
-          label="Trạng thái"
-          options={statusOptions}
-          error={formState.errors.accountStatus?.message}
-          disabled={isSelf || isSubmitting}
-          {...register("accountStatus")}
-        />
-        {mode === "create" && accountStatus !== "active" && (
-          <p className="text-theme-xs text-warning-600 dark:text-warning-400 self-end sm:col-span-1">
-            User vẫn nhận link đặt mật khẩu nhưng chưa thể đăng nhập cho tới khi được mở tài khoản.
-          </p>
+        {mode === "edit" ? (
+          <Select
+            label="Trạng thái"
+            options={statusOptions}
+            error={formState.errors.accountStatus?.message}
+            disabled={isSelf || isSubmitting}
+            {...register("accountStatus")}
+          />
+        ) : (
+          <input type="hidden" value="active" {...register("accountStatus")} />
         )}
       </form>
     </Modal>

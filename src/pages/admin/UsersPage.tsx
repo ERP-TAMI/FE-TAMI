@@ -61,27 +61,58 @@ export default function UsersPage() {
     target.id === currentUser?.id ||
     !["SA", "IT"].includes(target.role?.code ?? "");
 
+  const sendPasswordSetupEmail = async (target: UserListItem) => {
+    try {
+      const result = await resend.mutateAsync(target.id);
+      showToast(
+        result.invitationStatus === "sent"
+          ? "Đã gửi email đặt mật khẩu."
+          : `Chưa gửi được email cho ${target.email}. Bạn có thể dùng thao tác gửi lại.`,
+        result.invitationStatus === "sent" ? "success" : "error",
+      );
+    } catch (error) {
+      showToast(
+        getApiError(error, `Chưa gửi được email cho ${target.email}. Bạn có thể gửi lại.`).message,
+        "error",
+      );
+    }
+  };
+
   const submitUser = async (input: UserInput) => {
     setFormError(undefined);
     try {
       if (form === "create") {
         const result = await createUser.mutateAsync(input);
-        showToast(
-          result.invitationStatus === "sent"
-            ? "Đã tạo người dùng và gửi email đặt mật khẩu."
-            : "Đã tạo người dùng nhưng chưa gửi được email. Hãy dùng thao tác gửi lại email.",
-          result.invitationStatus === "sent" ? "success" : "error",
-        );
+        setForm(null);
+        if (result.invitationStatus === "pending") {
+          showToast("Đã tạo người dùng. Hệ thống đang gửi email đặt mật khẩu.", "success");
+          await sendPasswordSetupEmail(result.user);
+        } else {
+          showToast(
+            result.invitationStatus === "sent"
+              ? "Đã tạo người dùng và gửi email đặt mật khẩu."
+              : "Đã tạo người dùng nhưng chưa gửi được email. Bạn có thể dùng thao tác gửi lại.",
+            result.invitationStatus === "sent" ? "success" : "error",
+          );
+        }
+        return;
       } else if (form) {
         const result = await updateUser.mutateAsync({ id: form.id, input });
-        showToast(
-          result.invitationStatus === "failed"
-            ? "Đã cập nhật người dùng nhưng chưa gửi được link mới đến email mới."
-            : result.invitationStatus === "sent"
-              ? "Đã cập nhật người dùng và gửi link đặt mật khẩu đến email mới."
-              : "Đã cập nhật người dùng.",
-          result.invitationStatus === "failed" ? "error" : "success",
-        );
+        setForm(null);
+        if (result.invitationStatus === "pending") {
+          showToast("Đã cập nhật người dùng. Hệ thống đang gửi link đến email mới.", "success");
+          await sendPasswordSetupEmail(result.user);
+        } else if (result.invitationStatus === "sent") {
+          showToast("Đã cập nhật người dùng và gửi link đặt mật khẩu đến email mới.", "success");
+        } else if (result.invitationStatus === "failed") {
+          showToast(
+            "Đã cập nhật người dùng nhưng chưa gửi được link đến email mới. Bạn có thể gửi lại.",
+            "error",
+          );
+        } else {
+          showToast("Đã cập nhật người dùng.", "success");
+        }
+        return;
       }
       setForm(null);
     } catch (error) {
@@ -90,17 +121,7 @@ export default function UsersPage() {
   };
 
   const resendEmail = async (target: UserListItem) => {
-    try {
-      const result = await resend.mutateAsync(target.id);
-      showToast(
-        result.invitationStatus === "sent"
-          ? `Đã gửi lại email đặt mật khẩu cho ${target.email}.`
-          : `Chưa gửi được email cho ${target.email}. Vui lòng thử lại.`,
-        result.invitationStatus === "sent" ? "success" : "error",
-      );
-    } catch (error) {
-      showToast(getApiError(error, "Không thể gửi lại email.").message, "error");
-    }
+    await sendPasswordSetupEmail(target);
   };
 
   return (

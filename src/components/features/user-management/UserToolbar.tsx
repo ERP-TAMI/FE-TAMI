@@ -1,4 +1,4 @@
-import { Search, Users, CircleDot, ShieldCheck, Lock, CircleOff } from "lucide-react";
+import { Search, Users, CircleDot, ShieldCheck, Lock, CircleOff, KeyRound } from "lucide-react";
 import { Input, Select } from "@/components/shared";
 import type { UserAccountStatus, UserRoleCode } from "@/types/user-management";
 
@@ -29,6 +29,7 @@ const statusOptions: Array<{
   { key: "", label: "Tất cả", icon: CircleDot },
   { key: "active", label: "Hoạt động", icon: ShieldCheck },
   { key: "locked", label: "Bị khóa", icon: Lock },
+  { key: "pending_setup", label: "Chờ mật khẩu", icon: KeyRound },
   { key: "inactive", label: "Vô hiệu hóa", icon: CircleOff },
 ];
 
@@ -69,9 +70,7 @@ export function UserToolbar({
             value={role}
             options={roleOptions}
             className="border-gray-300 bg-white pl-9 dark:border-gray-600 dark:bg-gray-900"
-            onChange={(event) =>
-              onRoleChange(event.target.value as UserRoleCode | "")
-            }
+            onChange={(event) => onRoleChange(event.target.value as UserRoleCode | "")}
           />
         </div>
 
@@ -89,7 +88,7 @@ export function UserToolbar({
                 type="button"
                 aria-pressed={status === option.key}
                 onClick={() => onStatusChange(option.key)}
-                className={`text-theme-xs inline-flex flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-md py-1.5 font-medium transition-colors ${
+                className={`text-theme-xs inline-flex flex-1 items-center justify-center gap-1.5 rounded-md py-1.5 font-medium whitespace-nowrap transition-colors ${
                   status === option.key
                     ? "bg-brand-50 text-brand-600 dark:bg-brand-500/15 dark:text-brand-400"
                     : "text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
