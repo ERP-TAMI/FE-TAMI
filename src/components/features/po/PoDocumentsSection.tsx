@@ -1,11 +1,7 @@
-import { useState, useRef, useEffect } from "react";
-import { createPortal } from "react-dom";
-import { Button, Modal, FileTypeIcon } from "@/components/shared";
+import { useState, useRef } from "react";
+import { Button, FileTypeIcon } from "@/components/shared";
 import { FileIcon, DownloadIcon, TrashBinIcon, EyeIcon, CloseLineIcon, AngleDownIcon } from "@/icons";
-import { poApi } from "@/api/po.api";
-import { getApiBaseUrl } from "@/lib/imageUtils";
-import { sanitizeHtml } from "@/lib/sanitizeHtml";
-import type { PurchaseOrderDocumentItem, PoDocumentPreviewResponse } from "@/types/po";
+import type { PurchaseOrderDocumentItem } from "@/types/po";
 
 interface Props {
   poId?: string;
@@ -31,27 +27,9 @@ function formatDate(dateStr: string | null | undefined): string {
   return d.toLocaleDateString("vi-VN");
 }
 
-import {
-  PO_DOCUMENT_CATEGORIES,
-  getDocumentCategoryInfo,
-  getPurposeLabel,
-} from "@/lib/poDocuments";
-
-function getFileType(
-  fileName: string | null | undefined,
-): "image" | "pdf" | "excel" | "word" | "text" | "unsupported" {
-  if (!fileName) return "unsupported";
-  const ext = fileName.split(".").pop()?.toLowerCase();
-  if (["png", "jpg", "jpeg", "webp", "gif", "svg"].includes(ext || "")) return "image";
-  if (ext === "pdf") return "pdf";
-  if (["xlsx", "xls", "csv"].includes(ext || "")) return "excel";
-  if (["docx", "doc"].includes(ext || "")) return "word";
-  if (["txt", "json", "md"].includes(ext || "")) return "text";
-  return "unsupported";
-}
+import { PO_DOCUMENT_CATEGORIES, getDocumentCategoryInfo } from "@/lib/poDocuments";
 
 export function PoDocumentsSection({
-  poId,
   documents,
   isLocked,
   isPending,
@@ -66,11 +44,6 @@ export function PoDocumentsSection({
   const [dragOver, setDragOver] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
-  const [previewDoc, setPreviewDoc] = useState<PurchaseOrderDocumentItem | null>(null);
-  const [previewData, setPreviewData] = useState<PoDocumentPreviewResponse | null>(null);
-  const [loadingPreview, setLoadingPreview] = useState(false);
-  const [activeSheetIdx, setActiveSheetIdx] = useState(0);
-  const [zoomedImage, setZoomedImage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const categoryCounts = documents.reduce<Record<string, number>>((acc, doc) => {
@@ -84,63 +57,6 @@ export function PoDocumentsSection({
     const norm = doc.purpose === "techpack" ? "tech_pack" : doc.purpose;
     return norm === activeCategoryTab;
   });
-
-  // Close zoomed image with Escape without closing parent preview modal
-  useEffect(() => {
-    if (!zoomedImage) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.stopPropagation();
-        e.preventDefault();
-        setZoomedImage(null);
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown, true);
-    return () => window.removeEventListener("keydown", handleKeyDown, true);
-  }, [zoomedImage]);
-
-  useEffect(() => {
-    if (!previewDoc) {
-      setPreviewData(null);
-      return;
-    }
-    setActiveSheetIdx(0);
-
-    if (!poId) {
-      setPreviewData({
-        type: getFileType(previewDoc.fileName || previewDoc.title),
-        fileName: previewDoc.fileName || previewDoc.title,
-        fileUrl: previewDoc.fileUrl || undefined,
-      });
-      return;
-    }
-
-    let isMounted = true;
-    setLoadingPreview(true);
-
-    poApi
-      .previewDocument(poId, previewDoc.documentId)
-      .then((res) => {
-        if (isMounted) setPreviewData(res);
-      })
-      .catch((err) => {
-        console.error("Lỗi khi tải dữ liệu xem trước:", err);
-        if (isMounted) {
-          setPreviewData({
-            type: getFileType(previewDoc.fileName || previewDoc.title),
-            fileName: previewDoc.fileName || previewDoc.title,
-            fileUrl: previewDoc.fileUrl || undefined,
-          });
-        }
-      })
-      .finally(() => {
-        if (isMounted) setLoadingPreview(false);
-      });
-
-    return () => {
-      isMounted = false;
-    };
-  }, [previewDoc, poId]);
 
   const addFiles = (files: FileList | File[]) => {
     const list = Array.from(files);
@@ -492,12 +408,9 @@ export function PoDocumentsSection({
               <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
                 {filteredDocuments.map((doc) => {
                   const catInfo = getDocumentCategoryInfo(doc.purpose);
-                  const apiBaseUrl = getApiBaseUrl();
-                  const fullUrl = doc.fileUrl
-                    ? doc.fileUrl.startsWith("http")
-                      ? doc.fileUrl
-                      : `${apiBaseUrl}${doc.fileUrl}`
-                    : null;
+                  // fileUrl is always a full presigned S3 URL, resolved fresh
+                  // by the server on every response — never persisted.
+                  const fullUrl = doc.fileUrl || null;
 
                   return (
                     <tr
@@ -506,27 +419,11 @@ export function PoDocumentsSection({
                     >
                       <td className="px-5 py-4">
                         <div className="flex items-center gap-3">
-                          <button
-                            type="button"
-                            onClick={() => setPreviewDoc(doc)}
-                            className="cursor-pointer focus:outline-none"
-                            title={`Xem trước ${doc.fileName || doc.title}`}
-                          >
-                            <FileTypeIcon
-                              fileName={doc.fileName || doc.title}
-                              size="md"
-                              withHover
-                            />
-                          </button>
+                          <FileTypeIcon fileName={doc.fileName || doc.title} size="md" />
                           <div className="min-w-0">
-                            <button
-                              type="button"
-                              onClick={() => setPreviewDoc(doc)}
-                              className="text-left font-semibold text-gray-900 hover:text-brand-600 dark:text-white dark:hover:text-brand-400 transition-colors cursor-pointer block truncate max-w-md"
-                              title="Bấm để xem trước"
-                            >
+                            <span className="block truncate max-w-md font-semibold text-gray-900 dark:text-white">
                               {doc.fileName || doc.title}
-                            </button>
+                            </span>
                           </div>
                         </div>
                       </td>
@@ -577,15 +474,16 @@ export function PoDocumentsSection({
                         <div className="flex items-center justify-end gap-2">
                           {fullUrl && (
                             <>
-                              <button
-                                type="button"
-                                onClick={() => setPreviewDoc(doc)}
-                                className="inline-flex items-center gap-1 rounded-lg border border-brand-200 bg-brand-50 px-2.5 py-1.5 text-theme-xs font-medium text-brand-700 shadow-xs hover:bg-brand-100 dark:border-brand-900/50 dark:bg-brand-950/40 dark:text-brand-300 dark:hover:bg-brand-900/50 transition-colors cursor-pointer"
-                                title="Xem trước tài liệu"
+                              <a
+                                href={fullUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex items-center gap-1 rounded-lg border border-brand-200 bg-brand-50 px-2.5 py-1.5 text-theme-xs font-medium text-brand-700 shadow-xs hover:bg-brand-100 dark:border-brand-900/50 dark:bg-brand-950/40 dark:text-brand-300 dark:hover:bg-brand-900/50 transition-colors"
+                                title="Xem tài liệu"
                               >
                                 <EyeIcon className="h-3.5 w-3.5" />
-                                Xem trước
-                              </button>
+                                Xem
+                              </a>
                               <a
                                 href={fullUrl}
                                 target="_blank"
@@ -620,359 +518,6 @@ export function PoDocumentsSection({
           </div>
         )}
       </div>
-
-      {/* Document Preview Modal */}
-      {previewDoc && (
-        <Modal
-          open={!!previewDoc}
-          title={`Xem trước: ${previewDoc.fileName || previewDoc.title}`}
-          size="2xl"
-          onClose={() => setPreviewDoc(null)}
-          footer={
-            <div className="flex items-center justify-between w-full">
-              <span className="text-theme-xs text-gray-500 font-mono">
-                {formatBytes(previewDoc.fileSize)} • {getPurposeLabel(previewDoc.purpose)}
-              </span>
-              <div className="flex items-center gap-2">
-                {previewDoc.fileUrl && (
-                  <a
-                    href={
-                      previewDoc.fileUrl.startsWith("http")
-                        ? previewDoc.fileUrl
-                        : previewDoc.fileUrl.startsWith("/")
-                          ? previewDoc.fileUrl
-                          : `/${previewDoc.fileUrl}`
-                    }
-                    download={previewDoc.fileName || previewDoc.title}
-                    className="inline-flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-theme-xs font-semibold text-gray-700 hover:bg-gray-50 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700 transition shadow-xs"
-                  >
-                    <DownloadIcon className="h-3.5 w-3.5" />
-                    Tải về máy
-                  </a>
-                )}
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => setPreviewDoc(null)}
-                >
-                  Đóng
-                </Button>
-              </div>
-            </div>
-          }
-        >
-          {loadingPreview ? (
-            <div className="flex flex-col items-center justify-center py-20 text-gray-500">
-              <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-600 border-t-transparent mb-3" />
-              <p className="text-theme-sm font-medium">Đang nạp dữ liệu xem trước tài liệu...</p>
-            </div>
-          ) : (() => {
-            const fileType = previewData?.type || getFileType(previewDoc.fileName || previewDoc.title);
-            const docUrl = previewDoc.fileUrl
-              ? previewDoc.fileUrl.startsWith("http")
-                ? previewDoc.fileUrl
-                : previewDoc.fileUrl.startsWith("/")
-                  ? previewDoc.fileUrl
-                  : `/${previewDoc.fileUrl}`
-              : null;
-
-            if (fileType === "excel" && previewData?.sheets && previewData.sheets.length > 0) {
-              const currentSheet = previewData.sheets[activeSheetIdx] || previewData.sheets[0];
-
-              return (
-                <div className="space-y-3">
-                  {/* Sheet Tabs if multiple sheets */}
-                  {previewData.sheets.length > 1 && (
-                    <div className="flex flex-wrap gap-2 border-b border-gray-100 dark:border-gray-800 pb-2">
-                      {previewData.sheets.map((sheet, idx) => (
-                        <button
-                          key={sheet.name}
-                          type="button"
-                          onClick={() => setActiveSheetIdx(idx)}
-                          className={`rounded-lg px-3 py-1.5 text-theme-xs font-semibold transition cursor-pointer ${
-                            activeSheetIdx === idx
-                              ? "bg-brand-600 text-white shadow-xs"
-                              : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300"
-                          }`}
-                        >
-                          {sheet.name} ({sheet.rowCount} dòng)
-                        </button>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Excel Sheet Table */}
-                  <div className="overflow-auto max-h-[65vh] rounded-xl border border-gray-200 dark:border-gray-800 shadow-xs bg-white dark:bg-gray-900">
-                    <table className="w-full text-left text-theme-xs text-gray-700 dark:text-gray-300 border-collapse">
-                      <tbody>
-                        {(!currentSheet.cells || currentSheet.cells.length === 0) &&
-                        (!currentSheet.rows || currentSheet.rows.length === 0) ? (
-                          <tr>
-                            <td className="p-8 text-center text-gray-400 italic">
-                              Trang tính này không có dữ liệu.
-                            </td>
-                          </tr>
-                        ) : currentSheet.cells && currentSheet.cells.length > 0 ? (
-                          currentSheet.cells.map((row, rowIdx) => {
-                            const isHeader = rowIdx === 0;
-                            return (
-                              <tr
-                                key={rowIdx}
-                                className={`border-b border-gray-100 dark:border-gray-800/80 transition-colors ${
-                                  isHeader
-                                    ? "bg-gray-100/90 dark:bg-gray-800/90 font-bold text-gray-900 dark:text-white sticky top-0 z-10 shadow-xs"
-                                    : "hover:bg-gray-50/60 dark:hover:bg-gray-800/40"
-                                }`}
-                              >
-                                <td className="px-3 py-2 text-center font-mono text-[11px] text-gray-400 border-r border-gray-200/60 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 select-none w-10 align-middle">
-                                  {rowIdx + 1}
-                                </td>
-                                {row.map((cell, colIdx) => {
-                                  // Skip slave cells in merged range so the master cell correctly spans
-                                  if (cell.isMerged) return null;
-                                  return (
-                                    <td
-                                      key={colIdx}
-                                      rowSpan={cell.rowSpan}
-                                      colSpan={cell.colSpan}
-                                      className={`px-3 py-2 border-r border-gray-100 dark:border-gray-800/60 align-middle ${
-                                        cell.bold ? "font-bold" : ""
-                                      } ${
-                                        cell.align === "center"
-                                          ? "text-center"
-                                          : cell.align === "right"
-                                            ? "text-right"
-                                            : "text-left"
-                                      }`}
-                                    >
-                                      {cell.image && (
-                                        <div className="flex flex-col items-center justify-center my-1.5">
-                                          <img
-                                            src={cell.image}
-                                            alt="Hình ảnh trong ô tính"
-                                            onClick={() => setZoomedImage(cell.image || null)}
-                                            className="max-h-60 max-w-full rounded-md object-contain shadow-xs border border-gray-200 dark:border-gray-700 bg-white cursor-zoom-in hover:opacity-90 transition-opacity"
-                                            title="Bấm để phóng to ảnh"
-                                          />
-                                          <span className="text-[10px] text-gray-400 mt-1 select-none">Bấm để phóng to</span>
-                                        </div>
-                                      )}
-                                      {cell.images && cell.images.length > 1 && (
-                                        <div className="flex flex-wrap gap-2 justify-center my-1.5">
-                                          {cell.images.slice(1).map((extraImg, idx) => (
-                                            <img
-                                              key={idx}
-                                              src={extraImg}
-                                              alt={`Ảnh phụ ${idx + 1}`}
-                                              onClick={() => setZoomedImage(extraImg)}
-                                              className="max-h-36 max-w-full rounded-md object-contain shadow-xs border border-gray-200 dark:border-gray-700 bg-white cursor-zoom-in hover:opacity-90 transition-opacity"
-                                            />
-                                          ))}
-                                        </div>
-                                      )}
-                                      {cell.value ? (
-                                        <div className="whitespace-pre-line">{cell.value}</div>
-                                      ) : !cell.image && (!cell.images || cell.images.length === 0) ? (
-                                        <span className="text-gray-300 dark:text-gray-700">—</span>
-                                      ) : null}
-                                    </td>
-                                  );
-                                })}
-                              </tr>
-                            );
-                          })
-                        ) : (
-                          currentSheet.rows.map((row, rowIdx) => {
-                            const isHeader = rowIdx === 0;
-                            return (
-                              <tr
-                                key={rowIdx}
-                                className={`border-b border-gray-100 dark:border-gray-800/80 transition-colors ${
-                                  isHeader
-                                    ? "bg-gray-100/90 dark:bg-gray-800/90 font-bold text-gray-900 dark:text-white sticky top-0 z-10 shadow-xs"
-                                    : "hover:bg-gray-50/60 dark:hover:bg-gray-800/40"
-                                }`}
-                              >
-                                <td className="px-3 py-2 text-center font-mono text-[11px] text-gray-400 border-r border-gray-200/60 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 select-none w-10">
-                                  {rowIdx + 1}
-                                </td>
-                                {row.map((cell, colIdx) => (
-                                  <td
-                                    key={colIdx}
-                                    className="px-3 py-2 border-r border-gray-100 dark:border-gray-800/60 whitespace-nowrap"
-                                  >
-                                    {cell !== "" ? cell : <span className="text-gray-300 dark:text-gray-700">—</span>}
-                                  </td>
-                                ))}
-                              </tr>
-                            );
-                          })
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-
-                  {/* Unanchored images in sheet if any */}
-                  {currentSheet.unanchoredImages && currentSheet.unanchoredImages.length > 0 && (
-                    <div className="p-4 rounded-xl border border-gray-200 bg-gray-50/60 dark:border-gray-800 dark:bg-gray-900/40 shadow-xs">
-                      <h5 className="text-theme-xs font-bold text-gray-800 dark:text-gray-200 mb-2">
-                        Hình ảnh đính kèm khác trong trang tính ({currentSheet.unanchoredImages.length})
-                      </h5>
-                      <div className="flex flex-wrap gap-3">
-                        {currentSheet.unanchoredImages.map((imgUrl, i) => (
-                          <div key={i} className="flex flex-col items-center">
-                            <img
-                              src={imgUrl}
-                              alt={`Hình ảnh ${i + 1}`}
-                              onClick={() => setZoomedImage(imgUrl)}
-                              className="max-h-48 max-w-xs rounded-lg border border-gray-200 dark:border-gray-700 object-contain shadow-xs bg-white cursor-zoom-in hover:opacity-90 transition-opacity"
-                            />
-                            <span className="text-[10px] text-gray-400 mt-1">Ảnh {i + 1}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            }
-
-            if (fileType === "word" && previewData?.html) {
-              return (
-                <div className="max-h-[68vh] overflow-y-auto rounded-xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900 shadow-xs">
-                  <div
-                    className="prose dark:prose-invert max-w-none text-theme-sm space-y-2 leading-relaxed"
-                    dangerouslySetInnerHTML={{ __html: sanitizeHtml(previewData.html) }}
-                  />
-                </div>
-              );
-            }
-
-            if (fileType === "pdf") {
-              return (
-                <div className="h-[70vh] w-full rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-800 bg-gray-100 dark:bg-gray-900">
-                  <iframe
-                    src={docUrl || ""}
-                    title={previewDoc.fileName || previewDoc.title}
-                    className="h-full w-full border-0"
-                  />
-                </div>
-              );
-            }
-
-            if (fileType === "image") {
-              return (
-                <div className="flex flex-col items-center justify-center p-3 bg-gray-50/60 dark:bg-gray-800/40 rounded-2xl border border-gray-100 dark:border-gray-800">
-                  <img
-                    src={docUrl || ""}
-                    alt={previewDoc.fileName || previewDoc.title}
-                    className="max-h-[68vh] max-w-full rounded-xl object-contain shadow-xs"
-                  />
-                </div>
-              );
-            }
-
-            if (fileType === "text" && previewData?.text) {
-              return (
-                <div className="max-h-[68vh] overflow-auto rounded-xl border border-gray-200 bg-gray-50 p-4 font-mono text-theme-xs text-gray-800 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-200 whitespace-pre-wrap">
-                  {previewData.text}
-                </div>
-              );
-            }
-
-            return (
-              <div className="flex flex-col items-center justify-center py-12 px-6 text-center rounded-2xl border border-dashed border-gray-200 bg-gray-50/50 dark:border-gray-800 dark:bg-gray-800/30">
-                <FileTypeIcon
-                  fileName={previewDoc.fileName || previewDoc.title}
-                  size="xl"
-                  className="shadow-sm"
-                />
-                <h4 className="mt-4 text-theme-base font-bold text-gray-900 dark:text-white">
-                  {previewDoc.fileName || previewDoc.title}
-                </h4>
-                <p className="mt-1 text-theme-xs text-gray-500 dark:text-gray-400">
-                  Định dạng: {previewDoc.fileName?.split(".").pop()?.toUpperCase() || "Tài liệu"} • Dung lượng: {formatBytes(previewDoc.fileSize)} • Mục đích: {getPurposeLabel(previewDoc.purpose)}
-                </p>
-                <p className="mt-3 max-w-md text-theme-xs text-gray-500 dark:text-gray-400 leading-relaxed">
-                  Tệp này ({previewDoc.fileName?.split(".").pop()?.toUpperCase()}) không hỗ trợ hiển thị trực tiếp trong khung xem trước của trình duyệt web. Bạn có thể tải tệp về máy để mở bằng ứng dụng tương thích.
-                </p>
-                <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-                  {docUrl && (
-                    <>
-                      <a
-                        href={docUrl}
-                        download={previewDoc.fileName || previewDoc.title}
-                        className="inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-4 py-2 text-theme-sm font-semibold text-white shadow-xs hover:bg-brand-700 transition"
-                      >
-                        <DownloadIcon className="h-4 w-4" />
-                        Tải về tệp này
-                      </a>
-                      <a
-                        href={docUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-4 py-2 text-theme-sm font-semibold text-gray-700 hover:bg-gray-50 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700 transition shadow-xs"
-                      >
-                        Mở trong tab mới ↗
-                      </a>
-                    </>
-                  )}
-                </div>
-              </div>
-            );
-          })()}
-        </Modal>
-      )}
-
-      {/* Lightbox Zoom for Embedded Images - Mounted directly to document.body with z-[1000] to sit above Modal */}
-      {zoomedImage &&
-        createPortal(
-          <div
-            className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/85 backdrop-blur-md p-4 animate-in fade-in duration-150"
-            onClick={() => setZoomedImage(null)}
-            role="dialog"
-            aria-modal="true"
-          >
-            <div
-              className="relative max-h-[95vh] max-w-[95vw] flex flex-col items-center"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Header Action Bar */}
-              <div className="w-full flex items-center justify-between pb-3 text-white">
-                <span className="text-xs font-semibold uppercase tracking-wider text-gray-300">
-                  Xem hình ảnh chi tiết
-                </span>
-                <div className="flex items-center gap-2">
-                  <a
-                    href={zoomedImage}
-                    download="hinh_anh_chi_tiet.png"
-                    className="inline-flex items-center gap-1.5 rounded-xl bg-white/20 px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/30 transition backdrop-blur-md cursor-pointer"
-                  >
-                    <DownloadIcon className="h-4 w-4" />
-                    Tải ảnh về
-                  </a>
-                  <button
-                    type="button"
-                    onClick={() => setZoomedImage(null)}
-                    className="inline-flex items-center gap-1.5 rounded-xl bg-white/20 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-600/80 transition backdrop-blur-md cursor-pointer"
-                  >
-                    Đóng
-                  </button>
-                </div>
-              </div>
-
-              {/* Zoomed Image Container */}
-              <div className="overflow-auto max-h-[85vh] max-w-[92vw] flex items-center justify-center rounded-2xl bg-gray-900/60 p-2 border border-white/10 shadow-2xl">
-                <img
-                  src={zoomedImage}
-                  alt="Hình ảnh phóng to"
-                  className="max-h-[82vh] max-w-full rounded-xl object-contain shadow-2xl bg-white"
-                />
-              </div>
-            </div>
-          </div>,
-          document.body,
-        )}
     </div>
   );
 }

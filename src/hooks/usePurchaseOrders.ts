@@ -19,6 +19,15 @@ export const PO_KEYS = {
   histories: () => [...PO_KEYS.all, "history"] as const,
   history: (id: string) => [...PO_KEYS.histories(), id] as const,
   products: (id: string) => [...PO_KEYS.all, "products", id] as const,
+  productDetail: (poId: string, productId: string) =>
+    [...PO_KEYS.all, "productDetail", poId, productId] as const,
+  productSteps: (poId: string, productId: string) =>
+    [...PO_KEYS.all, "productSteps", poId, productId] as const,
+  productSamples: (poId: string, productId: string) =>
+    [...PO_KEYS.all, "productSamples", poId, productId] as const,
+  productProductionDoc: (poId: string, productId: string) =>
+    [...PO_KEYS.all, "productProductionDoc", poId, productId] as const,
+  fitPreview: (styleId: string) => ["styles", "fitPreview", styleId] as const,
 };
 
 export function usePurchaseOrders(query: PoQuery = {}) {
@@ -54,6 +63,17 @@ export function useUpdatePurchaseOrder() {
     onSuccess: (updated) => {
       void queryClient.invalidateQueries({ queryKey: PO_KEYS.lists() });
       queryClient.setQueryData(PO_KEYS.detail(updated.id), updated);
+    },
+  });
+}
+
+export function useDeletePurchaseOrder() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => poApi.remove(id),
+    onSuccess: (_data, id) => {
+      void queryClient.invalidateQueries({ queryKey: PO_KEYS.lists() });
+      queryClient.removeQueries({ queryKey: PO_KEYS.detail(id) });
     },
   });
 }
@@ -184,9 +204,12 @@ export function useUpdatePoProduct() {
       productId: string;
       input: UpdatePoProductInput;
     }) => poApi.updateProduct(id, productId, input),
-    onSuccess: (_, { id }) => {
+    onSuccess: (_, { id, productId }) => {
       void queryClient.invalidateQueries({ queryKey: PO_KEYS.products(id) });
       void queryClient.invalidateQueries({ queryKey: PO_KEYS.detail(id) });
+      void queryClient.invalidateQueries({
+        queryKey: PO_KEYS.productDetail(id, productId),
+      });
     },
   });
 }
@@ -205,6 +228,282 @@ export function useRemovePoProduct() {
       void queryClient.invalidateQueries({ queryKey: PO_KEYS.products(id) });
       void queryClient.invalidateQueries({ queryKey: PO_KEYS.detail(id) });
       void queryClient.invalidateQueries({ queryKey: PO_KEYS.lists() });
+    },
+  });
+}
+
+// ─── Fit Import Preview Hook ────────────────────────────────────────────────
+
+export function useImportFitPreview(styleId: string | undefined) {
+  return useQuery({
+    queryKey: PO_KEYS.fitPreview(styleId || ""),
+    queryFn: () => poApi.getImportFitPreview(styleId!),
+    enabled: Boolean(styleId),
+  });
+}
+
+// ─── Product Detail & Sub-resources Hooks ───────────────────────────────────
+
+export function usePoProductDetail(
+  poId: string | undefined,
+  productId: string | undefined,
+) {
+  return useQuery({
+    queryKey: PO_KEYS.productDetail(poId || "", productId || ""),
+    queryFn: () => poApi.getProductDetail(poId!, productId!),
+    enabled: Boolean(poId && productId),
+  });
+}
+
+export function useUpdateProductStatus() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      poId,
+      productId,
+      status,
+      reason,
+    }: {
+      poId: string;
+      productId: string;
+      status: string;
+      reason?: string;
+    }) => poApi.updateProductStatus(poId, productId, status, reason),
+    onSuccess: (_, { poId, productId }) => {
+      void queryClient.invalidateQueries({
+        queryKey: PO_KEYS.productDetail(poId, productId),
+      });
+      void queryClient.invalidateQueries({ queryKey: PO_KEYS.products(poId) });
+    },
+  });
+}
+
+export function useLinkProductDocument() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      poId,
+      productId,
+      documentId,
+      purpose,
+    }: {
+      poId: string;
+      productId: string;
+      documentId: string;
+      purpose?: string;
+    }) => poApi.linkProductDocument(poId, productId, documentId, purpose),
+    onSuccess: (_, { poId, productId }) => {
+      void queryClient.invalidateQueries({
+        queryKey: PO_KEYS.productDetail(poId, productId),
+      });
+      void queryClient.invalidateQueries({ queryKey: PO_KEYS.products(poId) });
+      void queryClient.invalidateQueries({ queryKey: PO_KEYS.detail(poId) });
+    },
+  });
+}
+
+export function useUpdateProductDocumentPurpose() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      poId,
+      productId,
+      documentId,
+      purpose,
+    }: {
+      poId: string;
+      productId: string;
+      documentId: string;
+      purpose: string;
+    }) => poApi.updateProductDocumentPurpose(poId, productId, documentId, purpose),
+    onSuccess: (_, { poId, productId }) => {
+      void queryClient.invalidateQueries({
+        queryKey: PO_KEYS.productDetail(poId, productId),
+      });
+      void queryClient.invalidateQueries({ queryKey: PO_KEYS.products(poId) });
+    },
+  });
+}
+
+export function useUnlinkProductDocument() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      poId,
+      productId,
+      documentId,
+    }: {
+      poId: string;
+      productId: string;
+      documentId: string;
+    }) => poApi.unlinkProductDocument(poId, productId, documentId),
+    onSuccess: (_, { poId, productId }) => {
+      void queryClient.invalidateQueries({
+        queryKey: PO_KEYS.productDetail(poId, productId),
+      });
+      void queryClient.invalidateQueries({ queryKey: PO_KEYS.products(poId) });
+    },
+  });
+}
+
+export function useUploadProductDocument() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      poId,
+      productId,
+      file,
+      purpose,
+    }: {
+      poId: string;
+      productId: string;
+      file: File;
+      purpose?: string;
+    }) => poApi.uploadProductDocument(poId, productId, file, purpose),
+    onSuccess: (_, { poId, productId }) => {
+      void queryClient.invalidateQueries({
+        queryKey: PO_KEYS.productDetail(poId, productId),
+      });
+      void queryClient.invalidateQueries({ queryKey: PO_KEYS.products(poId) });
+      void queryClient.invalidateQueries({ queryKey: PO_KEYS.detail(poId) });
+    },
+  });
+}
+
+export function useUploadProductDocumentVersion() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      poId,
+      productId,
+      documentId,
+      file,
+      purpose,
+      changeReason,
+    }: {
+      poId: string;
+      productId: string;
+      documentId: string;
+      file: File;
+      purpose: string;
+      changeReason?: string;
+    }) =>
+      poApi.uploadProductDocumentVersion(
+        poId,
+        productId,
+        documentId,
+        file,
+        purpose,
+        changeReason,
+      ),
+    onSuccess: (_, { poId, productId }) => {
+      void queryClient.invalidateQueries({
+        queryKey: PO_KEYS.productDetail(poId, productId),
+      });
+      void queryClient.invalidateQueries({ queryKey: PO_KEYS.products(poId) });
+      void queryClient.invalidateQueries({ queryKey: PO_KEYS.detail(poId) });
+    },
+  });
+}
+
+export function useProductOperationSteps(
+  poId: string | undefined,
+  productId: string | undefined,
+) {
+  return useQuery({
+    queryKey: PO_KEYS.productSteps(poId || "", productId || ""),
+    queryFn: () => poApi.getProductOperationSteps(poId!, productId!),
+    enabled: Boolean(poId && productId),
+  });
+}
+
+export function useSaveProductOperationSteps() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      poId,
+      productId,
+      input,
+    }: {
+      poId: string;
+      productId: string;
+      input: import("@/types/po").SaveProductOperationStepsInput;
+    }) => poApi.saveProductOperationSteps(poId, productId, input),
+    onSuccess: (_, { poId, productId }) => {
+      void queryClient.invalidateQueries({
+        queryKey: PO_KEYS.productSteps(poId, productId),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: PO_KEYS.productDetail(poId, productId),
+      });
+    },
+  });
+}
+
+export function useProductSampleRounds(
+  poId: string | undefined,
+  productId: string | undefined,
+) {
+  return useQuery({
+    queryKey: PO_KEYS.productSamples(poId || "", productId || ""),
+    queryFn: () => poApi.getProductSampleRounds(poId!, productId!),
+    enabled: Boolean(poId && productId),
+  });
+}
+
+export function useCreateProductSampleRound() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      poId,
+      productId,
+      input,
+    }: {
+      poId: string;
+      productId: string;
+      input: import("@/types/po").CreateProductSampleRoundInput;
+    }) => poApi.createProductSampleRound(poId, productId, input),
+    onSuccess: (_, { poId, productId }) => {
+      void queryClient.invalidateQueries({
+        queryKey: PO_KEYS.productSamples(poId, productId),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: PO_KEYS.productDetail(poId, productId),
+      });
+    },
+  });
+}
+
+export function useProductProductionDoc(
+  poId: string | undefined,
+  productId: string | undefined,
+) {
+  return useQuery({
+    queryKey: PO_KEYS.productProductionDoc(poId || "", productId || ""),
+    queryFn: () => poApi.getProductProductionDoc(poId!, productId!),
+    enabled: Boolean(poId && productId),
+  });
+}
+
+export function useUpdateProductProductionDoc() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      poId,
+      productId,
+      data,
+    }: {
+      poId: string;
+      productId: string;
+      data: Record<string, unknown>;
+    }) => poApi.updateProductProductionDoc(poId, productId, data),
+    onSuccess: (_, { poId, productId }) => {
+      void queryClient.invalidateQueries({
+        queryKey: PO_KEYS.productProductionDoc(poId, productId),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: PO_KEYS.productDetail(poId, productId),
+      });
     },
   });
 }

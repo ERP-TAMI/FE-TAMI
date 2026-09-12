@@ -40,7 +40,7 @@ const mockStyles = [
     description: "Mẫu Polo Nam 2026",
     category: "Áo Polo",
     status: "draft" as const,
-    baseImageVersionId: null,
+    baseImageKey: null,
     as3bCmBaseDays: 30,
     rowVersion: 1,
     createdBy: null,

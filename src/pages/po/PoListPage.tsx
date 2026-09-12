@@ -1,16 +1,18 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { PageHeader, Toast, Button, Pagination } from "@/components/shared";
+import { PageHeader, Toast, Button, Pagination, ConfirmDialog } from "@/components/shared";
 import { PoStatusBadge } from "@/components/features/po/PoStatusBadge";
 import { PoCreateModal } from "@/components/features/po/PoCreateModal";
 import type { UploadProgress } from "@/components/features/po/PoCreateModal";
 import {
   usePurchaseOrders,
   useCreatePurchaseOrder,
+  useDeletePurchaseOrder,
 } from "@/hooks/usePurchaseOrders";
 import { poApi } from "@/api/po.api";
 import { useToast } from "@/hooks/useToast";
 import { getApiError } from "@/lib/apiError";
+import { TrashBinIcon } from "@/icons";
 import type { CreatePoInput, PoStatus, AttachedDocItem } from "@/types/po";
 
 function formatDate(dateStr: string | null | undefined): string {
@@ -44,6 +46,20 @@ export default function PoListPage() {
 
   const { data, isLoading, isError, refetch } = usePurchaseOrders(queryParams);
   const createMutation = useCreatePurchaseOrder();
+  const deleteMutation = useDeletePurchaseOrder();
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; poCode: string } | null>(null);
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    try {
+      await deleteMutation.mutateAsync(deleteTarget.id);
+      showToast(`Đã xóa đơn hàng PO ${deleteTarget.poCode}.`);
+      setDeleteTarget(null);
+    } catch (err) {
+      showToast(getApiError(err, "Xóa đơn hàng PO thất bại.").message, "error");
+      setDeleteTarget(null);
+    }
+  };
 
   const handleCreateSubmit = async (input: CreatePoInput, files: AttachedDocItem[]) => {
     try {
@@ -338,14 +354,26 @@ export default function PoListPage() {
                   <td className="px-5 py-4">
                     <PoStatusBadge status={po.status} />
                   </td>
-                  <td className="px-5 py-4 text-right">
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => navigate(`/po/${po.id}`)}
-                    >
-                      Xem chi tiết →
-                    </Button>
+                  <td className="px-5 py-4">
+                    <div className="flex items-center justify-end gap-2">
+                      {po.status === "draft" && (
+                        <button
+                          type="button"
+                          onClick={() => setDeleteTarget({ id: po.id, poCode: po.poCode })}
+                          title="Xóa PO"
+                          className="inline-flex items-center justify-center rounded-lg border border-gray-200 p-2 text-red-600 hover:bg-red-50 dark:border-gray-700 dark:text-red-400 dark:hover:bg-red-950/30 cursor-pointer"
+                        >
+                          <TrashBinIcon className="w-4 h-4" />
+                        </button>
+                      )}
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => navigate(`/po/${po.id}`)}
+                      >
+                        Xem chi tiết →
+                      </Button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -371,6 +399,24 @@ export default function PoListPage() {
         uploadProgress={uploadProgress}
         onClose={() => setIsCreateOpen(false)}
         onSubmit={handleCreateSubmit}
+      />
+
+      {/* Delete PO Confirm Dialog */}
+      <ConfirmDialog
+        open={!!deleteTarget}
+        title="Xóa đơn hàng PO"
+        description={
+          <>
+            Bạn có chắc muốn xóa vĩnh viễn đơn hàng <strong>{deleteTarget?.poCode}</strong> cùng
+            toàn bộ sản phẩm, màu sắc, size và tài liệu bên trong? Hành động này không thể hoàn
+            tác.
+          </>
+        }
+        confirmLabel="Xóa PO"
+        variant="danger"
+        isSubmitting={deleteMutation.isPending}
+        onConfirm={handleConfirmDelete}
+        onClose={() => setDeleteTarget(null)}
       />
     </div>
   );

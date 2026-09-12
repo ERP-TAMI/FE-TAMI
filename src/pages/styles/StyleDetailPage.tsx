@@ -132,8 +132,8 @@ export default function StyleDetailPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (style?.baseImageVersionId) setImageUrl(style.baseImageVersionId);
-  }, [style?.baseImageVersionId]);
+    if (style?.baseImageKey) setImageUrl(style.baseImageKey);
+  }, [style?.baseImageKey]);
 
   const handleUploadAndSaveImage = useCallback(
     async (file: File) => {
@@ -144,11 +144,16 @@ export default function StyleDetailPage() {
         return;
       }
       try {
-        const res = await uploadImage.mutateAsync(file);
-        setImageUrl(res.url);
+        const res = await uploadImage.mutateAsync({
+          entityType: "style",
+          entityId: style.id,
+          purpose: "sample_image",
+          file,
+        });
+        setImageUrl(res.previewUrl);
         await update.mutateAsync({
           id: style.id,
-          payload: { baseImageVersionId: res.url },
+          payload: { baseImageKey: res.objectKey },
         });
         showToast("Đã tải và lưu ảnh mẫu Fit thành công.");
       } catch (err) {
@@ -164,7 +169,7 @@ export default function StyleDetailPage() {
       setImageUrl(null);
       await update.mutateAsync({
         id: style.id,
-        payload: { baseImageVersionId: null },
+        payload: { baseImageKey: null },
       });
       showToast("Đã xóa ảnh mẫu Fit.");
     } catch (err) {
@@ -400,7 +405,7 @@ export default function StyleDetailPage() {
         <StyleProductionDocTab
           styleId={style.id}
           styleName={style.styleName}
-          styleImageUrl={imageUrl || style.baseImageVersionId || undefined}
+          styleImageUrl={imageUrl || style.baseImageKey || undefined}
           onEditingChange={setIsProductionDocEditing}
         />
       ) : (
