@@ -24,7 +24,7 @@ type NavItem = {
 const navItems: NavItem[] = [
   { name: "Dashboard", path: "/dashboard", icon: <GridIcon /> },
   { name: "Mẫu Fit", path: "/styles", icon: <PageIcon /> },
-  { name: "BOM", path: "/bom", icon: <BoxCubeIcon /> },
+  { name: "Nguyên phụ liệu", path: "/bom", icon: <BoxCubeIcon /> },
   { name: "Purchase Orders", path: "/po", icon: <ListIcon /> },
   {
     name: "Dữ liệu chung",
