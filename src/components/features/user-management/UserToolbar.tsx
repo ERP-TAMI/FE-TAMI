@@ -43,7 +43,7 @@ export function UserToolbar({
 }: UserToolbarProps) {
   return (
     <header className="border-b border-gray-200 bg-gray-50 px-4 py-5 sm:px-6 dark:border-gray-800 dark:bg-white/[0.03]">
-      <div className="grid grid-cols-1 gap-3 xl:grid-cols-3 xl:items-center">
+      <div className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(320px,1fr)_280px] xl:items-center 2xl:grid-cols-[minmax(360px,1fr)_280px_auto]">
         {/* Search input */}
         <div className="relative">
           <span className="pointer-events-none absolute top-1/2 left-3.5 z-10 -translate-y-1/2 text-gray-400">
@@ -74,11 +74,11 @@ export function UserToolbar({
           />
         </div>
 
-        {/* Status filter – segmented pill buttons */}
+        {/* Status filter – standalone chips */}
         <div
           role="group"
           aria-label="Lọc theo trạng thái"
-          className="flex h-11 items-center rounded-lg border border-gray-300 bg-white p-0.5 dark:border-gray-600 dark:bg-gray-900"
+          className="flex flex-wrap items-center gap-2 xl:col-span-2 2xl:col-span-1 2xl:justify-end"
         >
           {statusOptions.map((option) => {
             const Icon = option.icon;
@@ -88,10 +88,10 @@ export function UserToolbar({
                 type="button"
                 aria-pressed={status === option.key}
                 onClick={() => onStatusChange(option.key)}
-                className={`text-theme-xs inline-flex flex-1 items-center justify-center gap-1.5 rounded-md py-1.5 font-medium whitespace-nowrap transition-colors ${
+                className={`text-theme-xs focus-visible:ring-brand-500/20 inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-lg border px-3 font-medium whitespace-nowrap transition-colors focus-visible:ring-3 focus-visible:outline-none ${
                   status === option.key
-                    ? "bg-brand-50 text-brand-600 dark:bg-brand-500/15 dark:text-brand-400"
-                    : "text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
+                    ? "border-brand-200 bg-brand-50 text-brand-600 dark:border-brand-500/30 dark:bg-brand-500/15 dark:text-brand-400"
+                    : "border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-400 dark:hover:border-gray-600 dark:hover:text-white"
                 }`}
               >
                 <Icon className="h-3.5 w-3.5" />
