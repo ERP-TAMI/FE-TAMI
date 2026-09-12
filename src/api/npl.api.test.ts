@@ -97,4 +97,25 @@ describe("nplApi", () => {
     expect(result.meta.page).toBe(1);
     expect(result.meta.totalPages).toBe(1);
   });
+
+  it("fetches aggregate BOM stats from /boms/stats", async () => {
+    const mockStats = {
+      total: 50,
+      draftCount: 10,
+      pendingCount: 15,
+      approvedCount: 25,
+    };
+
+    vi.mocked(apiClient.get).mockResolvedValueOnce({
+      data: mockStats,
+    });
+
+    const result = await nplApi.getStats("2026-09");
+
+    expect(apiClient.get).toHaveBeenCalledWith("/boms/stats", {
+      params: { period: "2026-09" },
+    });
+    expect(result).toEqual(mockStats);
+  });
 });
+

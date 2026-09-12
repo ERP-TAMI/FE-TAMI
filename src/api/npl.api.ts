@@ -1,5 +1,6 @@
 import apiClient from "@/lib/apiClient";
 import type {
+  BomStats,
   NplListItem,
   NplObjectType,
   NplQueryFilter,
@@ -75,5 +76,15 @@ export const nplApi = {
         totalPages: Math.max(1, Math.ceil(rawItems.length / limit)),
       },
     };
+  },
+
+  /**
+   * Fetch aggregate BOM stats from backend `GET /boms/stats`.
+   */
+  getStats: async (period?: string): Promise<BomStats> => {
+    const res = await apiClient.get<BomStats>("/boms/stats", {
+      params: period ? { period } : undefined,
+    });
+    return res.data;
   },
 };

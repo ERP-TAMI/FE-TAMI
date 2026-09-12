@@ -54,6 +54,15 @@ export interface PaginatedNplResponse {
   meta: PaginationMeta;
 }
 
+/** Thống kê tổng quan NPL từ BE */
+export interface BomStats {
+  total: number;
+  draftCount: number;
+  pendingCount: number;
+  approvedCount: number;
+}
+
+
 /** Filter params cho hook useNplList */
 export interface NplQueryFilter {
   objectType?: NplObjectType;

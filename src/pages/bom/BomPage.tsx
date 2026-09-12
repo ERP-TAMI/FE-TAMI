@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import { Toast } from "@/components/shared";
 import { useToast } from "@/hooks/useToast";
-import { useNplList } from "@/hooks/useNplList";
+import { useNplList, useNplStats } from "@/hooks/useNplList";
 import { useAuthStore } from "@/store/authStore";
 import { canViewNplCost } from "@/lib/nplAccess";
 import { NplStatusBadge } from "@/components/features/npl/NplStatusBadge";
@@ -166,8 +166,11 @@ export default function BomPage() {
     [page, pageSize, objectTypeFilter, statusFilter, poCodeSearch, search, colorSearch],
   );
 
+  // Stats period (defaults to current month: YYYY-MM)
+  const [period, setPeriod] = useState<string>(() => getCurrentMonthString());
+
   const { data: nplResponse, isLoading, isError, refetch } = useNplList(queryFilter);
-  const { data: statsResponse } = useNplList({ limit: 1000 });
+  const { data: serverStats } = useNplStats(period);
 
   // Items from server-side pagination response (with fallback if raw array is returned)
   const items: NplListItem[] = Array.isArray(nplResponse)
@@ -188,25 +191,23 @@ export default function BomPage() {
         totalPages: 1,
       };
 
-  // Stats items (from full list or fallback to current items)
-  const allItemsForStats: NplListItem[] = Array.isArray(statsResponse)
-    ? statsResponse
-    : statsResponse?.data ?? items;
+  // Fallback stats items (from current items if server stats not yet loaded)
+  const allItemsForStats: NplListItem[] = items;
 
-  // Stats period (defaults to current month: YYYY-MM)
-  const [period, setPeriod] = useState<string>(() => getCurrentMonthString());
-
-  // Stats filtered by selected period (month)
+  // Stats filtered by selected period (month) fallback
   const statsItems = useMemo(() => {
     if (!allItemsForStats) return [];
     if (period === "all") return allItemsForStats;
     return allItemsForStats.filter((i) => (i.createdAt ?? "").startsWith(period));
   }, [allItemsForStats, period]);
 
-  const total = statsItems.length;
-  const draftCount = statsItems.filter((i) => i.status === "Draft").length;
-  const pendingCount = statsItems.filter((i) => PENDING_STATUSES.has(i.status)).length;
+  const total = serverStats?.total ?? statsItems.length;
+  const draftCount =
+    serverStats?.draftCount ?? statsItems.filter((i) => i.status === "Draft").length;
+  const pendingCount =
+    serverStats?.pendingCount ?? statsItems.filter((i) => PENDING_STATUSES.has(i.status)).length;
   const approvedCount =
+    serverStats?.approvedCount ??
     statsItems.filter((i) => i.status === "Approved" || i.status === "Locked").length;
 
   // Server-side pagination

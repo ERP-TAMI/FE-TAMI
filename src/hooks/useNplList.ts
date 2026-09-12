@@ -17,3 +17,14 @@ export function useNplList(filter?: NplQueryFilter) {
     queryFn: () => nplApi.getNplList(filter),
   });
 }
+
+/**
+ * Fetch aggregate NPL stats for period or all time.
+ */
+export function useNplStats(period?: string) {
+  return useQuery({
+    queryKey: [...nplKeys.all, "stats", period ?? "all"] as const,
+    queryFn: () => nplApi.getStats(period),
+  });
+}
+

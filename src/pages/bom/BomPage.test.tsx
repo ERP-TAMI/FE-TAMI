@@ -9,6 +9,7 @@ import type { NplListItem } from "@/types/npl";
 
 vi.mock("@/hooks/useNplList", () => ({
   useNplList: vi.fn(),
+  useNplStats: vi.fn(() => ({ data: undefined, isLoading: false })),
   nplKeys: {
     all: ["npl"],
     lists: () => ["npl", "list"],
