@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import BomPage from "./BomPage";
 import * as useNplListModule from "@/hooks/useNplList";
 import { useAuthStore } from "@/store/authStore";
-import type { NplListItem } from "@/types/npl";
+import type { NplListItem, NplQueryFilter } from "@/types/npl";
 
 vi.mock("@/hooks/useNplList", () => ({
   useNplList: vi.fn(),
@@ -45,7 +45,8 @@ describe("BomPage", () => {
     });
     vi.clearAllMocks();
 
-    vi.mocked(useNplListModule.useNplList).mockImplementation((filter?: any) => {
+    vi.mocked(useNplListModule.useNplList).mockImplementation(
+      (filter?: NplQueryFilter) => {
       let filtered = [...mockNplData];
       if (filter?.objectType && filter.objectType !== "all") {
         filtered = filtered.filter((i) => i.objectType === filter.objectType);
