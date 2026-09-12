@@ -30,8 +30,8 @@ export interface NplListItem {
   status: NplStatus;
   /** Phiên bản */
   version: number;
-  /** Giá thành trên mỗi sản phẩm (đã tổng hợp từ BOM lines) */
-  totalCostPerUnit: number;
+  /** Giá thành trên mỗi sản phẩm (đã tổng hợp từ BOM lines). Null nếu chưa có giá hoặc không có quyền xem */
+  totalCostPerUnit: number | null;
   /** Ngày tạo ISO string */
   createdAt: string;
   /** Raw PO id — dùng cho navigation */
@@ -47,6 +47,8 @@ export interface NplQueryFilter {
   poCode?: string;
   search?: string;
   colorName?: string;
+  page?: number;
+  limit?: number;
 }
 
 /** Raw BOM entity trả về từ BE `GET /boms` */
@@ -54,20 +56,20 @@ export interface RawBomItem {
   id: string;
   objectType?: NplObjectType;
   objectCode?: string;
-  poId: string;
-  lineId: string;
-  colorId: string | null;
-  colorName: string | null;
+  poId?: string;
+  lineId?: string;
+  colorId?: string | null;
+  colorName?: string | null;
   styleCode: string;
   productName: string;
-  poQuantity: number;
+  poQuantity?: number;
   version: number;
   status: NplStatus;
-  changeReason: string | null;
-  rejectReason: string | null;
-  rdComment: string | null;
-  totalCostPerUnit: number | string;
-  deadline: string | null;
+  changeReason?: string | null;
+  rejectReason?: string | null;
+  rdComment?: string | null;
+  totalCostPerUnit: number | string | null;
+  deadline?: string | null;
   createdAt: string;
   bomLines?: unknown[];
 }

@@ -127,6 +127,11 @@ export default function BomPage() {
     return () => document.removeEventListener("mousedown", handlePointerDown);
   }, [activeMenuId]);
 
+  // Reset page when any filter changes
+  useEffect(() => {
+    setPage(1);
+  }, [objectTypeFilter, statusFilter, poCodeSearch, search, colorSearch]);
+
   const handleMenuAction = (
     action: "duplicate" | "history" | "export" | "delete",
     item: NplListItem,
@@ -560,71 +565,87 @@ export default function BomPage() {
           </div>
 
           {/* ─── Pagination Footer ─────────────────────────────────── */}
-          <div className="flex flex-col items-center justify-between gap-3 border-t border-gray-100 px-5 py-3.5 sm:flex-row dark:border-gray-800">
+          <div
+            data-testid="npl-pagination"
+            className="flex flex-col items-center justify-between gap-3 border-t border-gray-100 px-5 py-3.5 sm:flex-row dark:border-gray-800"
+          >
             <div className="text-xs text-gray-500 dark:text-gray-400">
-              Hiển thị {(safePage - 1) * pageSize + 1}–
-              {Math.min(safePage * pageSize, totalFiltered)} trên {totalFiltered} bảng NPL
+              {totalFiltered === 0
+                ? "Không có dữ liệu bảng NPL nào"
+                : `Hiển thị ${(safePage - 1) * pageSize + 1}–${Math.min(
+                    safePage * pageSize,
+                    totalFiltered,
+                  )} trên ${totalFiltered} bảng NPL`}
             </div>
 
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
-                <span>Hiển thị</span>
-                <select
-                  value={pageSize}
-                  onChange={(e) => {
-                    setPageSize(Number(e.target.value));
-                    setPage(1);
-                  }}
-                  className="rounded-lg border border-gray-200 bg-white px-2 py-1 text-xs text-gray-700 outline-none focus:border-brand-500 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-300"
+            {totalFiltered > 0 && (
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
+                  <span>Hiển thị</span>
+                  <select
+                    value={pageSize}
+                    aria-label="Số lượng mỗi trang"
+                    onChange={(e) => {
+                      setPageSize(Number(e.target.value));
+                      setPage(1);
+                    }}
+                    className="rounded-lg border border-gray-200 bg-white px-2 py-1 text-xs text-gray-700 outline-none focus:border-brand-500 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-300"
+                  >
+                    <option value={5}>5</option>
+                    <option value={10}>10</option>
+                    <option value={20}>20</option>
+                    <option value={50}>50</option>
+                  </select>
+                  <span>mỗi trang</span>
+                </div>
+
+                <div
+                  className="flex items-center gap-1"
+                  role="navigation"
+                  aria-label="Phân trang danh sách NPL"
                 >
-                  <option value={5}>5</option>
-                  <option value={10}>10</option>
-                  <option value={20}>20</option>
-                  <option value={50}>50</option>
-                </select>
-                <span>mỗi trang</span>
+                  <button
+                    type="button"
+                    disabled={safePage <= 1}
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 transition hover:bg-gray-50 disabled:opacity-40 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400"
+                    aria-label="Trang trước"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
+
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => {
+                    const isActive = p === safePage;
+                    return (
+                      <button
+                        key={p}
+                        type="button"
+                        onClick={() => setPage(p)}
+                        aria-label={`Trang ${p}`}
+                        aria-current={isActive ? "page" : undefined}
+                        className={`inline-flex h-8 w-8 items-center justify-center rounded-lg text-xs font-medium transition ${
+                          isActive
+                            ? "bg-brand-500 text-white font-semibold shadow-xs"
+                            : "border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300"
+                        }`}
+                      >
+                        {p}
+                      </button>
+                    );
+                  })}
+
+                  <button
+                    type="button"
+                    disabled={safePage >= totalPages}
+                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 transition hover:bg-gray-50 disabled:opacity-40 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400"
+                    aria-label="Trang sau"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
               </div>
-
-              <div className="flex items-center gap-1">
-                <button
-                  type="button"
-                  disabled={safePage <= 1}
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 transition hover:bg-gray-50 disabled:opacity-40 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400"
-                  aria-label="Trang trước"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </button>
-
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => {
-                  const isActive = p === safePage;
-                  return (
-                    <button
-                      key={p}
-                      type="button"
-                      onClick={() => setPage(p)}
-                      className={`inline-flex h-8 w-8 items-center justify-center rounded-lg text-xs font-medium transition ${
-                        isActive
-                          ? "bg-brand-500 text-white font-semibold shadow-xs"
-                          : "border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300"
-                      }`}
-                    >
-                      {p}
-                    </button>
-                  );
-                })}
-
-                <button
-                  type="button"
-                  disabled={safePage >= totalPages}
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 transition hover:bg-gray-50 disabled:opacity-40 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400"
-                  aria-label="Trang sau"
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
+            )}
           </div>
         </div>
       )}
