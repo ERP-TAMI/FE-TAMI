@@ -48,10 +48,10 @@ describe("BomPage", () => {
     vi.mocked(useNplListModule.useNplList).mockImplementation(
       (filter?: NplQueryFilter) => {
       let filtered = [...mockNplData];
-      if (filter?.objectType && filter.objectType !== "all") {
+      if (filter?.objectType) {
         filtered = filtered.filter((i) => i.objectType === filter.objectType);
       }
-      if (filter?.status && filter.status !== "all") {
+      if (filter?.status) {
         filtered = filtered.filter((i) => i.status === filter.status);
       }
       if (filter?.search) {
