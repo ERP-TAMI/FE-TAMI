@@ -11,6 +11,8 @@ const existing: UserListItem = {
   role: { code: "IT", name: "Công nghệ thông tin" },
   accountStatus: "active",
   passwordSetupRequired: false,
+  passwordSetupEmailStatus: null,
+  passwordSetupEmailAttemptedAt: null,
 };
 
 afterEach(cleanup);

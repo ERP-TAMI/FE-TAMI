@@ -1,6 +1,7 @@
 import { Table, type TableColumn } from "@/components/shared/Table";
 import type { UserListItem } from "@/types/user-management";
 import { UserStatusBadge } from "./UserStatusBadge";
+import { AlertCircle } from "lucide-react";
 
 function buildColumns(
   onEdit?: (user: UserListItem) => void,
@@ -64,14 +65,29 @@ function buildColumns(
               Sửa
             </button>
             {user.passwordSetupRequired && onResend && (
-              <button
-                type="button"
-                className="text-theme-xs text-gray-600 hover:underline disabled:cursor-wait disabled:opacity-50 dark:text-gray-300"
-                disabled={resendingUserId === user.id}
-                onClick={() => onResend(user)}
-              >
-                {resendingUserId === user.id ? "Đang gửi..." : "Gửi lại email"}
-              </button>
+              <span className="inline-flex items-center gap-1.5">
+                {user.passwordSetupEmailStatus === "failed" && (
+                  <span
+                    aria-label="Lần gửi email đặt mật khẩu gần nhất thất bại"
+                    title="Email đặt mật khẩu chưa gửi được. Hãy thử gửi lại."
+                    className="text-error-500 dark:text-error-400 inline-flex"
+                  >
+                    <AlertCircle aria-hidden="true" className="h-4 w-4" />
+                  </span>
+                )}
+                <button
+                  type="button"
+                  className="text-theme-xs text-gray-600 hover:underline disabled:cursor-wait disabled:opacity-50 dark:text-gray-300"
+                  disabled={resendingUserId === user.id}
+                  onClick={() => onResend(user)}
+                >
+                  {resendingUserId === user.id
+                    ? "Đang gửi..."
+                    : user.passwordSetupEmailStatus === null
+                      ? "Gửi email"
+                      : "Gửi lại email"}
+                </button>
+              </span>
             )}
           </div>
         ),

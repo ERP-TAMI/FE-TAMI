@@ -16,6 +16,8 @@ const response = {
       role: { code: "IT", name: "Công nghệ thông tin" },
       accountStatus: "active",
       passwordSetupRequired: false,
+      passwordSetupEmailStatus: "failed",
+      passwordSetupEmailAttemptedAt: "2026-09-12T12:00:00.000Z",
     },
   ],
   meta: { total: 1, page: 1, limit: 10, totalPages: 1 },
@@ -49,6 +51,17 @@ describe("userManagementApi", () => {
   it("rejects an invalid server payload at the API boundary", async () => {
     vi.mocked(apiClient.get).mockResolvedValue({
       data: { ...response, data: [{ ...response.data[0], accountStatus: "disabled" }] },
+    });
+
+    await expect(userManagementApi.list({ page: 1, limit: 10 })).rejects.toThrow();
+  });
+
+  it("rejects an invalid password setup email delivery status", async () => {
+    vi.mocked(apiClient.get).mockResolvedValue({
+      data: {
+        ...response,
+        data: [{ ...response.data[0], passwordSetupEmailStatus: "unknown" }],
+      },
     });
 
     await expect(userManagementApi.list({ page: 1, limit: 10 })).rejects.toThrow();

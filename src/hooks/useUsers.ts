@@ -29,7 +29,9 @@ export function useUpdateUser() {
 }
 
 export function useResendPasswordSetup() {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => userManagementApi.resendPasswordSetup(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: userManagementKeys.all }),
   });
 }
