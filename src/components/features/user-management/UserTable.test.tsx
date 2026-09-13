@@ -38,6 +38,34 @@ describe("UserTable", () => {
     expect(screen.queryByLabelText("Lần gửi email đặt mật khẩu gần nhất thất bại")).toBeNull();
   });
 
+  it("does not offer password setup actions while the account is locked", () => {
+    const lockedPendingUser = {
+      ...user,
+      accountStatus: "locked" as const,
+      passwordSetupRequired: true,
+    };
+    render(
+      <UserTable
+        users={[lockedPendingUser]}
+        onEdit={vi.fn()}
+        onResend={vi.fn()}
+        canManage={() => true}
+        canManageAccount={() => true}
+        onAccountAction={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", { name: `Mở thao tác cho ${lockedPendingUser.fullName}` }),
+    );
+    const actions = within(
+      screen.getByRole("menu", { name: `Thao tác với ${lockedPendingUser.fullName}` }),
+    );
+    expect(actions.getByRole("menuitem", { name: "Mở khóa" })).toBeTruthy();
+    expect(actions.queryByRole("menuitem", { name: /email/i })).toBeNull();
+    expect(actions.queryByRole("menuitem", { name: "Đặt lại mật khẩu" })).toBeNull();
+  });
+
   it("offers only actions that match the current account state", () => {
     const lockedUser = {
       ...user,
@@ -77,7 +105,7 @@ describe("UserTable", () => {
       screen.getByRole("menu", { name: `Thao tác với ${lockedUser.fullName}` }),
     );
     expect(lockedActions.getByRole("menuitem", { name: "Mở khóa" })).toBeTruthy();
-    expect(lockedActions.getByRole("menuitem", { name: "Đặt lại mật khẩu" })).toBeTruthy();
+    expect(lockedActions.queryByRole("menuitem", { name: "Đặt lại mật khẩu" })).toBeNull();
     expect(lockedActions.queryByRole("menuitem", { name: "Khóa tài khoản" })).toBeNull();
     expect(lockedActions.queryByRole("menuitem", { name: "Vô hiệu hóa" })).toBeNull();
 

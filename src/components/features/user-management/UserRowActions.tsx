@@ -23,7 +23,7 @@ function accountMenuItems(
 
   const items: MenuItem[] = [];
 
-  if (!user.passwordSetupRequired) {
+  if (user.accountStatus === "active" && !user.passwordSetupRequired) {
     items.push({
       key: "reset",
       label: "Đặt lại mật khẩu",
@@ -72,7 +72,7 @@ export function UserRowActions({
   const menuRef = useRef<HTMLDivElement>(null);
 
   const items: MenuItem[] = [];
-  if (user.passwordSetupRequired && onResend) {
+  if (user.accountStatus === "pending_setup" && user.passwordSetupRequired && onResend) {
     items.push({
       key: "resend",
       label: resending
