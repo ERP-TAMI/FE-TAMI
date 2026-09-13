@@ -1408,11 +1408,8 @@ export default function PoDetailPage() {
             <div className="flex flex-wrap items-center justify-between border-b border-gray-100 pb-4 dark:border-gray-800 gap-3">
               <div>
                 <h3 className="text-theme-base font-bold text-gray-900 dark:text-white">
-                  Danh sách sản phẩm trong đơn hàng PO ({productsPage?.total ?? po.productsCount ?? 0})
+                  Sản phẩm ({productsPage?.total ?? po.productsCount ?? 0})
                 </h3>
-                <p className="mt-0.5 text-theme-xs text-gray-500 dark:text-gray-400">
-                  Quản lý các dòng sản phẩm, Mẫu Fit và tiến độ sản xuất theo PO
-                </p>
               </div>
               <div className="flex items-center gap-2.5">
                 {/* Toggle Grid / Table */}

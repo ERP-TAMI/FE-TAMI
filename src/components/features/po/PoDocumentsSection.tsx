@@ -1,6 +1,6 @@
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { Button, FileTypeIcon } from "@/components/shared";
-import { FileIcon, DownloadIcon, TrashBinIcon, EyeIcon, CloseLineIcon, AngleDownIcon } from "@/icons";
+import { FileIcon, DownloadIcon, TrashBinIcon, EyeIcon } from "@/icons";
 import type { PurchaseOrderDocumentItem } from "@/types/po";
 
 interface Props {
@@ -24,10 +24,16 @@ function formatDate(dateStr: string | null | undefined): string {
   if (!dateStr) return "—";
   const d = new Date(dateStr);
   if (isNaN(d.getTime())) return dateStr;
-  return d.toLocaleDateString("vi-VN");
+  return d.toLocaleDateString("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
 }
 
 import { PO_DOCUMENT_CATEGORIES, getDocumentCategoryInfo } from "@/lib/poDocuments";
+import { PoDocumentCategoryPicker } from "./PoDocumentCategoryPicker";
+import { PoUploadDocumentsModal } from "./PoUploadDocumentsModal";
 
 export function PoDocumentsSection({
   documents,
@@ -38,13 +44,8 @@ export function PoDocumentsSection({
   onUpdatePurpose,
 }: Props) {
   const [updatingDocId, setUpdatingDocId] = useState<string | null>(null);
-  const [purpose, setPurpose] = useState("po_original");
-  const [uploadMode, setUploadMode] = useState<"common" | "categorized">("common");
+  const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [activeCategoryTab, setActiveCategoryTab] = useState<string>("all");
-  const [dragOver, setDragOver] = useState(false);
-  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-  const [uploading, setUploading] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const categoryCounts = documents.reduce<Record<string, number>>((acc, doc) => {
     const norm = doc.purpose === "techpack" ? "tech_pack" : doc.purpose;
@@ -58,50 +59,10 @@ export function PoDocumentsSection({
     return norm === activeCategoryTab;
   });
 
-  const addFiles = (files: FileList | File[]) => {
-    const list = Array.from(files);
-    if (list.length === 0) return;
-    setSelectedFiles((prev) => {
-      const existingKeys = new Set(
-        prev.map((f) => `${f.name}_${f.size}_${f.lastModified}`),
-      );
-      const newAdditions = list.filter(
-        (f) => !existingKeys.has(`${f.name}_${f.size}_${f.lastModified}`),
-      );
-      return [...prev, ...newAdditions];
-    });
-  };
 
-  const removeSelectedFile = (index: number) => {
-    setSelectedFiles((prev) => prev.filter((_, idx) => idx !== index));
-  };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      addFiles(e.target.files);
-    }
-  };
 
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setDragOver(false);
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      addFiles(e.dataTransfer.files);
-    }
-  };
 
-  const handleExecuteUpload = async () => {
-    if (selectedFiles.length === 0) return;
-    try {
-      setUploading(true);
-      const targetPurpose = uploadMode === "common" ? "other" : purpose;
-      await onUpload(selectedFiles, targetPurpose);
-      setSelectedFiles([]);
-      if (fileInputRef.current) fileInputRef.current.value = "";
-    } finally {
-      setUploading(false);
-    }
-  };
 
   const handleCategoryChange = async (documentId: string, newPurpose: string) => {
     if (!onUpdatePurpose) return;
@@ -113,195 +74,30 @@ export function PoDocumentsSection({
     }
   };
 
-  const totalSelectedSize = selectedFiles.reduce((acc, f) => acc + f.size, 0);
 
   return (
     <div className="space-y-5">
-      {/* Upload Zone (Only when not locked) */}
+      {/* Tải tệp lên qua modal — xem PoUploadDocumentsModal. */}
       {!isLocked && (
-        <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-xs dark:border-gray-800 dark:bg-gray-900">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h4 className="text-theme-base font-bold text-gray-900 dark:text-white">
-                Thêm tài liệu
-              </h4>
-            </div>
-
-            {/* 2 Lựa chọn rõ ràng: 1. Chung | 2. Phân loại */}
-            <div className="grid grid-cols-2 gap-1 rounded-xl bg-gray-100 p-1 dark:bg-gray-800 shrink-0">
-              <button
-                type="button"
-                onClick={() => {
-                  setUploadMode("common");
-                  setPurpose("other");
-                }}
-                className={`flex items-center justify-center rounded-lg px-3 py-1.5 text-theme-xs font-bold transition-all cursor-pointer ${
-                  uploadMode === "common"
-                    ? "bg-white text-gray-900 shadow-2xs dark:bg-gray-900 dark:text-white"
-                    : "text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
-                }`}
-              >
-                1. Tải tệp chung
-              </button>
-              <button
-                type="button"
-                onClick={() => setUploadMode("categorized")}
-                className={`flex items-center justify-center rounded-lg px-3 py-1.5 text-theme-xs font-bold transition-all cursor-pointer ${
-                  uploadMode === "categorized"
-                    ? "bg-white text-brand-600 shadow-2xs dark:bg-gray-900 dark:text-brand-400"
-                    : "text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
-                }`}
-              >
-                2. Phân loại
-              </button>
-            </div>
-          </div>
-
-          <div className="mt-4 flex flex-col gap-3">
-            {/* Nếu là chế độ phân loại: hiển thị 5 nút danh mục */}
-            {uploadMode === "categorized" && (
-              <div>
-                <label className="block text-theme-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
-                  Chọn danh mục:
-                </label>
-                <div className="flex flex-wrap gap-1.5">
-                  {PO_DOCUMENT_CATEGORIES.map((cat) => {
-                    const isActive = purpose === cat.key;
-                    return (
-                      <button
-                        key={cat.key}
-                        type="button"
-                        onClick={() => setPurpose(cat.key)}
-                        className={`inline-flex items-center rounded-xl border px-3 py-1.5 text-theme-xs font-semibold transition cursor-pointer ${
-                          isActive
-                            ? `${cat.tabActiveClass} font-bold shadow-xs`
-                            : "border-gray-200 bg-gray-50 text-gray-700 hover:bg-gray-100 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-300"
-                        }`}
-                      >
-                        {cat.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-              <div className="flex-1">
-                {uploadMode === "categorized" && (
-                  <label className="block text-theme-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                    Tệp đính kèm vào:{" "}
-                    <span className="font-bold text-brand-600 dark:text-brand-400">
-                      {getDocumentCategoryInfo(purpose).label}
-                    </span>
-                  </label>
-                )}
-                <div
-                  onDragOver={(e) => {
-                    e.preventDefault();
-                    setDragOver(true);
-                  }}
-                  onDragLeave={() => setDragOver(false)}
-                  onDrop={handleDrop}
-                  onClick={() => fileInputRef.current?.click()}
-                  className={`mt-1 flex cursor-pointer items-center justify-between rounded-xl border border-dashed px-4 py-2.5 transition-colors ${
-                    dragOver
-                      ? "border-brand-500 bg-brand-50/50 dark:bg-brand-950/20"
-                      : "border-gray-300 bg-gray-50/50 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800/40"
-                  }`}
-                >
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    multiple
-                    onChange={handleFileChange}
-                    className="hidden"
-                  />
-                  <span className="truncate text-theme-sm text-gray-600 dark:text-gray-300">
-                    {selectedFiles.length > 0 ? (
-                      <span className="font-semibold text-brand-600 dark:text-brand-400">
-                        Đã chọn {selectedFiles.length} tệp ({formatBytes(totalSelectedSize)}) - Bấm để chọn thêm
-                      </span>
-                    ) : (
-                      "Kéo thả hoặc chọn tệp..."
-                    )}
-                  </span>
-                  <span className="shrink-0 text-theme-xs font-medium text-brand-600 dark:text-brand-400">
-                    + Thêm tệp
-                  </span>
-                </div>
-              </div>
-
-              <div className="sm:self-end">
-                <Button
-                  size="sm"
-                  onClick={() => void handleExecuteUpload()}
-                  disabled={selectedFiles.length === 0 || uploading || isPending}
-                >
-                  {uploading
-                    ? `Đang tải lên (${selectedFiles.length})...`
-                    : selectedFiles.length > 1
-                      ? `Tải lên ${selectedFiles.length} tệp`
-                      : "Tải lên"}
-                </Button>
-              </div>
-            </div>
-
-            {/* Selected files chips list */}
-            {selectedFiles.length > 0 && (
-              <div className="flex flex-wrap items-center gap-2 p-3 bg-gray-50/80 dark:bg-gray-800/60 rounded-xl border border-gray-100 dark:border-gray-800 animate-in fade-in duration-150">
-                <span className="text-theme-xs font-semibold text-gray-500 dark:text-gray-400 mr-1">
-                  Tệp chờ tải lên ({selectedFiles.length}):
-                </span>
-                {selectedFiles.map((file, idx) => (
-                  <div
-                    key={`${file.name}_${idx}`}
-                    className="inline-flex items-center gap-1.5 rounded-lg bg-white px-2.5 py-1 text-theme-xs font-medium text-gray-800 shadow-2xs border border-gray-200 dark:bg-gray-900 dark:text-gray-200 dark:border-gray-700"
-                  >
-                    <FileTypeIcon fileName={file.name} size="xs" />
-                    <span className="max-w-xs truncate" title={file.name}>
-                      {file.name}
-                    </span>
-                    <span className="text-[11px] text-gray-400 font-mono">
-                      ({formatBytes(file.size)})
-                    </span>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        removeSelectedFile(idx);
-                      }}
-                      className="ml-1 text-gray-400 hover:text-red-500 hover:bg-gray-100 dark:hover:bg-gray-800 rounded p-0.5 transition-colors cursor-pointer"
-                      title="Bỏ tệp này"
-                    >
-                      <CloseLineIcon className="h-3 w-3" />
-                    </button>
-                  </div>
-                ))}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedFiles([]);
-                    if (fileInputRef.current) fileInputRef.current.value = "";
-                  }}
-                  className="text-theme-xs text-red-500 hover:text-red-700 underline font-medium ml-2 cursor-pointer"
-                >
-                  Xóa tất cả
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
+        <PoUploadDocumentsModal
+          isOpen={isUploadOpen}
+          isPending={isPending}
+          onUpload={(files, targetPurpose) => onUpload(files, targetPurpose)}
+          onClose={() => setIsUploadOpen(false)}
+        />
       )}
 
       {/* Documents List Table */}
       <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xs dark:border-gray-800 dark:bg-gray-900">
-        <div className="flex items-center justify-between border-b border-gray-100 p-5 dark:border-gray-800">
-          <div>
-            <h3 className="text-theme-base font-bold text-gray-900 dark:text-white">
-              Danh sách tài liệu đính kèm ({documents.length})
-            </h3>
-          </div>
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 p-5 dark:border-gray-800">
+          <h3 className="text-theme-base font-bold text-gray-900 dark:text-white">
+            Tài liệu ({documents.length})
+          </h3>
+          {!isLocked && (
+            <Button size="sm" onClick={() => setIsUploadOpen(true)} disabled={isPending}>
+              + Tải tài liệu lên
+            </Button>
+          )}
         </div>
 
         {/* Category Filter Tabs */}
@@ -435,33 +231,14 @@ export function PoDocumentsSection({
                             {catInfo.shortLabel}
                           </span>
                         ) : (
-                          <div className="relative inline-flex items-center">
-                            <select
-                              value={doc.purpose}
-                              onChange={(e) => {
-                                const newPurpose = e.target.value;
-                                if (newPurpose !== doc.purpose) {
-                                  void handleCategoryChange(doc.documentId, newPurpose);
-                                }
-                              }}
-                              disabled={isPending || updatingDocId === doc.documentId}
-                              className={`appearance-none cursor-pointer rounded-full pl-3 pr-7 py-1 text-theme-xs font-semibold border transition-all shadow-2xs hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-brand-500/20 disabled:cursor-not-allowed disabled:opacity-60 ${catInfo.badgeClass}`}
-                              title="Bấm để thay đổi phân loại tệp"
-                            >
-                              {PO_DOCUMENT_CATEGORIES.map((cat) => (
-                                <option
-                                  key={cat.key}
-                                  value={cat.key}
-                                  className="bg-white text-gray-900 dark:bg-gray-800 dark:text-white font-normal"
-                                >
-                                  {cat.label}
-                                </option>
-                              ))}
-                            </select>
-                            <span className="pointer-events-none absolute right-2 text-current opacity-60">
-                              <AngleDownIcon className="h-3 w-3" />
-                            </span>
-                          </div>
+                          <PoDocumentCategoryPicker
+                            value={doc.purpose}
+                            disabled={isPending}
+                            isSaving={updatingDocId === doc.documentId}
+                            onChange={(newPurpose) =>
+                              void handleCategoryChange(doc.documentId, newPurpose)
+                            }
+                          />
                         )}
                       </td>
                       <td className="px-5 py-4 font-mono text-theme-xs text-gray-500 dark:text-gray-400">
