@@ -169,6 +169,8 @@ export interface PurchaseOrderProductItem {
   colorName?: string | null;
   deadline?: string | null;
   structureImageVersionId?: string | null;
+  /** URL đã ký sẵn để hiển thị ảnh kết cấu; BE resolve từ object key S3. */
+  structureImageUrl?: string | null;
   status?: string | null;
   as3bCmBaseDays?: number | null;
   importedAt?: string | null;
@@ -389,6 +391,12 @@ export interface PurchaseOrderProductDetail extends PurchaseOrderProductItem {
 export interface PurchaseOrderDetail extends PurchaseOrderListItem {
   productsCount: number;
   documentsCount: number;
+}
+
+/** Tham số phân trang cho danh sách sản phẩm của PO. */
+export interface PoProductQuery {
+  page?: number;
+  limit?: number;
 }
 
 /** Tham số phân trang cho danh sách tài liệu của PO. */

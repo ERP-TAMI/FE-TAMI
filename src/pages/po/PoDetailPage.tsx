@@ -9,7 +9,6 @@ import { PoDocumentsSection } from "@/components/features/po/PoDocumentsSection"
 import { PoAddProductQuickForm } from "@/components/features/po/PoAddProductQuickForm";
 import { PoSplitDocumentPreview } from "@/components/features/po/PoSplitDocumentPreview";
 import { StyleImagePlaceholder } from "@/components/features/styles/StyleImagePlaceholder";
-import { resolveImageUrl } from "@/lib/imageUtils";
 import {
   usePurchaseOrder,
   useUpdatePurchaseOrder,
@@ -62,6 +61,9 @@ const DEADLINE_SOON_DAYS = 7;
 
 /** Số tài liệu PO tải mỗi trang. BE chặn trên ở 100. */
 const PO_DOCS_PAGE_SIZE = 20;
+
+/** Số sản phẩm tải mỗi trang. BE chặn trên ở 100. */
+const PO_PRODUCTS_PAGE_SIZE = 20;
 
 type DeadlineTone = "overdue" | "soon" | "normal";
 
@@ -126,6 +128,8 @@ export default function PoDetailPage() {
   const removeProductMutation = useRemovePoProduct();
   const deletePoMutation = useDeletePurchaseOrder();
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [productPendingRemoval, setProductPendingRemoval] =
+    useState<PurchaseOrderProductItem | null>(null);
 
   const handleDeletePo = async () => {
     if (!id) return;
@@ -157,7 +161,13 @@ export default function PoDetailPage() {
   };
 
   // Chỉ tải danh sách sản phẩm khi người dùng thực sự mở tab Sản phẩm.
-  const { data: productsData } = usePoProducts(id, { enabled: activeTab === "lines" });
+  const [productPage, setProductPage] = useState(1);
+  const { data: productsPage, isLoading: isLoadingProducts } = usePoProducts(
+    id,
+    { page: productPage, limit: PO_PRODUCTS_PAGE_SIZE },
+    { enabled: activeTab === "lines" },
+  );
+  const productsData = productsPage?.items;
 
   const [isAddProductOpen, setIsAddProductOpen] = useState(false);
 
@@ -346,12 +356,15 @@ export default function PoDetailPage() {
     }
   };
 
-  const handleRemoveProduct = async (productId: string) => {
-    if (!id) return;
-    if (!window.confirm("Bạn có chắc chắn muốn xóa sản phẩm này khỏi đơn hàng PO?")) return;
+  const handleRemoveProduct = async () => {
+    if (!id || !productPendingRemoval) return;
     try {
-      await removeProductMutation.mutateAsync({ id, productId });
+      await removeProductMutation.mutateAsync({
+        id,
+        productId: productPendingRemoval.id,
+      });
       showToast("Đã xóa sản phẩm khỏi đơn hàng PO.");
+      setProductPendingRemoval(null);
     } catch (err: unknown) {
       const apiErr = getApiError(err, "Xóa sản phẩm thất bại.");
       showToast(apiErr.message, "error");
@@ -591,7 +604,7 @@ export default function PoDetailPage() {
                 : "border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400"
               }`}
           >
-            Sản phẩm / Mẫu Fit ({activeTab === "lines" ? lines.length : (po.productsCount ?? 0)})
+            Sản phẩm / Mẫu Fit ({productsPage?.total ?? po.productsCount ?? 0})
           </button>
           <button
             type="button"
@@ -1233,7 +1246,7 @@ export default function PoDetailPage() {
                   /* ─── DẠNG GRID (THẺ SẢN PHẨM TỈ LỆ 3*4) ────────────────────────── */
                   <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 gap-3.5">
                     {lines.map((line) => {
-                      const resolvedImg = resolveImageUrl(line.structureImageVersionId);
+                      const resolvedImg = line.structureImageUrl ?? null;
                       return (
                         <div
                           key={line.id}
@@ -1267,7 +1280,7 @@ export default function PoDetailPage() {
                                   type="button"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    void handleRemoveProduct(line.id);
+                                    setProductPendingRemoval(line);
                                   }}
                                   disabled={removeProductMutation.isPending}
                                   className="rounded-md bg-white/90 p-1 text-gray-400 hover:bg-error-50 hover:text-error-600 dark:bg-gray-900/90 dark:hover:bg-error-950/40 dark:hover:text-error-400 shadow-2xs border border-gray-200/60 dark:border-gray-700/60 transition cursor-pointer"
@@ -1369,7 +1382,7 @@ export default function PoDetailPage() {
                                   type="button"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    void handleRemoveProduct(line.id);
+                                    setProductPendingRemoval(line);
                                   }}
                                   disabled={removeProductMutation.isPending}
                                   className="rounded-lg p-1 text-gray-400 hover:bg-error-50 hover:text-error-600 dark:hover:bg-error-950/40 dark:hover:text-error-400 transition-colors cursor-pointer"
@@ -1395,7 +1408,7 @@ export default function PoDetailPage() {
             <div className="flex flex-wrap items-center justify-between border-b border-gray-100 pb-4 dark:border-gray-800 gap-3">
               <div>
                 <h3 className="text-theme-base font-bold text-gray-900 dark:text-white">
-                  Danh sách sản phẩm trong đơn hàng PO ({lines.length})
+                  Danh sách sản phẩm trong đơn hàng PO ({productsPage?.total ?? po.productsCount ?? 0})
                 </h3>
                 <p className="mt-0.5 text-theme-xs text-gray-500 dark:text-gray-400">
                   Quản lý các dòng sản phẩm, Mẫu Fit và tiến độ sản xuất theo PO
@@ -1447,7 +1460,16 @@ export default function PoDetailPage() {
 
             {/* Nội dung danh sách sản phẩm toàn màn hình */}
             <div className="mt-5">
-              {lines.length === 0 ? (
+              {isLoadingProducts ? (
+                // Danh sách nạp khi mở tab, nên phải phân biệt "đang tải" với
+                // "không có sản phẩm" — nếu không sẽ chớp màn hình rỗng kèm
+                // lời mời thêm sản phẩm trước khi dữ liệu về.
+                <div className="p-12 text-center">
+                  <p className="text-theme-sm text-gray-500 dark:text-gray-400">
+                    Đang tải danh sách sản phẩm…
+                  </p>
+                </div>
+              ) : lines.length === 0 ? (
                 <div className="p-12 text-center">
                   <p className="text-theme-base font-semibold text-gray-900 dark:text-white">
                     Chưa có sản phẩm nào thuộc đơn hàng PO này.
@@ -1467,7 +1489,7 @@ export default function PoDetailPage() {
                 /* Dạng Grid 3*4 toàn màn hình */
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
                   {lines.map((line) => {
-                    const resolvedImg = resolveImageUrl(line.structureImageVersionId);
+                    const resolvedImg = line.structureImageUrl ?? null;
                     return (
                       <div
                         key={line.id}
@@ -1501,7 +1523,7 @@ export default function PoDetailPage() {
                                 type="button"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  void handleRemoveProduct(line.id);
+                                  setProductPendingRemoval(line);
                                 }}
                                 disabled={removeProductMutation.isPending}
                                 className="rounded-md bg-white/90 p-1 text-gray-400 hover:bg-error-50 hover:text-error-600 dark:bg-gray-900/90 dark:hover:bg-error-950/40 dark:hover:text-error-400 shadow-2xs border border-gray-200/60 dark:border-gray-700/60 transition cursor-pointer"
@@ -1622,7 +1644,7 @@ export default function PoDetailPage() {
                                 type="button"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  void handleRemoveProduct(line.id);
+                                  setProductPendingRemoval(line);
                                 }}
                                 disabled={removeProductMutation.isPending}
                                 className="rounded-lg p-1.5 text-gray-400 hover:bg-error-50 hover:text-error-600 dark:hover:bg-error-950/40 dark:hover:text-error-400 transition-colors cursor-pointer"
@@ -1639,6 +1661,35 @@ export default function PoDetailPage() {
                 </div>
               )}
             </div>
+            {(productsPage?.totalPages ?? 0) > 1 && (
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 pt-4 dark:border-gray-800">
+                <p className="text-theme-xs text-gray-500 dark:text-gray-400">
+                  Trang {productsPage?.page} / {productsPage?.totalPages} ·{" "}
+                  {productsPage?.total} sản phẩm
+                </p>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="xs"
+                    onClick={() => setProductPage((p) => Math.max(1, p - 1))}
+                    disabled={productPage <= 1 || isLoadingProducts}
+                  >
+                    Trang trước
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="xs"
+                    onClick={() => setProductPage((p) => p + 1)}
+                    disabled={
+                      productPage >= (productsPage?.totalPages ?? 1) ||
+                      isLoadingProducts
+                    }
+                  >
+                    Trang sau
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         )
       )}
@@ -1736,6 +1787,24 @@ export default function PoDetailPage() {
         isSubmitting={deletePoMutation.isPending}
         onConfirm={handleDeletePo}
         onClose={() => setIsDeleteDialogOpen(false)}
+      />
+
+      <ConfirmDialog
+        open={Boolean(productPendingRemoval)}
+        title="Xóa sản phẩm khỏi PO"
+        description={
+          <>
+            Bạn có chắc muốn xóa{" "}
+            <strong>{productPendingRemoval?.productCode}</strong> khỏi đơn hàng{" "}
+            <strong>{po.poCode}</strong>? Toàn bộ màu sắc, size và tài liệu gắn
+            với sản phẩm này sẽ mất theo. Hành động này không thể hoàn tác.
+          </>
+        }
+        confirmLabel="Xóa sản phẩm"
+        variant="danger"
+        isSubmitting={removeProductMutation.isPending}
+        onConfirm={handleRemoveProduct}
+        onClose={() => setProductPendingRemoval(null)}
       />
     </div>
   );

@@ -8,6 +8,7 @@ import type {
   PaginatedResult,
   PoDocumentPreviewResponse,
   PoDocumentQuery,
+  PoProductQuery,
   PoQuery,
   PurchaseOrderDetail,
   PurchaseOrderDocumentItem,
@@ -140,10 +141,13 @@ export const poApi = {
     return response.data;
   },
 
-  async getProducts(id: string): Promise<PurchaseOrderProductItem[]> {
-    const response = await apiClient.get<PurchaseOrderProductItem[]>(
-      `/purchase-orders/${id}/products`,
-    );
+  async getProducts(
+    id: string,
+    query: PoProductQuery = {},
+  ): Promise<PaginatedResult<PurchaseOrderProductItem>> {
+    const response = await apiClient.get<
+      PaginatedResult<PurchaseOrderProductItem>
+    >(`/purchase-orders/${id}/products`, { params: query });
     return response.data;
   },
 
