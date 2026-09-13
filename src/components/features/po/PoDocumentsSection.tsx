@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Button, FileTypeIcon } from "@/components/shared";
+import { Button, ConfirmDialog, FileTypeIcon } from "@/components/shared";
 import { FileIcon, DownloadIcon, TrashBinIcon, EyeIcon } from "@/icons";
 import type { PurchaseOrderDocumentItem } from "@/types/po";
 
@@ -45,7 +45,21 @@ export function PoDocumentsSection({
 }: Props) {
   const [updatingDocId, setUpdatingDocId] = useState<string | null>(null);
   const [isUploadOpen, setIsUploadOpen] = useState(false);
+  const [pendingRemove, setPendingRemove] =
+    useState<PurchaseOrderDocumentItem | null>(null);
+  const [isRemoving, setIsRemoving] = useState(false);
   const [activeCategoryTab, setActiveCategoryTab] = useState<string>("all");
+
+  const handleConfirmRemove = async () => {
+    if (!pendingRemove) return;
+    setIsRemoving(true);
+    try {
+      await onUnlink(pendingRemove.documentId);
+      setPendingRemove(null);
+    } finally {
+      setIsRemoving(false);
+    }
+  };
 
   const categoryCounts = documents.reduce<Record<string, number>>((acc, doc) => {
     const norm = doc.purpose === "techpack" ? "tech_pack" : doc.purpose;
@@ -277,7 +291,7 @@ export function PoDocumentsSection({
                           {!isLocked && (
                             <button
                               type="button"
-                              onClick={() => void onUnlink(doc.documentId)}
+                              onClick={() => setPendingRemove(doc)}
                               disabled={isPending}
                               className="rounded-lg p-1.5 text-gray-400 hover:bg-error-50 hover:text-error-600 dark:hover:bg-error-950/40 dark:hover:text-error-400 transition-colors"
                               title="Gỡ tài liệu khỏi PO"
@@ -295,6 +309,26 @@ export function PoDocumentsSection({
           </div>
         )}
       </div>
+
+      <ConfirmDialog
+        open={pendingRemove !== null}
+        title="Gỡ tài liệu khỏi đơn hàng PO"
+        description={
+          <>
+            Bạn có chắc muốn gỡ{" "}
+            <strong>{pendingRemove?.fileName || pendingRemove?.title}</strong>{" "}
+            khỏi đơn hàng PO này?
+            <br />
+            Tệp gốc vẫn được giữ lại trong hệ thống, chỉ liên kết với PO này bị
+            xóa.
+          </>
+        }
+        confirmLabel="Gỡ tài liệu"
+        variant="danger"
+        isSubmitting={isRemoving || isPending}
+        onConfirm={() => void handleConfirmRemove()}
+        onClose={() => setPendingRemove(null)}
+      />
     </div>
   );
 }
