@@ -99,7 +99,6 @@ describe("userManagementApi", () => {
           email: "a@example.com",
           phone: null,
           roleCode: "NVKH",
-          accountStatus: "active",
         }),
       ).resolves.toMatchObject({ invitationStatus });
     },
@@ -111,7 +110,6 @@ describe("userManagementApi", () => {
       email: "a@example.com",
       phone: null,
       roleCode: "NVKH" as const,
-      accountStatus: "active" as const,
     };
     vi.mocked(apiClient.post)
       .mockResolvedValueOnce({

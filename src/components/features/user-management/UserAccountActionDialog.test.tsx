@@ -56,18 +56,4 @@ describe("UserAccountActionDialog", () => {
     expect(screen.getByText(/mật khẩu hiện tại và tất cả phiên đăng nhập/i)).toBeTruthy();
     expect(screen.queryByRole("textbox")).toBeNull();
   });
-
-  it("warns that the disable reason will be emailed to the user", () => {
-    render(
-      <UserAccountActionDialog
-        action="disable"
-        user={target}
-        isSubmitting={false}
-        onClose={vi.fn()}
-        onConfirm={vi.fn()}
-      />,
-    );
-
-    expect(screen.getByText(/lý do này sẽ được gửi tới email của người dùng/i)).toBeTruthy();
-  });
 });

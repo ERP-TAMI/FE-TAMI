@@ -148,10 +148,10 @@ describe("UserForm", () => {
         expect.objectContaining({
           email: "user@example.com",
           phone: null,
-          accountStatus: "active",
         }),
       ),
     );
+    expect(onSubmit.mock.calls[0][0]).not.toHaveProperty("accountStatus");
   });
 
   it("declares browser autofill semantics for email and phone", () => {

@@ -113,6 +113,7 @@ describe("UsersPage", () => {
     fireEvent.click(submitButtons[submitButtons.length - 1]);
 
     await waitFor(() => expect(create).toHaveBeenCalledTimes(1));
+    expect(create.mock.calls[0][0]).not.toHaveProperty("accountStatus");
     expect(resend).not.toHaveBeenCalled();
     expect(
       await screen.findByText("Đã tạo người dùng. Email đặt mật khẩu đang được gửi."),

@@ -2,7 +2,7 @@ import { useState, type FormEvent } from "react";
 import { Alert, Button, Modal } from "@/components/shared";
 import type { UserListItem } from "@/types/user-management";
 
-export type UserAccountAction = "lock" | "unlock" | "disable" | "reactivate" | "reset";
+export type UserAccountAction = "lock" | "unlock" | "reset";
 
 const content: Record<
   UserAccountAction,
@@ -25,19 +25,6 @@ const content: Record<
     title: "Mở khóa tài khoản",
     confirm: "Mở khóa",
     description: "Người dùng có thể đăng nhập lại ngay sau khi tài khoản được mở khóa.",
-  },
-  disable: {
-    title: "Vô hiệu hóa tài khoản",
-    confirm: "Vô hiệu hóa",
-    description:
-      "Người dùng sẽ bị đăng xuất và không thể đăng nhập cho đến khi được kích hoạt lại.",
-    danger: true,
-    requiresReason: true,
-  },
-  reactivate: {
-    title: "Kích hoạt lại tài khoản",
-    confirm: "Kích hoạt lại",
-    description: "Tài khoản sẽ trở lại trạng thái hoạt động.",
   },
   reset: {
     title: "Đặt lại mật khẩu",
@@ -66,7 +53,7 @@ export function UserAccountActionDialog({
   const [reason, setReason] = useState("");
   const [reasonError, setReasonError] = useState<string>();
   const copy = content[action];
-  const sendsReasonByEmail = action === "lock" || action === "disable";
+  const sendsReasonByEmail = action === "lock";
   const reasonHelpId = sendsReasonByEmail ? "account-action-reason-help" : undefined;
   const reasonErrorId = reasonError ? "account-action-reason-error" : undefined;
   const reasonDescriptionIds = [reasonHelpId, reasonErrorId].filter(Boolean).join(" ");
@@ -122,12 +109,12 @@ export function UserAccountActionDialog({
               htmlFor="account-action-reason"
               className="text-theme-sm mb-1.5 block font-medium text-gray-700 dark:text-gray-300"
             >
-              Lý do {action === "lock" ? "khóa tài khoản" : "vô hiệu hóa"}
+              Lý do khóa tài khoản
               <span className="text-error-500"> *</span>
             </label>
             <textarea
               id="account-action-reason"
-              aria-label={`Lý do ${action === "lock" ? "khóa tài khoản" : "vô hiệu hóa"}`}
+              aria-label="Lý do khóa tài khoản"
               rows={4}
               maxLength={500}
               value={reason}

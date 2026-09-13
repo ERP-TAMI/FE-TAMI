@@ -1,13 +1,6 @@
 import { useEffect, useRef, useState, type ComponentType, type SVGProps } from "react";
 import { createPortal } from "react-dom";
-import {
-  CheckCircleIcon,
-  CloseLineIcon,
-  EnvelopeIcon,
-  LockIcon,
-  MoreDotIcon,
-  UnlockIcon,
-} from "@/icons";
+import { EnvelopeIcon, LockIcon, MoreDotIcon, UnlockIcon } from "@/icons";
 import type { UserListItem } from "@/types/user-management";
 import type { UserAccountAction } from "./UserAccountActionDialog";
 
@@ -17,7 +10,6 @@ type MenuItem = {
   key: string;
   label: string;
   icon: IconComponent;
-  danger?: boolean;
   disabled?: boolean;
   separatorBefore?: boolean;
   onSelect: () => void;
@@ -27,6 +19,8 @@ function accountMenuItems(
   user: UserListItem,
   onAccountAction: (action: UserAccountAction) => void,
 ): MenuItem[] {
+  if (user.accountStatus === "inactive") return [];
+
   const items: MenuItem[] = [];
 
   if (!user.passwordSetupRequired) {
@@ -46,21 +40,6 @@ function accountMenuItems(
       separatorBefore: items.length > 0,
       onSelect: () => onAccountAction("unlock"),
     });
-    items.push({
-      key: "disable",
-      label: "Vô hiệu hóa",
-      icon: CloseLineIcon,
-      danger: true,
-      onSelect: () => onAccountAction("disable"),
-    });
-  } else if (user.accountStatus === "inactive") {
-    items.push({
-      key: "reactivate",
-      label: "Kích hoạt lại",
-      icon: CheckCircleIcon,
-      separatorBefore: items.length > 0,
-      onSelect: () => onAccountAction("reactivate"),
-    });
   } else {
     items.push({
       key: "lock",
@@ -68,13 +47,6 @@ function accountMenuItems(
       icon: LockIcon,
       separatorBefore: items.length > 0,
       onSelect: () => onAccountAction("lock"),
-    });
-    items.push({
-      key: "disable",
-      label: "Vô hiệu hóa",
-      icon: CloseLineIcon,
-      danger: true,
-      onSelect: () => onAccountAction("disable"),
     });
   }
 
@@ -215,11 +187,7 @@ export function UserRowActions({
                     type="button"
                     role="menuitem"
                     disabled={item.disabled}
-                    className={`focus-visible:ring-brand-500/30 flex min-h-9 w-full items-center gap-2.5 rounded-md px-3 py-2 text-left text-sm transition-colors focus:outline-none focus-visible:ring-2 disabled:cursor-wait disabled:opacity-50 ${
-                      item.danger
-                        ? "text-error-600 hover:bg-error-50 dark:text-error-400 dark:hover:bg-error-500/10"
-                        : "text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700"
-                    }`}
+                    className="focus-visible:ring-brand-500/30 flex min-h-9 w-full items-center gap-2.5 rounded-md px-3 py-2 text-left text-sm text-gray-700 transition-colors hover:bg-gray-100 focus:outline-none focus-visible:ring-2 disabled:cursor-wait disabled:opacity-50 dark:text-gray-200 dark:hover:bg-gray-700"
                     onClick={() => {
                       closeMenu();
                       item.onSelect();

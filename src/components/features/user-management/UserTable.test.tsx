@@ -46,9 +46,16 @@ describe("UserTable", () => {
       accountStatus: "locked" as const,
       passwordSetupRequired: false,
     };
+    const inactiveUser = {
+      ...user,
+      id: "33333333-3333-4333-8333-333333333333",
+      fullName: "Tài khoản legacy vô hiệu hóa",
+      accountStatus: "inactive" as const,
+      passwordSetupRequired: false,
+    };
     render(
       <UserTable
-        users={[user, lockedUser]}
+        users={[user, lockedUser, inactiveUser]}
         onEdit={vi.fn()}
         canManage={() => true}
         canManageAccount={() => true}
@@ -72,6 +79,11 @@ describe("UserTable", () => {
     expect(lockedActions.getByRole("menuitem", { name: "Mở khóa" })).toBeTruthy();
     expect(lockedActions.getByRole("menuitem", { name: "Đặt lại mật khẩu" })).toBeTruthy();
     expect(lockedActions.queryByRole("menuitem", { name: "Khóa tài khoản" })).toBeNull();
+    expect(lockedActions.queryByRole("menuitem", { name: "Vô hiệu hóa" })).toBeNull();
+
+    expect(
+      screen.queryByRole("button", { name: `Mở thao tác cho ${inactiveUser.fullName}` }),
+    ).toBeNull();
   });
 
   it("runs an account action from the overflow menu and then closes it", () => {

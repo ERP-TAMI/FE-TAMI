@@ -108,7 +108,6 @@ export default function UsersPage() {
     setFormError(undefined);
     try {
       if (form === "create") {
-        if (!("accountStatus" in input)) return;
         const result = await createUser.mutateAsync(input);
         setForm(null);
         if (result.invitationStatus === "pending") {
@@ -156,8 +155,6 @@ export default function UsersPage() {
         const statusByAction = {
           lock: "locked",
           unlock: "active",
-          disable: "inactive",
-          reactivate: "active",
         } as const;
         await updateStatus.mutateAsync({
           id: accountAction.user.id,
@@ -166,8 +163,6 @@ export default function UsersPage() {
         const successMessage = {
           lock: "Đã khóa tài khoản.",
           unlock: "Đã mở khóa tài khoản.",
-          disable: "Đã vô hiệu hóa tài khoản.",
-          reactivate: "Đã kích hoạt lại tài khoản.",
         }[accountAction.action];
         showToast(successMessage, "success");
       }

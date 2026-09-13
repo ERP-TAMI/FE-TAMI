@@ -101,7 +101,7 @@ export function UserForm({
             phone: values.phone || null,
             roleCode: values.roleCode,
           };
-          onSubmit(mode === "create" ? { ...normalized, accountStatus: "active" } : normalized);
+          onSubmit(normalized);
         })}
         noValidate
       >

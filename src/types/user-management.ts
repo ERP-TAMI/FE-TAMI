@@ -1,6 +1,6 @@
 export type UserRoleCode = "SA" | "TPKH" | "NVKH" | "RD" | "ACCOUNTING" | "IT";
-export type EditableUserAccountStatus = "active" | "locked" | "inactive";
-export type UserAccountStatus = EditableUserAccountStatus | "pending_setup";
+export type EditableUserAccountStatus = "active" | "locked";
+export type UserAccountStatus = EditableUserAccountStatus | "pending_setup" | "inactive";
 export type PasswordSetupEmailStatus = "pending" | "sent" | "failed";
 
 export type UserRole = {
@@ -27,9 +27,7 @@ export type UpdateUserInput = {
   roleCode: UserRoleCode;
 };
 
-export type UserInput = UpdateUserInput & {
-  accountStatus: EditableUserAccountStatus;
-};
+export type UserInput = UpdateUserInput;
 
 export type AccountStatusInput = {
   accountStatus: EditableUserAccountStatus;
