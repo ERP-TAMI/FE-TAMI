@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import { Toast, Button, Modal } from "@/components/shared";
 import {
   usePurchaseOrder,
+  usePoDocuments,
   usePoProductDetail,
   useUpdatePoProduct,
   useUpdateProductStatus,
@@ -278,6 +279,14 @@ export default function PoProductDetailPage() {
 
   // Local state for PO document picker modal
   const [isLinkPoDocOpen, setIsLinkPoDocOpen] = useState(false);
+
+  // Kho tài liệu của PO chỉ cần khi mở modal gán tài liệu vào sản phẩm.
+  const { data: poDocumentsPage } = usePoDocuments(
+    poId,
+    { page: 1, limit: 100 },
+    { enabled: isLinkPoDocOpen },
+  );
+  const poStoreDocuments = poDocumentsPage?.items ?? [];
 
   // Local state for direct document upload modal
   const [isUploadDocOpen, setIsUploadDocOpen] = useState(false);
@@ -2359,13 +2368,13 @@ export default function PoProductDetailPage() {
               Chọn tài liệu từ kho PO để gán vào sản phẩm. Tài liệu sẽ tự động nằm đúng mục theo phân loại gốc bên ngoài (<strong>PO Chi Tiết</strong>, <strong>TechPack</strong> hoặc <strong>Khác</strong>).
             </p>
 
-            {!po?.documents || po.documents.length === 0 ? (
+            {poStoreDocuments.length === 0 ? (
               <p className="text-xs text-gray-400 italic">
                 Đơn hàng PO này chưa có tài liệu nào trong kho tài liệu chung.
               </p>
             ) : (
               <div className="max-h-80 overflow-y-auto space-y-2">
-                {po.documents.map((d) => {
+                {poStoreDocuments.map((d) => {
                   const alreadyLinked = product.documents?.some((doc) => doc.documentId === d.documentId);
                   const isPo = isPoDetailPurpose(d.purpose);
                   const isTp = isTechPackPurpose(d.purpose);

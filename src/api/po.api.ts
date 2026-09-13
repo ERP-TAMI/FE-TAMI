@@ -5,7 +5,9 @@ import type {
   CreatePoProductInput,
   LinkPoDocumentInput,
   PaginatedPoResponse,
+  PaginatedResult,
   PoDocumentPreviewResponse,
+  PoDocumentQuery,
   PoQuery,
   PurchaseOrderDetail,
   PurchaseOrderDocumentItem,
@@ -60,6 +62,16 @@ export const poApi = {
     const response = await apiClient.get<PurchaseOrderDetail>(
       `/purchase-orders/${id}`,
     );
+    return response.data;
+  },
+
+  async getDocuments(
+    id: string,
+    query: PoDocumentQuery = {},
+  ): Promise<PaginatedResult<PurchaseOrderDocumentItem>> {
+    const response = await apiClient.get<
+      PaginatedResult<PurchaseOrderDocumentItem>
+    >(`/purchase-orders/${id}/documents`, { params: query });
     return response.data;
   },
 
@@ -219,22 +231,27 @@ export const poApi = {
     return poApi.confirmDocument(id, presign.objectKey, file, purpose);
   },
 
+  /**
+   * Tải nhiều tệp cùng lúc.
+   *
+   * Đi qua đúng luồng presign → PUT S3 → confirm như `uploadDocument`. Trước
+   * đây hàm này gọi `documents/upload-multiple` (multipart), mà endpoint đó
+   * lưu tệp xuống ổ đĩa của server trong khi đường đọc luôn ký URL S3 — hệ quả
+   * là mọi tệp tải lên theo lô đều không mở xem được.
+   *
+   * Chạy tuần tự chứ không Promise.all: mỗi tệp là 3 lượt gọi mạng, bắn song
+   * song một lô lớn dễ làm nghẽn cả trình duyệt lẫn S3.
+   */
   async uploadDocuments(
     id: string,
     files: File[],
     purpose: string = "po_original",
   ): Promise<PurchaseOrderDocumentItem[]> {
-    const formData = new FormData();
-    files.forEach((file) => formData.append("files", file));
-    const response = await apiClient.post<PurchaseOrderDocumentItem[]>(
-      `/purchase-orders/${id}/documents/upload-multiple`,
-      formData,
-      {
-        params: { purpose },
-        headers: { "Content-Type": "multipart/form-data" },
-      },
-    );
-    return response.data;
+    const uploaded: PurchaseOrderDocumentItem[] = [];
+    for (const file of files) {
+      uploaded.push(await poApi.uploadDocument(id, file, purpose));
+    }
+    return uploaded;
   },
 
   async previewDocument(
