@@ -5,12 +5,23 @@ import PageMeta from "@/components/shared/PageMeta";
 import { UserTable } from "@/components/features/user-management/UserTable";
 import { UserToolbar } from "@/components/features/user-management/UserToolbar";
 import { UserForm } from "@/components/features/user-management/UserForm";
-import { useCreateUser, useResendPasswordSetup, useUpdateUser, useUsers } from "@/hooks/useUsers";
+import {
+  UserAccountActionDialog,
+  type UserAccountAction,
+} from "@/components/features/user-management/UserAccountActionDialog";
+import {
+  useCreateUser,
+  useResendPasswordSetup,
+  useResetUserPassword,
+  useUpdateUser,
+  useUpdateUserStatus,
+  useUsers,
+} from "@/hooks/useUsers";
 import { getApiError, type ApiError } from "@/lib/apiError";
 import { useToast } from "@/hooks/useToast";
 import { useAuthStore } from "@/store/authStore";
 import type { UserAccountStatus, UserListItem, UserRoleCode } from "@/types/user-management";
-import type { UserInput } from "@/types/user-management";
+import type { UpdateUserInput, UserInput } from "@/types/user-management";
 
 const PAGE_SIZE = 10;
 const emptyUsers: UserListItem[] = [];
@@ -24,10 +35,17 @@ export default function UsersPage() {
   const [page, setPage] = useState(1);
   const [form, setForm] = useState<"create" | UserListItem | null>(null);
   const [formError, setFormError] = useState<ApiError>();
+  const [accountAction, setAccountAction] = useState<{
+    user: UserListItem;
+    action: UserAccountAction;
+  } | null>(null);
+  const [accountActionError, setAccountActionError] = useState<string>();
   const currentUser = useAuthStore((state) => state.user);
   const createUser = useCreateUser();
   const updateUser = useUpdateUser();
   const resend = useResendPasswordSetup();
+  const updateStatus = useUpdateUserStatus();
+  const resetPassword = useResetUserPassword();
   const { toast, showToast, hideToast } = useToast();
   const users = useUsers({
     search: debouncedSearch,
@@ -62,6 +80,13 @@ export default function UsersPage() {
       target.id === currentUser?.id ||
       !["SA", "IT"].includes(target.role.code));
 
+  const canManageAccount = (target: UserListItem) =>
+    target.role !== null &&
+    target.id !== currentUser?.id &&
+    (currentUser?.roleCode === "SA" ||
+      (currentUser?.roleCode === "IT" &&
+        ["TPKH", "NVKH", "RD", "ACCOUNTING"].includes(target.role.code)));
+
   const sendPasswordSetupEmail = async (target: UserListItem) => {
     try {
       const result = await resend.mutateAsync(target.id);
@@ -79,10 +104,11 @@ export default function UsersPage() {
     }
   };
 
-  const submitUser = async (input: UserInput) => {
+  const submitUser = async (input: UserInput | UpdateUserInput) => {
     setFormError(undefined);
     try {
       if (form === "create") {
+        if (!("accountStatus" in input)) return;
         const result = await createUser.mutateAsync(input);
         setForm(null);
         if (result.invitationStatus === "pending") {
@@ -116,6 +142,40 @@ export default function UsersPage() {
       setForm(null);
     } catch (error) {
       setFormError(getApiError(error, "Không thể lưu người dùng. Vui lòng thử lại."));
+    }
+  };
+
+  const submitAccountAction = async (reason?: string) => {
+    if (!accountAction) return;
+    setAccountActionError(undefined);
+    try {
+      if (accountAction.action === "reset") {
+        await resetPassword.mutateAsync(accountAction.user.id);
+        showToast("Đã thu hồi mật khẩu cũ. Email đặt mật khẩu đang được gửi.", "success");
+      } else {
+        const statusByAction = {
+          lock: "locked",
+          unlock: "active",
+          disable: "inactive",
+          reactivate: "active",
+        } as const;
+        await updateStatus.mutateAsync({
+          id: accountAction.user.id,
+          input: { accountStatus: statusByAction[accountAction.action], reason },
+        });
+        const successMessage = {
+          lock: "Đã khóa tài khoản.",
+          unlock: "Đã mở khóa tài khoản.",
+          disable: "Đã vô hiệu hóa tài khoản.",
+          reactivate: "Đã kích hoạt lại tài khoản.",
+        }[accountAction.action];
+        showToast(successMessage, "success");
+      }
+      setAccountAction(null);
+    } catch (error) {
+      setAccountActionError(
+        getApiError(error, "Không thể thực hiện thao tác. Vui lòng thử lại.").message,
+      );
     }
   };
 
@@ -180,6 +240,11 @@ export default function UsersPage() {
               <UserTable
                 users={users.data.data}
                 canManage={canManage}
+                canManageAccount={canManageAccount}
+                onAccountAction={(target, action) => {
+                  setAccountActionError(undefined);
+                  setAccountAction({ user: target, action });
+                }}
                 onEdit={(target) => {
                   setFormError(undefined);
                   setForm(target);
@@ -209,6 +274,16 @@ export default function UsersPage() {
           serverError={formError}
           onClose={() => setForm(null)}
           onSubmit={(input) => void submitUser(input)}
+        />
+      )}
+      {accountAction && (
+        <UserAccountActionDialog
+          action={accountAction.action}
+          user={accountAction.user}
+          isSubmitting={updateStatus.isPending || resetPassword.isPending}
+          serverError={accountActionError}
+          onClose={() => setAccountAction(null)}
+          onConfirm={(reason) => void submitAccountAction(reason)}
         />
       )}
       <Toast

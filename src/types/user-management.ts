@@ -20,12 +20,20 @@ export type UserListItem = {
   passwordSetupEmailAttemptedAt: string | null;
 };
 
-export type UserInput = {
+export type UpdateUserInput = {
   fullName: string;
   email: string;
   phone: string | null;
   roleCode: UserRoleCode;
+};
+
+export type UserInput = UpdateUserInput & {
   accountStatus: EditableUserAccountStatus;
+};
+
+export type AccountStatusInput = {
+  accountStatus: EditableUserAccountStatus;
+  reason?: string;
 };
 
 export type CreateUserResponse = {
@@ -39,6 +47,11 @@ export type UpdateUserResponse = {
 };
 
 export type InvitationResponse = { invitationStatus: "sent" | "failed" };
+export type AccountStatusResponse = { user: UserListItem };
+export type PasswordResetResponse = {
+  user: UserListItem;
+  invitationStatus: "pending";
+};
 
 export type UserListParams = {
   search?: string;

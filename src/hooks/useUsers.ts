@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { userManagementApi } from "@/api/user-management.api";
 import { userManagementKeys } from "@/api/user-management.keys";
 import type { UserListParams } from "@/types/user-management";
-import type { UserInput } from "@/types/user-management";
+import type { AccountStatusInput, UpdateUserInput, UserInput } from "@/types/user-management";
 
 export function useUsers(params: UserListParams) {
   return useQuery({
@@ -22,8 +22,25 @@ export function useCreateUser() {
 export function useUpdateUser() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, input }: { id: string; input: UserInput }) =>
+    mutationFn: ({ id, input }: { id: string; input: UpdateUserInput }) =>
       userManagementApi.update(id, input),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: userManagementKeys.all }),
+  });
+}
+
+export function useUpdateUserStatus() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: AccountStatusInput }) =>
+      userManagementApi.updateAccountStatus(id, input),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: userManagementKeys.all }),
+  });
+}
+
+export function useResetUserPassword() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => userManagementApi.resetPassword(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: userManagementKeys.all }),
   });
 }

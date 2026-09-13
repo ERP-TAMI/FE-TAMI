@@ -9,6 +9,8 @@ const hooks = vi.hoisted(() => ({
   useCreateUser: vi.fn(),
   useUpdateUser: vi.fn(),
   useResendPasswordSetup: vi.fn(),
+  useUpdateUserStatus: vi.fn(),
+  useResetUserPassword: vi.fn(),
 }));
 
 vi.mock("@/hooks/useUsers", () => hooks);
@@ -50,6 +52,8 @@ describe("UsersPage", () => {
     hooks.useCreateUser.mockReturnValue({ mutateAsync: vi.fn(), isPending: false });
     hooks.useUpdateUser.mockReturnValue({ mutateAsync: vi.fn(), isPending: false });
     hooks.useResendPasswordSetup.mockReturnValue({ mutateAsync: vi.fn(), isPending: false });
+    hooks.useUpdateUserStatus.mockReturnValue({ mutateAsync: vi.fn(), isPending: false });
+    hooks.useResetUserPassword.mockReturnValue({ mutateAsync: vi.fn(), isPending: false });
     useAuthStore.setState({
       status: "authenticated",
       accessToken: "test-token",
@@ -197,10 +201,68 @@ describe("UsersPage", () => {
     hooks.useResendPasswordSetup.mockReturnValue({ mutateAsync: resend, isPending: false });
     renderPage();
 
-    fireEvent.click(screen.getByRole("button", { name: "Gửi lại email" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: `Mở thao tác cho ${pendingUser.fullName}` }),
+    );
+    fireEvent.click(screen.getByRole("menuitem", { name: "Gửi lại email" }));
 
     await waitFor(() => expect(resend).toHaveBeenCalledWith(pendingUser.id));
     expect(await screen.findByText("Đã gửi email đặt mật khẩu.")).toBeTruthy();
+  });
+
+  it("locks a managed account only after collecting a reason", async () => {
+    const updateStatus = vi.fn().mockResolvedValue({ user });
+    hooks.useUpdateUserStatus.mockReturnValue({ mutateAsync: updateStatus, isPending: false });
+    renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: `Mở thao tác cho ${user.fullName}` }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Khóa tài khoản" }));
+    fireEvent.change(await screen.findByLabelText("Lý do khóa tài khoản"), {
+      target: { value: "Kiểm tra truy cập bất thường" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Khóa tài khoản" }));
+
+    await waitFor(() =>
+      expect(updateStatus).toHaveBeenCalledWith({
+        id: user.id,
+        input: { accountStatus: "locked", reason: "Kiểm tra truy cập bất thường" },
+      }),
+    );
+    expect(await screen.findByText("Đã khóa tài khoản.")).toBeTruthy();
+  });
+
+  it("does not expose protected SA or IT account actions to an IT actor", () => {
+    const businessUser = {
+      ...user,
+      id: "33333333-3333-4333-8333-333333333333",
+      fullName: "Nhân viên kinh doanh",
+      role: { code: "NVKH" as const, name: "Nhân viên Kinh doanh" },
+    };
+    hooks.useUsers.mockReturnValue(
+      result({
+        data: {
+          data: [user, businessUser],
+          meta: { total: 2, page: 1, limit: 10, totalPages: 1 },
+        },
+      }),
+    );
+    useAuthStore.setState({
+      user: {
+        id: "11111111-1111-4111-8111-111111111111",
+        email: "actor@tami.test",
+        fullName: "IT actor",
+        roleCode: "IT",
+        roleName: "IT",
+        permissions: ["system.users.manage"],
+      },
+    });
+
+    renderPage();
+
+    expect(screen.queryByRole("button", { name: `Mở thao tác cho ${user.fullName}` })).toBeNull();
+    expect(
+      screen.getByRole("button", { name: `Mở thao tác cho ${businessUser.fullName}` }),
+    ).toBeTruthy();
   });
 
   it.each([

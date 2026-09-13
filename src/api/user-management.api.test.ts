@@ -141,4 +141,24 @@ describe("userManagementApi", () => {
     );
     expect(apiClient.patch).toHaveBeenCalledWith(`/system/users/${response.data[0].id}`, input);
   });
+
+  it("updates account status with its reason and requests an admin password reset", async () => {
+    const target = response.data[0];
+    vi.mocked(apiClient.patch).mockResolvedValue({ data: { user: target } });
+    vi.mocked(apiClient.post).mockResolvedValue({
+      data: { user: { ...target, accountStatus: "pending_setup" }, invitationStatus: "pending" },
+    });
+
+    await userManagementApi.updateAccountStatus(target.id, {
+      accountStatus: "locked",
+      reason: "Nghi ngờ lộ tài khoản",
+    });
+    await userManagementApi.resetPassword(target.id);
+
+    expect(apiClient.patch).toHaveBeenCalledWith(`/system/users/${target.id}/account-status`, {
+      accountStatus: "locked",
+      reason: "Nghi ngờ lộ tài khoản",
+    });
+    expect(apiClient.post).toHaveBeenCalledWith(`/system/users/${target.id}/password-reset`);
+  });
 });

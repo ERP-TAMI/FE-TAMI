@@ -35,6 +35,15 @@ export const invitationResponseSchema = z.object({
   invitationStatus: z.enum(["sent", "failed"]),
 });
 
+export const accountStatusResponseSchema = z.object({
+  user: userListItemSchema,
+});
+
+export const passwordResetResponseSchema = z.object({
+  user: userListItemSchema,
+  invitationStatus: z.literal("pending"),
+});
+
 export const userListResponseSchema = z.object({
   data: z.array(userListItemSchema),
   meta: z.object({

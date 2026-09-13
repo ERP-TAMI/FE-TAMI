@@ -2,11 +2,15 @@ import { Table, type TableColumn } from "@/components/shared/Table";
 import type { UserListItem } from "@/types/user-management";
 import { UserStatusBadge } from "./UserStatusBadge";
 import { AlertCircle } from "lucide-react";
+import type { UserAccountAction } from "./UserAccountActionDialog";
+import { UserRowActions } from "./UserRowActions";
 
 function buildColumns(
   onEdit?: (user: UserListItem) => void,
   onResend?: (user: UserListItem) => void,
   canManage?: (user: UserListItem) => boolean,
+  canManageAccount?: (user: UserListItem) => boolean,
+  onAccountAction?: (user: UserListItem, action: UserAccountAction) => void,
   resendingUserId?: string,
 ): TableColumn<UserListItem>[] {
   const columns: TableColumn<UserListItem>[] = [
@@ -51,44 +55,37 @@ function buildColumns(
     columns.push({
       key: "actions",
       header: "Thao tác",
-      width: "w-[14%]",
+      width: "w-[12%]",
       render: (user) =>
         canManage?.(user) === false ? (
           <span className="text-gray-400">—</span>
         ) : (
-          <div className="flex flex-wrap gap-2">
+          <div className="flex min-w-22 items-center gap-2 whitespace-nowrap">
             <button
               type="button"
-              className="text-theme-xs text-brand-600 dark:text-brand-400 hover:underline"
+              className="text-theme-xs text-brand-600 hover:bg-brand-50 focus-visible:ring-brand-500/30 dark:text-brand-400 dark:hover:bg-brand-500/10 rounded-md px-1.5 py-1 font-medium focus:outline-none focus-visible:ring-2"
               onClick={() => onEdit(user)}
             >
               Sửa
             </button>
-            {user.passwordSetupRequired && onResend && (
-              <span className="inline-flex items-center gap-1.5">
-                {user.passwordSetupEmailStatus === "failed" && (
-                  <span
-                    aria-label="Lần gửi email đặt mật khẩu gần nhất thất bại"
-                    title="Email đặt mật khẩu chưa gửi được. Hãy thử gửi lại."
-                    className="text-error-500 dark:text-error-400 inline-flex"
-                  >
-                    <AlertCircle aria-hidden="true" className="h-4 w-4" />
-                  </span>
-                )}
-                <button
-                  type="button"
-                  className="text-theme-xs text-gray-600 hover:underline disabled:cursor-wait disabled:opacity-50 dark:text-gray-300"
-                  disabled={resendingUserId === user.id}
-                  onClick={() => onResend(user)}
-                >
-                  {resendingUserId === user.id
-                    ? "Đang gửi..."
-                    : user.passwordSetupEmailStatus === null
-                      ? "Gửi email"
-                      : "Gửi lại email"}
-                </button>
+            {user.passwordSetupRequired && user.passwordSetupEmailStatus === "failed" && (
+              <span
+                aria-label="Lần gửi email đặt mật khẩu gần nhất thất bại"
+                title="Email đặt mật khẩu chưa gửi được. Hãy mở menu thao tác để gửi lại."
+                className="text-error-500 dark:text-error-400 inline-flex"
+              >
+                <AlertCircle aria-hidden="true" className="h-4 w-4" />
               </span>
             )}
+            <UserRowActions
+              user={user}
+              onResend={user.passwordSetupRequired && onResend ? () => onResend(user) : undefined}
+              canManageAccount={Boolean(canManageAccount?.(user))}
+              onAccountAction={
+                onAccountAction ? (action) => onAccountAction(user, action) : undefined
+              }
+              resending={resendingUserId === user.id}
+            />
           </div>
         ),
     });
@@ -102,6 +99,8 @@ export function UserTable({
   onEdit,
   onResend,
   canManage,
+  canManageAccount,
+  onAccountAction,
   resendingUserId,
 }: {
   users: UserListItem[];
@@ -109,12 +108,21 @@ export function UserTable({
   onEdit?: (user: UserListItem) => void;
   onResend?: (user: UserListItem) => void;
   canManage?: (user: UserListItem) => boolean;
+  canManageAccount?: (user: UserListItem) => boolean;
+  onAccountAction?: (user: UserListItem, action: UserAccountAction) => void;
   resendingUserId?: string;
 }) {
   return (
     <Table
       embedded
-      columns={buildColumns(onEdit, onResend, canManage, resendingUserId)}
+      columns={buildColumns(
+        onEdit,
+        onResend,
+        canManage,
+        canManageAccount,
+        onAccountAction,
+        resendingUserId,
+      )}
       rows={users}
       getRowKey={(user) => user.id}
       loading={loading}
