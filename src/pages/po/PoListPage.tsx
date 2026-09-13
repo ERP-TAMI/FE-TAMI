@@ -148,7 +148,7 @@ export default function PoListPage() {
 
       <PageHeader
         breadcrumb={[
-          { label: "Trang chủ", to: "/" },
+          { label: "Dashboard", to: "/dashboard" },
           { label: "Quản lý Purchase Orders" },
         ]}
         title="Quản lý Purchase Orders"

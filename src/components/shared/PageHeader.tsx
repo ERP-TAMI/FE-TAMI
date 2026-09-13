@@ -37,50 +37,53 @@ const statToneClasses: Record<PageHeaderStatTone, string> = {
 
 export function PageHeader({ breadcrumb, title, stats, action }: PageHeaderProps) {
   return (
-    <>
-      <nav
-        aria-label="Điều hướng phân cấp"
-        className="text-theme-xs flex items-center gap-2 text-gray-500 dark:text-gray-400"
-      >
-        {breadcrumb.map((item, index) => {
-          const isLast = index === breadcrumb.length - 1;
-          return (
-            <span key={item.label} className="flex items-center gap-2">
-              {index > 0 && <span aria-hidden="true">/</span>}
-              {isLast ? (
-                <span aria-current="page" className="font-medium text-gray-700 dark:text-gray-200">
-                  {item.label}
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-wrap items-center gap-3">
+        <h1 id="page-title" className="text-xl font-semibold text-gray-900 dark:text-white">
+          {title}
+        </h1>
+        {stats && stats.length > 0 && (
+          <div className="text-theme-xs flex items-center gap-2 rounded-full border border-gray-200/80 bg-gray-100 px-2.5 py-1 font-medium text-gray-500 dark:border-gray-700/80 dark:bg-gray-800/80 dark:text-gray-400">
+            {stats.map((stat, index) => (
+              <span key={stat.label} className="flex items-center gap-2">
+                {index > 0 && <span aria-hidden="true">•</span>}
+                <span className={statToneClasses[stat.tone ?? "neutral"]}>
+                  {stat.value} {stat.label}
                 </span>
-              ) : item.to ? (
-                <Link to={item.to} className="hover:text-gray-700 dark:hover:text-gray-200">
-                  {item.label}
-                </Link>
-              ) : (
-                <span>{item.label}</span>
-              )}
-            </span>
-          );
-        })}
-      </nav>
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
 
-      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-        <div className="flex flex-wrap items-center gap-3">
-          <h1 id="page-title" className="text-title-md font-semibold text-gray-900 dark:text-white">
-            {title}
-          </h1>
-          {stats && stats.length > 0 && (
-            <div className="text-theme-xs flex items-center gap-2 rounded-full border border-gray-200/80 bg-gray-100 px-2.5 py-1 font-medium text-gray-500 dark:border-gray-700/80 dark:bg-gray-800/80 dark:text-gray-400">
-              {stats.map((stat, index) => (
-                <span key={stat.label} className="flex items-center gap-2">
-                  {index > 0 && <span aria-hidden="true">•</span>}
-                  <span className={statToneClasses[stat.tone ?? "neutral"]}>
-                    {stat.value} {stat.label}
+      <div className="flex flex-wrap items-center gap-4">
+        <nav
+          aria-label="Điều hướng phân cấp"
+          className="text-theme-xs flex items-center gap-2 text-gray-500 dark:text-gray-400"
+        >
+          {breadcrumb.map((item, index) => {
+            const isLast = index === breadcrumb.length - 1;
+            return (
+              <span key={item.label} className="flex items-center gap-2">
+                {index > 0 && <span aria-hidden="true">/</span>}
+                {isLast ? (
+                  <span
+                    aria-current="page"
+                    className="font-medium text-gray-700 dark:text-gray-200"
+                  >
+                    {item.label}
                   </span>
-                </span>
-              ))}
-            </div>
-          )}
-        </div>
+                ) : item.to ? (
+                  <Link to={item.to} className="hover:text-gray-700 dark:hover:text-gray-200">
+                    {item.label}
+                  </Link>
+                ) : (
+                  <span>{item.label}</span>
+                )}
+              </span>
+            );
+          })}
+        </nav>
         {action && (
           <Button onClick={action.onClick}>
             {action.icon}
@@ -88,6 +91,6 @@ export function PageHeader({ breadcrumb, title, stats, action }: PageHeaderProps
           </Button>
         )}
       </div>
-    </>
+    </div>
   );
 }

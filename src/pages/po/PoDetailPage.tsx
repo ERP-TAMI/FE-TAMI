@@ -42,21 +42,76 @@ import type {
   PurchaseOrderDocumentItem,
 } from "@/types/po";
 
+const DATE_FORMAT_OPTIONS: Intl.DateTimeFormatOptions = {
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+};
+
 function formatDate(dateStr: string | null | undefined): string {
   if (!dateStr) return "—";
   const d = new Date(dateStr);
   if (isNaN(d.getTime())) return dateStr;
-  return d.toLocaleDateString("vi-VN");
+  return d.toLocaleDateString("vi-VN", DATE_FORMAT_OPTIONS);
 }
 
 function formatDateTime(dateStr: string | null | undefined): string {
   if (!dateStr) return "—";
   const d = new Date(dateStr);
   if (isNaN(d.getTime())) return dateStr;
-  return `${d.toLocaleDateString("vi-VN")} ${d.toLocaleTimeString("vi-VN", {
+  return `${d.toLocaleDateString("vi-VN", DATE_FORMAT_OPTIONS)} ${d.toLocaleTimeString("vi-VN", {
     hour: "2-digit",
     minute: "2-digit",
   })}`;
+}
+
+/** Số ngày còn lại tính từ đó Hạn hoàn thành được coi là "sắp tới hạn". */
+const DEADLINE_SOON_DAYS = 7;
+
+type DeadlineTone = "overdue" | "soon" | "normal";
+
+const deadlineValueClasses: Record<DeadlineTone, string> = {
+  overdue: "text-error-600 dark:text-error-400",
+  soon: "text-warning-600 dark:text-warning-400",
+  normal: "text-gray-800 dark:text-gray-200",
+};
+
+const deadlineHintClasses: Record<DeadlineTone, string> = {
+  overdue:
+    "border-error-200 bg-error-50 text-error-700 dark:border-error-900/40 dark:bg-error-950/40 dark:text-error-300",
+  soon: "border-warning-200 bg-warning-50 text-warning-700 dark:border-warning-900/40 dark:bg-warning-950/40 dark:text-warning-300",
+  normal: "",
+};
+
+/**
+ * Trạng thái hạn hoàn thành. PO đã khóa hoặc đã hủy thì không cảnh báo nữa
+ * vì đơn đã kết thúc, tô đỏ chỉ gây nhiễu.
+ */
+function getDeadlineInfo(
+  deadline: string | null | undefined,
+  status: PoStatus | undefined,
+): { tone: DeadlineTone; hint: string | null } {
+  if (!deadline || status === "closed" || status === "cancelled") {
+    return { tone: "normal", hint: null };
+  }
+
+  const due = new Date(deadline);
+  if (isNaN(due.getTime())) return { tone: "normal", hint: null };
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  due.setHours(0, 0, 0, 0);
+
+  const diffDays = Math.round((due.getTime() - today.getTime()) / 86_400_000);
+
+  if (diffDays < 0) {
+    return { tone: "overdue", hint: `Quá hạn ${Math.abs(diffDays)} ngày` };
+  }
+  if (diffDays === 0) return { tone: "soon", hint: "Đến hạn hôm nay" };
+  if (diffDays <= DEADLINE_SOON_DAYS) {
+    return { tone: "soon", hint: `Còn ${diffDays} ngày` };
+  }
+  return { tone: "normal", hint: null };
 }
 
 export default function PoDetailPage() {
@@ -276,6 +331,7 @@ export default function PoDetailPage() {
   });
 
   const isLocked = po?.status === "closed" || po?.status === "cancelled";
+  const deadlineInfo = getDeadlineInfo(po?.deadline, po?.status);
 
   const startEdit = () => {
     if (!po) return;
@@ -501,7 +557,7 @@ export default function PoDetailPage() {
     productsData || po.products || po.lines || [];
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-3">
       {toast && (
         <Toast
           open={!!toast}
@@ -514,7 +570,7 @@ export default function PoDetailPage() {
       {/* Breadcrumb Header */}
       <PageHeader
         breadcrumb={[
-          { label: "Trang chủ", to: "/" },
+          { label: "Dashboard", to: "/dashboard" },
           { label: "Quản lý PO", to: "/po" },
           { label: po.poCode },
         ]}
@@ -522,11 +578,11 @@ export default function PoDetailPage() {
       />
 
       {/* Unified PO Header Card */}
-      <div className="rounded-2xl border border-gray-200 bg-white px-6 py-4 shadow-xs dark:border-gray-800 dark:bg-gray-900">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex flex-wrap items-center gap-x-5 sm:gap-x-6 gap-y-2">
-            <div className="flex items-center gap-3 shrink-0">
-              <h1 className="font-mono text-2xl sm:text-3xl font-extrabold tracking-tight leading-none text-gray-900 dark:text-white">
+      <div className="-mt-1 rounded-2xl border border-gray-200 bg-white px-4 py-2.5 shadow-xs dark:border-gray-800 dark:bg-gray-900">
+        <div className="flex flex-col gap-2.5 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-wrap items-center gap-x-4 sm:gap-x-5 gap-y-2">
+            <div className="flex items-center gap-2.5 shrink-0">
+              <h1 className="font-mono text-base sm:text-lg font-bold tracking-tight leading-none text-gray-900 dark:text-white">
                 {po.poCode}
               </h1>
               <PoStatusBadge status={po.status} />
@@ -537,7 +593,7 @@ export default function PoDetailPage() {
             {po.status === "draft" && (
               <>
                 <Button
-                  size="sm"
+                  size="xs"
                   onClick={() => handleStatusButtonClick("in_progress")}
                   disabled={updateStatusMutation.isPending}
                 >
@@ -545,7 +601,7 @@ export default function PoDetailPage() {
                 </Button>
                 <Button
                   variant="outline"
-                  size="sm"
+                  size="xs"
                   onClick={() => handleStatusButtonClick("cancelled")}
                   disabled={updateStatusMutation.isPending}
                 >
@@ -553,7 +609,7 @@ export default function PoDetailPage() {
                 </Button>
                 <Button
                   variant="outline"
-                  size="sm"
+                  size="xs"
                   onClick={() => setIsDeleteDialogOpen(true)}
                   disabled={updateStatusMutation.isPending}
                   className="text-red-600 border-red-200 hover:bg-red-50 dark:text-red-400 dark:border-red-900/40"
@@ -566,7 +622,7 @@ export default function PoDetailPage() {
             {(po.status === "in_progress" || po.status === "pending_rd") && (
               <>
                 <Button
-                  size="sm"
+                  size="xs"
                   onClick={() => handleStatusButtonClick("closed")}
                   disabled={updateStatusMutation.isPending}
                 >
@@ -574,7 +630,7 @@ export default function PoDetailPage() {
                 </Button>
                 <Button
                   variant="outline"
-                  size="sm"
+                  size="xs"
                   onClick={() => handleStatusButtonClick("cancelled")}
                   disabled={updateStatusMutation.isPending}
                 >
@@ -599,7 +655,7 @@ export default function PoDetailPage() {
       </div>
 
       {/* Tabs Navigation & Split Screen Toggle */}
-      <div className="flex flex-wrap items-center justify-between border-b border-gray-200 dark:border-gray-800 gap-2">
+      <div className="-mt-1 flex flex-wrap items-center justify-between border-b border-gray-200 dark:border-gray-800 gap-2">
         <nav className="-mb-px flex gap-6 text-theme-sm font-semibold">
           <button
             type="button"
@@ -672,12 +728,12 @@ export default function PoDetailPage() {
       {/* Tab 1: Thông tin chung */}
       {activeTab === "general" && (
         <div className="space-y-5">
-          <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-xs dark:border-gray-800 dark:bg-gray-900">
-            <div className="flex items-center justify-between border-b border-gray-100 pb-4 dark:border-gray-800">
+          <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-xs dark:border-gray-800 dark:bg-gray-900">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-3 dark:border-gray-800">
               <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-50 text-brand-600 dark:bg-brand-950/50 dark:text-brand-400">
+                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-brand-50 text-brand-600 dark:bg-brand-950/50 dark:text-brand-400">
                   <svg
-                    className="h-5 w-5"
+                    className="h-4 w-4"
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"
@@ -691,7 +747,7 @@ export default function PoDetailPage() {
                   </svg>
                 </div>
                 <div>
-                  <h3 className="text-theme-base font-bold text-gray-900 dark:text-white uppercase tracking-wide">
+                  <h3 className="text-theme-sm font-bold text-gray-900 dark:text-white uppercase tracking-wide">
                     Thông tin PO
                   </h3>
                   <p className="text-theme-xs text-gray-500 dark:text-gray-400">
@@ -854,93 +910,96 @@ export default function PoDetailPage() {
                 </div>
               </div>
             ) : (
-              <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
-                {/* Tile 1: Mã PO hệ thống */}
-                <div className="rounded-xl border border-gray-100 bg-gray-50/60 p-4.5 transition-all hover:bg-gray-50 hover:border-gray-200 dark:border-gray-800 dark:bg-gray-800/40 dark:hover:border-gray-700">
-                  <span className="block text-theme-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
-                    Mã PO nội bộ
-                  </span>
-                  <span className="mt-2 block font-mono text-xl sm:text-2xl font-extrabold tracking-tight text-brand-600 dark:text-brand-400">
-                    {po.poCode}
-                  </span>
-                </div>
+              <div className="mt-4 space-y-5">
+                <dl className="divide-y divide-gray-100 border-t border-b border-gray-100 dark:divide-gray-800/80 dark:border-gray-800/80">
+                  <div className="flex items-center py-3 text-theme-sm">
+                    <dt className="w-1/3 shrink-0 font-semibold text-gray-600 dark:text-gray-400">
+                      Mã PO nội bộ
+                    </dt>
+                    <dd className="w-2/3 min-w-0 font-mono text-base font-bold text-blue-600 dark:text-blue-400">
+                      {po.poCode}
+                    </dd>
+                  </div>
 
-                <div className="rounded-xl border border-gray-100 bg-gray-50/60 p-4.5 dark:border-gray-800 dark:bg-gray-800/40">
-                  <span className="block text-theme-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
-                    Khách hàng
-                  </span>
-                  <span
-                    className="mt-2 block text-lg sm:text-xl font-bold text-gray-900 dark:text-white truncate"
-                    title={po.customerNameSnapshot}
-                  >
-                    {po.customerNameSnapshot}
-                  </span>
-                </div>
+                  <div className="flex items-center py-3 text-theme-sm">
+                    <dt className="w-1/3 shrink-0 font-semibold text-gray-600 dark:text-gray-400">
+                      Khách hàng
+                    </dt>
+                    <dd className="w-2/3 min-w-0 break-words text-base font-bold text-gray-900 dark:text-white">
+                      {po.customerNameSnapshot || "—"}
+                    </dd>
+                  </div>
 
-                <div className="rounded-xl border border-gray-100 bg-gray-50/60 p-4.5 dark:border-gray-800 dark:bg-gray-800/40">
-                  <span className="block text-theme-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
-                    Mã PO khách hàng
-                  </span>
-                  <span className="mt-2 block font-mono text-lg sm:text-xl font-bold text-gray-900 dark:text-white">
-                    {po.customerPoCode || "—"}
-                  </span>
-                </div>
+                  <div className="flex items-center py-3 text-theme-sm">
+                    <dt className="w-1/3 shrink-0 font-semibold text-gray-600 dark:text-gray-400">
+                      Mã PO khách hàng
+                    </dt>
+                    <dd className="w-2/3 min-w-0 break-words font-mono text-base font-semibold text-gray-800 dark:text-gray-200">
+                      {po.customerPoCode || "—"}
+                    </dd>
+                  </div>
 
-                <div className="rounded-xl border border-gray-100 bg-gray-50/60 p-4.5 dark:border-gray-800 dark:bg-gray-800/40">
-                  <span className="block text-theme-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
-                    Ngày nhận đơn
-                  </span>
-                  <span className="mt-2 block text-lg sm:text-xl font-bold text-gray-900 dark:text-white">
-                    {formatDate(po.receivedDate)}
-                  </span>
-                </div>
+                  <div className="flex items-center py-3 text-theme-sm">
+                    <dt className="w-1/3 shrink-0 font-semibold text-gray-600 dark:text-gray-400">
+                      Ngày nhận đơn
+                    </dt>
+                    <dd className="w-2/3 min-w-0 text-base font-semibold text-gray-800 dark:text-gray-200">
+                      {formatDate(po.receivedDate)}
+                    </dd>
+                  </div>
 
-                {/* Tile 5: Hạn hoàn thành */}
-                <div className="rounded-xl border border-gray-100 bg-gray-50/60 p-4.5 transition-all hover:bg-gray-50 hover:border-gray-200 dark:border-gray-800 dark:bg-gray-800/40 dark:hover:border-gray-700">
-                  <span className="block text-theme-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
-                    Hạn hoàn thành
-                  </span>
-                  <span className="mt-2 block text-lg sm:text-xl font-bold text-gray-900 dark:text-white">
-                    {po.deadline ? (
-                      <span className="text-amber-600 dark:text-amber-400">
+                  <div className="flex items-center py-3 text-theme-sm">
+                    <dt className="w-1/3 shrink-0 font-semibold text-gray-600 dark:text-gray-400">
+                      Hạn hoàn thành
+                    </dt>
+                    <dd className="flex w-2/3 min-w-0 flex-wrap items-center gap-x-3 gap-y-1.5">
+                      <span
+                        className={`text-base font-bold ${deadlineValueClasses[deadlineInfo.tone]}`}
+                      >
                         {formatDate(po.deadline)}
                       </span>
-                    ) : (
-                      "—"
-                    )}
-                  </span>
-                </div>
-
-                {/* Locked info tile if locked */}
-                {po.closedAt && (
-                  <div className="col-span-1 sm:col-span-2 lg:col-span-4 rounded-xl border border-success-200/80 bg-success-50/60 p-4.5 dark:border-success-900/40 dark:bg-success-950/30">
-                    <span className="block text-theme-xs font-semibold uppercase tracking-wider text-success-600 dark:text-success-400">
-                      Thời điểm khóa đơn hàng
-                    </span>
-                    <span className="mt-1.5 block font-bold text-success-800 dark:text-success-200 text-base">
-                      {formatDateTime(po.closedAt)}
-                    </span>
+                      {deadlineInfo.hint && (
+                        <span
+                          className={`rounded-full border px-2.5 py-0.5 text-theme-xs font-semibold ${deadlineHintClasses[deadlineInfo.tone]}`}
+                        >
+                          {deadlineInfo.hint}
+                        </span>
+                      )}
+                    </dd>
                   </div>
-                )}
 
-                {po.cancellationReason && (
-                  <div className="col-span-1 sm:col-span-2 lg:col-span-4 rounded-xl border border-error-200/80 bg-error-50/60 p-4.5 dark:border-error-900/40 dark:bg-error-950/30">
-                    <span className="block text-theme-xs font-semibold uppercase tracking-wider text-error-600 dark:text-error-400">
-                      Lý do hủy đơn hàng
-                    </span>
-                    <p className="mt-1.5 font-medium text-error-800 dark:text-error-200 text-theme-base">
-                      {po.cancellationReason}
+                  {po.closedAt && (
+                    <div className="flex items-center py-3 text-theme-sm">
+                      <dt className="w-1/3 shrink-0 font-semibold text-gray-600 dark:text-gray-400">
+                        Thời điểm khóa đơn
+                      </dt>
+                      <dd className="w-2/3 min-w-0 text-base font-semibold text-success-700 dark:text-success-300">
+                        {formatDateTime(po.closedAt)}
+                      </dd>
+                    </div>
+                  )}
+
+                  {po.cancellationReason && (
+                    <div className="flex items-start py-3 text-theme-sm">
+                      <dt className="w-1/3 shrink-0 font-semibold text-gray-600 dark:text-gray-400">
+                        Lý do hủy đơn
+                      </dt>
+                      <dd className="w-2/3 min-w-0 break-words font-medium text-error-700 dark:text-error-300">
+                        {po.cancellationReason}
+                      </dd>
+                    </div>
+                  )}
+                </dl>
+
+                <div className="space-y-3">
+                  <h4 className="text-theme-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                    Ghi chú đơn hàng
+                  </h4>
+                  <div className="rounded-xl border border-gray-200/80 bg-gray-50/50 p-4 dark:border-gray-800 dark:bg-gray-900/60">
+                    <p className="whitespace-pre-wrap text-theme-sm leading-relaxed text-gray-800 dark:text-gray-200">
+                      {po.note || "Chưa có ghi chú cho đơn hàng này."}
                     </p>
                   </div>
-                )}
-
-                <div className="col-span-1 sm:col-span-2 lg:col-span-4 rounded-xl border border-gray-100 bg-gray-50/40 p-4.5 dark:border-gray-800 dark:bg-gray-800/30">
-                  <span className="block text-theme-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
-                    Ghi chú đơn hàng
-                  </span>
-                  <p className="mt-2 text-theme-base leading-relaxed text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
-                    {po.note || "Chưa có ghi chú cho đơn hàng này."}
-                  </p>
                 </div>
               </div>
             )}
