@@ -167,6 +167,14 @@ describe("application routes", () => {
     expect(screen.getByRole("heading", { name: "Đăng nhập" })).toBeTruthy();
   });
 
+  it("renders the password setup route without authentication", async () => {
+    window.history.pushState({}, "", "/set-password");
+    renderApp();
+
+    expect(await screen.findByRole("heading", { name: "Đặt mật khẩu" })).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "Đăng nhập" })).toBeNull();
+  });
+
   it("redirects an unauthenticated visitor from a protected route to /login", () => {
     window.history.pushState({}, "", "/masters/material-groups");
     renderApp();

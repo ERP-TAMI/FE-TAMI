@@ -13,3 +13,8 @@ export const authResponseSchema = z.object({
   accessToken: z.string(),
   user: authUserSchema,
 });
+
+export const passwordSetupValidationSchema = z.object({
+  valid: z.literal(true),
+  expiresAt: z.string().datetime(),
+});

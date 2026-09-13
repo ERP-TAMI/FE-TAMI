@@ -1,5 +1,7 @@
 export type UserRoleCode = "SA" | "TPKH" | "NVKH" | "RD" | "ACCOUNTING" | "IT";
-export type UserAccountStatus = "active" | "locked" | "inactive";
+export type EditableUserAccountStatus = "active" | "locked" | "inactive";
+export type UserAccountStatus = EditableUserAccountStatus | "pending_setup";
+export type PasswordSetupEmailStatus = "pending" | "sent" | "failed";
 
 export type UserRole = {
   code: UserRoleCode;
@@ -13,7 +15,30 @@ export type UserListItem = {
   phone: string | null;
   role: UserRole | null;
   accountStatus: UserAccountStatus;
+  passwordSetupRequired: boolean;
+  passwordSetupEmailStatus: PasswordSetupEmailStatus | null;
+  passwordSetupEmailAttemptedAt: string | null;
 };
+
+export type UserInput = {
+  fullName: string;
+  email: string;
+  phone: string | null;
+  roleCode: UserRoleCode;
+  accountStatus: EditableUserAccountStatus;
+};
+
+export type CreateUserResponse = {
+  user: UserListItem;
+  invitationStatus: "pending" | "sent" | "failed";
+};
+
+export type UpdateUserResponse = {
+  user: UserListItem;
+  invitationStatus: "pending" | "sent" | "failed" | null;
+};
+
+export type InvitationResponse = { invitationStatus: "sent" | "failed" };
 
 export type UserListParams = {
   search?: string;

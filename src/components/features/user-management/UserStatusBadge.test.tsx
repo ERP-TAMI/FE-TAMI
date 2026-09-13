@@ -8,6 +8,7 @@ describe("UserStatusBadge", () => {
   it.each([
     ["active", "Đang hoạt động"],
     ["locked", "Bị khóa"],
+    ["pending_setup", "Chờ đặt mật khẩu"],
     ["inactive", "Vô hiệu hóa"],
   ] as const)("renders the %s status label", (status, label) => {
     render(<UserStatusBadge status={status} />);
