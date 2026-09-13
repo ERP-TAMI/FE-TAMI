@@ -18,6 +18,20 @@ const existing: UserListItem = {
 afterEach(cleanup);
 
 describe("UserForm", () => {
+  it("does not register a hidden account status field", () => {
+    render(
+      <UserForm
+        mode="create"
+        actorRole="IT"
+        actorId="actor-id"
+        isSubmitting={false}
+        onClose={vi.fn()}
+        onSubmit={vi.fn()}
+      />,
+    );
+
+    expect(document.querySelector('input[name="accountStatus"]')).toBeNull();
+  });
   it("uses role labels consistent with backend role names", () => {
     render(
       <UserForm

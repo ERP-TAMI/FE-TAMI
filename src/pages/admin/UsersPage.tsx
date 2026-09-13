@@ -5,6 +5,7 @@ import PageMeta from "@/components/shared/PageMeta";
 import { UserTable } from "@/components/features/user-management/UserTable";
 import { UserToolbar } from "@/components/features/user-management/UserToolbar";
 import { UserForm } from "@/components/features/user-management/UserForm";
+import { isItManagedUserRole } from "@/components/features/user-management/userRoleOptions";
 import {
   UserAccountActionDialog,
   type UserAccountAction,
@@ -78,14 +79,13 @@ export default function UsersPage() {
     target.role !== null &&
     (currentUser?.roleCode === "SA" ||
       target.id === currentUser?.id ||
-      !["SA", "IT"].includes(target.role.code));
+      (currentUser?.roleCode === "IT" && isItManagedUserRole(target.role.code)));
 
   const canManageAccount = (target: UserListItem) =>
     target.role !== null &&
     target.id !== currentUser?.id &&
     (currentUser?.roleCode === "SA" ||
-      (currentUser?.roleCode === "IT" &&
-        ["TPKH", "NVKH", "RD", "ACCOUNTING"].includes(target.role.code)));
+      (currentUser?.roleCode === "IT" && isItManagedUserRole(target.role.code)));
 
   const sendPasswordSetupEmail = async (target: UserListItem) => {
     try {

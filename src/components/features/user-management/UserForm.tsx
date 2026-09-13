@@ -9,7 +9,7 @@ import type {
   UserListItem,
   UserRoleCode,
 } from "@/types/user-management";
-import { USER_ROLE_OPTIONS } from "./userRoleOptions";
+import { isItManagedUserRole, USER_ROLE_OPTIONS } from "./userRoleOptions";
 
 const schema = z.object({
   fullName: z.string().trim().min(1, "Họ tên là bắt buộc").max(200),
@@ -19,12 +19,11 @@ const schema = z.object({
     .trim()
     .refine((value) => !value || /^[0-9+().\s-]{6,20}$/.test(value), "Số điện thoại không hợp lệ"),
   roleCode: z.enum(["SA", "TPKH", "NVKH", "RD", "ACCOUNTING", "IT"]),
-  accountStatus: z.enum(["active", "locked", "inactive"]),
 });
 
 type FormValues = z.infer<typeof schema>;
 
-const itRoles = USER_ROLE_OPTIONS.filter((role) => !["SA", "IT"].includes(role.value));
+const itRoles = USER_ROLE_OPTIONS.filter((role) => isItManagedUserRole(role.value));
 type UserFormProps = {
   mode: "create" | "edit";
   user?: UserListItem;
@@ -61,14 +60,12 @@ export function UserForm({
           email: user.email,
           phone: user.phone ?? "",
           roleCode: user.role?.code ?? ("NVKH" as UserRoleCode),
-          accountStatus: "active",
         }
       : {
           fullName: "",
           email: "",
           phone: "",
           roleCode: (actorRole === "SA" ? "NVKH" : "TPKH") as UserRoleCode,
-          accountStatus: "active",
         },
   });
   const close = () => {
@@ -147,7 +144,6 @@ export function UserForm({
           disabled={isSelf || isSubmitting}
           {...register("roleCode")}
         />
-        <input type="hidden" value="active" {...register("accountStatus")} />
       </form>
     </Modal>
   );
