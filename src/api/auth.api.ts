@@ -1,6 +1,11 @@
 import apiClient from "@/lib/apiClient";
 import type { AuthUser } from "@/store/authStore";
-import { authResponseSchema, authUserSchema, passwordSetupValidationSchema } from "./auth.schema";
+import {
+  authResponseSchema,
+  authUserSchema,
+  passwordResetAcceptedSchema,
+  passwordSetupValidationSchema,
+} from "./auth.schema";
 
 export type AuthResponse = {
   accessToken: string;
@@ -25,5 +30,16 @@ export const authApi = {
   },
   async completePasswordSetup(token: string, password: string): Promise<void> {
     await apiClient.post("/auth/password-setup/complete", { token, password });
+  },
+  async requestPasswordReset(email: string): Promise<{ status: "pending" }> {
+    const response = await apiClient.post("/auth/forgot-password", { email });
+    return passwordResetAcceptedSchema.parse(response.data);
+  },
+  async validatePasswordReset(token: string): Promise<{ valid: true; expiresAt: string }> {
+    const response = await apiClient.post("/auth/password-reset/validate", { token });
+    return passwordSetupValidationSchema.parse(response.data);
+  },
+  async completePasswordReset(token: string, password: string): Promise<void> {
+    await apiClient.post("/auth/password-reset/complete", { token, password });
   },
 };

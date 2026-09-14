@@ -23,6 +23,8 @@ import { ProtectedRoute } from "@/routes/ProtectedRoute";
 import { useAuthBootstrap } from "@/hooks/useAuthBootstrap";
 import LoginPage from "@/pages/auth/LoginPage";
 import SetPasswordPage from "@/pages/auth/SetPasswordPage";
+import ForgotPasswordPage from "@/pages/auth/ForgotPasswordPage";
+import ResetPasswordPage from "@/pages/auth/ResetPasswordPage";
 import DashboardPage from "@/pages/Dashboard/DashboardPage";
 import BomPage from "@/pages/bom/BomPage";
 import PoPage from "@/pages/po/PoPage";
@@ -54,6 +56,8 @@ export function AppRoutes() {
       <ScrollToTop />
       <Routes>
         <Route path="/set-password" element={<SetPasswordPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route
           path="/login"
           element={

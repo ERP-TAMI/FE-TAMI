@@ -3,11 +3,13 @@ import axios from "axios";
 export type ApiError = {
   code: string;
   message: string;
+  lockedUntil?: string;
 };
 
 type ErrorResponse = {
   code?: unknown;
   message?: unknown;
+  lockedUntil?: unknown;
 };
 
 const defaultApiErrorMessages: Record<string, string> = {
@@ -49,7 +51,12 @@ export function getApiError(
       ? serverMessage
       : undefined);
 
-  return { code, message: message ?? fallback };
+  const lockedUntil = error.response?.data?.lockedUntil;
+  return {
+    code,
+    message: message ?? fallback,
+    lockedUntil: typeof lockedUntil === "string" ? lockedUntil : undefined,
+  };
 }
 
 export function isConflictError(error: unknown): boolean {

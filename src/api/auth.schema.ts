@@ -18,3 +18,7 @@ export const passwordSetupValidationSchema = z.object({
   valid: z.literal(true),
   expiresAt: z.string().datetime(),
 });
+
+export const passwordResetAcceptedSchema = z.object({
+  status: z.literal("pending"),
+});

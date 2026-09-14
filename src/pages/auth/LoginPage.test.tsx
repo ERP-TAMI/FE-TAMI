@@ -41,6 +41,9 @@ describe("LoginPage", () => {
     expect(screen.getByRole("heading", { name: "Đăng nhập" })).toBeTruthy();
     expect(screen.getByLabelText("Email")).toBeTruthy();
     expect(screen.getByLabelText("Mật khẩu")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Quên mật khẩu?" }).getAttribute("href")).toBe(
+      "/forgot-password",
+    );
   });
 
   it("logs in successfully and redirects to the dashboard", async () => {
@@ -153,6 +156,28 @@ describe("LoginPage", () => {
         "Tài khoản đang tạm khoá do đăng nhập sai nhiều lần. Vui lòng thử lại sau.",
       ),
     ).toBeTruthy();
+  });
+
+  it("shows the unlock time returned on the fifth failed attempt", async () => {
+    vi.mocked(authApi.login).mockRejectedValue({
+      isAxiosError: true,
+      response: {
+        status: 403,
+        data: {
+          code: "ACCOUNT_TEMPORARILY_LOCKED",
+          lockedUntil: "2026-09-14T10:15:00.000Z",
+        },
+      },
+    });
+
+    render(
+      <MemoryRouter>
+        <LoginPage />
+      </MemoryRouter>,
+    );
+    fillAndSubmit("sa@tami.test", "wrong-password");
+
+    expect(await screen.findByText(/Có thể thử lại lúc/)).toBeTruthy();
   });
 
   it("shows a connection error message when the request has no response", async () => {
