@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { getPostLoginPath } from "@/lib/areaAccess";
 import { z } from "zod";
 import { Alert, Button, Input } from "@/components/shared";
@@ -26,11 +26,9 @@ const NETWORK_ERROR_MESSAGE =
 
 type LocationState = { from?: { pathname: string } };
 
-// TODO: remove before this reaches a shared branch — test-only convenience
-// default so login doesn't need retyping credentials on every reload.
 const DEV_DEFAULT_VALUES: FormValues = {
-  email: "sa@tami.test",
-  password: "123456",
+  email: "",
+  password: "",
 };
 
 export default function LoginPage() {
@@ -54,7 +52,17 @@ export default function LoginPage() {
       setSession(result.user, result.accessToken);
       navigate(getPostLoginPath(result.user, redirectTo), { replace: true });
     } catch (error) {
-      setServerError(getApiError(error, NETWORK_ERROR_MESSAGE, LOGIN_ERROR_OVERRIDES));
+      const apiError = getApiError(error, NETWORK_ERROR_MESSAGE, LOGIN_ERROR_OVERRIDES);
+      if (apiError.code === "ACCOUNT_TEMPORARILY_LOCKED" && apiError.lockedUntil) {
+        const retryAt = new Date(apiError.lockedUntil);
+        if (!Number.isNaN(retryAt.getTime())) {
+          apiError.message = `${apiError.message} Có thể thử lại lúc ${new Intl.DateTimeFormat(
+            "vi-VN",
+            { dateStyle: "short", timeStyle: "short" },
+          ).format(retryAt)}.`;
+        }
+      }
+      setServerError(apiError);
     } finally {
       setIsSubmitting(false);
     }
@@ -89,13 +97,23 @@ export default function LoginPage() {
               error={formState.errors.email?.message}
               {...register("email")}
             />
-            <Input
-              label="Mật khẩu"
-              type="password"
-              placeholder="Nhập mật khẩu"
-              error={formState.errors.password?.message}
-              {...register("password")}
-            />
+            <div>
+              <Input
+                label="Mật khẩu"
+                type="password"
+                placeholder="Nhập mật khẩu"
+                error={formState.errors.password?.message}
+                {...register("password")}
+              />
+              <div className="mt-2 flex justify-end">
+                <Link
+                  className="text-theme-sm text-brand-600 inline-flex min-h-8 items-center rounded-sm hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 dark:text-brand-400 dark:focus-visible:ring-offset-gray-900"
+                  to="/forgot-password"
+                >
+                  Quên mật khẩu?
+                </Link>
+              </div>
+            </div>
             <Button type="submit" className="w-full" loading={isSubmitting}>
               Đăng nhập
             </Button>
