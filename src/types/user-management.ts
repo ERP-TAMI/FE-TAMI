@@ -2,6 +2,7 @@ export type UserRoleCode = "SA" | "TPKH" | "NVKH" | "RD" | "ACCOUNTING" | "IT";
 export type EditableUserAccountStatus = "active" | "locked";
 export type UserAccountStatus = EditableUserAccountStatus | "pending_setup" | "inactive";
 export type PasswordSetupEmailStatus = "pending" | "sent" | "failed";
+export type AccountLockEmailStatus = "pending" | "sent" | "failed";
 
 export type UserRole = {
   code: UserRoleCode;
@@ -18,6 +19,7 @@ export type UserListItem = {
   passwordSetupRequired: boolean;
   passwordSetupEmailStatus: PasswordSetupEmailStatus | null;
   passwordSetupEmailAttemptedAt: string | null;
+  accountLockEmailStatus: AccountLockEmailStatus | null;
 };
 
 export type UpdateUserInput = {

@@ -229,7 +229,43 @@ describe("UsersPage", () => {
         input: { accountStatus: "locked", reason: "Kiểm tra truy cập bất thường" },
       }),
     );
-    expect(await screen.findByText("Đã khóa tài khoản.")).toBeTruthy();
+    expect(await screen.findByText("Đã khóa tài khoản. Email thông báo đang được gửi.")).toBeTruthy();
+  });
+
+  it("retries a failed lock email through the existing status endpoint", async () => {
+    const lockedUser = {
+      ...user,
+      accountStatus: "locked" as const,
+      accountLockEmailStatus: "failed" as const,
+    };
+    hooks.useUsers.mockReturnValue(
+      result({
+        data: {
+          data: [lockedUser],
+          meta: { total: 1, page: 1, limit: 10, totalPages: 1 },
+        },
+      }),
+    );
+    const updateStatus = vi.fn().mockResolvedValue({ user: lockedUser });
+    hooks.useUpdateUserStatus.mockReturnValue({ mutateAsync: updateStatus, isPending: false });
+    renderPage();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: `Mở thao tác cho ${lockedUser.fullName}` }),
+    );
+    fireEvent.click(screen.getByRole("menuitem", { name: "Gửi lại email khóa" }));
+    fireEvent.change(await screen.findByLabelText("Lý do khóa tài khoản"), {
+      target: { value: "Gửi lại thông báo khóa" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Gửi lại email" }));
+
+    await waitFor(() =>
+      expect(updateStatus).toHaveBeenCalledWith({
+        id: lockedUser.id,
+        input: { accountStatus: "locked", reason: "Gửi lại thông báo khóa" },
+      }),
+    );
+    expect(await screen.findByText("Đã ghi nhận gửi lại email khóa tài khoản.")).toBeTruthy();
   });
 
   it("does not expose protected SA or IT account actions to an IT actor", () => {

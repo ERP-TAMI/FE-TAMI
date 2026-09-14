@@ -15,6 +15,7 @@ const user: UserListItem = {
   passwordSetupRequired: true,
   passwordSetupEmailStatus: "failed",
   passwordSetupEmailAttemptedAt: "2026-09-12T12:00:00.000Z",
+  accountLockEmailStatus: null,
 };
 
 describe("UserTable", () => {
@@ -64,6 +65,33 @@ describe("UserTable", () => {
     expect(actions.getByRole("menuitem", { name: "Mở khóa" })).toBeTruthy();
     expect(actions.queryByRole("menuitem", { name: /email/i })).toBeNull();
     expect(actions.queryByRole("menuitem", { name: "Đặt lại mật khẩu" })).toBeNull();
+  });
+
+  it("shows a failed lock-email warning and offers resend", () => {
+    const onAccountAction = vi.fn();
+    const lockedUser = {
+      ...user,
+      accountStatus: "locked" as const,
+      passwordSetupRequired: false,
+      passwordSetupEmailStatus: null,
+      accountLockEmailStatus: "failed" as const,
+    };
+    render(
+      <UserTable
+        users={[lockedUser]}
+        onEdit={vi.fn()}
+        canManage={() => true}
+        canManageAccount={() => true}
+        onAccountAction={onAccountAction}
+      />,
+    );
+
+    expect(screen.getByLabelText("Lần gửi email khóa tài khoản gần nhất thất bại")).toBeTruthy();
+    fireEvent.click(
+      screen.getByRole("button", { name: `Mở thao tác cho ${lockedUser.fullName}` }),
+    );
+    fireEvent.click(screen.getByRole("menuitem", { name: "Gửi lại email khóa" }));
+    expect(onAccountAction).toHaveBeenCalledWith(lockedUser, "resend-lock-email");
   });
 
   it("offers only actions that match the current account state", () => {

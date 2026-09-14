@@ -13,6 +13,7 @@ const existing: UserListItem = {
   passwordSetupRequired: false,
   passwordSetupEmailStatus: null,
   passwordSetupEmailAttemptedAt: null,
+  accountLockEmailStatus: null,
 };
 
 afterEach(cleanup);

@@ -33,6 +33,14 @@ function accountMenuItems(
   }
 
   if (user.accountStatus === "locked") {
+    if (user.accountLockEmailStatus === "failed") {
+      items.push({
+        key: "resend-lock-email",
+        label: "Gửi lại email khóa",
+        icon: EnvelopeIcon,
+        onSelect: () => onAccountAction("resend-lock-email"),
+      });
+    }
     items.push({
       key: "unlock",
       label: "Mở khóa",

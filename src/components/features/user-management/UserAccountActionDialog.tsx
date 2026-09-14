@@ -2,7 +2,7 @@ import { useState, type FormEvent } from "react";
 import { Alert, Button, Modal } from "@/components/shared";
 import type { UserListItem } from "@/types/user-management";
 
-export type UserAccountAction = "lock" | "unlock" | "reset";
+export type UserAccountAction = "lock" | "unlock" | "reset" | "resend-lock-email";
 
 const content: Record<
   UserAccountAction,
@@ -33,6 +33,13 @@ const content: Record<
       "Mật khẩu hiện tại và tất cả phiên đăng nhập sẽ bị thu hồi ngay. Hệ thống sẽ gửi link đặt mật khẩu dùng một lần, có hiệu lực 24 giờ.",
     danger: true,
   },
+  "resend-lock-email": {
+    title: "Gửi lại email khóa tài khoản",
+    confirm: "Gửi lại email",
+    description:
+      "Hệ thống sẽ gửi lại thông báo khóa tài khoản. Vui lòng nhập lại lý do để nội dung email và lịch sử thao tác được rõ ràng.",
+    requiresReason: true,
+  },
 };
 
 export function UserAccountActionDialog({
@@ -53,7 +60,7 @@ export function UserAccountActionDialog({
   const [reason, setReason] = useState("");
   const [reasonError, setReasonError] = useState<string>();
   const copy = content[action];
-  const sendsReasonByEmail = action === "lock";
+  const sendsReasonByEmail = action === "lock" || action === "resend-lock-email";
   const reasonHelpId = sendsReasonByEmail ? "account-action-reason-help" : undefined;
   const reasonErrorId = reasonError ? "account-action-reason-error" : undefined;
   const reasonDescriptionIds = [reasonHelpId, reasonErrorId].filter(Boolean).join(" ");

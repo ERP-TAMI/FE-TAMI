@@ -155,14 +155,16 @@ export default function UsersPage() {
         const statusByAction = {
           lock: "locked",
           unlock: "active",
+          "resend-lock-email": "locked",
         } as const;
         await updateStatus.mutateAsync({
           id: accountAction.user.id,
           input: { accountStatus: statusByAction[accountAction.action], reason },
         });
         const successMessage = {
-          lock: "Đã khóa tài khoản.",
+          lock: "Đã khóa tài khoản. Email thông báo đang được gửi.",
           unlock: "Đã mở khóa tài khoản.",
+          "resend-lock-email": "Đã ghi nhận gửi lại email khóa tài khoản.",
         }[accountAction.action];
         showToast(successMessage, "success");
       }

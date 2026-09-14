@@ -77,6 +77,15 @@ function buildColumns(
                 <AlertCircle aria-hidden="true" className="h-4 w-4" />
               </span>
             )}
+            {user.accountStatus === "locked" && user.accountLockEmailStatus === "failed" && (
+              <span
+                aria-label="Lần gửi email khóa tài khoản gần nhất thất bại"
+                title="Email thông báo khóa chưa gửi được. Hãy mở menu thao tác để gửi lại."
+                className="text-error-500 dark:text-error-400 inline-flex"
+              >
+                <AlertCircle aria-hidden="true" className="h-4 w-4" />
+              </span>
+            )}
             <UserRowActions
               user={user}
               onResend={user.passwordSetupRequired && onResend ? () => onResend(user) : undefined}
