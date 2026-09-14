@@ -30,7 +30,7 @@ type LocationState = { from?: { pathname: string } };
 // default so login doesn't need retyping credentials on every reload.
 const DEV_DEFAULT_VALUES: FormValues = {
   email: "sa@tami.test",
-  password: "123456",
+  password: "Test@12345",
 };
 
 export default function LoginPage() {
