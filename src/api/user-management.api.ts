@@ -1,15 +1,21 @@
 import apiClient from "@/lib/apiClient";
 import type {
+  AccountStatusInput,
+  AccountStatusResponse,
   CreateUserResponse,
   InvitationResponse,
+  PasswordResetResponse,
+  UpdateUserInput,
   UserInput,
   UserListParams,
   UserListResponse,
   UpdateUserResponse,
 } from "@/types/user-management";
 import {
+  accountStatusResponseSchema,
   createUserResponseSchema,
   invitationResponseSchema,
+  passwordResetResponseSchema,
   updateUserResponseSchema,
   userListResponseSchema,
 } from "./user-management.schema";
@@ -33,7 +39,7 @@ export const userManagementApi = {
     const response = await apiClient.post(resource, input);
     return createUserResponseSchema.parse(response.data);
   },
-  async update(id: string, input: UserInput): Promise<UpdateUserResponse> {
+  async update(id: string, input: UpdateUserInput): Promise<UpdateUserResponse> {
     const response = await apiClient.patch(`${resource}/${id}`, input);
     return updateUserResponseSchema.parse(response.data);
   },
@@ -42,5 +48,13 @@ export const userManagementApi = {
       timeout: 30000,
     });
     return invitationResponseSchema.parse(response.data);
+  },
+  async updateAccountStatus(id: string, input: AccountStatusInput): Promise<AccountStatusResponse> {
+    const response = await apiClient.patch(`${resource}/${id}/account-status`, input);
+    return accountStatusResponseSchema.parse(response.data);
+  },
+  async resetPassword(id: string): Promise<PasswordResetResponse> {
+    const response = await apiClient.post(`${resource}/${id}/password-reset`);
+    return passwordResetResponseSchema.parse(response.data);
   },
 };

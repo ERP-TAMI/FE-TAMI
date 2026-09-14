@@ -1,4 +1,4 @@
-import { Search, Users, CircleDot, ShieldCheck, Lock, CircleOff, KeyRound } from "lucide-react";
+import { Search, Users, CircleDot, ShieldCheck, Lock, KeyRound } from "lucide-react";
 import { Input, Select } from "@/components/shared";
 import type { UserAccountStatus, UserRoleCode } from "@/types/user-management";
 import { USER_ROLE_OPTIONS } from "./userRoleOptions";
@@ -23,7 +23,6 @@ const statusOptions: Array<{
   { key: "active", label: "Hoạt động", icon: ShieldCheck },
   { key: "locked", label: "Bị khóa", icon: Lock },
   { key: "pending_setup", label: "Chờ mật khẩu", icon: KeyRound },
-  { key: "inactive", label: "Vô hiệu hóa", icon: CircleOff },
 ];
 
 export function UserToolbar({

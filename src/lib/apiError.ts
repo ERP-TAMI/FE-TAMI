@@ -19,6 +19,9 @@ const defaultApiErrorMessages: Record<string, string> = {
   FORBIDDEN: "Bạn không có quyền thực hiện thao tác này.",
   INTERNAL_SERVER_ERROR: "Máy chủ đang gặp sự cố. Vui lòng thử lại sau.",
   ACCOUNT_LOCKED: "Tài khoản đang tạm khoá do đăng nhập sai nhiều lần. Vui lòng thử lại sau.",
+  ACCOUNT_MANUALLY_LOCKED: "Tài khoản đã bị quản trị viên khóa. Vui lòng liên hệ quản trị viên.",
+  ACCOUNT_TEMPORARILY_LOCKED:
+    "Tài khoản đang tạm khoá do đăng nhập sai nhiều lần. Vui lòng thử lại sau.",
   ACCOUNT_INACTIVE: "Tài khoản của bạn đã bị vô hiệu hoá. Vui lòng liên hệ quản trị viên.",
 };
 

@@ -18,6 +18,7 @@ const response = {
       passwordSetupRequired: false,
       passwordSetupEmailStatus: "failed",
       passwordSetupEmailAttemptedAt: "2026-09-12T12:00:00.000Z",
+      accountLockEmailStatus: null,
     },
   ],
   meta: { total: 1, page: 1, limit: 10, totalPages: 1 },
@@ -67,6 +68,17 @@ describe("userManagementApi", () => {
     await expect(userManagementApi.list({ page: 1, limit: 10 })).rejects.toThrow();
   });
 
+  it("rejects an invalid account lock email delivery status", async () => {
+    vi.mocked(apiClient.get).mockResolvedValue({
+      data: {
+        ...response,
+        data: [{ ...response.data[0], accountLockEmailStatus: "unknown" }],
+      },
+    });
+
+    await expect(userManagementApi.list({ page: 1, limit: 10 })).rejects.toThrow();
+  });
+
   it("accepts additive fields from a backward-compatible server response", async () => {
     vi.mocked(apiClient.get).mockResolvedValue({
       data: {
@@ -99,7 +111,6 @@ describe("userManagementApi", () => {
           email: "a@example.com",
           phone: null,
           roleCode: "NVKH",
-          accountStatus: "active",
         }),
       ).resolves.toMatchObject({ invitationStatus });
     },
@@ -111,7 +122,6 @@ describe("userManagementApi", () => {
       email: "a@example.com",
       phone: null,
       roleCode: "NVKH" as const,
-      accountStatus: "active" as const,
     };
     vi.mocked(apiClient.post)
       .mockResolvedValueOnce({
@@ -140,5 +150,25 @@ describe("userManagementApi", () => {
       { timeout: 30000 },
     );
     expect(apiClient.patch).toHaveBeenCalledWith(`/system/users/${response.data[0].id}`, input);
+  });
+
+  it("updates account status with its reason and requests an admin password reset", async () => {
+    const target = response.data[0];
+    vi.mocked(apiClient.patch).mockResolvedValue({ data: { user: target } });
+    vi.mocked(apiClient.post).mockResolvedValue({
+      data: { user: { ...target, accountStatus: "pending_setup" }, invitationStatus: "pending" },
+    });
+
+    await userManagementApi.updateAccountStatus(target.id, {
+      accountStatus: "locked",
+      reason: "Nghi ngờ lộ tài khoản",
+    });
+    await userManagementApi.resetPassword(target.id);
+
+    expect(apiClient.patch).toHaveBeenCalledWith(`/system/users/${target.id}/account-status`, {
+      accountStatus: "locked",
+      reason: "Nghi ngờ lộ tài khoản",
+    });
+    expect(apiClient.post).toHaveBeenCalledWith(`/system/users/${target.id}/password-reset`);
   });
 });
