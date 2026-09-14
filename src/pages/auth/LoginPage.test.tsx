@@ -113,10 +113,31 @@ describe("LoginPage", () => {
     expect(mockNavigate).not.toHaveBeenCalled();
   });
 
-  it("shows a distinct message for a locked account", async () => {
+  it("shows the administrator-lock message for a manually locked account", async () => {
     vi.mocked(authApi.login).mockRejectedValue({
       isAxiosError: true,
-      response: { status: 403, data: { code: "ACCOUNT_LOCKED" } },
+      response: { status: 403, data: { code: "ACCOUNT_MANUALLY_LOCKED" } },
+    });
+
+    render(
+      <MemoryRouter>
+        <LoginPage />
+      </MemoryRouter>,
+    );
+
+    fillAndSubmit("sa@tami.test", "whatever");
+
+    expect(
+      await screen.findByText(
+        "Tài khoản đã bị quản trị viên khóa. Vui lòng liên hệ quản trị viên.",
+      ),
+    ).toBeTruthy();
+  });
+
+  it("shows the retry message for a temporary failed-login lockout", async () => {
+    vi.mocked(authApi.login).mockRejectedValue({
+      isAxiosError: true,
+      response: { status: 403, data: { code: "ACCOUNT_TEMPORARILY_LOCKED" } },
     });
 
     render(

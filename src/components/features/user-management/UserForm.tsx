@@ -4,12 +4,12 @@ import { z } from "zod";
 import { Alert, Button, Input, Modal, Select } from "@/components/shared";
 import type { ApiError } from "@/lib/apiError";
 import type {
-  EditableUserAccountStatus,
+  UpdateUserInput,
   UserInput,
   UserListItem,
   UserRoleCode,
 } from "@/types/user-management";
-import { USER_ROLE_OPTIONS } from "./userRoleOptions";
+import { isItManagedUserRole, USER_ROLE_OPTIONS } from "./userRoleOptions";
 
 const schema = z.object({
   fullName: z.string().trim().min(1, "Họ tên là bắt buộc").max(200),
@@ -19,18 +19,11 @@ const schema = z.object({
     .trim()
     .refine((value) => !value || /^[0-9+().\s-]{6,20}$/.test(value), "Số điện thoại không hợp lệ"),
   roleCode: z.enum(["SA", "TPKH", "NVKH", "RD", "ACCOUNTING", "IT"]),
-  accountStatus: z.enum(["active", "locked", "inactive"]),
 });
 
 type FormValues = z.infer<typeof schema>;
 
-const itRoles = USER_ROLE_OPTIONS.filter((role) => !["SA", "IT"].includes(role.value));
-const statusOptions = [
-  { value: "active", label: "Đang hoạt động" },
-  { value: "locked", label: "Bị khóa" },
-  { value: "inactive", label: "Vô hiệu hóa" },
-];
-
+const itRoles = USER_ROLE_OPTIONS.filter((role) => isItManagedUserRole(role.value));
 type UserFormProps = {
   mode: "create" | "edit";
   user?: UserListItem;
@@ -39,7 +32,7 @@ type UserFormProps = {
   isSubmitting: boolean;
   serverError?: ApiError;
   onClose: () => void;
-  onSubmit: (input: UserInput) => void;
+  onSubmit: (input: UserInput | UpdateUserInput) => void;
 };
 
 export function UserForm({
@@ -67,17 +60,12 @@ export function UserForm({
           email: user.email,
           phone: user.phone ?? "",
           roleCode: user.role?.code ?? ("NVKH" as UserRoleCode),
-          accountStatus:
-            user.accountStatus === "pending_setup"
-              ? ("active" as EditableUserAccountStatus)
-              : user.accountStatus,
         }
       : {
           fullName: "",
           email: "",
           phone: "",
           roleCode: (actorRole === "SA" ? "NVKH" : "TPKH") as UserRoleCode,
-          accountStatus: "active",
         },
   });
   const close = () => {
@@ -106,9 +94,15 @@ export function UserForm({
       <form
         id="user-form"
         className="grid grid-cols-1 gap-5 sm:grid-cols-2"
-        onSubmit={handleSubmit((values) =>
-          onSubmit({ ...values, email: values.email.toLowerCase(), phone: values.phone || null }),
-        )}
+        onSubmit={handleSubmit((values) => {
+          const normalized = {
+            fullName: values.fullName,
+            email: values.email.toLowerCase(),
+            phone: values.phone || null,
+            roleCode: values.roleCode,
+          };
+          onSubmit(normalized);
+        })}
         noValidate
       >
         {serverError && (
@@ -121,7 +115,7 @@ export function UserForm({
         {isSelf && (
           <div className="sm:col-span-2">
             <Alert variant="info" title="Tài khoản đang đăng nhập">
-              Bạn có thể sửa thông tin cá nhân nhưng không thể tự đổi vai trò hoặc trạng thái.
+              Bạn có thể sửa thông tin cá nhân nhưng không thể tự đổi vai trò.
             </Alert>
           </div>
         )}
@@ -150,17 +144,6 @@ export function UserForm({
           disabled={isSelf || isSubmitting}
           {...register("roleCode")}
         />
-        {mode === "edit" ? (
-          <Select
-            label="Trạng thái"
-            options={statusOptions}
-            error={formState.errors.accountStatus?.message}
-            disabled={isSelf || isSubmitting}
-            {...register("accountStatus")}
-          />
-        ) : (
-          <input type="hidden" value="active" {...register("accountStatus")} />
-        )}
       </form>
     </Modal>
   );

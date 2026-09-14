@@ -13,11 +13,26 @@ const existing: UserListItem = {
   passwordSetupRequired: false,
   passwordSetupEmailStatus: null,
   passwordSetupEmailAttemptedAt: null,
+  accountLockEmailStatus: null,
 };
 
 afterEach(cleanup);
 
 describe("UserForm", () => {
+  it("does not register a hidden account status field", () => {
+    render(
+      <UserForm
+        mode="create"
+        actorRole="IT"
+        actorId="actor-id"
+        isSubmitting={false}
+        onClose={vi.fn()}
+        onSubmit={vi.fn()}
+      />,
+    );
+
+    expect(document.querySelector('input[name="accountStatus"]')).toBeNull();
+  });
   it("uses role labels consistent with backend role names", () => {
     render(
       <UserForm
@@ -54,7 +69,7 @@ describe("UserForm", () => {
     expect(screen.queryByLabelText("Trạng thái")).toBeNull();
   });
 
-  it("disables role and status when editing the current account", () => {
+  it("disables role and keeps account status out of profile editing", () => {
     render(
       <UserForm
         mode="edit"
@@ -69,11 +84,11 @@ describe("UserForm", () => {
     const role = screen.getByLabelText("Vai trò") as HTMLSelectElement;
     expect(role.hasAttribute("disabled")).toBe(true);
     expect(role.value).toBe("IT");
-    expect(screen.getByLabelText("Trạng thái").hasAttribute("disabled")).toBe(true);
+    expect(screen.queryByLabelText("Trạng thái")).toBeNull();
     expect(screen.getByText(/không thể tự đổi vai trò/i)).toBeTruthy();
   });
 
-  it("keeps the current role and status when submitting a self profile edit", async () => {
+  it("keeps the current role but does not submit status from a profile edit", async () => {
     const onSubmit = vi.fn();
     render(
       <UserForm
@@ -93,13 +108,12 @@ describe("UserForm", () => {
     fireEvent.click(screen.getByRole("button", { name: "Lưu thay đổi" }));
 
     await waitFor(() =>
-      expect(onSubmit).toHaveBeenCalledWith(
-        expect.objectContaining({ roleCode: "IT", accountStatus: "active" }),
-      ),
+      expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ roleCode: "IT" })),
     );
+    expect(onSubmit.mock.calls[0][0]).not.toHaveProperty("accountStatus");
   });
 
-  it("maps the derived pending setup status to the editable active status", () => {
+  it("does not expose pending setup status in profile editing", () => {
     render(
       <UserForm
         mode="edit"
@@ -112,7 +126,7 @@ describe("UserForm", () => {
       />,
     );
 
-    expect((screen.getByLabelText("Trạng thái") as HTMLSelectElement).value).toBe("active");
+    expect(screen.queryByLabelText("Trạng thái")).toBeNull();
   });
 
   it("normalizes email and empty phone before submit", async () => {
@@ -135,10 +149,10 @@ describe("UserForm", () => {
         expect.objectContaining({
           email: "user@example.com",
           phone: null,
-          accountStatus: "active",
         }),
       ),
     );
+    expect(onSubmit.mock.calls[0][0]).not.toHaveProperty("accountStatus");
   });
 
   it("declares browser autofill semantics for email and phone", () => {

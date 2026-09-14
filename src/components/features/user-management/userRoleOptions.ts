@@ -11,3 +11,9 @@ export const USER_ROLE_OPTIONS: Array<{
   { value: "RD", label: "R&D" },
   { value: "ACCOUNTING", label: "Kế toán" },
 ];
+
+export const IT_MANAGED_USER_ROLES: readonly UserRoleCode[] = ["TPKH", "NVKH", "RD", "ACCOUNTING"];
+
+export function isItManagedUserRole(role: UserRoleCode): boolean {
+  return IT_MANAGED_USER_ROLES.includes(role);
+}
