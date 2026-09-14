@@ -93,6 +93,22 @@ describe("SetPasswordPage", () => {
     expect(screen.queryByLabelText("Mật khẩu mới")).toBeNull();
   });
 
+  it("explains that an administratively revoked link was not used", async () => {
+    const error = new AxiosError("revoked");
+    error.response = {
+      data: { code: "PASSWORD_SETUP_TOKEN_REVOKED", message: "revoked" },
+      status: 410,
+      statusText: "Gone",
+      headers: {},
+      config: { headers: {} } as never,
+    };
+    vi.mocked(authApi.validatePasswordSetup).mockRejectedValue(error);
+    renderPage();
+
+    expect(await screen.findByText("Liên kết đặt mật khẩu đã bị thu hồi.")).toBeTruthy();
+    expect(screen.queryByText(/đã được sử dụng/i)).toBeNull();
+  });
+
   it("validates matching passwords with the approved length policy", async () => {
     renderPage();
     await screen.findByLabelText("Mật khẩu mới");
