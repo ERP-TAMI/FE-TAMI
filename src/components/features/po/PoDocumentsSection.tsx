@@ -2,13 +2,20 @@ import { useState } from "react";
 import { Button, ConfirmDialog, FileTypeIcon } from "@/components/shared";
 import { FileIcon, DownloadIcon, TrashBinIcon, EyeIcon } from "@/icons";
 import type { PurchaseOrderDocumentItem } from "@/types/po";
+import type { UploadProgress } from "@/api/po.api";
+import { useUploadStore } from "@/hooks/useUploadStore";
 
 interface Props {
   poId?: string;
+  poCode?: string;
   documents: PurchaseOrderDocumentItem[];
   isLocked: boolean;
   isPending: boolean;
-  onUpload: (files: File[] | File, purpose: string) => Promise<void>;
+  onUpload: (
+    files: File[] | File,
+    purpose: string,
+    onProgress?: (p: UploadProgress) => void,
+  ) => Promise<void>;
   onUnlink: (documentId: string) => Promise<void>;
   onUpdatePurpose?: (documentId: string, purpose: string) => Promise<void>;
 }
@@ -36,6 +43,7 @@ import { PoDocumentCategoryPicker } from "./PoDocumentCategoryPicker";
 import { PoUploadDocumentsModal } from "./PoUploadDocumentsModal";
 
 export function PoDocumentsSection({
+  poCode,
   documents,
   isLocked,
   isPending,
@@ -49,6 +57,29 @@ export function PoDocumentsSection({
     useState<PurchaseOrderDocumentItem | null>(null);
   const [isRemoving, setIsRemoving] = useState(false);
   const [activeCategoryTab, setActiveCategoryTab] = useState<string>("all");
+  const startUpload = useUploadStore((st) => st.startUpload);
+  const tickUpload = useUploadStore((st) => st.tickUpload);
+  const finishUpload = useUploadStore((st) => st.finishUpload);
+
+  const handleStartUpload = (filesByPurpose: Record<string, File[]>) => {
+    const groups = Object.entries(filesByPurpose);
+    const total = groups.reduce((sum, [, files]) => sum + files.length, 0);
+    if (total === 0) return;
+
+    startUpload(total, poCode ? `Đơn hàng ${poCode}` : "Đơn hàng PO");
+
+    void (async () => {
+      try {
+        for (const [purpose, files] of groups) {
+          await onUpload(files, purpose, (progress) =>
+            tickUpload(progress.fileName),
+          );
+        }
+      } finally {
+        finishUpload();
+      }
+    })();
+  };
 
   const handleConfirmRemove = async () => {
     if (!pendingRemove) return;
@@ -96,7 +127,7 @@ export function PoDocumentsSection({
         <PoUploadDocumentsModal
           isOpen={isUploadOpen}
           isPending={isPending}
-          onUpload={(files, targetPurpose) => onUpload(files, targetPurpose)}
+          onStartUpload={handleStartUpload}
           onClose={() => setIsUploadOpen(false)}
         />
       )}

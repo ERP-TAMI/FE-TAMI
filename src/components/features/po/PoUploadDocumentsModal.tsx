@@ -8,8 +8,8 @@ import type { AttachedDocItem } from "@/types/po";
 interface Props {
   isOpen: boolean;
   isPending: boolean;
-  /** Gọi một lần cho mỗi nhóm danh mục — chữ ký giống luồng tải lên sẵn có. */
-  onUpload: (files: File[], purpose: string) => Promise<void>;
+  /** Giao cả lô cho trang chạy nền; modal không chờ kết quả. */
+  onStartUpload: (filesByPurpose: Record<string, File[]>) => void;
   onClose: () => void;
 }
 
@@ -36,13 +36,12 @@ function formatBytes(bytes: number): string {
 export function PoUploadDocumentsModal({
   isOpen,
   isPending,
-  onUpload,
+  onStartUpload,
   onClose,
 }: Props) {
   const [selectedTab, setSelectedTab] = useState<string>("all");
   const [attachedFiles, setAttachedFiles] = useState<AttachedDocItem[]>([]);
   const [isDragOver, setIsDragOver] = useState(false);
-  const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const categoryCounts = attachedFiles.reduce<Record<string, number>>(
@@ -74,37 +73,30 @@ export function PoUploadDocumentsModal({
   };
 
   const handleClose = () => {
-    if (uploading) return;
     setAttachedFiles([]);
     setSelectedTab("all");
     onClose();
   };
 
-  const handleUpload = async () => {
+  // Không await: giao cho trang chạy nền rồi đóng modal ngay.
+  const handleUpload = () => {
     if (attachedFiles.length === 0) return;
-    setUploading(true);
-    try {
-      // Gom theo danh mục: mỗi danh mục một lượt tải, giữ đúng phân loại
-      // người dùng đã chọn cho từng tệp.
-      const byPurpose = attachedFiles.reduce<Record<string, File[]>>(
-        (acc, item) => {
-          (acc[item.purpose] ||= []).push(item.file);
-          return acc;
-        },
-        {},
-      );
-      for (const [purpose, files] of Object.entries(byPurpose)) {
-        await onUpload(files, purpose);
-      }
-      setAttachedFiles([]);
-      setSelectedTab("all");
-      onClose();
-    } finally {
-      setUploading(false);
-    }
+
+    const byPurpose = attachedFiles.reduce<Record<string, File[]>>(
+      (acc, item) => {
+        (acc[item.purpose] ||= []).push(item.file);
+        return acc;
+      },
+      {},
+    );
+
+    onStartUpload(byPurpose);
+    setAttachedFiles([]);
+    setSelectedTab("all");
+    onClose();
   };
 
-  const busy = uploading || isPending;
+  const busy = isPending;
   const totalSize = attachedFiles.reduce((sum, i) => sum + i.file.size, 0);
 
   return (
@@ -333,7 +325,7 @@ export function PoUploadDocumentsModal({
         </div>
 
         <div className="flex items-center justify-end gap-3 border-t border-gray-100 pt-4 dark:border-gray-800">
-          <Button variant="outline" size="sm" onClick={handleClose} disabled={uploading}>
+          <Button variant="outline" size="sm" onClick={handleClose}>
             Hủy
           </Button>
           <Button
@@ -341,9 +333,7 @@ export function PoUploadDocumentsModal({
             onClick={handleUpload}
             disabled={attachedFiles.length === 0 || busy}
           >
-            {uploading
-              ? `Đang tải lên (${attachedFiles.length})...`
-              : `Tải lên ${attachedFiles.length || ""} tệp`.replace("  ", " ")}
+            {`Tải lên ${attachedFiles.length || ""} tệp`.replace("  ", " ")}
           </Button>
         </div>
       </div>

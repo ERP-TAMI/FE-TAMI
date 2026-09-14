@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { poApi } from "@/api/po.api";
+import { poApi, type UploadProgress } from "@/api/po.api";
 import type {
   CreatePoInput,
   CreatePoProductInput,
@@ -166,11 +166,13 @@ export function useUploadPoDocuments() {
       id,
       files,
       purpose,
+      onProgress,
     }: {
       id: string;
       files: File[];
       purpose?: string;
-    }) => poApi.uploadDocuments(id, files, purpose),
+      onProgress?: (p: UploadProgress) => void;
+    }) => poApi.uploadDocuments(id, files, purpose, { onProgress }),
     onSuccess: (_, { id }) => {
       void queryClient.invalidateQueries({ queryKey: PO_KEYS.detail(id) });
       void queryClient.invalidateQueries({ queryKey: PO_KEYS.documentsOf(id) });

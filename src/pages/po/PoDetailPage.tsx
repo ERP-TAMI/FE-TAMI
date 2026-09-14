@@ -25,6 +25,7 @@ import {
 } from "@/hooks/usePurchaseOrders";
 import { useToast } from "@/hooks/useToast";
 import { getApiError } from "@/lib/apiError";
+import type { UploadProgress } from "@/api/po.api";
 import { TrashBinIcon, EyeIcon, CalenderIcon } from "@/icons";
 import type {
   CreatePoProductInput,
@@ -375,15 +376,25 @@ export default function PoDetailPage() {
     await triggerStatusTransition(reasonModalState.targetStatus, reason);
   };
 
-  const handleUploadDocument = async (files: File[] | File, purpose: string) => {
+  const handleUploadDocument = async (
+    files: File[] | File,
+    purpose: string,
+    onProgress?: (p: UploadProgress) => void,
+  ) => {
     if (!id) return;
     const fileList = Array.isArray(files) ? files : [files];
     if (fileList.length === 0) return;
     try {
       if (fileList.length === 1) {
         await uploadDocMutation.mutateAsync({ id, file: fileList[0], purpose });
+        onProgress?.({ done: 1, total: 1, fileName: fileList[0].name });
       } else {
-        await uploadDocsMutation.mutateAsync({ id, files: fileList, purpose });
+        await uploadDocsMutation.mutateAsync({
+          id,
+          files: fileList,
+          purpose,
+          onProgress,
+        });
       }
       showToast(
         fileList.length === 1
@@ -1696,6 +1707,7 @@ export default function PoDetailPage() {
         <div className="space-y-4">
           <PoDocumentsSection
             poId={id}
+            poCode={po.poCode}
             documents={poDocuments}
             isLocked={isLocked}
             isPending={

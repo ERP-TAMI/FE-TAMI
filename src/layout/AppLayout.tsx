@@ -3,6 +3,7 @@ import { SidebarProvider, useSidebar } from "@/context/SidebarContext";
 import AppHeader from "@/layout/AppHeader";
 import AppSidebar from "@/layout/AppSidebar";
 import Backdrop from "@/layout/Backdrop";
+import { UploadProgressWidget } from "@/components/shared";
 
 function LayoutContent() {
   const { isExpanded, isHovered, isMobileOpen } = useSidebar();
@@ -23,6 +24,7 @@ function LayoutContent() {
           <Outlet />
         </main>
       </div>
+      <UploadProgressWidget />
     </div>
   );
 }
