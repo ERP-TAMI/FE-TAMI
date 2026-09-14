@@ -13,6 +13,7 @@ function user(roleCode: string, permissions: string[] = []): AuthUser {
     id: "11111111-1111-4111-8111-111111111111",
     email: `${roleCode.toLowerCase()}@tami.test`,
     fullName: roleCode,
+    phone: null,
     roleCode,
     roleName: roleCode,
     permissions,
