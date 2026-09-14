@@ -46,6 +46,21 @@ describe("LoginPage", () => {
     );
   });
 
+  it("places the forgot-password action after the password field", () => {
+    render(
+      <MemoryRouter>
+        <LoginPage />
+      </MemoryRouter>,
+    );
+
+    const password = screen.getByLabelText("Mật khẩu");
+    const forgotPassword = screen.getByRole("link", { name: "Quên mật khẩu?" });
+
+    expect(
+      password.compareDocumentPosition(forgotPassword) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
   it("logs in successfully and redirects to the dashboard", async () => {
     vi.mocked(authApi.login).mockResolvedValue({
       accessToken: "signed.access.token",

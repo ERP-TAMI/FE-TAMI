@@ -97,21 +97,23 @@ export default function LoginPage() {
               error={formState.errors.email?.message}
               {...register("email")}
             />
-            <Input
-              label="Mật khẩu"
-              labelAction={
+            <div>
+              <Input
+                label="Mật khẩu"
+                type="password"
+                placeholder="Nhập mật khẩu"
+                error={formState.errors.password?.message}
+                {...register("password")}
+              />
+              <div className="mt-2 flex justify-end">
                 <Link
-                  className="text-theme-xs text-brand-600 hover:underline dark:text-brand-400"
+                  className="text-theme-sm text-brand-600 inline-flex min-h-8 items-center rounded-sm hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 dark:text-brand-400 dark:focus-visible:ring-offset-gray-900"
                   to="/forgot-password"
                 >
                   Quên mật khẩu?
                 </Link>
-              }
-              type="password"
-              placeholder="Nhập mật khẩu"
-              error={formState.errors.password?.message}
-              {...register("password")}
-            />
+              </div>
+            </div>
             <Button type="submit" className="w-full" loading={isSubmitting}>
               Đăng nhập
             </Button>
