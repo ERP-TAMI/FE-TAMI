@@ -6,6 +6,7 @@ export { Input } from "@/components/shared/Input";
 export { Modal } from "@/components/shared/Modal";
 export { PageHeader } from "@/components/shared/PageHeader";
 export { Pagination } from "@/components/shared/Pagination";
+export { UploadProgressWidget } from "@/components/shared/UploadProgressWidget";
 export { Select } from "@/components/shared/Select";
 export { Table } from "@/components/shared/Table";
 export { Toast } from "@/components/shared/Toast";

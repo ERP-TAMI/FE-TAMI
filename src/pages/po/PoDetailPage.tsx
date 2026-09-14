@@ -9,7 +9,6 @@ import { PoDocumentsSection } from "@/components/features/po/PoDocumentsSection"
 import { PoAddProductQuickForm } from "@/components/features/po/PoAddProductQuickForm";
 import { PoSplitDocumentPreview } from "@/components/features/po/PoSplitDocumentPreview";
 import { StyleImagePlaceholder } from "@/components/features/styles/StyleImagePlaceholder";
-import { resolveImageUrl } from "@/lib/imageUtils";
 import {
   usePurchaseOrder,
   useUpdatePurchaseOrder,
@@ -19,22 +18,15 @@ import {
   useUploadPoDocuments,
   useUpdatePoDocumentPurpose,
   usePoProducts,
+  usePoDocuments,
   useAddPoProduct,
   useRemovePoProduct,
   useDeletePurchaseOrder,
 } from "@/hooks/usePurchaseOrders";
 import { useToast } from "@/hooks/useToast";
 import { getApiError } from "@/lib/apiError";
-import {
-  TrashBinIcon,
-  EyeIcon,
-  AngleDownIcon,
-  LockIcon,
-  BoltIcon,
-  BoxIcon,
-  InfoIcon,
-  CalenderIcon,
-} from "@/icons";
+import type { UploadProgress } from "@/api/po.api";
+import { TrashBinIcon, EyeIcon, CalenderIcon } from "@/icons";
 import type {
   CreatePoProductInput,
   PoStatus,
@@ -42,21 +34,82 @@ import type {
   PurchaseOrderDocumentItem,
 } from "@/types/po";
 
+const DATE_FORMAT_OPTIONS: Intl.DateTimeFormatOptions = {
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+};
+
 function formatDate(dateStr: string | null | undefined): string {
   if (!dateStr) return "—";
   const d = new Date(dateStr);
   if (isNaN(d.getTime())) return dateStr;
-  return d.toLocaleDateString("vi-VN");
+  return d.toLocaleDateString("vi-VN", DATE_FORMAT_OPTIONS);
 }
 
 function formatDateTime(dateStr: string | null | undefined): string {
   if (!dateStr) return "—";
   const d = new Date(dateStr);
   if (isNaN(d.getTime())) return dateStr;
-  return `${d.toLocaleDateString("vi-VN")} ${d.toLocaleTimeString("vi-VN", {
+  return `${d.toLocaleDateString("vi-VN", DATE_FORMAT_OPTIONS)} ${d.toLocaleTimeString("vi-VN", {
     hour: "2-digit",
     minute: "2-digit",
   })}`;
+}
+
+/** Số ngày còn lại tính từ đó Hạn hoàn thành được coi là "sắp tới hạn". */
+const DEADLINE_SOON_DAYS = 7;
+
+/** Số tài liệu PO tải mỗi trang. BE chặn trên ở 100. */
+const PO_DOCS_PAGE_SIZE = 20;
+
+/** Số sản phẩm tải mỗi trang. BE chặn trên ở 100. */
+const PO_PRODUCTS_PAGE_SIZE = 20;
+
+type DeadlineTone = "overdue" | "soon" | "normal";
+
+const deadlineValueClasses: Record<DeadlineTone, string> = {
+  overdue: "text-error-600 dark:text-error-400",
+  soon: "text-warning-600 dark:text-warning-400",
+  normal: "text-gray-800 dark:text-gray-200",
+};
+
+const deadlineHintClasses: Record<DeadlineTone, string> = {
+  overdue:
+    "border-error-200 bg-error-50 text-error-700 dark:border-error-900/40 dark:bg-error-950/40 dark:text-error-300",
+  soon: "border-warning-200 bg-warning-50 text-warning-700 dark:border-warning-900/40 dark:bg-warning-950/40 dark:text-warning-300",
+  normal: "",
+};
+
+/**
+ * Trạng thái hạn hoàn thành. PO đã khóa hoặc đã hủy thì không cảnh báo nữa
+ * vì đơn đã kết thúc, tô đỏ chỉ gây nhiễu.
+ */
+function getDeadlineInfo(
+  deadline: string | null | undefined,
+  status: PoStatus | undefined,
+): { tone: DeadlineTone; hint: string | null } {
+  if (!deadline || status === "closed" || status === "cancelled") {
+    return { tone: "normal", hint: null };
+  }
+
+  const due = new Date(deadline);
+  if (isNaN(due.getTime())) return { tone: "normal", hint: null };
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  due.setHours(0, 0, 0, 0);
+
+  const diffDays = Math.round((due.getTime() - today.getTime()) / 86_400_000);
+
+  if (diffDays < 0) {
+    return { tone: "overdue", hint: `Quá hạn ${Math.abs(diffDays)} ngày` };
+  }
+  if (diffDays === 0) return { tone: "soon", hint: "Đến hạn hôm nay" };
+  if (diffDays <= DEADLINE_SOON_DAYS) {
+    return { tone: "soon", hint: `Còn ${diffDays} ngày` };
+  }
+  return { tone: "normal", hint: null };
 }
 
 export default function PoDetailPage() {
@@ -72,11 +125,12 @@ export default function PoDetailPage() {
   const uploadDocMutation = useUploadPoDocument();
   const uploadDocsMutation = useUploadPoDocuments();
   const updateDocPurposeMutation = useUpdatePoDocumentPurpose();
-  const { data: productsData } = usePoProducts(id);
   const addProductMutation = useAddPoProduct();
   const removeProductMutation = useRemovePoProduct();
   const deletePoMutation = useDeletePurchaseOrder();
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [productPendingRemoval, setProductPendingRemoval] =
+    useState<PurchaseOrderProductItem | null>(null);
 
   const handleDeletePo = async () => {
     if (!id) return;
@@ -92,125 +146,53 @@ export default function PoDetailPage() {
   };
 
   // Determine active tab from URL path
-  const getTabFromPath = (): "general" | "lines" | "documents" | "history" => {
+  const getTabFromPath = (): "general" | "lines" | "documents" => {
     const p = location.pathname.toLowerCase();
     if (p.includes("/products") || p.includes("/lines")) return "lines";
     if (p.includes("/documents") || p.includes("/files")) return "documents";
-    if (p.includes("/history")) return "history";
     return "general";
   };
 
   const activeTab = getTabFromPath();
 
-  const handleTabClick = (tabKey: "general" | "lines" | "documents" | "history") => {
+  const handleTabClick = (tabKey: "general" | "lines" | "documents") => {
     if (tabKey === "general") navigate(`/po/${id}/detail`);
     else if (tabKey === "lines") navigate(`/po/${id}/products`);
     else if (tabKey === "documents") navigate(`/po/${id}/documents`);
-    else if (tabKey === "history") navigate(`/po/${id}/history`);
   };
+
+  // Chỉ tải danh sách sản phẩm khi người dùng thực sự mở tab Sản phẩm.
+  const [productPage, setProductPage] = useState(1);
+  const { data: productsPage, isLoading: isLoadingProducts } = usePoProducts(
+    id,
+    { page: productPage, limit: PO_PRODUCTS_PAGE_SIZE },
+    { enabled: activeTab === "lines" },
+  );
+  const productsData = productsPage?.items;
 
   const [isAddProductOpen, setIsAddProductOpen] = useState(false);
 
   // Chế độ xem Tab Sản phẩm: Chia khung 50/50 (true) hoặc Chế độ thường 100% (false) (Mặc định: false - Chế độ thường)
   const [isSplitMode, setIsSplitMode] = useState(false);
 
+  // Tài liệu PO: tải riêng, có phân trang, và chỉ khi thực sự cần — tab Tài
+  // liệu, chế độ chia khung (kéo thả tài liệu sang sản phẩm) hoặc modal thêm
+  // sản phẩm (bước gán tài liệu từ kho PO).
+  const [docPage, setDocPage] = useState(1);
+  const needPoDocuments =
+    activeTab === "documents" || isSplitMode || isAddProductOpen;
+  const { data: poDocumentsPage, isFetching: isFetchingPoDocs } = usePoDocuments(
+    id,
+    { page: docPage, limit: PO_DOCS_PAGE_SIZE },
+    { enabled: needPoDocuments },
+  );
+  const poDocuments = useMemo(
+    () => poDocumentsPage?.items ?? [],
+    [poDocumentsPage],
+  );
+
   const [splitRatio, setSplitRatio] = useState<number>(50); // Mặc định 50/50
 
-  // Local state cho chế độ xem lịch sử PO tinh gọn
-  const [historyViewMode, setHistoryViewMode] = useState<"grouped" | "timeline">("grouped");
-  const [expandedHistoryGroups, setExpandedHistoryGroups] = useState<Record<string, boolean>>({});
-
-  const groupedPoHistory = useMemo(() => {
-    const rawItems = po?.statusHistory || [];
-    const sorted = [...rawItems].sort(
-      (a, b) => new Date(b.changedAt).getTime() - new Date(a.changedAt).getTime(),
-    );
-
-    const lockItems: typeof rawItems = [];
-    const statusItems: typeof rawItems = [];
-    const createItems: typeof rawItems = [];
-    const otherItems: typeof rawItems = [];
-
-    for (const item of sorted) {
-      const act = (item.action || "").toLowerCase();
-      const rsn = (item.reason || "").toLowerCase();
-
-      if (
-        act === "locked" ||
-        act === "unlocked" ||
-        act.includes("lock") ||
-        rsn.includes("khóa") ||
-        rsn.includes("mở khóa")
-      ) {
-        lockItems.push(item);
-      } else if (
-        act === "created" ||
-        act.includes("tạo") ||
-        rsn.includes("khởi tạo")
-      ) {
-        createItems.push(item);
-      } else if (
-        item.oldStatus ||
-        item.newStatus ||
-        act.includes("status") ||
-        act.includes("chuyển")
-      ) {
-        statusItems.push(item);
-      } else {
-        otherItems.push(item);
-      }
-    }
-
-    const groups = [];
-
-    if (lockItems.length > 0) {
-      groups.push({
-        id: "po_lock_group",
-        title: "Lịch sử Khóa & Mở khóa đơn hàng PO",
-        type: "lock",
-        items: lockItems,
-        latestTime: lockItems[0].changedAt,
-        latestStatus: lockItems[0].newStatus,
-        latestReason: lockItems[0].reason,
-      });
-    }
-
-    if (statusItems.length > 0) {
-      groups.push({
-        id: "po_status_group",
-        title: "Lịch sử chuyển trạng thái xử lý đơn hàng",
-        type: "status",
-        items: statusItems,
-        latestTime: statusItems[0].changedAt,
-        latestStatus: statusItems[0].newStatus,
-        latestReason: statusItems[0].reason,
-      });
-    }
-
-    if (createItems.length > 0) {
-      groups.push({
-        id: "po_create_group",
-        title: "Khởi tạo đơn hàng PO",
-        type: "create",
-        items: createItems,
-        latestTime: createItems[0].changedAt,
-        latestReason: createItems[0].reason,
-      });
-    }
-
-    if (otherItems.length > 0) {
-      groups.push({
-        id: "po_other_group",
-        title: "Các hoạt động khác",
-        type: "other",
-        items: otherItems,
-        latestTime: otherItems[0].changedAt,
-        latestReason: otherItems[0].reason,
-      });
-    }
-
-    return groups;
-  }, [po?.statusHistory]);
   const isDraggingRef = useRef(false);
   const splitContainerRef = useRef<HTMLDivElement>(null);
 
@@ -276,6 +258,7 @@ export default function PoDetailPage() {
   });
 
   const isLocked = po?.status === "closed" || po?.status === "cancelled";
+  const deadlineInfo = getDeadlineInfo(po?.deadline, po?.status);
 
   const startEdit = () => {
     if (!po) return;
@@ -374,12 +357,15 @@ export default function PoDetailPage() {
     }
   };
 
-  const handleRemoveProduct = async (productId: string) => {
-    if (!id) return;
-    if (!window.confirm("Bạn có chắc chắn muốn xóa sản phẩm này khỏi đơn hàng PO?")) return;
+  const handleRemoveProduct = async () => {
+    if (!id || !productPendingRemoval) return;
     try {
-      await removeProductMutation.mutateAsync({ id, productId });
+      await removeProductMutation.mutateAsync({
+        id,
+        productId: productPendingRemoval.id,
+      });
       showToast("Đã xóa sản phẩm khỏi đơn hàng PO.");
+      setProductPendingRemoval(null);
     } catch (err: unknown) {
       const apiErr = getApiError(err, "Xóa sản phẩm thất bại.");
       showToast(apiErr.message, "error");
@@ -390,15 +376,25 @@ export default function PoDetailPage() {
     await triggerStatusTransition(reasonModalState.targetStatus, reason);
   };
 
-  const handleUploadDocument = async (files: File[] | File, purpose: string) => {
+  const handleUploadDocument = async (
+    files: File[] | File,
+    purpose: string,
+    onProgress?: (p: UploadProgress) => void,
+  ) => {
     if (!id) return;
     const fileList = Array.isArray(files) ? files : [files];
     if (fileList.length === 0) return;
     try {
       if (fileList.length === 1) {
         await uploadDocMutation.mutateAsync({ id, file: fileList[0], purpose });
+        onProgress?.({ done: 1, total: 1, fileName: fileList[0].name });
       } else {
-        await uploadDocsMutation.mutateAsync({ id, files: fileList, purpose });
+        await uploadDocsMutation.mutateAsync({
+          id,
+          files: fileList,
+          purpose,
+          onProgress,
+        });
       }
       showToast(
         fileList.length === 1
@@ -463,7 +459,7 @@ export default function PoDetailPage() {
   // 1. Chưa gán (ưu tiên lên trên)
   // 2. Đã gán với sản phẩm khác (hiển thị phía dưới)
   const sortedPoDocs = useMemo(() => {
-    const docs = po?.documents || [];
+    const docs = poDocuments;
     return [...docs].sort((a, b) => {
       const aAssigned = (docAssignmentsMap[a.documentId] || []).length > 0;
       const bAssigned = (docAssignmentsMap[b.documentId] || []).length > 0;
@@ -472,7 +468,7 @@ export default function PoDetailPage() {
       }
       return 0;
     });
-  }, [po?.documents, docAssignmentsMap]);
+  }, [poDocuments, docAssignmentsMap]);
 
   if (isLoading) {
     return (
@@ -498,10 +494,10 @@ export default function PoDetailPage() {
   }
 
   const lines: PurchaseOrderProductItem[] =
-    productsData || po.products || po.lines || [];
+    productsData || [];
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-3">
       {toast && (
         <Toast
           open={!!toast}
@@ -514,7 +510,7 @@ export default function PoDetailPage() {
       {/* Breadcrumb Header */}
       <PageHeader
         breadcrumb={[
-          { label: "Trang chủ", to: "/" },
+          { label: "Dashboard", to: "/dashboard" },
           { label: "Quản lý PO", to: "/po" },
           { label: po.poCode },
         ]}
@@ -522,11 +518,11 @@ export default function PoDetailPage() {
       />
 
       {/* Unified PO Header Card */}
-      <div className="rounded-2xl border border-gray-200 bg-white px-6 py-4 shadow-xs dark:border-gray-800 dark:bg-gray-900">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex flex-wrap items-center gap-x-5 sm:gap-x-6 gap-y-2">
-            <div className="flex items-center gap-3 shrink-0">
-              <h1 className="font-mono text-2xl sm:text-3xl font-extrabold tracking-tight leading-none text-gray-900 dark:text-white">
+      <div className="-mt-1 rounded-2xl border border-gray-200 bg-white px-4 py-2.5 shadow-xs dark:border-gray-800 dark:bg-gray-900">
+        <div className="flex flex-col gap-2.5 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-wrap items-center gap-x-4 sm:gap-x-5 gap-y-2">
+            <div className="flex items-center gap-2.5 shrink-0">
+              <h1 className="font-mono text-base sm:text-lg font-bold tracking-tight leading-none text-gray-900 dark:text-white">
                 {po.poCode}
               </h1>
               <PoStatusBadge status={po.status} />
@@ -537,7 +533,7 @@ export default function PoDetailPage() {
             {po.status === "draft" && (
               <>
                 <Button
-                  size="sm"
+                  size="xs"
                   onClick={() => handleStatusButtonClick("in_progress")}
                   disabled={updateStatusMutation.isPending}
                 >
@@ -545,7 +541,7 @@ export default function PoDetailPage() {
                 </Button>
                 <Button
                   variant="outline"
-                  size="sm"
+                  size="xs"
                   onClick={() => handleStatusButtonClick("cancelled")}
                   disabled={updateStatusMutation.isPending}
                 >
@@ -553,7 +549,7 @@ export default function PoDetailPage() {
                 </Button>
                 <Button
                   variant="outline"
-                  size="sm"
+                  size="xs"
                   onClick={() => setIsDeleteDialogOpen(true)}
                   disabled={updateStatusMutation.isPending}
                   className="text-red-600 border-red-200 hover:bg-red-50 dark:text-red-400 dark:border-red-900/40"
@@ -566,7 +562,7 @@ export default function PoDetailPage() {
             {(po.status === "in_progress" || po.status === "pending_rd") && (
               <>
                 <Button
-                  size="sm"
+                  size="xs"
                   onClick={() => handleStatusButtonClick("closed")}
                   disabled={updateStatusMutation.isPending}
                 >
@@ -574,7 +570,7 @@ export default function PoDetailPage() {
                 </Button>
                 <Button
                   variant="outline"
-                  size="sm"
+                  size="xs"
                   onClick={() => handleStatusButtonClick("cancelled")}
                   disabled={updateStatusMutation.isPending}
                 >
@@ -599,7 +595,7 @@ export default function PoDetailPage() {
       </div>
 
       {/* Tabs Navigation & Split Screen Toggle */}
-      <div className="flex flex-wrap items-center justify-between border-b border-gray-200 dark:border-gray-800 gap-2">
+      <div className="-mt-1 flex flex-wrap items-center justify-between border-b border-gray-200 dark:border-gray-800 gap-2">
         <nav className="-mb-px flex gap-6 text-theme-sm font-semibold">
           <button
             type="button"
@@ -619,7 +615,7 @@ export default function PoDetailPage() {
                 : "border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400"
               }`}
           >
-            Sản phẩm / Mẫu Fit ({lines.length})
+            Sản phẩm / Mẫu Fit ({productsPage?.total ?? po.productsCount ?? 0})
           </button>
           <button
             type="button"
@@ -629,17 +625,7 @@ export default function PoDetailPage() {
                 : "border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400"
               }`}
           >
-            Tài liệu PO ({po.documents?.length || 0})
-          </button>
-          <button
-            type="button"
-            onClick={() => handleTabClick("history")}
-            className={`border-b-2 py-2.5 transition-colors ${activeTab === "history"
-                ? "border-brand-600 text-brand-600 dark:border-brand-400 dark:text-brand-400"
-                : "border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400"
-              }`}
-          >
-            Lịch sử ({po.statusHistory?.length || 0})
+            Tài liệu PO ({po.documentsCount ?? 0})
           </button>
         </nav>
 
@@ -672,12 +658,12 @@ export default function PoDetailPage() {
       {/* Tab 1: Thông tin chung */}
       {activeTab === "general" && (
         <div className="space-y-5">
-          <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-xs dark:border-gray-800 dark:bg-gray-900">
-            <div className="flex items-center justify-between border-b border-gray-100 pb-4 dark:border-gray-800">
+          <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-xs dark:border-gray-800 dark:bg-gray-900">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-3 dark:border-gray-800">
               <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-50 text-brand-600 dark:bg-brand-950/50 dark:text-brand-400">
+                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-brand-50 text-brand-600 dark:bg-brand-950/50 dark:text-brand-400">
                   <svg
-                    className="h-5 w-5"
+                    className="h-4 w-4"
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"
@@ -691,7 +677,7 @@ export default function PoDetailPage() {
                   </svg>
                 </div>
                 <div>
-                  <h3 className="text-theme-base font-bold text-gray-900 dark:text-white uppercase tracking-wide">
+                  <h3 className="text-theme-sm font-bold text-gray-900 dark:text-white uppercase tracking-wide">
                     Thông tin PO
                   </h3>
                   <p className="text-theme-xs text-gray-500 dark:text-gray-400">
@@ -700,15 +686,15 @@ export default function PoDetailPage() {
                 </div>
               </div>
               {!isEditing && !isLocked && (
-                <Button variant="outline" size="sm" onClick={startEdit}>
+                <Button variant="secondary" size="sm" onClick={startEdit}>
                   Chỉnh sửa
                 </Button>
               )}
             </div>
 
             {isEditing ? (
-              <div className="mt-5 space-y-4">
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="mt-4 space-y-3.5">
+                <div className="grid grid-cols-1 gap-x-4 gap-y-3.5 sm:grid-cols-2">
                   <div>
                     <label className="block text-theme-xs font-bold uppercase tracking-wider text-gray-600 dark:text-gray-400">
                       Mã PO Khách hàng
@@ -718,7 +704,7 @@ export default function PoDetailPage() {
                       value={customerPoCode}
                       onChange={(e) => setCustomerPoCode(e.target.value)}
                       placeholder="Nhập mã PO khách hàng..."
-                      className="mt-1.5 w-full rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-theme-base text-gray-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-white"
+                      className="mt-1.5 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-theme-sm text-gray-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-white"
                     />
                   </div>
                   <div>
@@ -730,22 +716,13 @@ export default function PoDetailPage() {
                       value={customerNameSnapshot}
                       onChange={(e) => setCustomerNameSnapshot(e.target.value)}
                       placeholder="Nhập tên khách hàng..."
-                      className="mt-1.5 w-full rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-theme-base text-gray-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-white"
+                      className="mt-1.5 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-theme-sm text-gray-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-white"
                     />
                   </div>
                   <div>
-                    <div className="flex items-center justify-between">
-                      <label className="block text-theme-xs font-bold uppercase tracking-wider text-gray-600 dark:text-gray-400">
-                        Ngày nhận
-                      </label>
-                      <button
-                        type="button"
-                        onClick={() => setReceivedDate(new Date().toISOString().split("T")[0])}
-                        className="text-theme-xs font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400 hover:underline cursor-pointer"
-                      >
-                        Hôm nay
-                      </button>
-                    </div>
+                    <label className="block text-theme-xs font-bold uppercase tracking-wider text-gray-600 dark:text-gray-400">
+                      Ngày nhận
+                    </label>
                     <div className="relative mt-1.5 flex items-center">
                       <input
                         type="date"
@@ -763,29 +740,15 @@ export default function PoDetailPage() {
                             setGeneralFieldErrors((prev) => ({ ...prev, deadline: undefined }));
                           }
                         }}
-                        className="w-full rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 pr-10 text-theme-base text-gray-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-white cursor-pointer"
+                        className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 pr-9 text-theme-sm text-gray-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-white cursor-pointer"
                       />
-                      <CalenderIcon className="pointer-events-none absolute right-3 h-5 w-5 text-gray-400" />
+                      <CalenderIcon className="pointer-events-none absolute right-2.5 h-4 w-4 text-gray-400" />
                     </div>
                   </div>
                   <div>
-                    <div className="flex items-center justify-between">
-                      <label className="block text-theme-xs font-bold uppercase tracking-wider text-gray-600 dark:text-gray-400">
-                        Hạn hoàn thành (Deadline) <span className="text-error-500">*</span>
-                      </label>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setDeadline(new Date().toISOString().split("T")[0]);
-                          if (generalFieldErrors.deadline) {
-                            setGeneralFieldErrors((prev) => ({ ...prev, deadline: undefined }));
-                          }
-                        }}
-                        className="text-theme-xs font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400 hover:underline cursor-pointer"
-                      >
-                        Hôm nay
-                      </button>
-                    </div>
+                    <label className="block text-theme-xs font-bold uppercase tracking-wider text-gray-600 dark:text-gray-400">
+                      Hạn hoàn thành <span className="text-error-500">*</span>
+                    </label>
                     <div className="relative mt-1.5 flex items-center">
                       <input
                         type="date"
@@ -803,13 +766,13 @@ export default function PoDetailPage() {
                             setGeneralFieldErrors((prev) => ({ ...prev, deadline: undefined }));
                           }
                         }}
-                        className={`w-full rounded-xl border bg-white px-3.5 py-2.5 pr-10 text-theme-base text-gray-900 outline-none transition focus:ring-2 dark:bg-gray-800 dark:text-white cursor-pointer ${
+                        className={`w-full rounded-lg border bg-white px-3 py-2 pr-9 text-theme-sm text-gray-900 outline-none transition focus:ring-2 dark:bg-gray-800 dark:text-white cursor-pointer ${
                           generalFieldErrors.deadline
                             ? "border-error-400 focus:border-error-500 focus:ring-error-500/20 dark:border-error-500"
                             : "border-gray-200 focus:border-brand-500 focus:ring-brand-500/20 dark:border-gray-800"
                         }`}
                       />
-                      <CalenderIcon className="pointer-events-none absolute right-3 h-5 w-5 text-gray-400" />
+                      <CalenderIcon className="pointer-events-none absolute right-2.5 h-4 w-4 text-gray-400" />
                     </div>
                     {generalFieldErrors.deadline && (
                       <p className="mt-1 text-theme-xs font-medium text-error-600 dark:text-error-400">
@@ -824,11 +787,11 @@ export default function PoDetailPage() {
                     Ghi chú
                   </label>
                   <textarea
-                    rows={3}
+                    rows={2}
                     value={note}
                     onChange={(e) => setNote(e.target.value)}
                     placeholder="Thêm ghi chú đơn hàng..."
-                    className="mt-1.5 w-full rounded-xl border border-gray-200 bg-white p-3.5 text-theme-base text-gray-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-white"
+                    className="mt-1.5 w-full rounded-lg border border-gray-200 bg-white p-3 text-theme-sm text-gray-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-white"
                   />
                 </div>
 
@@ -854,93 +817,96 @@ export default function PoDetailPage() {
                 </div>
               </div>
             ) : (
-              <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
-                {/* Tile 1: Mã PO hệ thống */}
-                <div className="rounded-xl border border-gray-100 bg-gray-50/60 p-4.5 transition-all hover:bg-gray-50 hover:border-gray-200 dark:border-gray-800 dark:bg-gray-800/40 dark:hover:border-gray-700">
-                  <span className="block text-theme-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
-                    Mã PO nội bộ
-                  </span>
-                  <span className="mt-2 block font-mono text-xl sm:text-2xl font-extrabold tracking-tight text-brand-600 dark:text-brand-400">
-                    {po.poCode}
-                  </span>
-                </div>
+              <div className="mt-4 space-y-5">
+                <dl className="divide-y divide-gray-100 border-t border-b border-gray-100 dark:divide-gray-800/80 dark:border-gray-800/80">
+                  <div className="flex items-center py-3 text-theme-sm">
+                    <dt className="w-1/3 shrink-0 font-semibold text-gray-600 dark:text-gray-400">
+                      Mã PO nội bộ
+                    </dt>
+                    <dd className="w-2/3 min-w-0 font-mono text-base font-bold text-blue-600 dark:text-blue-400">
+                      {po.poCode}
+                    </dd>
+                  </div>
 
-                <div className="rounded-xl border border-gray-100 bg-gray-50/60 p-4.5 dark:border-gray-800 dark:bg-gray-800/40">
-                  <span className="block text-theme-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
-                    Khách hàng
-                  </span>
-                  <span
-                    className="mt-2 block text-lg sm:text-xl font-bold text-gray-900 dark:text-white truncate"
-                    title={po.customerNameSnapshot}
-                  >
-                    {po.customerNameSnapshot}
-                  </span>
-                </div>
+                  <div className="flex items-center py-3 text-theme-sm">
+                    <dt className="w-1/3 shrink-0 font-semibold text-gray-600 dark:text-gray-400">
+                      Khách hàng
+                    </dt>
+                    <dd className="w-2/3 min-w-0 break-words text-base font-bold text-gray-900 dark:text-white">
+                      {po.customerNameSnapshot || "—"}
+                    </dd>
+                  </div>
 
-                <div className="rounded-xl border border-gray-100 bg-gray-50/60 p-4.5 dark:border-gray-800 dark:bg-gray-800/40">
-                  <span className="block text-theme-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
-                    Mã PO khách hàng
-                  </span>
-                  <span className="mt-2 block font-mono text-lg sm:text-xl font-bold text-gray-900 dark:text-white">
-                    {po.customerPoCode || "—"}
-                  </span>
-                </div>
+                  <div className="flex items-center py-3 text-theme-sm">
+                    <dt className="w-1/3 shrink-0 font-semibold text-gray-600 dark:text-gray-400">
+                      Mã PO khách hàng
+                    </dt>
+                    <dd className="w-2/3 min-w-0 break-words font-mono text-base font-semibold text-gray-800 dark:text-gray-200">
+                      {po.customerPoCode || "—"}
+                    </dd>
+                  </div>
 
-                <div className="rounded-xl border border-gray-100 bg-gray-50/60 p-4.5 dark:border-gray-800 dark:bg-gray-800/40">
-                  <span className="block text-theme-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
-                    Ngày nhận đơn
-                  </span>
-                  <span className="mt-2 block text-lg sm:text-xl font-bold text-gray-900 dark:text-white">
-                    {formatDate(po.receivedDate)}
-                  </span>
-                </div>
+                  <div className="flex items-center py-3 text-theme-sm">
+                    <dt className="w-1/3 shrink-0 font-semibold text-gray-600 dark:text-gray-400">
+                      Ngày nhận đơn
+                    </dt>
+                    <dd className="w-2/3 min-w-0 text-base font-semibold text-gray-800 dark:text-gray-200">
+                      {formatDate(po.receivedDate)}
+                    </dd>
+                  </div>
 
-                {/* Tile 5: Hạn hoàn thành */}
-                <div className="rounded-xl border border-gray-100 bg-gray-50/60 p-4.5 transition-all hover:bg-gray-50 hover:border-gray-200 dark:border-gray-800 dark:bg-gray-800/40 dark:hover:border-gray-700">
-                  <span className="block text-theme-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
-                    Hạn hoàn thành
-                  </span>
-                  <span className="mt-2 block text-lg sm:text-xl font-bold text-gray-900 dark:text-white">
-                    {po.deadline ? (
-                      <span className="text-amber-600 dark:text-amber-400">
+                  <div className="flex items-center py-3 text-theme-sm">
+                    <dt className="w-1/3 shrink-0 font-semibold text-gray-600 dark:text-gray-400">
+                      Hạn hoàn thành
+                    </dt>
+                    <dd className="flex w-2/3 min-w-0 flex-wrap items-center gap-x-3 gap-y-1.5">
+                      <span
+                        className={`text-base font-bold ${deadlineValueClasses[deadlineInfo.tone]}`}
+                      >
                         {formatDate(po.deadline)}
                       </span>
-                    ) : (
-                      "—"
-                    )}
-                  </span>
-                </div>
-
-                {/* Locked info tile if locked */}
-                {po.closedAt && (
-                  <div className="col-span-1 sm:col-span-2 lg:col-span-4 rounded-xl border border-success-200/80 bg-success-50/60 p-4.5 dark:border-success-900/40 dark:bg-success-950/30">
-                    <span className="block text-theme-xs font-semibold uppercase tracking-wider text-success-600 dark:text-success-400">
-                      Thời điểm khóa đơn hàng
-                    </span>
-                    <span className="mt-1.5 block font-bold text-success-800 dark:text-success-200 text-base">
-                      {formatDateTime(po.closedAt)}
-                    </span>
+                      {deadlineInfo.hint && (
+                        <span
+                          className={`rounded-full border px-2.5 py-0.5 text-theme-xs font-semibold ${deadlineHintClasses[deadlineInfo.tone]}`}
+                        >
+                          {deadlineInfo.hint}
+                        </span>
+                      )}
+                    </dd>
                   </div>
-                )}
 
-                {po.cancellationReason && (
-                  <div className="col-span-1 sm:col-span-2 lg:col-span-4 rounded-xl border border-error-200/80 bg-error-50/60 p-4.5 dark:border-error-900/40 dark:bg-error-950/30">
-                    <span className="block text-theme-xs font-semibold uppercase tracking-wider text-error-600 dark:text-error-400">
-                      Lý do hủy đơn hàng
-                    </span>
-                    <p className="mt-1.5 font-medium text-error-800 dark:text-error-200 text-theme-base">
-                      {po.cancellationReason}
+                  {po.closedAt && (
+                    <div className="flex items-center py-3 text-theme-sm">
+                      <dt className="w-1/3 shrink-0 font-semibold text-gray-600 dark:text-gray-400">
+                        Thời điểm khóa đơn
+                      </dt>
+                      <dd className="w-2/3 min-w-0 text-base font-semibold text-success-700 dark:text-success-300">
+                        {formatDateTime(po.closedAt)}
+                      </dd>
+                    </div>
+                  )}
+
+                  {po.cancellationReason && (
+                    <div className="flex items-start py-3 text-theme-sm">
+                      <dt className="w-1/3 shrink-0 font-semibold text-gray-600 dark:text-gray-400">
+                        Lý do hủy đơn
+                      </dt>
+                      <dd className="w-2/3 min-w-0 break-words font-medium text-error-700 dark:text-error-300">
+                        {po.cancellationReason}
+                      </dd>
+                    </div>
+                  )}
+                </dl>
+
+                <div className="space-y-3">
+                  <h4 className="text-theme-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                    Ghi chú đơn hàng
+                  </h4>
+                  <div className="rounded-xl border border-gray-200/80 bg-gray-50/50 p-4 dark:border-gray-800 dark:bg-gray-900/60">
+                    <p className="whitespace-pre-wrap text-theme-sm leading-relaxed text-gray-800 dark:text-gray-200">
+                      {po.note || "Chưa có ghi chú cho đơn hàng này."}
                     </p>
                   </div>
-                )}
-
-                <div className="col-span-1 sm:col-span-2 lg:col-span-4 rounded-xl border border-gray-100 bg-gray-50/40 p-4.5 dark:border-gray-800 dark:bg-gray-800/30">
-                  <span className="block text-theme-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
-                    Ghi chú đơn hàng
-                  </span>
-                  <p className="mt-2 text-theme-base leading-relaxed text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
-                    {po.note || "Chưa có ghi chú cho đơn hàng này."}
-                  </p>
                 </div>
               </div>
             )}
@@ -954,7 +920,7 @@ export default function PoDetailPage() {
           <div ref={splitContainerRef} className="flex gap-0 min-h-[780px]">
             {/* CỘT TRÁI (50%): TÀI LIỆU PO */}
             {(() => {
-              const allDocs = po?.documents || [];
+              const allDocs = poDocuments;
               const unassignedList = sortedPoDocs.filter(
                 (d) => !(docAssignmentsMap[d.documentId] || []).length,
               );
@@ -1271,7 +1237,7 @@ export default function PoDetailPage() {
                   /* ─── INLINE FORM THÊM SẢN PHẨM ─────────────────────────────────── */
                   <PoAddProductQuickForm
                     isPending={addProductMutation.isPending}
-                    poDocuments={po?.documents || []}
+                    poDocuments={poDocuments}
                     onAttachedDocsChange={setQuickFormDocIds}
                     onClose={() => {
                       setQuickFormDocIds([]);
@@ -1291,7 +1257,7 @@ export default function PoDetailPage() {
                   /* ─── DẠNG GRID (THẺ SẢN PHẨM TỈ LỆ 3*4) ────────────────────────── */
                   <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 gap-3.5">
                     {lines.map((line) => {
-                      const resolvedImg = resolveImageUrl(line.structureImageVersionId);
+                      const resolvedImg = line.structureImageUrl ?? null;
                       return (
                         <div
                           key={line.id}
@@ -1325,7 +1291,7 @@ export default function PoDetailPage() {
                                   type="button"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    void handleRemoveProduct(line.id);
+                                    setProductPendingRemoval(line);
                                   }}
                                   disabled={removeProductMutation.isPending}
                                   className="rounded-md bg-white/90 p-1 text-gray-400 hover:bg-error-50 hover:text-error-600 dark:bg-gray-900/90 dark:hover:bg-error-950/40 dark:hover:text-error-400 shadow-2xs border border-gray-200/60 dark:border-gray-700/60 transition cursor-pointer"
@@ -1427,7 +1393,7 @@ export default function PoDetailPage() {
                                   type="button"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    void handleRemoveProduct(line.id);
+                                    setProductPendingRemoval(line);
                                   }}
                                   disabled={removeProductMutation.isPending}
                                   className="rounded-lg p-1 text-gray-400 hover:bg-error-50 hover:text-error-600 dark:hover:bg-error-950/40 dark:hover:text-error-400 transition-colors cursor-pointer"
@@ -1453,11 +1419,8 @@ export default function PoDetailPage() {
             <div className="flex flex-wrap items-center justify-between border-b border-gray-100 pb-4 dark:border-gray-800 gap-3">
               <div>
                 <h3 className="text-theme-base font-bold text-gray-900 dark:text-white">
-                  Danh sách sản phẩm trong đơn hàng PO ({lines.length})
+                  Sản phẩm ({productsPage?.total ?? po.productsCount ?? 0})
                 </h3>
-                <p className="mt-0.5 text-theme-xs text-gray-500 dark:text-gray-400">
-                  Quản lý các dòng sản phẩm, Mẫu Fit và tiến độ sản xuất theo PO
-                </p>
               </div>
               <div className="flex items-center gap-2.5">
                 {/* Toggle Grid / Table */}
@@ -1505,7 +1468,16 @@ export default function PoDetailPage() {
 
             {/* Nội dung danh sách sản phẩm toàn màn hình */}
             <div className="mt-5">
-              {lines.length === 0 ? (
+              {isLoadingProducts ? (
+                // Danh sách nạp khi mở tab, nên phải phân biệt "đang tải" với
+                // "không có sản phẩm" — nếu không sẽ chớp màn hình rỗng kèm
+                // lời mời thêm sản phẩm trước khi dữ liệu về.
+                <div className="p-12 text-center">
+                  <p className="text-theme-sm text-gray-500 dark:text-gray-400">
+                    Đang tải danh sách sản phẩm…
+                  </p>
+                </div>
+              ) : lines.length === 0 ? (
                 <div className="p-12 text-center">
                   <p className="text-theme-base font-semibold text-gray-900 dark:text-white">
                     Chưa có sản phẩm nào thuộc đơn hàng PO này.
@@ -1525,7 +1497,7 @@ export default function PoDetailPage() {
                 /* Dạng Grid 3*4 toàn màn hình */
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
                   {lines.map((line) => {
-                    const resolvedImg = resolveImageUrl(line.structureImageVersionId);
+                    const resolvedImg = line.structureImageUrl ?? null;
                     return (
                       <div
                         key={line.id}
@@ -1559,7 +1531,7 @@ export default function PoDetailPage() {
                                 type="button"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  void handleRemoveProduct(line.id);
+                                  setProductPendingRemoval(line);
                                 }}
                                 disabled={removeProductMutation.isPending}
                                 className="rounded-md bg-white/90 p-1 text-gray-400 hover:bg-error-50 hover:text-error-600 dark:bg-gray-900/90 dark:hover:bg-error-950/40 dark:hover:text-error-400 shadow-2xs border border-gray-200/60 dark:border-gray-700/60 transition cursor-pointer"
@@ -1680,7 +1652,7 @@ export default function PoDetailPage() {
                                 type="button"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  void handleRemoveProduct(line.id);
+                                  setProductPendingRemoval(line);
                                 }}
                                 disabled={removeProductMutation.isPending}
                                 className="rounded-lg p-1.5 text-gray-400 hover:bg-error-50 hover:text-error-600 dark:hover:bg-error-950/40 dark:hover:text-error-400 transition-colors cursor-pointer"
@@ -1697,265 +1669,91 @@ export default function PoDetailPage() {
                 </div>
               )}
             </div>
+            {(productsPage?.totalPages ?? 0) > 1 && (
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 pt-4 dark:border-gray-800">
+                <p className="text-theme-xs text-gray-500 dark:text-gray-400">
+                  Trang {productsPage?.page} / {productsPage?.totalPages} ·{" "}
+                  {productsPage?.total} sản phẩm
+                </p>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="xs"
+                    onClick={() => setProductPage((p) => Math.max(1, p - 1))}
+                    disabled={productPage <= 1 || isLoadingProducts}
+                  >
+                    Trang trước
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="xs"
+                    onClick={() => setProductPage((p) => p + 1)}
+                    disabled={
+                      productPage >= (productsPage?.totalPages ?? 1) ||
+                      isLoadingProducts
+                    }
+                  >
+                    Trang sau
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         )
       )}
 
       {/* Tab 3: Tài liệu PO */}
       {activeTab === "documents" && (
-        <PoDocumentsSection
-          poId={id}
-          documents={po.documents || []}
-          isLocked={isLocked}
-          isPending={
-            uploadDocMutation.isPending ||
-            uploadDocsMutation.isPending ||
-            unlinkDocMutation.isPending ||
-            updateDocPurposeMutation.isPending
-          }
-          onUpload={handleUploadDocument}
-          onUnlink={handleUnlinkAttachment}
-          onUpdatePurpose={handleUpdateDocumentPurpose}
-        />
-      )}
-
-      {/* Tab 4: Lịch sử */}
-      {activeTab === "history" && (
         <div className="space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white dark:bg-gray-900 p-4 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-xs">
-            <div>
-              <h3 className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                <span>Nhật ký chuyển trạng thái & lịch sử đơn hàng</span>
-                <span className="rounded-full bg-brand-50 px-2 py-0.5 text-xs font-bold text-brand-600 border border-brand-200 dark:bg-brand-950/40 dark:text-brand-300 dark:border-brand-900">
-                  {po.statusHistory?.length || 0} bản ghi
-                </span>
-              </h3>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                Các sự kiện được tự động gom nhóm tinh gọn theo từng loại thao tác chung, bấm mở rộng để xem chi tiết
+          <PoDocumentsSection
+            poId={id}
+            poCode={po.poCode}
+            documents={poDocuments}
+            isLocked={isLocked}
+            isPending={
+              uploadDocMutation.isPending ||
+              uploadDocsMutation.isPending ||
+              unlinkDocMutation.isPending ||
+              updateDocPurposeMutation.isPending
+            }
+            onUpload={handleUploadDocument}
+            onUnlink={handleUnlinkAttachment}
+            onUpdatePurpose={handleUpdateDocumentPurpose}
+          />
+
+          {(poDocumentsPage?.totalPages ?? 0) > 1 && (
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-xs dark:border-gray-800 dark:bg-gray-900">
+              <p className="text-theme-xs text-gray-500 dark:text-gray-400">
+                Trang {poDocumentsPage?.page} / {poDocumentsPage?.totalPages} ·{" "}
+                {poDocumentsPage?.total} tài liệu
               </p>
-            </div>
-
-            <div className="flex items-center gap-2 shrink-0">
-              <div className="inline-flex rounded-xl border border-gray-200 bg-gray-50/80 p-1 dark:border-gray-700 dark:bg-gray-800 text-xs font-medium">
-                <button
-                  type="button"
-                  onClick={() => setHistoryViewMode("grouped")}
-                  className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${
-                    historyViewMode === "grouped"
-                      ? "bg-white text-brand-600 shadow-xs font-semibold dark:bg-gray-700 dark:text-brand-400"
-                      : "text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
-                  }`}
-                >
-                  Gom nhóm tinh gọn
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setHistoryViewMode("timeline")}
-                  className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${
-                    historyViewMode === "timeline"
-                      ? "bg-white text-brand-600 shadow-xs font-semibold dark:bg-gray-700 dark:text-brand-400"
-                      : "text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
-                  }`}
-                >
-                  Dòng thời gian
-                </button>
-              </div>
-
-              {historyViewMode === "grouped" && groupedPoHistory.length > 0 && (
+              <div className="flex items-center gap-2">
                 <Button
-                  size="sm"
                   variant="outline"
-                  className="h-8 text-xs font-medium text-gray-700 border-gray-200 bg-white hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
-                  onClick={() => {
-                    const allExpanded = groupedPoHistory.every((g) => expandedHistoryGroups[g.id]);
-                    const next: Record<string, boolean> = {};
-                    groupedPoHistory.forEach((g) => {
-                      next[g.id] = !allExpanded;
-                    });
-                    setExpandedHistoryGroups(next);
-                  }}
+                  size="xs"
+                  onClick={() => setDocPage((p) => Math.max(1, p - 1))}
+                  disabled={docPage <= 1 || isFetchingPoDocs}
                 >
-                  {groupedPoHistory.every((g) => expandedHistoryGroups[g.id])
-                    ? "Thu gọn tất cả"
-                    : "Mở rộng tất cả"}
+                  Trang trước
                 </Button>
-              )}
-            </div>
-          </div>
-
-          {(po.statusHistory || []).length === 0 ? (
-            <div className="py-12 text-center text-xs text-gray-400 italic bg-white dark:bg-gray-900 rounded-2xl border border-dashed border-gray-200 dark:border-gray-800">
-              Chưa có thông tin lịch sử cho đơn hàng này.
-            </div>
-          ) : historyViewMode === "grouped" ? (
-            <div className="space-y-3">
-              {groupedPoHistory.map((group) => {
-                const isExpanded = Boolean(expandedHistoryGroups[group.id]);
-                return (
-                  <div
-                    key={group.id}
-                    className="rounded-2xl border border-gray-200 bg-white shadow-xs dark:border-gray-800 dark:bg-gray-900 transition-all overflow-hidden"
-                  >
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setExpandedHistoryGroups((prev) => ({
-                          ...prev,
-                          [group.id]: !prev[group.id],
-                        }))
-                      }
-                      className="w-full flex items-center justify-between p-4 sm:p-5 text-left hover:bg-gray-50/70 dark:hover:bg-gray-800/40 transition cursor-pointer"
-                    >
-                      <div className="flex items-center gap-3.5 min-w-0 flex-1">
-                        <div
-                          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl font-bold text-xs ${
-                            group.type === "lock"
-                              ? "bg-brand-50 text-brand-600 border border-brand-200/80 dark:bg-brand-950/50 dark:text-brand-400 dark:border-brand-900/60"
-                              : group.type === "status"
-                              ? "bg-blue-50 text-blue-600 border border-blue-200/80 dark:bg-blue-950/50 dark:text-blue-400 dark:border-blue-900/60"
-                              : group.type === "create"
-                              ? "bg-emerald-50 text-emerald-600 border border-emerald-200/80 dark:bg-emerald-950/50 dark:text-emerald-400 dark:border-emerald-900/60"
-                              : "bg-gray-100 text-gray-700 border border-gray-200/80 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700"
-                          }`}
-                        >
-                          {group.type === "lock" ? (
-                            <LockIcon className="w-5 h-5" />
-                          ) : group.type === "status" ? (
-                            <BoltIcon className="w-5 h-5" />
-                          ) : group.type === "create" ? (
-                            <BoxIcon className="w-5 h-5" />
-                          ) : (
-                            <InfoIcon className="w-5 h-5" />
-                          )}
-                        </div>
-
-                        <div className="min-w-0 flex-1">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <h4 className="font-bold text-sm text-gray-900 dark:text-white">
-                              {group.title}
-                            </h4>
-                            <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-semibold text-gray-700 border border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700">
-                              {group.items.length} lần ghi nhận
-                            </span>
-                            {group.latestStatus && (
-                              <PoStatusBadge status={group.latestStatus} showDot={false} />
-                            )}
-                          </div>
-
-                          <div className="flex flex-wrap items-center gap-x-2 text-xs text-gray-400 dark:text-gray-500 mt-1">
-                            <span>Lần gần nhất: {formatDateTime(group.latestTime)}</span>
-                            {group.latestReason && (
-                              <>
-                                <span>•</span>
-                                <span className="italic text-gray-600 dark:text-gray-400 truncate max-w-md">
-                                  "{group.latestReason}"
-                                </span>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2 shrink-0 ml-3">
-                        <span className="text-xs text-gray-400 hidden sm:inline">
-                          {isExpanded ? "Thu gọn" : "Xem chi tiết"}
-                        </span>
-                        <div
-                          className={`p-1.5 rounded-lg text-gray-400 hover:text-gray-600 transition-transform duration-200 ${
-                            isExpanded ? "rotate-180" : ""
-                          }`}
-                        >
-                          <AngleDownIcon className="w-4 h-4" />
-                        </div>
-                      </div>
-                    </button>
-
-                    {isExpanded && (
-                      <div className="px-4 pb-4 sm:px-5 sm:pb-5 pt-1 border-t border-gray-100 dark:border-gray-800 bg-gray-50/40 dark:bg-gray-800/20">
-                        <div className="relative pl-5 border-l-2 border-brand-500/60 ml-2 mt-3 space-y-4">
-                          {group.items.map((item) => (
-                            <div key={item.id} className="relative">
-                              <span className="absolute -left-[27px] top-1 flex h-3 w-3 items-center justify-center rounded-full bg-brand-500 ring-4 ring-white dark:ring-gray-900" />
-                              <div className="space-y-1">
-                                <div className="flex flex-wrap items-center justify-between gap-2">
-                                  <div className="flex items-center gap-2">
-                                    <span className="font-bold text-xs text-gray-900 dark:text-white">
-                                      {item.action === "locked"
-                                        ? "Khóa đơn hàng PO"
-                                        : item.action === "unlocked"
-                                        ? "Mở khóa đơn hàng PO"
-                                        : item.action === "created"
-                                        ? "Khởi tạo PO"
-                                        : item.action}
-                                    </span>
-                                    {item.oldStatus && (
-                                      <>
-                                        <PoStatusBadge status={item.oldStatus} showDot={false} />
-                                        <span className="text-gray-400 text-xs">→</span>
-                                      </>
-                                    )}
-                                    {item.newStatus && (
-                                      <PoStatusBadge status={item.newStatus} showDot={false} />
-                                    )}
-                                  </div>
-                                  <span className="text-[11px] font-mono text-gray-400">
-                                    {formatDateTime(item.changedAt)}
-                                  </span>
-                                </div>
-
-                                {item.reason && (
-                                  <div className="rounded-xl bg-white p-2.5 text-xs text-gray-700 border border-gray-200/80 shadow-2xs dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700">
-                                    <span className="font-semibold text-gray-900 dark:text-white mr-1.5">
-                                      Lý do:
-                                    </span>
-                                    {item.reason}
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-xs dark:border-gray-800 dark:bg-gray-900">
-              <div className="relative pl-6 border-l-2 border-gray-200 dark:border-gray-800 space-y-6">
-                {(po.statusHistory || []).map((item) => (
-                  <div key={item.id} className="relative">
-                    <span className="absolute -left-[31px] top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-brand-500 ring-4 ring-white dark:ring-gray-900" />
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold text-xs text-gray-900 dark:text-white">
-                          {item.action}
-                        </span>
-                        {item.oldStatus && (
-                          <>
-                            <PoStatusBadge status={item.oldStatus} showDot={false} />
-                            <span className="text-gray-400">→</span>
-                          </>
-                        )}
-                        <PoStatusBadge status={item.newStatus} showDot={false} />
-                        <span className="text-[10px] text-gray-400 ml-auto font-mono">
-                          {formatDateTime(item.changedAt)}
-                        </span>
-                      </div>
-                      {item.reason && (
-                        <p className="text-xs text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/60 p-2.5 rounded-xl">
-                          <strong>Lý do:</strong> {item.reason}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                ))}
+                <Button
+                  variant="outline"
+                  size="xs"
+                  onClick={() => setDocPage((p) => p + 1)}
+                  disabled={
+                    docPage >= (poDocumentsPage?.totalPages ?? 1) ||
+                    isFetchingPoDocs
+                  }
+                >
+                  Trang sau
+                </Button>
               </div>
             </div>
           )}
         </div>
       )}
+
+      {/* Tab 4: Lịch sử */}
 
 
       {/* Reason Modal Dialog */}
@@ -1968,14 +1766,20 @@ export default function PoDetailPage() {
         onSubmit={handleReasonSubmit}
       />
 
-      {/* Add Product Modal Dialog */}
-      <PoAddProductModal
-        isOpen={isAddProductOpen}
-        isPending={addProductMutation.isPending}
-        poDocuments={po.documents || []}
-        onClose={() => setIsAddProductOpen(false)}
-        onSubmit={handleAddProduct}
-      />
+      {/* Add Product Modal Dialog
+          Chỉ mount khi mở: modal gọi useStyles({ limit: 100 }) và
+          useImportFitPreview ngay trong thân component, mount sẵn đồng nghĩa
+          với việc tải danh sách Mẫu Fit mỗi lần vào trang dù chưa ai bấm thêm
+          sản phẩm. */}
+      {isAddProductOpen && (
+        <PoAddProductModal
+          isOpen={isAddProductOpen}
+          isPending={addProductMutation.isPending}
+          poDocuments={poDocuments}
+          onClose={() => setIsAddProductOpen(false)}
+          onSubmit={handleAddProduct}
+        />
+      )}
 
       {/* Delete PO Confirm Dialog */}
       <ConfirmDialog
@@ -1992,6 +1796,24 @@ export default function PoDetailPage() {
         isSubmitting={deletePoMutation.isPending}
         onConfirm={handleDeletePo}
         onClose={() => setIsDeleteDialogOpen(false)}
+      />
+
+      <ConfirmDialog
+        open={Boolean(productPendingRemoval)}
+        title="Xóa sản phẩm khỏi PO"
+        description={
+          <>
+            Bạn có chắc muốn xóa{" "}
+            <strong>{productPendingRemoval?.productCode}</strong> khỏi đơn hàng{" "}
+            <strong>{po.poCode}</strong>? Toàn bộ màu sắc, size và tài liệu gắn
+            với sản phẩm này sẽ mất theo. Hành động này không thể hoàn tác.
+          </>
+        }
+        confirmLabel="Xóa sản phẩm"
+        variant="danger"
+        isSubmitting={removeProductMutation.isPending}
+        onConfirm={handleRemoveProduct}
+        onClose={() => setProductPendingRemoval(null)}
       />
     </div>
   );

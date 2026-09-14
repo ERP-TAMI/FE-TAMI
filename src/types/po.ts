@@ -169,6 +169,8 @@ export interface PurchaseOrderProductItem {
   colorName?: string | null;
   deadline?: string | null;
   structureImageVersionId?: string | null;
+  /** URL đã ký sẵn để hiển thị ảnh kết cấu; BE resolve từ object key S3. */
+  structureImageUrl?: string | null;
   status?: string | null;
   as3bCmBaseDays?: number | null;
   importedAt?: string | null;
@@ -379,11 +381,37 @@ export interface PurchaseOrderProductDetail extends PurchaseOrderProductItem {
   }>;
 }
 
+/**
+ * Thông tin chung của PO.
+ *
+ * BE cố ý không trả kèm products / documents / statusHistory nữa — mỗi tab gọi
+ * endpoint riêng. Hai trường *Count dùng để hiện số trên nhãn tab mà không phải
+ * tải cả danh sách.
+ */
 export interface PurchaseOrderDetail extends PurchaseOrderListItem {
-  documents: PurchaseOrderDocumentItem[];
-  statusHistory: PurchaseOrderStatusHistoryItem[];
-  products?: PurchaseOrderProductItem[];
-  lines?: PurchaseOrderProductItem[];
+  productsCount: number;
+  documentsCount: number;
+}
+
+/** Tham số phân trang cho danh sách sản phẩm của PO. */
+export interface PoProductQuery {
+  page?: number;
+  limit?: number;
+}
+
+/** Tham số phân trang cho danh sách tài liệu của PO. */
+export interface PoDocumentQuery {
+  page?: number;
+  limit?: number;
+  purpose?: string;
+}
+
+export interface PaginatedResult<T> {
+  items: T[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
 }
 
 export interface CreatePoInput {

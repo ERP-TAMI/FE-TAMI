@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import { Toast, Button, Modal } from "@/components/shared";
 import {
   usePurchaseOrder,
+  usePoDocuments,
   usePoProductDetail,
   useUpdatePoProduct,
   useUpdateProductStatus,
@@ -25,14 +26,10 @@ import {
   PageIcon,
   PlusIcon,
   FileIcon,
-  TimeIcon,
   EyeIcon,
   LockIcon,
   UnlockIcon,
   AlertHexaIcon,
-  AngleDownIcon,
-  BoltIcon,
-  BoxIcon,
   TableIcon,
   GridIcon,
   DownloadIcon,
@@ -50,7 +47,6 @@ import type {
   ProductColorItem,
   ProductDocumentItem,
   PurchaseOrderDocumentVersionItem,
-  PurchaseOrderStatusHistoryItem,
 } from "@/types/po";
 import type { StyleOperationStepItem } from "@/api/styleOperationStepsApi";
 import { createTempIdResolver } from "@/lib/tempId";
@@ -106,8 +102,6 @@ export default function PoProductDetailPage() {
   const isProductionDocTab = tab === "production-doc";
   const isSamplesTab = tab === "samples";
   const isDocumentsTab = tab === "documents";
-  const isHistoryTab = tab === "history";
-
   const activeTab:
     | "general"
     | "sizes"
@@ -115,8 +109,7 @@ export default function PoProductDetailPage() {
     | "steps"
     | "production_doc"
     | "samples"
-    | "documents"
-    | "history" = isSizesTab
+    | "documents" = isSizesTab
     ? "sizes"
     : isColorsTab
     ? "colors"
@@ -128,8 +121,6 @@ export default function PoProductDetailPage() {
     ? "samples"
     : isDocumentsTab
     ? "documents"
-    : isHistoryTab
-    ? "history"
     : "general";
 
   const [isProductionDocEditing, setIsProductionDocEditing] = useState(false);
@@ -141,9 +132,7 @@ export default function PoProductDetailPage() {
     | "steps"
     | "production_doc"
     | "samples"
-    | "documents"
-    | "history"
-    | null
+    | "documents"    | null
   >(null);
   const [pendingNavigation, setPendingNavigation] = useState<string | null>(null);
 
@@ -192,9 +181,7 @@ export default function PoProductDetailPage() {
       | "steps"
       | "production_doc"
       | "samples"
-      | "documents"
-      | "history",
-  ) => {
+      | "documents"  ) => {
     if (!poId || !productId) return;
     if (nextTab === "sizes") {
       navigate(`/po/${poId}/products/${productId}/sizes`);
@@ -208,9 +195,7 @@ export default function PoProductDetailPage() {
       navigate(`/po/${poId}/products/${productId}/samples`);
     } else if (nextTab === "documents") {
       navigate(`/po/${poId}/products/${productId}/documents`);
-    } else if (nextTab === "history") {
-      navigate(`/po/${poId}/products/${productId}/history`);
-    } else {
+        } else {
       navigate(`/po/${poId}/products/${productId}/detail`);
     }
   };
@@ -223,9 +208,7 @@ export default function PoProductDetailPage() {
       | "steps"
       | "production_doc"
       | "samples"
-      | "documents"
-      | "history",
-  ) => {
+      | "documents"  ) => {
     if ((isProductionDocEditing || isOperationStepsEditing) && nextTab !== activeTab) {
       setPendingTab(nextTab);
       return;
@@ -278,6 +261,14 @@ export default function PoProductDetailPage() {
 
   // Local state for PO document picker modal
   const [isLinkPoDocOpen, setIsLinkPoDocOpen] = useState(false);
+
+  // Kho tài liệu của PO chỉ cần khi mở modal gán tài liệu vào sản phẩm.
+  const { data: poDocumentsPage } = usePoDocuments(
+    poId,
+    { page: 1, limit: 100 },
+    { enabled: isLinkPoDocOpen },
+  );
+  const poStoreDocuments = poDocumentsPage?.items ?? [];
 
   // Local state for direct document upload modal
   const [isUploadDocOpen, setIsUploadDocOpen] = useState(false);
@@ -337,8 +328,6 @@ export default function PoProductDetailPage() {
   };
 
   // Local state cho xem lịch sử tinh gọn
-  const [historyViewMode, setHistoryViewMode] = useState<"grouped" | "timeline">("grouped");
-  const [expandedHistoryGroups, setExpandedHistoryGroups] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     let isMounted = true;
@@ -380,99 +369,6 @@ export default function PoProductDetailPage() {
   }, [product?.colors]);
 
   // Gom nhóm các sự kiện lịch sử theo từng loại thao tác chung
-  const groupedHistory = useMemo(() => {
-    const rawItems: PurchaseOrderStatusHistoryItem[] = (product?.statusHistory || []) as PurchaseOrderStatusHistoryItem[];
-    const sorted = [...rawItems].sort(
-      (a, b) => new Date(b.changedAt).getTime() - new Date(a.changedAt).getTime(),
-    );
-
-    const lockItems: PurchaseOrderStatusHistoryItem[] = [];
-    const stepItems: PurchaseOrderStatusHistoryItem[] = [];
-    const createItems: PurchaseOrderStatusHistoryItem[] = [];
-    const otherItems: PurchaseOrderStatusHistoryItem[] = [];
-
-    for (const item of sorted) {
-      const act = (item.action || "").toLowerCase();
-      const rsn = (item.reason || "").toLowerCase();
-
-      if (
-        act === "locked" ||
-        act === "unlocked" ||
-        act.includes("lock") ||
-        rsn.includes("khóa") ||
-        rsn.includes("mở khóa")
-      ) {
-        lockItems.push(item);
-      } else if (
-        act.includes("step") ||
-        act.includes("operation") ||
-        rsn.includes("công đoạn") ||
-        rsn.includes("bước")
-      ) {
-        stepItems.push(item);
-      } else if (
-        act === "created" ||
-        act === "imported_from_fit" ||
-        act.includes("import") ||
-        rsn.includes("tạo mới") ||
-        rsn.includes("khởi tạo")
-      ) {
-        createItems.push(item);
-      } else {
-        otherItems.push(item);
-      }
-    }
-
-    const groups = [];
-
-    if (lockItems.length > 0) {
-      groups.push({
-        id: "lock_group",
-        title: "Lịch sử Khóa & Mở khóa sản phẩm",
-        type: "lock",
-        items: lockItems,
-        latestTime: lockItems[0].changedAt,
-        latestStatus: lockItems[0].newStatus,
-        latestReason: lockItems[0].reason,
-      });
-    }
-
-    if (stepItems.length > 0) {
-      groups.push({
-        id: "step_group",
-        title: "Quy trình công đoạn sản xuất & Định mức",
-        type: "step",
-        items: stepItems,
-        latestTime: stepItems[0].changedAt,
-        latestReason: stepItems[0].reason,
-      });
-    }
-
-    if (createItems.length > 0) {
-      groups.push({
-        id: "create_group",
-        title: "Khởi tạo & Nhập mẫu sản phẩm",
-        type: "create",
-        items: createItems,
-        latestTime: createItems[0].changedAt,
-        latestReason: createItems[0].reason,
-      });
-    }
-
-    if (otherItems.length > 0) {
-      groups.push({
-        id: "other_group",
-        title: "Các cập nhật trạng thái khác",
-        type: "other",
-        items: otherItems,
-        latestTime: otherItems[0].changedAt,
-        latestStatus: otherItems[0].newStatus,
-        latestReason: otherItems[0].reason,
-      });
-    }
-
-    return groups;
-  }, [product?.statusHistory]);
 
   const totalBySize = useMemo(() => {
     const map: Record<string, number> = {};
@@ -894,7 +790,7 @@ export default function PoProductDetailPage() {
   );
 
   return (
-    <div className="space-y-6 pt-2 md:pt-3">
+    <div className="space-y-3 pt-1">
       {/* ─── 1. BREADCRUMB PHÂN CẤP TINH GỌN ────────────────────────────────────── */}
       <nav className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
         <Link to="/dashboard" className="hover:text-gray-900 dark:hover:text-white transition-colors">
@@ -923,7 +819,7 @@ export default function PoProductDetailPage() {
           {/* Cột trái: Mã sản phẩm TO và ĐẦU TIÊN (Focus), Tên SP phụ trợ & Trạng thái */}
           <div className="space-y-1.5">
             <div className="flex flex-wrap items-center gap-3">
-              <h1 className="text-2xl sm:text-3xl font-extrabold font-mono tracking-tight text-gray-900 dark:text-white">
+              <h1 className="text-lg sm:text-xl font-bold font-mono tracking-tight text-gray-900 dark:text-white">
                 {product.productCode}
               </h1>
               {product.productName && (
@@ -1120,18 +1016,6 @@ export default function PoProductDetailPage() {
               )}
             </button>
 
-            <button
-              type="button"
-              onClick={() => handleTabChange("history")}
-              className={`flex items-center gap-2 border-b-2 py-2.5 px-1 text-sm font-semibold transition-colors cursor-pointer whitespace-nowrap ${
-                activeTab === "history"
-                  ? "border-brand-500 text-brand-600 dark:text-brand-400"
-                  : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-              }`}
-            >
-              <TimeIcon className="w-4 h-4" />
-              Lịch sử ({product.statusHistory?.length || 0})
-            </button>
           </nav>
         </div>
 
@@ -1320,26 +1204,30 @@ export default function PoProductDetailPage() {
           </div>
 
           {/* 3 Thẻ thống kê KPI nhanh */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-xs dark:border-gray-800 dark:bg-gray-900">
-              <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Tổng sản lượng</span>
-              <p className="text-2xl font-bold font-mono text-brand-600 dark:text-brand-400 mt-1">
-                {(product.totalQuantity || 0).toLocaleString()} <span className="text-xs text-gray-400 font-sans font-normal">pcs</span>
-              </p>
+          {/* Thống kê nhanh: một dải gọn thay cho 3 thẻ lớn — số liệu ở đây là
+              phần phụ, bảng ma trận bên dưới mới là nội dung chính. */}
+          <div className="flex flex-wrap items-center gap-x-8 gap-y-2 rounded-xl border border-gray-200 bg-gray-50/60 px-4 py-2.5 dark:border-gray-800 dark:bg-gray-800/40">
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-theme-xs text-gray-500 dark:text-gray-400">Tổng sản lượng</span>
+              <span className="font-mono text-theme-sm font-bold text-brand-600 dark:text-brand-400">
+                {(product.totalQuantity || 0).toLocaleString()}
+              </span>
+              <span className="text-theme-xs text-gray-400">pcs</span>
             </div>
-
-            <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-xs dark:border-gray-800 dark:bg-gray-900">
-              <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Số lượng phối màu</span>
-              <p className="text-2xl font-bold font-mono text-gray-900 dark:text-white mt-1">
-                {(product.colors || []).length} <span className="text-xs text-gray-400 font-sans font-normal">phối màu</span>
-              </p>
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-theme-xs text-gray-500 dark:text-gray-400">Phối màu</span>
+              <span className="font-mono text-theme-sm font-bold text-gray-900 dark:text-white">
+                {(product.colors || []).length}
+              </span>
             </div>
-
-            <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-xs dark:border-gray-800 dark:bg-gray-900">
-              <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Dải kích cỡ (Sizes)</span>
-              <p className="text-lg font-bold font-mono text-gray-900 dark:text-white mt-1 truncate" title={uniqueSizes.join(", ")}>
+            <div className="flex min-w-0 items-baseline gap-1.5">
+              <span className="shrink-0 text-theme-xs text-gray-500 dark:text-gray-400">Kích cỡ</span>
+              <span
+                className="truncate font-mono text-theme-sm font-bold text-gray-900 dark:text-white"
+                title={uniqueSizes.join(", ")}
+              >
                 {uniqueSizes.length > 0 ? uniqueSizes.join(" • ") : "Chưa có"}
-              </p>
+              </span>
             </div>
           </div>
 
@@ -1393,7 +1281,7 @@ export default function PoProductDetailPage() {
                             <div className="flex items-center gap-2.5">
                               {color.colorCode && (
                                 <span
-                                  className="w-4 h-4 rounded-full border border-gray-300 shadow-2xs shrink-0"
+                                  className="h-6 w-6 shrink-0 rounded-full border-2 border-gray-300 shadow-xs ring-1 ring-black/5 dark:border-gray-600"
                                   style={{ backgroundColor: color.colorCode }}
                                 />
                               )}
@@ -1741,20 +1629,15 @@ export default function PoProductDetailPage() {
       {/* TAB 5: TÀI LIỆU ĐÍNH KÈM TỪ PO & TECHPACK (3 MỤC CÓ VERSIONING)           */}
       {/* ========================================================================= */}
       {activeTab === "documents" && (
-        <div className="space-y-6">
+        <div className="space-y-4">
           {/* Header tổng quan */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div>
-              <h3 className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                <span>Tài liệu kỹ thuật đính kèm sản phẩm</span>
-                <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-700 border border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700">
-                  {(product.documents || []).length} file
-                </span>
-              </h3>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                Quản lý các tài liệu PO chi tiết, TechPack thông số và tài liệu phụ trợ với kiểm soát lịch sử phiên bản
-              </p>
-            </div>
+            <h3 className="flex items-center gap-2 text-theme-base font-bold text-gray-900 dark:text-white">
+              <span>Tài liệu đính kèm</span>
+              <span className="rounded-full border border-gray-200 bg-gray-100 px-2 py-0.5 text-theme-xs font-semibold text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
+                {(product.documents || []).length} file
+              </span>
+            </h3>
 
             {!isProductLocked && (
               <Button
@@ -1975,245 +1858,6 @@ export default function PoProductDetailPage() {
       {/* ========================================================================= */}
       {/* TAB 6: LỊCH SỬ THAY ĐỔI TRẠNG THÁI (GOM NHÓM TINH GỌN)                    */}
       {/* ========================================================================= */}
-      {activeTab === "history" && (
-        <div className="space-y-4">
-          {/* Header thanh công cụ lịch sử */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white dark:bg-gray-900 p-4 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-xs">
-            <div>
-              <h3 className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                <span>Nhật ký lịch sử thay đổi của sản phẩm</span>
-                <span className="rounded-full bg-brand-50 px-2 py-0.5 text-xs font-bold text-brand-600 border border-brand-200 dark:bg-brand-950/40 dark:text-brand-300 dark:border-brand-900">
-                  {product.statusHistory?.length || 0} bản ghi
-                </span>
-              </h3>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                Các sự kiện được tự động gom nhóm tinh gọn theo từng loại thao tác chung, bấm mở rộng để xem chi tiết
-              </p>
-            </div>
-
-            <div className="flex items-center gap-2 shrink-0">
-              {/* Toggle chế độ xem */}
-              <div className="inline-flex rounded-xl border border-gray-200 bg-gray-50/80 p-1 dark:border-gray-700 dark:bg-gray-800 text-xs font-medium">
-                <button
-                  type="button"
-                  onClick={() => setHistoryViewMode("grouped")}
-                  className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${
-                    historyViewMode === "grouped"
-                      ? "bg-white text-brand-600 shadow-xs font-semibold dark:bg-gray-700 dark:text-brand-400"
-                      : "text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
-                  }`}
-                >
-                  Gom nhóm tinh gọn
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setHistoryViewMode("timeline")}
-                  className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${
-                    historyViewMode === "timeline"
-                      ? "bg-white text-brand-600 shadow-xs font-semibold dark:bg-gray-700 dark:text-brand-400"
-                      : "text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
-                  }`}
-                >
-                  Dòng thời gian
-                </button>
-              </div>
-
-              {historyViewMode === "grouped" && groupedHistory.length > 0 && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-8 text-xs font-medium text-gray-700 border-gray-200 bg-white hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
-                  onClick={() => {
-                    const allExpanded = groupedHistory.every((g) => expandedHistoryGroups[g.id]);
-                    const next: Record<string, boolean> = {};
-                    groupedHistory.forEach((g) => {
-                      next[g.id] = !allExpanded;
-                    });
-                    setExpandedHistoryGroups(next);
-                  }}
-                >
-                  {groupedHistory.every((g) => expandedHistoryGroups[g.id])
-                    ? "Thu gọn tất cả"
-                    : "Mở rộng tất cả"}
-                </Button>
-              )}
-            </div>
-          </div>
-
-          {!product.statusHistory || product.statusHistory.length === 0 ? (
-            <div className="py-12 text-center text-xs text-gray-400 italic bg-white dark:bg-gray-900 rounded-2xl border border-dashed border-gray-200 dark:border-gray-800">
-              Chưa có bản ghi lịch sử nào cho sản phẩm này.
-            </div>
-          ) : historyViewMode === "grouped" ? (
-            /* ── CHẾ ĐỘ XEM GOM NHÓM TINH GỌN (ACCORDION) ── */
-            <div className="space-y-3">
-              {groupedHistory.map((group) => {
-                const isExpanded = Boolean(expandedHistoryGroups[group.id]);
-                return (
-                  <div
-                    key={group.id}
-                    className="rounded-2xl border border-gray-200 bg-white shadow-xs dark:border-gray-800 dark:bg-gray-900 transition-all overflow-hidden"
-                  >
-                    {/* Header nhóm có thể click để mở rộng */}
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setExpandedHistoryGroups((prev) => ({
-                          ...prev,
-                          [group.id]: !prev[group.id],
-                        }))
-                      }
-                      className="w-full flex items-center justify-between p-4 sm:p-5 text-left hover:bg-gray-50/70 dark:hover:bg-gray-800/40 transition cursor-pointer"
-                    >
-                      <div className="flex items-center gap-3.5 min-w-0 flex-1">
-                        {/* Biểu tượng phân loại nhóm */}
-                        <div
-                          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl font-bold text-xs ${
-                            group.type === "lock"
-                              ? "bg-brand-50 text-brand-600 border border-brand-200/80 dark:bg-brand-950/50 dark:text-brand-400 dark:border-brand-900/60"
-                              : group.type === "step"
-                              ? "bg-blue-50 text-blue-600 border border-blue-200/80 dark:bg-blue-950/50 dark:text-blue-400 dark:border-blue-900/60"
-                              : group.type === "create"
-                              ? "bg-emerald-50 text-emerald-600 border border-emerald-200/80 dark:bg-emerald-950/50 dark:text-emerald-400 dark:border-emerald-900/60"
-                              : "bg-gray-100 text-gray-700 border border-gray-200/80 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700"
-                          }`}
-                        >
-                          {group.type === "lock" ? (
-                            <LockIcon className="w-5 h-5" />
-                          ) : group.type === "step" ? (
-                            <BoltIcon className="w-5 h-5" />
-                          ) : group.type === "create" ? (
-                            <BoxIcon className="w-5 h-5" />
-                          ) : (
-                            <InfoIcon className="w-5 h-5" />
-                          )}
-                        </div>
-
-                        <div className="min-w-0 flex-1">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <h4 className="font-bold text-sm text-gray-900 dark:text-white">
-                              {group.title}
-                            </h4>
-                            <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-semibold text-gray-700 border border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700">
-                              {group.items.length} lần ghi nhận
-                            </span>
-                            {group.latestStatus && (
-                              <span className="rounded-md bg-brand-50 px-2 py-0.5 text-[11px] font-semibold text-brand-700 border border-brand-200 dark:bg-brand-950/40 dark:text-brand-300 dark:border-brand-900">
-                                Hiện tại: {String(group.latestStatus).toUpperCase() === "CLOSED" ? "Đã khóa" : String(group.latestStatus).toUpperCase() === "DRAFT" ? "Đang xử lý" : group.latestStatus}
-                              </span>
-                            )}
-                          </div>
-
-                          <div className="flex flex-wrap items-center gap-x-2 text-xs text-gray-400 dark:text-gray-500 mt-1">
-                            <span>Lần gần nhất: {formatDateTime(group.latestTime)}</span>
-                            {group.latestReason && (
-                              <>
-                                <span>•</span>
-                                <span className="italic text-gray-600 dark:text-gray-400 truncate max-w-md">
-                                  "{group.latestReason}"
-                                </span>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2 shrink-0 ml-3">
-                        <span className="text-xs text-gray-400 hidden sm:inline">
-                          {isExpanded ? "Thu gọn" : "Xem chi tiết"}
-                        </span>
-                        <div
-                          className={`p-1.5 rounded-lg text-gray-400 hover:text-gray-600 transition-transform duration-200 ${
-                            isExpanded ? "rotate-180" : ""
-                          }`}
-                        >
-                          <AngleDownIcon className="w-4 h-4" />
-                        </div>
-                      </div>
-                    </button>
-
-                    {/* Chi tiết từng lần khi mở rộng */}
-                    {isExpanded && (
-                      <div className="px-4 pb-4 sm:px-5 sm:pb-5 pt-1 border-t border-gray-100 dark:border-gray-800 bg-gray-50/40 dark:bg-gray-800/20">
-                        <div className="relative pl-5 border-l-2 border-brand-500/60 ml-2 mt-3 space-y-4">
-                          {group.items.map((item, idx) => (
-                            <div key={item.id || idx} className="relative">
-                              <span className="absolute -left-[27px] top-1 flex h-3 w-3 items-center justify-center rounded-full bg-brand-500 ring-4 ring-white dark:ring-gray-900" />
-                              <div className="space-y-1">
-                                <div className="flex flex-wrap items-center justify-between gap-2">
-                                  <div className="flex items-center gap-2">
-                                    <span className="font-bold text-xs text-gray-900 dark:text-white">
-                                      {item.action === "locked"
-                                        ? "Khóa sản phẩm"
-                                        : item.action === "unlocked"
-                                        ? "Mở khóa sản phẩm"
-                                        : item.action === "operation_steps_updated"
-                                        ? "Cập nhật công đoạn"
-                                        : item.action === "created"
-                                        ? "Khởi tạo sản phẩm"
-                                        : item.action}
-                                    </span>
-                                    {item.newStatus && (
-                                      <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-mono font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-300">
-                                        {item.newStatus}
-                                      </span>
-                                    )}
-                                  </div>
-                                  <span className="text-[11px] font-mono text-gray-400">
-                                    {formatDateTime(item.changedAt)}
-                                  </span>
-                                </div>
-
-                                {item.reason && (
-                                  <div className="rounded-xl bg-white p-2.5 text-xs text-gray-700 border border-gray-200/80 shadow-2xs dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700">
-                                    <span className="font-semibold text-gray-900 dark:text-white mr-1.5">
-                                      Lý do:
-                                    </span>
-                                    {item.reason}
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            /* ── CHẾ ĐỘ XEM DÒNG THỜI GIAN ĐẦY ĐỦ ── */
-            <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-xs dark:border-gray-800 dark:bg-gray-900">
-              <div className="relative pl-6 border-l-2 border-gray-200 dark:border-gray-800 space-y-6">
-                {product.statusHistory.map((item, idx) => (
-                  <div key={item.id || idx} className="relative">
-                    <span className="absolute -left-[31px] top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-brand-500 ring-4 ring-white dark:ring-gray-900" />
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold text-xs text-gray-900 dark:text-white">
-                          {item.action || "Cập nhật trạng thái"}
-                        </span>
-                        <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-mono text-gray-600 dark:bg-gray-800 dark:text-gray-300">
-                          {item.newStatus}
-                        </span>
-                        <span className="text-[10px] text-gray-400 ml-auto font-mono">
-                          {formatDateTime(item.changedAt)}
-                        </span>
-                      </div>
-                      {item.reason && (
-                        <p className="text-xs text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/60 p-2.5 rounded-xl">
-                          <strong>Lý do:</strong> {item.reason}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
 
       {/* ─── HỘP THOẠI XÁC NHẬN RỜI TRANG KHI CHƯA LƯU (UNSAVEDCHANGESDIALOG) ──── */}
       <UnsavedChangesDialog
@@ -2359,13 +2003,13 @@ export default function PoProductDetailPage() {
               Chọn tài liệu từ kho PO để gán vào sản phẩm. Tài liệu sẽ tự động nằm đúng mục theo phân loại gốc bên ngoài (<strong>PO Chi Tiết</strong>, <strong>TechPack</strong> hoặc <strong>Khác</strong>).
             </p>
 
-            {!po?.documents || po.documents.length === 0 ? (
+            {poStoreDocuments.length === 0 ? (
               <p className="text-xs text-gray-400 italic">
                 Đơn hàng PO này chưa có tài liệu nào trong kho tài liệu chung.
               </p>
             ) : (
               <div className="max-h-80 overflow-y-auto space-y-2">
-                {po.documents.map((d) => {
+                {poStoreDocuments.map((d) => {
                   const alreadyLinked = product.documents?.some((doc) => doc.documentId === d.documentId);
                   const isPo = isPoDetailPurpose(d.purpose);
                   const isTp = isTechPackPurpose(d.purpose);

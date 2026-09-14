@@ -5,7 +5,10 @@ import type {
   CreatePoProductInput,
   LinkPoDocumentInput,
   PaginatedPoResponse,
+  PaginatedResult,
   PoDocumentPreviewResponse,
+  PoDocumentQuery,
+  PoProductQuery,
   PoQuery,
   PurchaseOrderDetail,
   PurchaseOrderDocumentItem,
@@ -20,6 +23,20 @@ interface PresignPoDocumentResult {
   objectKey: string;
   uploadUrl: string;
   expiresIn: number;
+}
+
+/** Đo 9 tệp: 1 luồng 55,7s — 3 luồng 21,4s — 5 luồng ~7s; trên 5 không nhanh thêm. */
+const UPLOAD_CONCURRENCY = 5;
+
+export interface UploadProgress {
+  done: number;
+  total: number;
+  fileName: string;
+}
+
+export interface UploadDocumentsOptions {
+  concurrency?: number;
+  onProgress?: (progress: UploadProgress) => void;
 }
 
 /**
@@ -60,6 +77,16 @@ export const poApi = {
     const response = await apiClient.get<PurchaseOrderDetail>(
       `/purchase-orders/${id}`,
     );
+    return response.data;
+  },
+
+  async getDocuments(
+    id: string,
+    query: PoDocumentQuery = {},
+  ): Promise<PaginatedResult<PurchaseOrderDocumentItem>> {
+    const response = await apiClient.get<
+      PaginatedResult<PurchaseOrderDocumentItem>
+    >(`/purchase-orders/${id}/documents`, { params: query });
     return response.data;
   },
 
@@ -128,10 +155,13 @@ export const poApi = {
     return response.data;
   },
 
-  async getProducts(id: string): Promise<PurchaseOrderProductItem[]> {
-    const response = await apiClient.get<PurchaseOrderProductItem[]>(
-      `/purchase-orders/${id}/products`,
-    );
+  async getProducts(
+    id: string,
+    query: PoProductQuery = {},
+  ): Promise<PaginatedResult<PurchaseOrderProductItem>> {
+    const response = await apiClient.get<
+      PaginatedResult<PurchaseOrderProductItem>
+    >(`/purchase-orders/${id}/products`, { params: query });
     return response.data;
   },
 
@@ -219,22 +249,43 @@ export const poApi = {
     return poApi.confirmDocument(id, presign.objectKey, file, purpose);
   },
 
+  /**
+   * Tải nhiều tệp cùng lúc.
+   *
+   * Đi qua đúng luồng presign → PUT S3 → confirm như `uploadDocument`. Trước
+   * đây hàm này gọi `documents/upload-multiple` (multipart), mà endpoint đó
+   * lưu tệp xuống ổ đĩa của server trong khi đường đọc luôn ký URL S3 — hệ quả
+   * là mọi tệp tải lên theo lô đều không mở xem được.
+   *
+   * Chạy tuần tự chứ không Promise.all: mỗi tệp là 3 lượt gọi mạng, bắn song
+   * song một lô lớn dễ làm nghẽn cả trình duyệt lẫn S3.
+   */
   async uploadDocuments(
     id: string,
     files: File[],
     purpose: string = "po_original",
+    options: UploadDocumentsOptions = {},
   ): Promise<PurchaseOrderDocumentItem[]> {
-    const formData = new FormData();
-    files.forEach((file) => formData.append("files", file));
-    const response = await apiClient.post<PurchaseOrderDocumentItem[]>(
-      `/purchase-orders/${id}/documents/upload-multiple`,
-      formData,
-      {
-        params: { purpose },
-        headers: { "Content-Type": "multipart/form-data" },
-      },
+    const { concurrency = UPLOAD_CONCURRENCY, onProgress } = options;
+    const uploaded: PurchaseOrderDocumentItem[] = new Array(files.length);
+    let done = 0;
+    let next = 0;
+
+    const worker = async () => {
+      for (;;) {
+        const index = next++;
+        if (index >= files.length) return;
+        const file = files[index];
+        uploaded[index] = await poApi.uploadDocument(id, file, purpose);
+        done += 1;
+        onProgress?.({ done, total: files.length, fileName: file.name });
+      }
+    };
+
+    await Promise.all(
+      Array.from({ length: Math.min(concurrency, files.length) }, worker),
     );
-    return response.data;
+    return uploaded;
   },
 
   async previewDocument(

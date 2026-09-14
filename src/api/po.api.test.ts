@@ -66,14 +66,40 @@ describe("poApi", () => {
     expect(res).toEqual(mockPo);
   });
 
-  it("getProducts calls GET /purchase-orders/:id/products", async () => {
-    const mockProducts = [{ id: "prod-1", styleCode: "ST-01", productName: "Polo" }];
-    vi.mocked(apiClient.get).mockResolvedValueOnce({ data: mockProducts });
+  it("getProducts calls GET /purchase-orders/:id/products with paging params", async () => {
+    const mockPage = {
+      items: [{ id: "prod-1", styleCode: "ST-01", productName: "Polo" }],
+      total: 1,
+      page: 1,
+      limit: 20,
+      totalPages: 1,
+    };
+    vi.mocked(apiClient.get).mockResolvedValueOnce({ data: mockPage });
 
-    const res = await poApi.getProducts("po-1");
+    const res = await poApi.getProducts("po-1", { page: 1, limit: 20 });
 
-    expect(apiClient.get).toHaveBeenCalledWith("/purchase-orders/po-1/products");
-    expect(res).toEqual(mockProducts);
+    expect(apiClient.get).toHaveBeenCalledWith("/purchase-orders/po-1/products", {
+      params: { page: 1, limit: 20 },
+    });
+    expect(res).toEqual(mockPage);
+  });
+
+  it("getDocuments calls GET /purchase-orders/:id/documents with paging params", async () => {
+    const mockPage = {
+      items: [{ documentId: "doc-1", title: "PO scan", purpose: "po_original" }],
+      total: 1,
+      page: 2,
+      limit: 5,
+      totalPages: 1,
+    };
+    vi.mocked(apiClient.get).mockResolvedValueOnce({ data: mockPage });
+
+    const res = await poApi.getDocuments("po-1", { page: 2, limit: 5 });
+
+    expect(apiClient.get).toHaveBeenCalledWith("/purchase-orders/po-1/documents", {
+      params: { page: 2, limit: 5 },
+    });
+    expect(res).toEqual(mockPage);
   });
 
   it("addProduct calls POST /purchase-orders/:id/products conforming to BE CreatePoProductDto contract", async () => {

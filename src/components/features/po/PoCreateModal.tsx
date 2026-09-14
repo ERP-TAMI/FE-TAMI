@@ -15,6 +15,7 @@ import {
   getDocumentCategoryInfo,
   detectDocumentPurpose,
 } from "@/lib/poDocuments";
+import { PoDocumentCategoryPicker } from "./PoDocumentCategoryPicker";
 
 /* ---------- Helper: format file size ---------- */
 const formatFileSize = (bytes: number): string => {
@@ -39,7 +40,6 @@ const FileRow = React.memo(function FileRow({
   onRemove,
   onUpdatePurpose,
 }: FileRowProps) {
-  const itemCatInfo = getDocumentCategoryInfo(item.purpose);
   return (
     <div className="flex items-center justify-between gap-3 rounded-xl border border-gray-200 bg-gray-50/80 p-2.5 sm:p-3 text-sm transition hover:border-brand-300 hover:bg-white dark:border-gray-800 dark:bg-gray-800/60 dark:hover:bg-gray-800">
       <div className="flex min-w-0 flex-1 items-center gap-3">
@@ -66,18 +66,11 @@ const FileRow = React.memo(function FileRow({
       </div>
 
       <div className="flex items-center gap-2 shrink-0">
-        <select
+        <PoDocumentCategoryPicker
           value={item.purpose}
-          onChange={(e) => onUpdatePurpose(originalIndex, e.target.value)}
-          className={`rounded-xl border px-3 py-1.5 text-xs font-semibold outline-none transition cursor-pointer ${itemCatInfo.badgeClass}`}
-          title="Đổi phân loại tài liệu"
-        >
-          {PO_DOCUMENT_CATEGORIES.map((cat) => (
-            <option key={cat.key} value={cat.key}>
-              {cat.label}
-            </option>
-          ))}
-        </select>
+          align="right"
+          onChange={(purpose: string) => onUpdatePurpose(originalIndex, purpose)}
+        />
 
         <button
           type="button"

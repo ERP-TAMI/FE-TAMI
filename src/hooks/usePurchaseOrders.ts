@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { poApi } from "@/api/po.api";
+import { poApi, type UploadProgress } from "@/api/po.api";
 import type {
   CreatePoInput,
   CreatePoProductInput,
@@ -7,6 +7,8 @@ import type {
   PoQuery,
   UpdatePoInput,
   UpdatePoProductInput,
+  PoDocumentQuery,
+  PoProductQuery,
   UpdatePoStatusInput,
 } from "@/types/po";
 
@@ -18,7 +20,12 @@ export const PO_KEYS = {
   detail: (id: string) => [...PO_KEYS.details(), id] as const,
   histories: () => [...PO_KEYS.all, "history"] as const,
   history: (id: string) => [...PO_KEYS.histories(), id] as const,
-  products: (id: string) => [...PO_KEYS.all, "products", id] as const,
+  documentsOf: (id: string) => [...PO_KEYS.all, "documents", id] as const,
+  documents: (id: string, query: PoDocumentQuery = {}) =>
+    [...PO_KEYS.documentsOf(id), query] as const,
+  productsOf: (id: string) => [...PO_KEYS.all, "products", id] as const,
+  products: (id: string, query: PoProductQuery = {}) =>
+    [...PO_KEYS.productsOf(id), query] as const,
   productDetail: (poId: string, productId: string) =>
     [...PO_KEYS.all, "productDetail", poId, productId] as const,
   productSteps: (poId: string, productId: string) =>
@@ -95,8 +102,9 @@ export function useLinkPoDocument() {
   return useMutation({
     mutationFn: ({ id, input }: { id: string; input: LinkPoDocumentInput }) =>
       poApi.linkDocument(id, input),
-    onSuccess: (updated) => {
-      queryClient.setQueryData(PO_KEYS.detail(updated.id), updated);
+    onSuccess: (_, { id }) => {
+      void queryClient.invalidateQueries({ queryKey: PO_KEYS.detail(id) });
+      void queryClient.invalidateQueries({ queryKey: PO_KEYS.documentsOf(id) });
     },
   });
 }
@@ -108,6 +116,7 @@ export function useUnlinkPoDocument() {
       poApi.unlinkDocument(id, documentId),
     onSuccess: (_, { id }) => {
       void queryClient.invalidateQueries({ queryKey: PO_KEYS.detail(id) });
+      void queryClient.invalidateQueries({ queryKey: PO_KEYS.documentsOf(id) });
     },
   });
 }
@@ -126,6 +135,7 @@ export function useUpdatePoDocumentPurpose() {
     }) => poApi.updateDocumentPurpose(id, documentId, purpose),
     onSuccess: (_, { id }) => {
       void queryClient.invalidateQueries({ queryKey: PO_KEYS.detail(id) });
+      void queryClient.invalidateQueries({ queryKey: PO_KEYS.documentsOf(id) });
     },
   });
 }
@@ -144,6 +154,7 @@ export function useUploadPoDocument() {
     }) => poApi.uploadDocument(id, file, purpose),
     onSuccess: (_, { id }) => {
       void queryClient.invalidateQueries({ queryKey: PO_KEYS.detail(id) });
+      void queryClient.invalidateQueries({ queryKey: PO_KEYS.documentsOf(id) });
     },
   });
 }
@@ -155,22 +166,55 @@ export function useUploadPoDocuments() {
       id,
       files,
       purpose,
+      onProgress,
     }: {
       id: string;
       files: File[];
       purpose?: string;
-    }) => poApi.uploadDocuments(id, files, purpose),
+      onProgress?: (p: UploadProgress) => void;
+    }) => poApi.uploadDocuments(id, files, purpose, { onProgress }),
     onSuccess: (_, { id }) => {
       void queryClient.invalidateQueries({ queryKey: PO_KEYS.detail(id) });
+      void queryClient.invalidateQueries({ queryKey: PO_KEYS.documentsOf(id) });
     },
   });
 }
 
-export function usePoProducts(id: string | undefined) {
+/**
+ * Danh sách tài liệu của PO, có phân trang.
+ *
+ * Tách khỏi thông tin chung vì mỗi tài liệu kèm một presigned URL S3 — gộp vào
+ * payload chi tiết khiến mỗi lần mở PO phải ký lại toàn bộ link dù không ai mở
+ * tab Tài liệu.
+ */
+export function usePoDocuments(
+  id: string | undefined,
+  query: PoDocumentQuery = {},
+  options?: { enabled?: boolean },
+) {
   return useQuery({
-    queryKey: PO_KEYS.products(id || ""),
-    queryFn: () => poApi.getProducts(id!),
-    enabled: Boolean(id),
+    queryKey: PO_KEYS.documents(id || "", query),
+    queryFn: () => poApi.getDocuments(id!, query),
+    enabled: Boolean(id) && (options?.enabled ?? true),
+  });
+}
+
+/**
+ * Danh sách sản phẩm của PO.
+ *
+ * Truyền `enabled: false` để hoãn gọi API cho tới khi thực sự cần — màn chi
+ * tiết PO chỉ bật khi người dùng mở tab Sản phẩm, tránh tải danh sách này
+ * ngay lúc vào trang.
+ */
+export function usePoProducts(
+  id: string | undefined,
+  query: PoProductQuery = {},
+  options?: { enabled?: boolean },
+) {
+  return useQuery({
+    queryKey: PO_KEYS.products(id || "", query),
+    queryFn: () => poApi.getProducts(id!, query),
+    enabled: Boolean(id) && (options?.enabled ?? true),
   });
 }
 
@@ -185,7 +229,7 @@ export function useAddPoProduct() {
       input: CreatePoProductInput;
     }) => poApi.addProduct(id, input),
     onSuccess: (_, { id }) => {
-      void queryClient.invalidateQueries({ queryKey: PO_KEYS.products(id) });
+      void queryClient.invalidateQueries({ queryKey: PO_KEYS.productsOf(id) });
       void queryClient.invalidateQueries({ queryKey: PO_KEYS.detail(id) });
       void queryClient.invalidateQueries({ queryKey: PO_KEYS.lists() });
     },
@@ -205,7 +249,7 @@ export function useUpdatePoProduct() {
       input: UpdatePoProductInput;
     }) => poApi.updateProduct(id, productId, input),
     onSuccess: (_, { id, productId }) => {
-      void queryClient.invalidateQueries({ queryKey: PO_KEYS.products(id) });
+      void queryClient.invalidateQueries({ queryKey: PO_KEYS.productsOf(id) });
       void queryClient.invalidateQueries({ queryKey: PO_KEYS.detail(id) });
       void queryClient.invalidateQueries({
         queryKey: PO_KEYS.productDetail(id, productId),
@@ -225,7 +269,7 @@ export function useRemovePoProduct() {
       productId: string;
     }) => poApi.removeProduct(id, productId),
     onSuccess: (_, { id }) => {
-      void queryClient.invalidateQueries({ queryKey: PO_KEYS.products(id) });
+      void queryClient.invalidateQueries({ queryKey: PO_KEYS.productsOf(id) });
       void queryClient.invalidateQueries({ queryKey: PO_KEYS.detail(id) });
       void queryClient.invalidateQueries({ queryKey: PO_KEYS.lists() });
     },
@@ -273,7 +317,7 @@ export function useUpdateProductStatus() {
       void queryClient.invalidateQueries({
         queryKey: PO_KEYS.productDetail(poId, productId),
       });
-      void queryClient.invalidateQueries({ queryKey: PO_KEYS.products(poId) });
+      void queryClient.invalidateQueries({ queryKey: PO_KEYS.productsOf(poId) });
     },
   });
 }
@@ -296,7 +340,7 @@ export function useLinkProductDocument() {
       void queryClient.invalidateQueries({
         queryKey: PO_KEYS.productDetail(poId, productId),
       });
-      void queryClient.invalidateQueries({ queryKey: PO_KEYS.products(poId) });
+      void queryClient.invalidateQueries({ queryKey: PO_KEYS.productsOf(poId) });
       void queryClient.invalidateQueries({ queryKey: PO_KEYS.detail(poId) });
     },
   });
@@ -320,7 +364,7 @@ export function useUpdateProductDocumentPurpose() {
       void queryClient.invalidateQueries({
         queryKey: PO_KEYS.productDetail(poId, productId),
       });
-      void queryClient.invalidateQueries({ queryKey: PO_KEYS.products(poId) });
+      void queryClient.invalidateQueries({ queryKey: PO_KEYS.productsOf(poId) });
     },
   });
 }
@@ -341,7 +385,7 @@ export function useUnlinkProductDocument() {
       void queryClient.invalidateQueries({
         queryKey: PO_KEYS.productDetail(poId, productId),
       });
-      void queryClient.invalidateQueries({ queryKey: PO_KEYS.products(poId) });
+      void queryClient.invalidateQueries({ queryKey: PO_KEYS.productsOf(poId) });
     },
   });
 }
@@ -364,7 +408,7 @@ export function useUploadProductDocument() {
       void queryClient.invalidateQueries({
         queryKey: PO_KEYS.productDetail(poId, productId),
       });
-      void queryClient.invalidateQueries({ queryKey: PO_KEYS.products(poId) });
+      void queryClient.invalidateQueries({ queryKey: PO_KEYS.productsOf(poId) });
       void queryClient.invalidateQueries({ queryKey: PO_KEYS.detail(poId) });
     },
   });
@@ -400,7 +444,7 @@ export function useUploadProductDocumentVersion() {
       void queryClient.invalidateQueries({
         queryKey: PO_KEYS.productDetail(poId, productId),
       });
-      void queryClient.invalidateQueries({ queryKey: PO_KEYS.products(poId) });
+      void queryClient.invalidateQueries({ queryKey: PO_KEYS.productsOf(poId) });
       void queryClient.invalidateQueries({ queryKey: PO_KEYS.detail(poId) });
     },
   });
