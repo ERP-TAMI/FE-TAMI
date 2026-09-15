@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { Button, ConfirmDialog, SearchableSelect } from "@/components/shared";
 import { useInfiniteStyles } from "@/hooks/useStyles";
 import { useImportFitPreview } from "@/hooks/usePurchaseOrders";
@@ -75,6 +75,14 @@ export function PoAddProductQuickForm({
     },
   ]);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<{
+    productCode?: string;
+    productName?: string;
+    colors?: string;
+  }>({});
+  const productCodeInputRef = useRef<HTMLInputElement>(null);
+  const productNameInputRef = useRef<HTMLInputElement>(null);
+  const colorsCardRef = useRef<HTMLDivElement>(null);
   const [showImportConfirm, setShowImportConfirm] = useState(false);
 
   // Import options
@@ -153,6 +161,7 @@ export function PoAddProductQuickForm({
       },
     ]);
     setErrorMsg(null);
+    setFieldErrors({});
     setCopySteps(true);
     setCopySamples(false);
     setCopyProductionDoc(true);
@@ -222,28 +231,40 @@ export function PoAddProductQuickForm({
     onAttachedDocsChange?.(next);
   };
 
-  const handleSubmit = async () => {
+  const validateFields = (): boolean => {
     setErrorMsg(null);
-    if (!productCode.trim()) {
-      setErrorMsg("Mã sản phẩm không được để trống.");
-      return;
-    }
-    if (!productName.trim()) {
-      setErrorMsg("Tên sản phẩm không được để trống.");
-      return;
-    }
+
+    const errors: typeof fieldErrors = {};
+    if (!productCode.trim()) errors.productCode = "Mã sản phẩm không được để trống.";
+    if (!productName.trim()) errors.productName = "Tên sản phẩm không được để trống.";
+
     const namedColors = colors.filter((c) => c.colorName.trim().length > 0);
     if (namedColors.length === 0) {
-      setErrorMsg("Vui lòng nhập ít nhất một màu sắc sản phẩm.");
-      return;
+      errors.colors = "Vui lòng nhập ít nhất một màu sắc sản phẩm.";
+    } else {
+      const hasQuantity = namedColors.some((c) =>
+        (c.sizes || []).some((s) => Number(s.quantity) > 0),
+      );
+      if (!hasQuantity) {
+        errors.colors = "Vui lòng nhập số lượng (pcs) cho ít nhất một size — tổng sản lượng đang là 0.";
+      }
     }
-    const hasQuantity = namedColors.some((c) =>
-      (c.sizes || []).some((s) => Number(s.quantity) > 0),
-    );
-    if (!hasQuantity) {
-      setErrorMsg("Vui lòng nhập số lượng (pcs) cho ít nhất một size — tổng sản lượng đang là 0.");
-      return;
+
+    setFieldErrors(errors);
+
+    if (errors.productCode) {
+      productCodeInputRef.current?.focus();
+    } else if (errors.productName) {
+      productNameInputRef.current?.focus();
+    } else if (errors.colors) {
+      colorsCardRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
     }
+
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleSubmit = async () => {
+    if (!validateFields()) return;
 
     // Import từ Fit: bắt buộc xem qua bản xem trước những gì sẽ sao chép
     // trước khi tạo, giống bước "Xác nhận" của PoAddProductModal.
@@ -293,6 +314,8 @@ export function PoAddProductQuickForm({
 
   const inputCls =
     "w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs text-gray-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-800/80 dark:text-white placeholder-gray-400";
+  const errorInputCls =
+    "!border-error-400 focus:!border-error-500 focus:!ring-error-500/20 dark:!border-error-500";
 
   return (
     <div className="flex flex-col gap-4">
@@ -467,24 +490,42 @@ export function PoAddProductQuickForm({
               Mã sản phẩm <span className="text-error-500">*</span>
             </label>
             <input
+              ref={productCodeInputRef}
               type="text"
               placeholder="PROD-2026-001"
               value={productCode}
-              onChange={(e) => setProductCode(e.target.value)}
-              className={`${inputCls} font-mono`}
+              onChange={(e) => {
+                setProductCode(e.target.value);
+                if (fieldErrors.productCode) setFieldErrors((prev) => ({ ...prev, productCode: undefined }));
+              }}
+              className={`${inputCls} font-mono ${fieldErrors.productCode ? errorInputCls : ""}`}
             />
+            {fieldErrors.productCode && (
+              <p className="mt-1 text-[11px] font-medium text-error-600 dark:text-error-400">
+                {fieldErrors.productCode}
+              </p>
+            )}
           </div>
           <div>
             <label className="block text-[11px] font-semibold text-gray-600 dark:text-gray-400 mb-1">
               Tên sản phẩm <span className="text-error-500">*</span>
             </label>
             <input
+              ref={productNameInputRef}
               type="text"
               placeholder="Áo thun Polo Regular"
               value={productName}
-              onChange={(e) => setProductName(e.target.value)}
-              className={inputCls}
+              onChange={(e) => {
+                setProductName(e.target.value);
+                if (fieldErrors.productName) setFieldErrors((prev) => ({ ...prev, productName: undefined }));
+              }}
+              className={`${inputCls} ${fieldErrors.productName ? errorInputCls : ""}`}
             />
+            {fieldErrors.productName && (
+              <p className="mt-1 text-[11px] font-medium text-error-600 dark:text-error-400">
+                {fieldErrors.productName}
+              </p>
+            )}
           </div>
         </div>
 
@@ -530,15 +571,24 @@ export function PoAddProductQuickForm({
         </div>
 
         {/* Màu sắc & Bảng phân bổ size */}
-        <div className="space-y-1 pt-1">
+        <div ref={colorsCardRef} className="space-y-1 pt-1">
           <label className="block text-[11px] font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wide">
-            Màu sắc &amp; Bảng size
+            Màu sắc &amp; Bảng size <span className="text-error-500 normal-case">*</span>
           </label>
           <ProductColorSizeEditor
             colors={colors}
-            onChange={setColors}
+            onChange={(next) => {
+              setColors(next);
+              if (fieldErrors.colors) setFieldErrors((prev) => ({ ...prev, colors: undefined }));
+            }}
             allowMultipleColors={true}
+            showValidationErrors={Boolean(fieldErrors.colors)}
           />
+          {fieldErrors.colors && (
+            <p className="text-[11px] font-medium text-error-600 dark:text-error-400">
+              {fieldErrors.colors}
+            </p>
+          )}
         </div>
       </div>
 

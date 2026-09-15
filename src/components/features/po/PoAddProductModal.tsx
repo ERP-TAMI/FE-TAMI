@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { Modal, Button, SearchableSelect } from "@/components/shared";
 import { CheckLineIcon, DocsIcon, FileIcon } from "@/icons";
 import { useInfiniteStyles } from "@/hooks/useStyles";
@@ -74,6 +74,14 @@ export function PoAddProductModal({
     },
   ]);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<{
+    productCode?: string;
+    productName?: string;
+    colors?: string;
+  }>({});
+  const productCodeInputRef = useRef<HTMLInputElement>(null);
+  const productNameInputRef = useRef<HTMLInputElement>(null);
+  const colorsCardRef = useRef<HTMLDivElement>(null);
 
   // Import options from Style
   const [copySteps, setCopySteps] = useState(true);
@@ -207,6 +215,7 @@ export function PoAddProductModal({
     setSelectedPoDocIds([]);
     setDocSearch("");
     setDocFilterPurpose("ALL");
+    setFieldErrors({});
     setErrorMsg(null);
   };
 
@@ -217,27 +226,34 @@ export function PoAddProductModal({
 
   const validateStep1 = (): boolean => {
     setErrorMsg(null);
-    if (!productCode.trim()) {
-      setErrorMsg("Mã sản phẩm không được để trống.");
-      return false;
-    }
-    if (!productName.trim()) {
-      setErrorMsg("Tên sản phẩm không được để trống.");
-      return false;
-    }
+
+    const errors: typeof fieldErrors = {};
+    if (!productCode.trim()) errors.productCode = "Mã sản phẩm không được để trống.";
+    if (!productName.trim()) errors.productName = "Tên sản phẩm không được để trống.";
+
     const namedColors = colors.filter((c) => c.colorName.trim().length > 0);
     if (namedColors.length === 0) {
-      setErrorMsg("Vui lòng nhập ít nhất một màu sắc sản phẩm.");
-      return false;
+      errors.colors = "Vui lòng nhập ít nhất một màu sắc sản phẩm.";
+    } else {
+      const hasQuantity = namedColors.some((c) =>
+        (c.sizes || []).some((s) => Number(s.quantity) > 0),
+      );
+      if (!hasQuantity) {
+        errors.colors = "Vui lòng nhập số lượng (pcs) cho ít nhất một size — tổng sản lượng đang là 0.";
+      }
     }
-    const hasQuantity = namedColors.some((c) =>
-      (c.sizes || []).some((s) => Number(s.quantity) > 0),
-    );
-    if (!hasQuantity) {
-      setErrorMsg("Vui lòng nhập số lượng (pcs) cho ít nhất một size — tổng sản lượng đang là 0.");
-      return false;
+
+    setFieldErrors(errors);
+
+    if (errors.productCode) {
+      productCodeInputRef.current?.focus();
+    } else if (errors.productName) {
+      productNameInputRef.current?.focus();
+    } else if (errors.colors) {
+      colorsCardRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
     }
-    return true;
+
+    return Object.keys(errors).length === 0;
   };
 
   const handleNextToStep2 = () => {
@@ -682,12 +698,25 @@ export function PoAddProductModal({
                       )}
                     </div>
                     <input
+                      ref={productCodeInputRef}
                       type="text"
                       placeholder="VD: PROD-2026-001"
                       value={productCode}
-                      onChange={(e) => setProductCode(e.target.value)}
-                      className="w-full rounded-xl border border-gray-250 bg-white px-4 py-3 text-sm font-mono text-gray-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-white"
+                      onChange={(e) => {
+                        setProductCode(e.target.value);
+                        if (fieldErrors.productCode) setFieldErrors((prev) => ({ ...prev, productCode: undefined }));
+                      }}
+                      className={`w-full rounded-xl border bg-white px-4 py-3 text-sm font-mono text-gray-900 outline-none transition focus:ring-2 dark:bg-gray-800 dark:text-white ${
+                        fieldErrors.productCode
+                          ? "border-error-400 focus:border-error-500 focus:ring-error-500/20 dark:border-error-500"
+                          : "border-gray-250 focus:border-brand-500 focus:ring-brand-500/20 dark:border-gray-800"
+                      }`}
                     />
+                    {fieldErrors.productCode && (
+                      <p className="mt-1.5 text-xs font-medium text-error-600 dark:text-error-400">
+                        {fieldErrors.productCode}
+                      </p>
+                    )}
                   </div>
 
                   <div>
@@ -695,12 +724,25 @@ export function PoAddProductModal({
                       Tên sản phẩm <span className="text-error-500">*</span>
                     </label>
                     <input
+                      ref={productNameInputRef}
                       type="text"
                       placeholder="VD: Áo thun Polo Regular"
                       value={productName}
-                      onChange={(e) => setProductName(e.target.value)}
-                      className="w-full rounded-xl border border-gray-250 bg-white px-4 py-3 text-sm text-gray-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-white"
+                      onChange={(e) => {
+                        setProductName(e.target.value);
+                        if (fieldErrors.productName) setFieldErrors((prev) => ({ ...prev, productName: undefined }));
+                      }}
+                      className={`w-full rounded-xl border bg-white px-4 py-3 text-sm text-gray-900 outline-none transition focus:ring-2 dark:bg-gray-800 dark:text-white ${
+                        fieldErrors.productName
+                          ? "border-error-400 focus:border-error-500 focus:ring-error-500/20 dark:border-error-500"
+                          : "border-gray-250 focus:border-brand-500 focus:ring-brand-500/20 dark:border-gray-800"
+                      }`}
                     />
+                    {fieldErrors.productName && (
+                      <p className="mt-1.5 text-xs font-medium text-error-600 dark:text-error-400">
+                        {fieldErrors.productName}
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -754,15 +796,31 @@ export function PoAddProductModal({
             </div>
 
             {/* Màu sắc & Bảng phân bổ size breakdown — card trắng riêng */}
-            <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900/60">
+            <div
+              ref={colorsCardRef}
+              className={`rounded-2xl border bg-white p-5 dark:bg-gray-900/60 ${
+                fieldErrors.colors
+                  ? "border-error-300 dark:border-error-800"
+                  : "border-gray-200 dark:border-gray-800"
+              }`}
+            >
               <h3 className="text-base font-bold text-gray-900 dark:text-white mb-3.5">
-                Màu sắc &amp; Bảng Size sản xuất
+                Màu sắc &amp; Bảng Size sản xuất <span className="text-error-500">*</span>
               </h3>
               <ProductColorSizeEditor
                 colors={colors}
-                onChange={setColors}
+                onChange={(next) => {
+                  setColors(next);
+                  if (fieldErrors.colors) setFieldErrors((prev) => ({ ...prev, colors: undefined }));
+                }}
                 allowMultipleColors={true}
+                showValidationErrors={Boolean(fieldErrors.colors)}
               />
+              {fieldErrors.colors && (
+                <p className="mt-3 text-xs font-medium text-error-600 dark:text-error-400">
+                  {fieldErrors.colors}
+                </p>
+              )}
             </div>
 
             {/* Step 1 Footer */}

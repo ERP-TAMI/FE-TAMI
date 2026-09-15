@@ -10,6 +10,9 @@ interface ProductColorSizeEditorProps {
   onChange: (colors: ProductColorItem[]) => void;
   disabled?: boolean;
   allowMultipleColors?: boolean;
+  /** Khi true: viền đỏ + cảnh báo ngay tại từng dòng màu còn thiếu tên/số lượng,
+   * thay vì chỉ báo lỗi chung chung ở nơi khác. Bật lên sau khi validate thất bại. */
+  showValidationErrors?: boolean;
 }
 
 function generateTempId(prefix = "c") {
@@ -36,6 +39,7 @@ export function ProductColorSizeEditor({
   onChange,
   disabled = false,
   allowMultipleColors = true,
+  showValidationErrors = false,
 }: ProductColorSizeEditorProps) {
   const { data: sizeChartsData } = useActiveSizeCharts();
   const sizeCharts: SizeChart[] = useMemo(
@@ -148,6 +152,7 @@ export function ProductColorSizeEditor({
           (sum, s) => sum + (Number(s.quantity) || 0),
           0,
         );
+        const nameMissing = showValidationErrors && !color.colorName.trim();
 
         return (
           <div
@@ -167,8 +172,17 @@ export function ProductColorSizeEditor({
                     value={color.colorName || ""}
                     onChange={(e) => handleUpdateColor(colorIdx, { colorName: e.target.value })}
                     placeholder="VD: Trắng, Đen, Xanh Navy..."
-                    className="w-full rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-900 placeholder:text-gray-400 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                    className={`w-full rounded-lg border bg-white px-3 py-1.5 text-sm font-medium text-gray-900 placeholder:text-gray-400 focus:ring-1 dark:bg-gray-800 dark:text-white ${
+                      nameMissing
+                        ? "border-error-400 focus:border-error-500 focus:ring-error-500 dark:border-error-500"
+                        : "border-gray-300 focus:border-brand-500 focus:ring-brand-500 dark:border-gray-700"
+                    }`}
                   />
+                  {nameMissing && (
+                    <p className="text-xs font-medium text-error-600 dark:text-error-400">
+                      Vui lòng nhập tên màu sắc.
+                    </p>
+                  )}
                 </div>
 
                 <div className="w-28 space-y-1">
@@ -356,15 +370,32 @@ export function ProductColorSizeEditor({
       )}
 
       {/* Khối tổng hợp toàn bộ sản phẩm — nền trung tính, chỉ giữ 1 điểm nhấn màu ở số Tổng */}
-      <div className="rounded-xl border border-gray-200 bg-gray-50 p-3.5 dark:border-gray-800 dark:bg-gray-800/40 space-y-2">
+      <div
+        className={`rounded-xl border p-3.5 space-y-2 ${
+          showValidationErrors && grandTotal === 0
+            ? "border-error-300 bg-error-50/60 dark:border-error-800 dark:bg-error-950/20"
+            : "border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-800/40"
+        }`}
+      >
         <div className="flex flex-wrap items-center justify-between gap-2">
           <span className="text-xs font-semibold text-gray-600 dark:text-gray-400">
             Tổng quan sản lượng theo size (toàn bộ {displayedColors.length} màu)
           </span>
-          <div className="text-sm font-bold text-brand-600 dark:text-brand-400 font-mono">
+          <div
+            className={`text-sm font-bold font-mono ${
+              showValidationErrors && grandTotal === 0
+                ? "text-error-600 dark:text-error-400"
+                : "text-brand-600 dark:text-brand-400"
+            }`}
+          >
             Tổng: {grandTotal.toLocaleString("vi-VN")} pcs
           </div>
         </div>
+        {showValidationErrors && grandTotal === 0 && (
+          <p className="text-xs font-medium text-error-600 dark:text-error-400">
+            Vui lòng nhập số lượng (pcs) cho ít nhất một size.
+          </p>
+        )}
 
         <div className="flex flex-wrap gap-1.5 pt-1">
           {Object.entries(totalsBySize).length === 0 ? (
