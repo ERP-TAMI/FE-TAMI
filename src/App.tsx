@@ -100,6 +100,7 @@ export function AppRoutes() {
             <Route path="styles/:id" element={<StyleDetailPage />} />
             <Route path="styles/:id/production-doc" element={<StyleDetailPage />} />
             <Route path="styles/:id/documents" element={<StyleDetailPage />} />
+            <Route path="styles/:id/sample-rounds" element={<StyleDetailPage />} />
             <Route path="bom" element={<BomPage />} />
             <Route path="po" element={<PoPage />} />
             <Route path="po/:id" element={<PoDetailPage />} />
