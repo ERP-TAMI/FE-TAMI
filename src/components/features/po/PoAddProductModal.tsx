@@ -801,7 +801,7 @@ export function PoAddProductModal({
               className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900/60"
             >
               <h3 className="text-base font-bold text-gray-900 dark:text-white mb-3.5">
-                Màu sắc &amp; Bảng Size sản xuất <span className="text-error-500">*</span>
+                Màu sắc &amp; Số lượng <span className="text-error-500">*</span>
               </h3>
               <ProductColorSizeEditor
                 colors={colors}

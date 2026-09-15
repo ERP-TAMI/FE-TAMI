@@ -573,7 +573,7 @@ export function PoAddProductQuickForm({
         {/* Màu sắc & Bảng phân bổ size */}
         <div ref={colorsCardRef} className="space-y-1 pt-1">
           <label className="block text-[11px] font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wide">
-            Màu sắc &amp; Bảng size <span className="text-error-500 normal-case">*</span>
+            Màu sắc &amp; Số lượng <span className="text-error-500 normal-case">*</span>
           </label>
           <ProductColorSizeEditor
             colors={colors}
