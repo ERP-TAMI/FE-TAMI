@@ -1133,6 +1133,22 @@ export default function PoProductDetailPage() {
                   </dd>
                 </div>
               )}
+
+              {product.sourceStyle && product.importedAt && (
+                <div>
+                  <dt className="text-sm text-gray-500 dark:text-gray-400">Ngày import từ Fit</dt>
+                  <dd
+                    className="font-semibold text-gray-800 dark:text-gray-200"
+                    title={
+                      product.importedBy
+                        ? `Người import: ${product.importedBy}`
+                        : undefined
+                    }
+                  >
+                    {formatDate(product.importedAt)}
+                  </dd>
+                </div>
+              )}
             </dl>
 
             {/* Thẻ liên kết nhanh sang Tab 2: Bảng size */}

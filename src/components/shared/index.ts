@@ -8,6 +8,8 @@ export { PageHeader } from "@/components/shared/PageHeader";
 export { Pagination } from "@/components/shared/Pagination";
 export { UploadProgressWidget } from "@/components/shared/UploadProgressWidget";
 export { Select } from "@/components/shared/Select";
+export { SearchableSelect } from "@/components/shared/SearchableSelect";
+export type { SearchableSelectOption } from "@/components/shared/SearchableSelect";
 export { Table } from "@/components/shared/Table";
 export { Toast } from "@/components/shared/Toast";
 export { FileTypeIcon, getFileMeta } from "@/components/shared/FileTypeIcon";

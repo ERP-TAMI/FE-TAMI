@@ -158,8 +158,8 @@ export function ProductColorSizeEditor({
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex-1 min-w-[200px] flex items-center gap-3">
                 <div className="flex-1 space-y-1">
-                  <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">
-                    Tên Màu Sắc <span className="text-rose-500">*</span>
+                  <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400">
+                    Tên màu sắc <span className="text-rose-500">*</span>
                   </label>
                   <input
                     type="text"
@@ -355,13 +355,13 @@ export function ProductColorSizeEditor({
         </Button>
       )}
 
-      {/* Khối tổng hợp toàn bộ sản phẩm */}
-      <div className="rounded-xl border border-dashed border-brand-200 bg-brand-50/40 p-3.5 dark:border-brand-900/60 dark:bg-brand-950/20 space-y-2">
+      {/* Khối tổng hợp toàn bộ sản phẩm — nền trung tính, chỉ giữ 1 điểm nhấn màu ở số Tổng */}
+      <div className="rounded-xl border border-gray-200 bg-gray-50 p-3.5 dark:border-gray-800 dark:bg-gray-800/40 space-y-2">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <span className="text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">
-            Tổng quan Sản lượng theo Size (Toàn bộ {displayedColors.length} màu)
+          <span className="text-xs font-semibold text-gray-600 dark:text-gray-400">
+            Tổng quan sản lượng theo size (toàn bộ {displayedColors.length} màu)
           </span>
-          <div className="text-sm font-extrabold text-brand-700 dark:text-brand-300 font-mono">
+          <div className="text-sm font-bold text-brand-600 dark:text-brand-400 font-mono">
             Tổng: {grandTotal.toLocaleString("vi-VN")} pcs
           </div>
         </div>
@@ -373,10 +373,12 @@ export function ProductColorSizeEditor({
             Object.entries(totalsBySize).map(([sz, qty]) => (
               <span
                 key={sz}
-                className="inline-flex items-center gap-1 rounded-md border border-brand-200 bg-white px-2 py-0.5 text-xs font-semibold text-brand-700 shadow-2xs dark:border-brand-800 dark:bg-gray-800 dark:text-brand-300 font-mono"
+                className="inline-flex items-center gap-1 rounded-md border border-gray-200 bg-white px-2 py-0.5 text-xs font-medium text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 font-mono"
               >
-                <span>Size {sz}:</span>
-                <strong className="font-extrabold">{qty.toLocaleString("vi-VN")}</strong>
+                <span className="text-gray-500 dark:text-gray-400">Size {sz}:</span>
+                <strong className="font-bold text-gray-900 dark:text-white">
+                  {qty.toLocaleString("vi-VN")}
+                </strong>
               </span>
             ))
           )}
