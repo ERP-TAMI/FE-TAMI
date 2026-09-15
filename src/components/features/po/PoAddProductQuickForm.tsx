@@ -232,6 +232,18 @@ export function PoAddProductQuickForm({
       setErrorMsg("Tên sản phẩm không được để trống.");
       return;
     }
+    const namedColors = colors.filter((c) => c.colorName.trim().length > 0);
+    if (namedColors.length === 0) {
+      setErrorMsg("Vui lòng nhập ít nhất một màu sắc sản phẩm.");
+      return;
+    }
+    const hasQuantity = namedColors.some((c) =>
+      (c.sizes || []).some((s) => Number(s.quantity) > 0),
+    );
+    if (!hasQuantity) {
+      setErrorMsg("Vui lòng nhập số lượng (pcs) cho ít nhất một size — tổng sản lượng đang là 0.");
+      return;
+    }
 
     // Import từ Fit: bắt buộc xem qua bản xem trước những gì sẽ sao chép
     // trước khi tạo, giống bước "Xác nhận" của PoAddProductModal.
