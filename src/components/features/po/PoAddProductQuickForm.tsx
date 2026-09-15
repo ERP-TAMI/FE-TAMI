@@ -328,7 +328,7 @@ export function PoAddProductQuickForm({
             {mode === "select" && <span className="h-1.5 w-1.5 rounded-full bg-brand-600" />}
           </span>
           <span className="text-xs font-bold text-gray-900 dark:text-white">
-            Từ Style / Fit có sẵn
+            Từ Mẫu Fit có sẵn
           </span>
         </button>
         <button
@@ -357,14 +357,14 @@ export function PoAddProductQuickForm({
         <div className="rounded-xl border border-brand-200/70 bg-brand-50/40 p-3 space-y-3 dark:border-brand-900/40 dark:bg-brand-950/20">
           <div>
             <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
-              Chọn Style Mẫu Fit gốc <span className="text-error-500">*</span>
+              Chọn Mẫu Fit gốc <span className="text-error-500">*</span>
             </label>
             <SearchableSelect
               value={sourceStyleId}
               onChange={handleSelectStyle}
-              placeholder="-- Chọn một Style có sẵn --"
-              searchPlaceholder="Gõ mã hoặc tên Style để tìm..."
-              emptyMessage="Không tìm thấy Style phù hợp."
+              placeholder="-- Chọn một Mẫu Fit có sẵn --"
+              searchPlaceholder="Gõ mã hoặc tên để tìm..."
+              emptyMessage="Không tìm thấy Mẫu Fit phù hợp."
               options={styleOptions}
               async
               onSearchChange={setStyleSearch}
@@ -427,7 +427,7 @@ export function PoAddProductQuickForm({
                     { label: "Bảng công đoạn", checked: copySteps, set: setCopySteps },
                     { label: "Đợt may mẫu & ảnh", checked: copySamples, set: setCopySamples },
                     { label: "Tài liệu sản xuất", checked: copyProductionDoc, set: setCopyProductionDoc },
-                    { label: "Tệp đính kèm Style", checked: copyDocuments, set: setCopyDocuments },
+                    { label: "Tệp đính kèm Mẫu Fit", checked: copyDocuments, set: setCopyDocuments },
                   ].map((item) => (
                     <label key={item.label} className="flex items-center gap-1.5 cursor-pointer">
                       <input
@@ -672,14 +672,14 @@ export function PoAddProductQuickForm({
                 Đợt may mẫu & ảnh ({fitPreview?.sampleRounds?.length || 0})
               </li>
               <li className={copyProductionDoc ? "" : "text-gray-400 line-through"}>
-                Tài liệu sản xuất tiếng Việt
+                Tài liệu SX tiếng Việt
               </li>
               <li className={copyDocuments ? "" : "text-gray-400 line-through"}>
-                Tài liệu đính kèm của Style ({fitPreview?.documents?.length || 0})
+                Tài liệu đính kèm Mẫu Fit ({fitPreview?.documents?.length || 0})
               </li>
             </ul>
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              Sau khi tạo, sửa hoặc xóa dữ liệu này trên sản phẩm sẽ không ảnh hưởng Style nguồn.
+              Sau khi tạo, sửa hoặc xóa dữ liệu này trên sản phẩm sẽ không ảnh hưởng Mẫu Fit nguồn.
             </p>
           </div>
         }

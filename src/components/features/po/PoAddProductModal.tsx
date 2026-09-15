@@ -333,7 +333,7 @@ export function PoAddProductModal({
             <div className="min-w-0 flex-1">
               <div className="text-sm font-bold">Thông tin sản phẩm</div>
               <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate">
-                Mã, tên SP, liên kết Style
+                Mã, tên SP, liên kết Mẫu Fit
               </div>
             </div>
           </button>
@@ -438,10 +438,10 @@ export function PoAddProductModal({
                 </span>
                 <span className="min-w-0">
                   <span className="block text-sm font-bold text-gray-900 dark:text-white">
-                    Chọn từ Style / Fit có sẵn
+                    Chọn từ Mẫu Fit có sẵn
                   </span>
                   <span className="block text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                    Khuyên dùng — kế thừa dữ liệu từ Fit có sẵn
+                    Khuyên dùng, kế thừa dữ liệu Fit
                   </span>
                 </span>
               </button>
@@ -472,7 +472,7 @@ export function PoAddProductModal({
                     Nhập thủ công sản phẩm mới
                   </span>
                   <span className="block text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                    Tạo độc lập, không kế thừa dữ liệu từ Fit
+                    Tạo độc lập, không kế thừa dữ liệu
                   </span>
                 </span>
               </button>
@@ -482,18 +482,18 @@ export function PoAddProductModal({
             {mode === "select" && (
               <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900/60">
                 <h3 className="text-base font-bold text-gray-900 dark:text-white mb-3.5">
-                  Style / Mẫu Fit nguồn
+                  Mẫu Fit nguồn
                 </h3>
                 <div>
                   <label className="block text-sm font-semibold text-gray-800 dark:text-gray-200 mb-1.5">
-                    Chọn Style Mẫu Fit gốc <span className="text-error-500">*</span>
+                    Chọn Mẫu Fit gốc <span className="text-error-500">*</span>
                   </label>
                   <SearchableSelect
                     value={sourceStyleId}
                     onChange={handleSelectStyle}
-                    placeholder="-- Chọn một Style có sẵn từ danh mục Fit --"
-                    searchPlaceholder="Gõ mã hoặc tên Style để tìm..."
-                    emptyMessage="Không tìm thấy Style phù hợp."
+                    placeholder="-- Chọn một Mẫu Fit có sẵn --"
+                    searchPlaceholder="Gõ mã hoặc tên để tìm..."
+                    emptyMessage="Không tìm thấy Mẫu Fit phù hợp."
                     options={styleOptions}
                     async
                     onSearchChange={setStyleSearch}
@@ -560,7 +560,7 @@ export function PoAddProductModal({
                     {/* Selection Checkboxes for Style components — mỗi mục 1 hàng có viền riêng biệt */}
                     <div>
                       <span className="block text-sm font-semibold text-gray-800 dark:text-gray-200 mb-2">
-                        Chọn các thành phần từ Style vào sản phẩm:
+                        Chọn dữ liệu cần sao chép:
                       </span>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                         <label
@@ -618,7 +618,7 @@ export function PoAddProductModal({
                             onChange={(e) => setCopyProductionDoc(e.target.checked)}
                             className="rounded text-brand-600 focus:ring-brand-500 h-4 w-4 shrink-0"
                           />
-                          <span className="font-medium">Tài liệu sản xuất tiếng Việt</span>
+                          <span className="font-medium">Tài liệu SX tiếng Việt</span>
                         </label>
 
                         <label
@@ -635,7 +635,7 @@ export function PoAddProductModal({
                             className="rounded text-brand-600 focus:ring-brand-500 h-4 w-4 shrink-0"
                           />
                           <span className="font-medium">
-                            Tài liệu đính kèm của Style{" "}
+                            Tài liệu đính kèm Mẫu Fit{" "}
                             <span className="text-gray-400 font-mono">
                               ({fitPreview?.documents?.length || 0})
                             </span>
@@ -643,7 +643,7 @@ export function PoAddProductModal({
                         </label>
                       </div>
                       <p className="mt-2.5 text-xs text-gray-500 dark:text-gray-400">
-                        Dữ liệu được sao chép thành bản riêng của sản phẩm — sửa hoặc xóa sau này sẽ không ảnh hưởng Style nguồn.
+                        Dữ liệu được sao chép thành bản riêng của sản phẩm — sửa hoặc xóa sau này sẽ không ảnh hưởng Mẫu Fit nguồn.
                       </p>
                     </div>
                   </div>
@@ -1068,14 +1068,14 @@ export function PoAddProductModal({
                         </dd>
                       </div>
                       <div className="flex items-center justify-between">
-                        <dt className="text-gray-500 dark:text-gray-400">Tài liệu đính kèm Style</dt>
+                        <dt className="text-gray-500 dark:text-gray-400">Tài liệu đính kèm Mẫu Fit</dt>
                         <dd className={copyDocuments ? "font-semibold text-emerald-600" : "text-gray-400"}>
                           {copyDocuments ? `Sao chép (${fitPreview?.documents?.length || 0})` : "Bỏ qua"}
                         </dd>
                       </div>
                     </dl>
                     <p className="text-xs text-gray-500 dark:text-gray-400">
-                      Mục được đánh dấu "Sao chép" sẽ trở thành bản riêng của sản phẩm — Style nguồn không bị ảnh hưởng.
+                      Mục được đánh dấu "Sao chép" sẽ trở thành bản riêng của sản phẩm — Mẫu Fit nguồn không bị ảnh hưởng.
                     </p>
                   </div>
                 ) : (
