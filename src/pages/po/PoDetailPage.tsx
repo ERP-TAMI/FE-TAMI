@@ -367,7 +367,10 @@ export default function PoDetailPage() {
       showToast("Đã xóa sản phẩm khỏi đơn hàng PO.");
       setProductPendingRemoval(null);
     } catch (err: unknown) {
-      const apiErr = getApiError(err, "Xóa sản phẩm thất bại.");
+      const apiErr = getApiError(err, "Xóa sản phẩm thất bại.", {
+        CONFLICT:
+          "Không thể xóa sản phẩm này vì đã có định mức nguyên phụ liệu (BOM) liên kết với một trong các màu của sản phẩm. Vui lòng gỡ hoặc ngưng sử dụng BOM đó trước.",
+      });
       showToast(apiErr.message, "error");
     }
   };

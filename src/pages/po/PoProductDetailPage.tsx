@@ -253,6 +253,14 @@ export default function PoProductDetailPage() {
   const [editDeadline, setEditDeadline] = useState("");
   const [editCmBaseDays, setEditCmBaseDays] = useState(30);
   const [editColors, setEditColors] = useState<ProductColorItem[]>([]);
+  const [editFieldErrors, setEditFieldErrors] = useState<{
+    productCode?: string;
+    productName?: string;
+    colors?: string;
+  }>({});
+  const editProductCodeInputRef = useRef<HTMLInputElement>(null);
+  const editProductNameInputRef = useRef<HTMLInputElement>(null);
+  const editColorsCardRef = useRef<HTMLDivElement>(null);
 
   // Local state for image handling (phong cách GeneralTab)
   const [imageUrl, setImageUrl] = useState<string | null>(null);
@@ -393,12 +401,70 @@ export default function PoProductDetailPage() {
         ? JSON.parse(JSON.stringify(product.colors))
         : [],
     );
+    setEditFieldErrors({});
     setIsEditModalOpen(true);
+  };
+
+  const validateEditFields = (): boolean => {
+    const errors: typeof editFieldErrors = {};
+    if (!editProductCode.trim()) errors.productCode = "Mã sản phẩm không được để trống.";
+    if (!editProductName.trim()) errors.productName = "Tên sản phẩm không được để trống.";
+
+    const namedColors = editColors.filter((c) => c.colorName.trim().length > 0);
+    if (namedColors.length === 0) {
+      errors.colors = "Vui lòng nhập ít nhất một màu sắc sản phẩm.";
+    } else {
+      const seenNames = new Set<string>();
+      for (const c of namedColors) {
+        const name = c.colorName.trim();
+        if (seenNames.has(name)) {
+          errors.colors = `Màu "${name}" bị lặp lại — mỗi màu chỉ được khai báo một lần.`;
+          break;
+        }
+        seenNames.add(name);
+      }
+      if (!errors.colors) {
+        const hasQuantity = namedColors.some((c) =>
+          (c.sizes || []).some((s) => Number(s.quantity) > 0),
+        );
+        if (!hasQuantity) {
+          errors.colors =
+            "Vui lòng nhập số lượng (pcs) cho ít nhất một size — tổng sản lượng đang là 0.";
+        }
+      }
+    }
+
+    setEditFieldErrors(errors);
+    if (errors.productCode) {
+      editProductCodeInputRef.current?.focus();
+    } else if (errors.productName) {
+      editProductNameInputRef.current?.focus();
+    } else if (errors.colors) {
+      editColorsCardRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+
+    return Object.keys(errors).length === 0;
   };
 
   const handleSaveEditProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!poId || !productId) return;
+    if (!validateEditFields()) return;
+
+    const cleanColors = editColors
+      .filter((c) => c.colorName.trim().length > 0)
+      .map((c) => ({
+        id: c.id,
+        colorName: c.colorName.trim(),
+        colorCode: c.colorCode?.trim() || undefined,
+        sizes: (c.sizes || [])
+          .filter((s) => s.sizeLabel.trim().length > 0)
+          .map((s) => ({
+            sizeLabel: s.sizeLabel.trim().toUpperCase(),
+            quantity: Number(s.quantity) || 0,
+          })),
+      }));
+
     try {
       await updateProductMutation.mutateAsync({
         id: poId,
@@ -410,13 +476,16 @@ export default function PoProductDetailPage() {
           materialNote: editMaterialNote.trim() || undefined,
           deadline: editDeadline || undefined,
           as3bCmBaseDays: Number(editCmBaseDays) || 30,
-          colors: editColors,
+          colors: cleanColors,
         },
       });
       showToast("Đã cập nhật thông tin sản phẩm thành công.");
       setIsEditModalOpen(false);
     } catch (err: unknown) {
-      const apiErr = getApiError(err, "Cập nhật sản phẩm thất bại.");
+      const apiErr = getApiError(err, "Cập nhật sản phẩm thất bại.", {
+        CONFLICT:
+          "Không thể lưu thay đổi màu/size này vì đã có định mức nguyên phụ liệu (BOM) liên kết với một màu bị xóa. Vui lòng gỡ hoặc ngưng sử dụng BOM đó trước.",
+      });
       showToast(apiErr.message, "error");
     }
   };
@@ -1905,12 +1974,26 @@ export default function PoProductDetailPage() {
                   Mã sản phẩm <span className="text-red-500">*</span>
                 </label>
                 <input
+                  ref={editProductCodeInputRef}
                   type="text"
                   value={editProductCode}
-                  onChange={(e) => setEditProductCode(e.target.value)}
+                  onChange={(e) => {
+                    setEditProductCode(e.target.value);
+                    if (editFieldErrors.productCode)
+                      setEditFieldErrors((prev) => ({ ...prev, productCode: undefined }));
+                  }}
                   required
-                  className="mt-1 h-10 w-full rounded-lg border border-gray-300 px-3 font-mono text-sm text-gray-900 dark:text-white dark:bg-gray-800 dark:border-gray-700 transition-colors focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  className={`mt-1 h-10 w-full rounded-lg border px-3 font-mono text-sm text-gray-900 dark:text-white dark:bg-gray-800 transition-colors focus:outline-none focus:ring-2 ${
+                    editFieldErrors.productCode
+                      ? "border-error-400 focus:border-error-500 focus:ring-error-500/20 dark:border-error-500"
+                      : "border-gray-300 dark:border-gray-700 focus:border-blue-500 focus:ring-blue-500/20"
+                  }`}
                 />
+                {editFieldErrors.productCode && (
+                  <p className="mt-1 text-xs font-medium text-error-600 dark:text-error-400">
+                    {editFieldErrors.productCode}
+                  </p>
+                )}
               </div>
 
               <div>
@@ -1918,12 +2001,26 @@ export default function PoProductDetailPage() {
                   Tên sản phẩm <span className="text-red-500">*</span>
                 </label>
                 <input
+                  ref={editProductNameInputRef}
                   type="text"
                   value={editProductName}
-                  onChange={(e) => setEditProductName(e.target.value)}
+                  onChange={(e) => {
+                    setEditProductName(e.target.value);
+                    if (editFieldErrors.productName)
+                      setEditFieldErrors((prev) => ({ ...prev, productName: undefined }));
+                  }}
                   required
-                  className="mt-1 h-10 w-full rounded-lg border border-gray-300 px-3 text-sm text-gray-900 dark:text-white dark:bg-gray-800 dark:border-gray-700 transition-colors focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  className={`mt-1 h-10 w-full rounded-lg border px-3 text-sm text-gray-900 dark:text-white dark:bg-gray-800 transition-colors focus:outline-none focus:ring-2 ${
+                    editFieldErrors.productName
+                      ? "border-error-400 focus:border-error-500 focus:ring-error-500/20 dark:border-error-500"
+                      : "border-gray-300 dark:border-gray-700 focus:border-blue-500 focus:ring-blue-500/20"
+                  }`}
                 />
+                {editFieldErrors.productName && (
+                  <p className="mt-1 text-xs font-medium text-error-600 dark:text-error-400">
+                    {editFieldErrors.productName}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -1981,10 +2078,18 @@ export default function PoProductDetailPage() {
             </div>
 
             {/* Trình soạn thảo Phân bổ Màu sắc & Cỡ số */}
-            <div className="pt-2 border-t border-gray-100 dark:border-gray-800">
+            <div
+              ref={editColorsCardRef}
+              className="pt-2 border-t border-gray-100 dark:border-gray-800"
+            >
               <ProductColorSizeEditor
                 colors={editColors}
-                onChange={setEditColors}
+                onChange={(next) => {
+                  setEditColors(next);
+                  if (editFieldErrors.colors)
+                    setEditFieldErrors((prev) => ({ ...prev, colors: undefined }));
+                }}
+                showValidationErrors={Boolean(editFieldErrors.colors)}
               />
             </div>
 
