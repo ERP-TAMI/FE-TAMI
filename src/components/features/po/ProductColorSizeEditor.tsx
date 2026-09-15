@@ -19,13 +19,6 @@ function generateTempId(prefix = "c") {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 }
 
-// Input màu gốc chỉ chấp nhận đúng dạng #rrggbb — mã người dùng gõ tay có
-// thể chưa đủ hoặc chưa hợp lệ trong lúc đang gõ, lúc đó show swatch trắng
-// trung tính thay vì để trình duyệt tự ý reset giá trị.
-function normalizeHexForPicker(code?: string): string {
-  return /^#[0-9a-fA-F]{6}$/.test(code || "") ? (code as string).toLowerCase() : "#ffffff";
-}
-
 export function calcTotalBySize(colors: ProductColorItem[] = []): Record<string, number> {
   const totals: Record<string, number> = {};
   for (const color of colors) {
@@ -170,28 +163,8 @@ export function ProductColorSizeEditor({
             key={colorKey}
             className="rounded-xl border border-gray-200 bg-white p-3.5 dark:border-gray-800 dark:bg-gray-900 space-y-3"
           >
-            {/* Swatch + tên + mã màu + xóa — tất cả trên 1 hàng */}
+            {/* Tên màu + mã màu + xóa — tất cả trên 1 hàng */}
             <div className="flex items-center gap-2.5">
-              {!disabled ? (
-                <label
-                  className="relative h-9 w-9 shrink-0 cursor-pointer overflow-hidden rounded-full border border-gray-200 shadow-inner dark:border-gray-700"
-                  style={{ backgroundColor: color.colorCode || "#e5e7eb" }}
-                  title="Chọn màu"
-                >
-                  <input
-                    type="color"
-                    value={normalizeHexForPicker(color.colorCode)}
-                    onChange={(e) => handleUpdateColor(colorIdx, { colorCode: e.target.value })}
-                    className="absolute -inset-2 cursor-pointer opacity-0"
-                  />
-                </label>
-              ) : (
-                <div
-                  className="h-9 w-9 shrink-0 rounded-full border border-gray-200 shadow-inner dark:border-gray-700"
-                  style={{ backgroundColor: color.colorCode || "#e5e7eb" }}
-                />
-              )}
-
               <input
                 type="text"
                 disabled={disabled}
@@ -237,9 +210,9 @@ export function ProductColorSizeEditor({
               {(color.sizes || []).map((sizeItem, sizeIdx) => (
                 <div
                   key={`${sizeItem.sizeLabel}-${sizeIdx}`}
-                  className="flex items-center gap-1 rounded-lg border border-gray-200 bg-gray-50/70 pl-2.5 pr-1 py-1 dark:border-gray-700 dark:bg-gray-800/60"
+                  className="flex items-stretch overflow-hidden rounded-lg border border-gray-300 dark:border-gray-700"
                 >
-                  <span className="font-mono text-xs font-bold text-brand-600 dark:text-brand-400">
+                  <span className="flex items-center justify-center bg-brand-50 px-2 font-mono text-xs font-bold text-brand-700 dark:bg-brand-950/40 dark:text-brand-300">
                     {sizeItem.sizeLabel}
                   </span>
                   <input
@@ -248,13 +221,13 @@ export function ProductColorSizeEditor({
                     disabled={disabled}
                     value={sizeItem.quantity ?? 0}
                     onChange={(e) => handleUpdateSizeQuantity(colorIdx, sizeIdx, e.target.value)}
-                    className="w-10 rounded border border-gray-200 bg-white px-1 py-1 text-center text-xs font-semibold text-gray-900 focus:border-brand-500 focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-white [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                    className="w-12 border-l border-gray-300 bg-white px-1.5 py-1 text-center text-xs font-semibold text-gray-900 focus:bg-brand-50/40 focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-white dark:focus:bg-gray-800 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                   />
                   {!disabled && (
                     <button
                       type="button"
                       onClick={() => handleRemoveSize(colorIdx, sizeIdx)}
-                      className="p-1 text-gray-300 hover:text-rose-500 transition-colors cursor-pointer"
+                      className="flex items-center justify-center border-l border-gray-200 px-1.5 text-gray-300 hover:bg-rose-50 hover:text-rose-500 transition-colors cursor-pointer dark:border-gray-700 dark:hover:bg-rose-950/30"
                       title="Xóa size này"
                     >
                       ×
@@ -336,9 +309,20 @@ export function ProductColorSizeEditor({
               )}
             </div>
 
-            <div className="flex justify-end text-xs text-gray-500 dark:text-gray-400">
+            <div
+              className={`flex items-center justify-end gap-1.5 text-xs ${
+                showZeroQuantityWarning ? "text-error-600 dark:text-error-400" : "text-gray-500 dark:text-gray-400"
+              }`}
+            >
+              {showZeroQuantityWarning && displayedColors.length === 1 && (
+                <span className="font-medium">Vui lòng nhập số lượng (pcs) cho ít nhất một size.</span>
+              )}
               Tổng{" "}
-              <strong className="mx-1 font-mono font-bold text-brand-600 dark:text-brand-400">
+              <strong
+                className={`mx-1 font-mono font-bold ${
+                  showZeroQuantityWarning ? "text-error-600 dark:text-error-400" : "text-brand-600 dark:text-brand-400"
+                }`}
+              >
                 {colorTotal.toLocaleString("vi-VN")}
               </strong>
               pcs
