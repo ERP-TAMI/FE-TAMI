@@ -584,11 +584,6 @@ export function PoAddProductQuickForm({
             allowMultipleColors={true}
             showValidationErrors={Boolean(fieldErrors.colors)}
           />
-          {fieldErrors.colors && (
-            <p className="text-[11px] font-medium text-error-600 dark:text-error-400">
-              {fieldErrors.colors}
-            </p>
-          )}
         </div>
       </div>
 

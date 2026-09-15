@@ -798,11 +798,7 @@ export function PoAddProductModal({
             {/* Màu sắc & Bảng phân bổ size breakdown — card trắng riêng */}
             <div
               ref={colorsCardRef}
-              className={`rounded-2xl border bg-white p-5 dark:bg-gray-900/60 ${
-                fieldErrors.colors
-                  ? "border-error-300 dark:border-error-800"
-                  : "border-gray-200 dark:border-gray-800"
-              }`}
+              className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900/60"
             >
               <h3 className="text-base font-bold text-gray-900 dark:text-white mb-3.5">
                 Màu sắc &amp; Bảng Size sản xuất <span className="text-error-500">*</span>
@@ -816,11 +812,6 @@ export function PoAddProductModal({
                 allowMultipleColors={true}
                 showValidationErrors={Boolean(fieldErrors.colors)}
               />
-              {fieldErrors.colors && (
-                <p className="mt-3 text-xs font-medium text-error-600 dark:text-error-400">
-                  {fieldErrors.colors}
-                </p>
-              )}
             </div>
 
             {/* Step 1 Footer */}

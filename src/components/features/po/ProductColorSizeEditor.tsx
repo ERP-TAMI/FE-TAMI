@@ -143,6 +143,10 @@ export function ProductColorSizeEditor({
 
   const totalsBySize = useMemo(() => calcTotalBySize(displayedColors), [displayedColors]);
   const grandTotal = useMemo(() => calcTotalFromColors(displayedColors), [displayedColors]);
+  // Tên màu là lỗi gốc — nếu màu còn chưa có tên thì báo mỗi tổng số lượng
+  // là 0 nữa sẽ tạo 2 cảnh báo cho cùng 1 nguyên nhân, rối mắt không cần thiết.
+  const anyNameMissing = displayedColors.some((c) => !c.colorName.trim());
+  const showZeroQuantityWarning = showValidationErrors && grandTotal === 0 && !anyNameMissing;
 
   return (
     <div className="space-y-4">
@@ -372,7 +376,7 @@ export function ProductColorSizeEditor({
       {/* Khối tổng hợp toàn bộ sản phẩm — nền trung tính, chỉ giữ 1 điểm nhấn màu ở số Tổng */}
       <div
         className={`rounded-xl border p-3.5 space-y-2 ${
-          showValidationErrors && grandTotal === 0
+          showZeroQuantityWarning
             ? "border-error-300 bg-error-50/60 dark:border-error-800 dark:bg-error-950/20"
             : "border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-800/40"
         }`}
@@ -383,7 +387,7 @@ export function ProductColorSizeEditor({
           </span>
           <div
             className={`text-sm font-bold font-mono ${
-              showValidationErrors && grandTotal === 0
+              showZeroQuantityWarning
                 ? "text-error-600 dark:text-error-400"
                 : "text-brand-600 dark:text-brand-400"
             }`}
@@ -391,7 +395,7 @@ export function ProductColorSizeEditor({
             Tổng: {grandTotal.toLocaleString("vi-VN")} pcs
           </div>
         </div>
-        {showValidationErrors && grandTotal === 0 && (
+        {showZeroQuantityWarning && (
           <p className="text-xs font-medium text-error-600 dark:text-error-400">
             Vui lòng nhập số lượng (pcs) cho ít nhất một size.
           </p>
