@@ -1,11 +1,11 @@
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 import { useLocation } from "react-router-dom";
 import type { ChangePasswordInput, UpdateProfileInput } from "@/api/auth.api";
-import { ChangePasswordForm } from "@/components/features/profile/ChangePasswordForm";
-import { ProfileInfoForm } from "@/components/features/profile/ProfileInfoForm";
+import { ChangePasswordModal } from "@/components/features/profile/ChangePasswordModal";
+import { EditProfileModal } from "@/components/features/profile/EditProfileModal";
 import { Alert, Button, PageHeader, Toast } from "@/components/shared";
 import PageMeta from "@/components/shared/PageMeta";
-import { LockIcon, UserCircleIcon } from "@/icons";
+import { LockIcon, PencilIcon } from "@/icons";
 import { useProfile } from "@/hooks/useProfile";
 import { useToast } from "@/hooks/useToast";
 import { getApiError, type ApiError } from "@/lib/apiError";
@@ -17,50 +17,21 @@ function getAreaRoot(pathname: string): { label: string; to: string } {
   return { label: "Hệ thống", to: "/dashboard" };
 }
 
-function ProfileCard({
-  icon,
-  title,
-  description,
-  children,
-  className = "",
-}: {
-  icon: ReactNode;
-  title: string;
-  description: string;
-  children: ReactNode;
-  className?: string;
-}) {
-  return (
-    <section
-      className={`rounded-xl border border-gray-200 bg-white shadow-xs dark:border-gray-800 dark:bg-gray-900 ${className}`}
-    >
-      <div className="flex items-start gap-3 border-b border-gray-100 px-5 py-5 sm:px-6 dark:border-gray-800">
-        <span className="bg-brand-50 text-brand-600 dark:bg-brand-500/10 dark:text-brand-400 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl">
-          {icon}
-        </span>
-        <div>
-          <h2 className="font-semibold text-gray-900 dark:text-white">{title}</h2>
-          <p className="text-theme-sm mt-1 text-gray-500 dark:text-gray-400">{description}</p>
-        </div>
-      </div>
-      <div className="p-5 sm:p-6">{children}</div>
-    </section>
-  );
-}
-
 export default function ProfilePage() {
   const { pathname } = useLocation();
   const { profile, updateProfile, changePassword } = useProfile();
   const { toast, showToast, hideToast } = useToast();
   const [profileError, setProfileError] = useState<ApiError>();
   const [passwordError, setPasswordError] = useState<ApiError>();
+  const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
   const areaRoot = getAreaRoot(pathname);
 
   const submitProfile = async (input: UpdateProfileInput) => {
     setProfileError(undefined);
     try {
       await updateProfile.mutateAsync(input);
-      showToast("Đã cập nhật thông tin cá nhân.");
+      showToast("Đã cập nhật thông tin cá nhân thành công.");
       return true;
     } catch (error) {
       setProfileError(getApiError(error, "Không thể cập nhật thông tin. Vui lòng thử lại."));
@@ -86,7 +57,7 @@ export default function ProfilePage() {
   };
 
   return (
-    <section aria-labelledby="page-title" className="mx-auto max-w-7xl space-y-6">
+    <div className="mx-auto max-w-7xl space-y-6">
       <PageMeta title="Tài khoản của tôi | TAMI ERP" description="Quản lý hồ sơ và mật khẩu" />
       <PageHeader
         title="Tài khoản của tôi"
@@ -97,10 +68,14 @@ export default function ProfilePage() {
         <div
           role="status"
           aria-label="Đang tải thông tin tài khoản"
-          className="grid animate-pulse gap-6 lg:grid-cols-12"
+          className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03] lg:p-6"
         >
-          <div className="h-96 rounded-2xl bg-gray-100 lg:col-span-7 dark:bg-gray-800" />
-          <div className="h-96 rounded-2xl bg-gray-100 lg:col-span-5 dark:bg-gray-800" />
+          <div className="space-y-6 animate-pulse">
+            <div className="h-6 w-36 rounded-md bg-gray-200 dark:bg-gray-800" />
+            <div className="h-44 rounded-2xl bg-gray-100 dark:bg-gray-800/60" />
+            <div className="h-36 rounded-2xl bg-gray-100 dark:bg-gray-800/60" />
+            <div className="h-36 rounded-2xl bg-gray-100 dark:bg-gray-800/60" />
+          </div>
         </div>
       ) : profile.isError || !profile.data ? (
         <Alert variant="error" title="Không thể tải thông tin tài khoản">
@@ -110,63 +85,153 @@ export default function ProfilePage() {
           </Button>
         </Alert>
       ) : (
-        <div className="space-y-6">
-          <section className="flex flex-col gap-5 rounded-xl border border-gray-200 bg-white p-5 shadow-xs sm:flex-row sm:items-center sm:justify-between sm:p-6 dark:border-gray-800 dark:bg-gray-900">
-            <div className="flex min-w-0 items-center gap-4">
-              <span
-                aria-hidden="true"
-                className="bg-brand-50 text-brand-600 dark:bg-brand-500/10 dark:text-brand-400 flex h-14 w-14 shrink-0 items-center justify-center rounded-xl text-xl font-semibold"
-              >
-                {profile.data.fullName.charAt(0).toUpperCase()}
-              </span>
-              <div className="min-w-0">
-                <h2 className="truncate text-lg font-semibold text-gray-900 dark:text-white">
-                  {profile.data.fullName}
-                </h2>
-                <p className="text-theme-sm truncate text-gray-500 dark:text-gray-400">
-                  {profile.data.email}
-                </p>
+        <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03] lg:p-6">
+          <h2 className="mb-5 text-lg font-semibold text-gray-800 dark:text-white/90 lg:mb-7">
+            Hồ sơ cá nhân
+          </h2>
+
+          <div className="space-y-6">
+            {/* Card 1: User Meta & Personal Information */}
+            <section
+              aria-labelledby="user-info-heading"
+              className="rounded-2xl border border-gray-200 p-5 dark:border-gray-800 lg:p-6"
+            >
+              <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-col items-center gap-5 text-center sm:flex-row sm:text-left">
+                  <div className="bg-brand-50 text-brand-600 dark:bg-brand-500/15 dark:text-brand-400 flex h-20 w-20 shrink-0 items-center justify-center rounded-full border border-gray-200 text-2xl font-bold shadow-inner dark:border-gray-800">
+                    {profile.data.fullName.charAt(0).toUpperCase()}
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-800 dark:text-white/90">
+                      {profile.data.fullName}
+                    </h3>
+                    <div className="mt-1.5 flex flex-wrap items-center justify-center gap-2 sm:justify-start">
+                      <span className="text-theme-sm font-medium text-gray-600 dark:text-gray-300">
+                        {profile.data.roleName}
+                      </span>
+                      <span className="hidden h-3.5 w-px bg-gray-300 sm:block dark:bg-gray-700" />
+                      <span className="bg-success-50 text-success-700 dark:bg-success-500/10 dark:text-success-400 inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium">
+                        <span className="bg-success-500 h-1.5 w-1.5 rounded-full" />
+                        Đang hoạt động
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-center sm:justify-end">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setProfileError(undefined);
+                      setIsEditProfileOpen(true);
+                    }}
+                    className="shadow-theme-xs focus:ring-brand-500/20 inline-flex cursor-pointer items-center justify-center gap-2 rounded-full border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 hover:text-gray-800 focus:ring-3 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-white/[0.03] dark:hover:text-gray-200"
+                  >
+                    <PencilIcon aria-hidden="true" className="h-4 w-4" />
+                    <span>Chỉnh sửa</span>
+                  </button>
+                </div>
               </div>
-            </div>
-            <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-              <span className="rounded-full bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-700 dark:bg-gray-800 dark:text-gray-300">
-                {profile.data.roleName}
-              </span>
-              <span className="bg-success-50 text-success-700 dark:bg-success-500/10 dark:text-success-400 rounded-full px-3 py-1.5 text-xs font-medium">
-                Đang hoạt động
-              </span>
-            </div>
-          </section>
 
-          <div className="grid gap-6 lg:grid-cols-12 lg:items-start">
-            <ProfileCard
-              className="lg:col-span-7"
-              icon={<UserCircleIcon className="h-5 w-5" />}
-              title="Thông tin cá nhân"
-              description="Cập nhật thông tin liên hệ của bạn."
-            >
-              <ProfileInfoForm
-                user={profile.data}
-                isSubmitting={updateProfile.isPending}
-                serverError={profileError}
-                onSubmit={submitProfile}
-              />
-            </ProfileCard>
+              <div className="mt-6 border-t border-gray-100 pt-6 dark:border-gray-800">
+                <h3
+                  id="user-info-heading"
+                  className="mb-5 text-base font-semibold text-gray-800 dark:text-white/90"
+                >
+                  Thông tin cá nhân
+                </h3>
+                <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+                  <div>
+                    <p className="mb-1 text-xs text-gray-500 dark:text-gray-400">Họ và tên</p>
+                    <p className="text-theme-sm font-medium text-gray-800 dark:text-white/90">
+                      {profile.data.fullName}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="mb-1 text-xs text-gray-500 dark:text-gray-400">Số điện thoại</p>
+                    <p className="text-theme-sm font-medium text-gray-800 dark:text-white/90">
+                      {profile.data.phone || (
+                        <span className="text-gray-400 italic">Chưa cập nhật</span>
+                      )}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="mb-1 text-xs text-gray-500 dark:text-gray-400">Địa chỉ email</p>
+                    <p className="text-theme-sm font-medium text-gray-800 dark:text-white/90">
+                      {profile.data.email}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="mb-1 text-xs text-gray-500 dark:text-gray-400">Vai trò</p>
+                    <p className="text-theme-sm font-medium text-gray-800 dark:text-white/90">
+                      {profile.data.roleName}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </section>
 
-            <ProfileCard
-              className="lg:col-span-5"
-              icon={<LockIcon className="h-5 w-5" />}
-              title="Bảo mật"
-              description="Quản lý mật khẩu đăng nhập tài khoản."
+            {/* Card 2: Security */}
+            <section
+              aria-labelledby="security-heading"
+              className="rounded-2xl border border-gray-200 p-5 dark:border-gray-800 lg:p-6"
             >
-              <ChangePasswordForm
-                isSubmitting={changePassword.isPending}
-                serverError={passwordError}
-                onSubmit={submitPassword}
-                onCancel={() => setPasswordError(undefined)}
-              />
-            </ProfileCard>
+              <h3
+                id="security-heading"
+                className="mb-5 text-base font-semibold text-gray-800 dark:text-white/90"
+              >
+                Bảo mật
+              </h3>
+
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h4 className="text-theme-sm font-medium text-gray-800 dark:text-white/90">
+                    Đổi mật khẩu
+                  </h4>
+                  <p className="text-theme-xs mt-1 text-gray-500 dark:text-gray-400">
+                    Cập nhật mật khẩu định kỳ để bảo vệ tài khoản (tối thiểu 8 ký tự, không trùng mật khẩu cũ).
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPasswordError(undefined);
+                    setIsChangePasswordOpen(true);
+                  }}
+                  className="shadow-theme-xs focus:ring-brand-500/20 inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 rounded-full border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 hover:text-gray-800 focus:ring-3 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-white/[0.03] dark:hover:text-gray-200"
+                >
+                  <LockIcon aria-hidden="true" className="h-4 w-4" />
+                  <span>Đổi mật khẩu</span>
+                </button>
+              </div>
+
+            </section>
           </div>
+
+          {/* Modal chỉnh sửa thông tin */}
+          <EditProfileModal
+            open={isEditProfileOpen}
+            user={profile.data}
+            isSubmitting={updateProfile.isPending}
+            serverError={profileError}
+            onSubmit={submitProfile}
+            onClose={() => {
+              setProfileError(undefined);
+              setIsEditProfileOpen(false);
+            }}
+          />
+
+          {/* Modal đổi mật khẩu */}
+          <ChangePasswordModal
+            open={isChangePasswordOpen}
+            isSubmitting={changePassword.isPending}
+            serverError={passwordError}
+            onSubmit={submitPassword}
+            onClose={() => {
+              setPasswordError(undefined);
+              setIsChangePasswordOpen(false);
+            }}
+          />
         </div>
       )}
 
@@ -176,6 +241,6 @@ export default function ProfilePage() {
         variant={toast?.variant}
         onClose={hideToast}
       />
-    </section>
+    </div>
   );
 }

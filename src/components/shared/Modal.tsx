@@ -76,6 +76,7 @@ export type ModalProps = {
   children: ReactNode;
   footer?: ReactNode;
   closeLabel?: string;
+  closeDisabled?: boolean;
   size?: "sm" | "md" | "lg" | "xl" | "2xl";
   onClose: () => void;
 };
@@ -86,15 +87,18 @@ export function Modal({
   children,
   footer,
   closeLabel = "Đóng hộp thoại",
+  closeDisabled = false,
   size = "md",
   onClose,
 }: ModalProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const dialogRef = useRef<HTMLElement>(null);
   const onCloseRef = useRef(onClose);
+  const closeDisabledRef = useRef(closeDisabled);
   const titleId = useId();
 
   onCloseRef.current = onClose;
+  closeDisabledRef.current = closeDisabled;
 
   useLayoutEffect(() => {
     const root = rootRef.current;
@@ -110,7 +114,7 @@ export function Modal({
     const handleKeyDown = (event: KeyboardEvent) => {
       if (openModalRoots.at(-1) !== root) return;
 
-      if (event.key === "Escape") {
+      if (event.key === "Escape" && !closeDisabledRef.current) {
         event.preventDefault();
         onCloseRef.current();
         return;
@@ -171,8 +175,9 @@ export function Modal({
     >
       <div
         aria-hidden="true"
-        className="absolute inset-0 cursor-default bg-gray-950/50"
-        onClick={onClose}
+        data-modal-backdrop="true"
+        className={`absolute inset-0 bg-gray-950/50 ${closeDisabled ? "cursor-wait" : "cursor-default"}`}
+        onClick={closeDisabled ? undefined : onClose}
       />
       <section
         ref={dialogRef}
@@ -192,7 +197,8 @@ export function Modal({
           <button
             type="button"
             aria-label={closeLabel}
-            className="text-theme-xl leading-none text-gray-400 hover:text-gray-700 dark:hover:text-white"
+            disabled={closeDisabled}
+            className="text-theme-xl focus:ring-brand-500/20 cursor-pointer rounded-md leading-none text-gray-400 transition-colors hover:text-gray-700 focus:ring-3 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 dark:hover:text-white"
             onClick={onClose}
           >
             ×
