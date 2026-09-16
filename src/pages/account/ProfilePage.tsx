@@ -61,9 +61,10 @@ export default function ProfilePage() {
     try {
       await updateProfile.mutateAsync(input);
       showToast("Đã cập nhật thông tin cá nhân.");
+      return true;
     } catch (error) {
       setProfileError(getApiError(error, "Không thể cập nhật thông tin. Vui lòng thử lại."));
-      throw error;
+      return false;
     }
   };
 
@@ -72,6 +73,7 @@ export default function ProfilePage() {
     try {
       await changePassword.mutateAsync(input);
       showToast("Đổi mật khẩu thành công.");
+      return true;
     } catch (error) {
       setPasswordError(
         getApiError(error, "Không thể đổi mật khẩu. Vui lòng thử lại.", {
@@ -79,7 +81,7 @@ export default function ProfilePage() {
           PASSWORD_REUSE_NOT_ALLOWED: "Mật khẩu mới phải khác mật khẩu hiện tại.",
         }),
       );
-      throw error;
+      return false;
     }
   };
 

@@ -42,4 +42,33 @@ describe("ProfileInfoForm", () => {
 
     expect(await screen.findByText("Số điện thoại không hợp lệ")).toBeTruthy();
   });
+
+  it("rejects a phone number made from one repeated digit", async () => {
+    const onSubmit = vi.fn();
+    render(<ProfileInfoForm user={user} isSubmitting={false} onSubmit={onSubmit} />);
+
+    fireEvent.change(screen.getByLabelText("Số điện thoại"), {
+      target: { value: "000000000" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Lưu thay đổi" }));
+
+    expect(await screen.findByText("Số điện thoại không hợp lệ")).toBeTruthy();
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it("keeps the edited values when the request is handled as a failure", async () => {
+    const onSubmit = vi.fn().mockResolvedValue(false);
+    render(<ProfileInfoForm user={user} isSubmitting={false} onSubmit={onSubmit} />);
+
+    fireEvent.change(screen.getByLabelText("Họ và tên"), {
+      target: { value: "Nguyễn Văn B" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Lưu thay đổi" }));
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+    expect((screen.getByLabelText("Họ và tên") as HTMLInputElement).value).toBe("Nguyễn Văn B");
+    expect((screen.getByRole("button", { name: "Lưu thay đổi" }) as HTMLButtonElement).disabled).toBe(
+      false,
+    );
+  });
 });

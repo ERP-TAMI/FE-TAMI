@@ -37,7 +37,7 @@ type PasswordValues = z.infer<typeof passwordSchema>;
 type ChangePasswordFormProps = {
   isSubmitting: boolean;
   serverError?: ApiError;
-  onSubmit: (input: ChangePasswordInput) => Promise<void>;
+  onSubmit: (input: ChangePasswordInput) => Promise<boolean>;
   onCancel?: () => void;
 };
 
@@ -60,7 +60,8 @@ export function ChangePasswordForm({
   }, [isOpen]);
 
   const submit = handleSubmit(async ({ currentPassword, newPassword }) => {
-    await onSubmit({ currentPassword, newPassword });
+    const succeeded = await onSubmit({ currentPassword, newPassword });
+    if (!succeeded) return;
     reset();
     setIsOpen(false);
   });

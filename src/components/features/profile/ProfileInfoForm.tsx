@@ -11,7 +11,14 @@ const profileSchema = z.object({
   phone: z
     .string()
     .trim()
-    .refine((value) => !value || /^[0-9+().\s-]{6,20}$/.test(value), "Số điện thoại không hợp lệ"),
+    .max(20, "Số điện thoại không hợp lệ")
+    .refine((value) => {
+      if (!value) return true;
+      if (!/^\+?[0-9().\s-]+$/.test(value)) return false;
+
+      const digits = value.replace(/\D/g, "");
+      return digits.length >= 9 && digits.length <= 15 && !/^(\d)\1+$/.test(digits);
+    }, "Số điện thoại không hợp lệ"),
 });
 
 type ProfileValues = z.infer<typeof profileSchema>;
@@ -20,7 +27,7 @@ type ProfileInfoFormProps = {
   user: AuthUser;
   isSubmitting: boolean;
   serverError?: ApiError;
-  onSubmit: (input: UpdateProfileInput) => Promise<void>;
+  onSubmit: (input: UpdateProfileInput) => Promise<boolean>;
 };
 
 export function ProfileInfoForm({
@@ -36,7 +43,8 @@ export function ProfileInfoForm({
 
   const submit = handleSubmit(async (values) => {
     const input = { fullName: values.fullName, phone: values.phone || null };
-    await onSubmit(input);
+    const succeeded = await onSubmit(input);
+    if (!succeeded) return;
     reset({ fullName: input.fullName, phone: input.phone ?? "" });
   });
 

@@ -38,7 +38,7 @@ describe("ChangePasswordForm", () => {
   });
 
   it("submits only current and new passwords and clears the form", async () => {
-    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    const onSubmit = vi.fn().mockResolvedValue(true);
     render(<ChangePasswordForm isSubmitting={false} onSubmit={onSubmit} />);
     openForm();
     fillPasswords("current-pass", "new-password", "new-password");
@@ -52,6 +52,19 @@ describe("ChangePasswordForm", () => {
     );
     await waitFor(() =>
       expect(screen.queryByLabelText("Mật khẩu hiện tại")).toBeNull(),
+    );
+  });
+
+  it("keeps the form open when the request is handled as a failure", async () => {
+    const onSubmit = vi.fn().mockResolvedValue(false);
+    render(<ChangePasswordForm isSubmitting={false} onSubmit={onSubmit} />);
+    openForm();
+    fillPasswords("wrong-password", "new-password", "new-password");
+    fireEvent.click(screen.getByRole("button", { name: "Đổi mật khẩu" }));
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+    expect((screen.getByLabelText("Mật khẩu hiện tại") as HTMLInputElement).value).toBe(
+      "wrong-password",
     );
   });
 
