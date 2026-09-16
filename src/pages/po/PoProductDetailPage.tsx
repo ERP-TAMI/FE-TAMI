@@ -292,7 +292,7 @@ export default function PoProductDetailPage() {
   // Local state for sample round modal
   const [isAddSampleOpen, setIsAddSampleOpen] = useState(false);
   const [sampleFeedback, setSampleFeedback] = useState("");
-  const [sampleStatus, setSampleStatus] = useState("Đang may");
+  const [sampleStatus, setSampleStatus] = useState("working");
 
   // Local state cho quản lý ảnh bảng màu sản phẩm (Tab 3: Bảng màu)
   interface ColorPaletteItem {
@@ -2085,10 +2085,9 @@ export default function PoProductDetailPage() {
                 onChange={(e) => setSampleStatus(e.target.value)}
                 className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs text-gray-900 outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-white"
               >
-                <option value="Đang may">Đang may</option>
-                <option value="Đạt yêu cầu">Đạt yêu cầu</option>
-                <option value="Cần chỉnh sửa">Cần chỉnh sửa</option>
-                <option value="Hủy">Hủy</option>
+                <option value="working">Đang làm</option>
+                <option value="approved">Đạt</option>
+                <option value="needs_revision">Chưa đạt</option>
               </select>
             </div>
             <div>
