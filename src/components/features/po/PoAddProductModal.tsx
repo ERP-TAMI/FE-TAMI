@@ -713,16 +713,9 @@ export function PoAddProductModal({
               <div className="space-y-4">
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <label className="block text-sm font-semibold text-gray-800 dark:text-gray-200">
-                        Mã sản phẩm trong PO <span className="text-error-500">*</span>
-                      </label>
-                      {mode === "select" && (
-                        <span className="text-xs text-gray-400">
-                          (Độc lập, có thể chỉnh sửa)
-                        </span>
-                      )}
-                    </div>
+                    <label className="mb-1.5 block text-sm font-semibold text-gray-800 dark:text-gray-200">
+                      Mã sản phẩm trong PO <span className="text-error-500">*</span>
+                    </label>
                     <input
                       ref={productCodeInputRef}
                       type="text"

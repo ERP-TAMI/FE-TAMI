@@ -393,21 +393,24 @@ export function ProductColorSizeEditor({
           với đúng 1 màu con số này y hệt tổng của chính màu đó ở trên. */}
       {displayedColors.length > 1 && (
         <div
-          className={`rounded-xl border p-3 space-y-1.5 ${
+          className={`rounded-2xl border p-4 space-y-3 ${
             showZeroQuantityWarning
               ? "border-error-300 bg-error-50/60 dark:border-error-800 dark:bg-error-950/20"
               : "border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-800/40"
           }`}
         >
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <span className="text-xs font-semibold text-gray-600 dark:text-gray-400">
-              Tổng theo size ({displayedColors.length} màu)
+            <span className="text-sm font-bold text-gray-700 dark:text-gray-300">
+              Tổng theo size
+              <span className="ml-1.5 font-normal text-gray-400 dark:text-gray-500">
+                ({displayedColors.length} màu)
+              </span>
             </span>
             <div
-              className={`text-sm font-bold font-mono ${
+              className={`rounded-full px-3 py-1 text-sm font-bold font-mono ${
                 showZeroQuantityWarning
-                  ? "text-error-600 dark:text-error-400"
-                  : "text-brand-600 dark:text-brand-400"
+                  ? "bg-error-100 text-error-700 dark:bg-error-950/50 dark:text-error-400"
+                  : "bg-brand-50 text-brand-700 dark:bg-brand-950/40 dark:text-brand-300"
               }`}
             >
               {grandTotal.toLocaleString("vi-VN")} pcs
@@ -418,17 +421,19 @@ export function ProductColorSizeEditor({
               Vui lòng nhập số lượng (pcs) cho ít nhất một size.
             </p>
           )}
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-wrap gap-2">
             {Object.entries(totalsBySize).map(([sz, qty]) => (
-              <span
+              <div
                 key={sz}
-                className="inline-flex items-center gap-1 rounded-md border border-gray-200 bg-white px-2 py-0.5 font-mono text-xs font-medium text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
+                className="flex min-w-[4.5rem] flex-col items-center gap-0.5 rounded-xl border border-gray-200 bg-white px-3 py-2 dark:border-gray-700 dark:bg-gray-900"
               >
-                {sz}
-                <strong className="font-bold text-gray-900 dark:text-white">
+                <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">
+                  {sz}
+                </span>
+                <span className="font-mono text-lg font-bold leading-none text-gray-900 dark:text-white">
                   {qty.toLocaleString("vi-VN")}
-                </strong>
-              </span>
+                </span>
+              </div>
             ))}
           </div>
         </div>
