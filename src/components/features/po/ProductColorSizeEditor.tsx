@@ -148,6 +148,19 @@ export function ProductColorSizeEditor({
   const anyNameMissing = displayedColors.some((c) => !c.colorName.trim());
   const showZeroQuantityWarning = showValidationErrors && grandTotal === 0 && !anyNameMissing;
 
+  // Tên trùng chỉ tính khi đã có tên (khác lỗi "thiếu tên" ở trên) — BE từ
+  // chối UNIQUE(product_id, color_name) đúng theo tên đã trim, so khớp y hệt
+  // ở đây để báo đỏ ngay tại chỗ thay vì để rớt xuống lỗi 400 sau khi lưu.
+  const duplicateColorNames = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const c of displayedColors) {
+      const name = c.colorName.trim();
+      if (!name) continue;
+      counts.set(name, (counts.get(name) || 0) + 1);
+    }
+    return new Set([...counts.entries()].filter(([, n]) => n > 1).map(([name]) => name));
+  }, [displayedColors]);
+
   return (
     <div className="space-y-3">
       {displayedColors.map((color, colorIdx) => {
@@ -156,7 +169,23 @@ export function ProductColorSizeEditor({
           (sum, s) => sum + (Number(s.quantity) || 0),
           0,
         );
-        const nameMissing = showValidationErrors && !color.colorName.trim();
+        const trimmedName = color.colorName.trim();
+        const nameMissing = showValidationErrors && !trimmedName;
+        const nameDuplicate =
+          showValidationErrors && !nameMissing && duplicateColorNames.has(trimmedName);
+
+        // So khớp uppercase vì mọi size label đều được viết hoa trước khi
+        // gửi lên BE (xem cleanColors ở các trang gọi component này) — trùng
+        // theo đúng dạng sẽ được submit, không phải theo chữ người dùng gõ.
+        const sizeLabelCounts = new Map<string, number>();
+        for (const s of color.sizes || []) {
+          const label = s.sizeLabel.trim().toUpperCase();
+          if (!label) continue;
+          sizeLabelCounts.set(label, (sizeLabelCounts.get(label) || 0) + 1);
+        }
+        const hasDuplicateSize =
+          showValidationErrors &&
+          [...sizeLabelCounts.values()].some((n) => n > 1);
 
         return (
           <div
@@ -172,7 +201,7 @@ export function ProductColorSizeEditor({
                 onChange={(e) => handleUpdateColor(colorIdx, { colorName: e.target.value })}
                 placeholder="Tên màu — VD: Trắng, Đen, Xanh Navy..."
                 className={`min-w-0 flex-1 rounded-lg border bg-white px-3 py-2 text-sm font-medium text-gray-900 placeholder:text-gray-400 focus:ring-1 dark:bg-gray-800 dark:text-white ${
-                  nameMissing
+                  nameMissing || nameDuplicate
                     ? "border-error-400 focus:border-error-500 focus:ring-error-500 dark:border-error-500"
                     : "border-gray-300 focus:border-brand-500 focus:ring-brand-500 dark:border-gray-700"
                 }`}
@@ -204,15 +233,34 @@ export function ProductColorSizeEditor({
                 Vui lòng nhập tên màu sắc.
               </p>
             )}
+            {nameDuplicate && (
+              <p className="-mt-2 text-xs font-medium text-error-600 dark:text-error-400">
+                Tên màu "{trimmedName}" bị trùng — mỗi màu chỉ được khai báo một lần.
+              </p>
+            )}
 
             {/* Size + số lượng: mỗi size 1 khối nhỏ gọn, không lồng khung phụ */}
             <div className="flex flex-wrap items-center gap-1.5">
-              {(color.sizes || []).map((sizeItem, sizeIdx) => (
+              {(color.sizes || []).map((sizeItem, sizeIdx) => {
+                const sizeDuplicate =
+                  showValidationErrors &&
+                  (sizeLabelCounts.get(sizeItem.sizeLabel.trim().toUpperCase()) || 0) > 1;
+                return (
                 <div
                   key={`${sizeItem.sizeLabel}-${sizeIdx}`}
-                  className="flex items-stretch overflow-hidden rounded-lg border border-gray-300 dark:border-gray-700"
+                  className={`flex items-stretch overflow-hidden rounded-lg border ${
+                    sizeDuplicate
+                      ? "border-error-400 dark:border-error-500"
+                      : "border-gray-300 dark:border-gray-700"
+                  }`}
                 >
-                  <span className="flex items-center justify-center bg-brand-50 px-2 font-mono text-xs font-bold text-brand-700 dark:bg-brand-950/40 dark:text-brand-300">
+                  <span
+                    className={`flex items-center justify-center px-2 font-mono text-xs font-bold ${
+                      sizeDuplicate
+                        ? "bg-error-50 text-error-600 dark:bg-error-950/40 dark:text-error-400"
+                        : "bg-brand-50 text-brand-700 dark:bg-brand-950/40 dark:text-brand-300"
+                    }`}
+                  >
                     {sizeItem.sizeLabel}
                   </span>
                   <input
@@ -234,7 +282,8 @@ export function ProductColorSizeEditor({
                     </button>
                   )}
                 </div>
-              ))}
+                );
+              })}
 
               {!disabled &&
                 (addingSizeForColor === colorKey ? (
@@ -308,6 +357,11 @@ export function ProductColorSizeEditor({
                 </select>
               )}
             </div>
+            {hasDuplicateSize && (
+              <p className="-mt-2 text-xs font-medium text-error-600 dark:text-error-400">
+                Size bị trùng trong cùng một màu — mỗi size chỉ được khai báo một lần.
+              </p>
+            )}
 
             <div
               className={`flex items-center justify-end gap-1.5 text-xs ${

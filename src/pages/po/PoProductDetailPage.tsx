@@ -424,6 +424,21 @@ export default function PoProductDetailPage() {
         seenNames.add(name);
       }
       if (!errors.colors) {
+        for (const c of namedColors) {
+          const seenLabels = new Set<string>();
+          for (const s of c.sizes || []) {
+            const label = s.sizeLabel.trim().toUpperCase();
+            if (!label) continue;
+            if (seenLabels.has(label)) {
+              errors.colors = `Size "${label}" bị lặp lại trong màu "${c.colorName.trim()}".`;
+              break;
+            }
+            seenLabels.add(label);
+          }
+          if (errors.colors) break;
+        }
+      }
+      if (!errors.colors) {
         const hasQuantity = namedColors.some((c) =>
           (c.sizes || []).some((s) => Number(s.quantity) > 0),
         );

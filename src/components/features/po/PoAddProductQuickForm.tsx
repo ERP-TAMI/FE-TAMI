@@ -242,11 +242,37 @@ export function PoAddProductQuickForm({
     if (namedColors.length === 0) {
       errors.colors = "Vui lòng nhập ít nhất một màu sắc sản phẩm.";
     } else {
-      const hasQuantity = namedColors.some((c) =>
-        (c.sizes || []).some((s) => Number(s.quantity) > 0),
-      );
-      if (!hasQuantity) {
-        errors.colors = "Vui lòng nhập số lượng (pcs) cho ít nhất một size — tổng sản lượng đang là 0.";
+      const seenNames = new Set<string>();
+      for (const c of namedColors) {
+        const name = c.colorName.trim();
+        if (seenNames.has(name)) {
+          errors.colors = `Màu "${name}" bị lặp lại — mỗi màu chỉ được khai báo một lần.`;
+          break;
+        }
+        seenNames.add(name);
+      }
+      if (!errors.colors) {
+        for (const c of namedColors) {
+          const seenLabels = new Set<string>();
+          for (const s of c.sizes || []) {
+            const label = s.sizeLabel.trim().toUpperCase();
+            if (!label) continue;
+            if (seenLabels.has(label)) {
+              errors.colors = `Size "${label}" bị lặp lại trong màu "${c.colorName.trim()}".`;
+              break;
+            }
+            seenLabels.add(label);
+          }
+          if (errors.colors) break;
+        }
+      }
+      if (!errors.colors) {
+        const hasQuantity = namedColors.some((c) =>
+          (c.sizes || []).some((s) => Number(s.quantity) > 0),
+        );
+        if (!hasQuantity) {
+          errors.colors = "Vui lòng nhập số lượng (pcs) cho ít nhất một size — tổng sản lượng đang là 0.";
+        }
       }
     }
 
