@@ -4,6 +4,7 @@ export const authUserSchema = z.object({
   id: z.string().uuid(),
   email: z.string().email(),
   fullName: z.string(),
+  phone: z.string().nullable(),
   roleCode: z.string(),
   roleName: z.string(),
   permissions: z.array(z.string()),

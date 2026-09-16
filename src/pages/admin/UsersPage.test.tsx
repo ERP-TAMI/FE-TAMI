@@ -61,6 +61,7 @@ describe("UsersPage", () => {
         id: "11111111-1111-4111-8111-111111111111",
         email: "sa@tami.test",
         fullName: "Admin",
+        phone: null,
         roleCode: "SA",
         roleName: "Admin",
         permissions: ["system.users.manage"],
@@ -229,7 +230,9 @@ describe("UsersPage", () => {
         input: { accountStatus: "locked", reason: "Kiểm tra truy cập bất thường" },
       }),
     );
-    expect(await screen.findByText("Đã khóa tài khoản. Email thông báo đang được gửi.")).toBeTruthy();
+    expect(
+      await screen.findByText("Đã khóa tài khoản. Email thông báo đang được gửi."),
+    ).toBeTruthy();
   });
 
   it("retries a failed lock email through the existing status endpoint", async () => {
@@ -250,9 +253,7 @@ describe("UsersPage", () => {
     hooks.useUpdateUserStatus.mockReturnValue({ mutateAsync: updateStatus, isPending: false });
     renderPage();
 
-    fireEvent.click(
-      screen.getByRole("button", { name: `Mở thao tác cho ${lockedUser.fullName}` }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: `Mở thao tác cho ${lockedUser.fullName}` }));
     fireEvent.click(screen.getByRole("menuitem", { name: "Gửi lại email khóa" }));
     fireEvent.change(await screen.findByLabelText("Lý do khóa tài khoản"), {
       target: { value: "Gửi lại thông báo khóa" },
@@ -288,6 +289,7 @@ describe("UsersPage", () => {
         id: "11111111-1111-4111-8111-111111111111",
         email: "actor@tami.test",
         fullName: "IT actor",
+        phone: null,
         roleCode: "IT",
         roleName: "IT",
         permissions: ["system.users.manage"],

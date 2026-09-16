@@ -81,6 +81,25 @@ vi.mock("@/hooks/useAuthBootstrap", async () => {
   };
 });
 
+vi.mock("@/hooks/useProfile", async () => {
+  const { useAuthStore } = await import("@/store/authStore");
+  return {
+    useProfile: () => {
+      const user = useAuthStore((state) => state.user);
+      return {
+        profile: {
+          data: user,
+          isPending: false,
+          isError: false,
+          refetch: vi.fn(),
+        },
+        updateProfile: { isPending: false, mutateAsync: vi.fn() },
+        changePassword: { isPending: false, mutateAsync: vi.fn() },
+      };
+    },
+  };
+});
+
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
@@ -106,6 +125,7 @@ function signIn() {
       id: "11111111-1111-1111-1111-111111111111",
       email: "sa@tami.test",
       fullName: "Quản trị hệ thống",
+      phone: null,
       roleCode: "SA",
       roleName: "Quản trị hệ thống",
       permissions: ["management.area.access", "system.users.manage"],
@@ -121,6 +141,7 @@ function signInAsIt(permissions = ["system.users.manage"]) {
       id: "22222222-2222-4222-8222-222222222222",
       email: "it@tami.test",
       fullName: "Nhân viên IT",
+      phone: null,
       roleCode: "IT",
       roleName: "Công nghệ thông tin",
       permissions,
@@ -147,6 +168,25 @@ function renderApp() {
 }
 
 describe("application routes", () => {
+  it.each([
+    ["/management/profile", "Khu Quản lý"],
+    ["/it/profile", "Khu IT"],
+    ["/profile", "Hệ thống"],
+  ] as const)(
+    "renders the account page at %s with the correct area breadcrumb",
+    (path, rootLabel) => {
+      if (path.startsWith("/it/")) signInAsIt();
+      else signIn();
+      window.history.pushState({}, "", path);
+      renderApp();
+
+      expect(screen.getByRole("heading", { name: "Tài khoản của tôi" })).toBeTruthy();
+      expect(screen.getByRole("link", { name: rootLabel })).toBeTruthy();
+      expect(screen.getByRole("heading", { name: "Thông tin cá nhân" })).toBeTruthy();
+      expect(screen.getByRole("heading", { name: "Bảo mật" })).toBeTruthy();
+    },
+  );
+
   it("renders the dashboard shell", () => {
     signIn();
     renderApp();

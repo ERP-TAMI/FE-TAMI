@@ -8,6 +8,7 @@ const authResponse = {
     id: "11111111-1111-1111-1111-111111111111",
     email: "sa@tami.test",
     fullName: "Quản trị hệ thống",
+    phone: null,
     roleCode: "SA",
     roleName: "Quản trị hệ thống",
     permissions: ["system.users.manage"],
