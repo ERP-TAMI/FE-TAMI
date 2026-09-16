@@ -482,10 +482,7 @@ export default function PoProductDetailPage() {
       showToast("Đã cập nhật thông tin sản phẩm thành công.");
       setIsEditModalOpen(false);
     } catch (err: unknown) {
-      const apiErr = getApiError(err, "Cập nhật sản phẩm thất bại.", {
-        CONFLICT:
-          "Không thể lưu thay đổi màu/size này vì đã có định mức nguyên phụ liệu (BOM) liên kết với một màu bị xóa. Vui lòng gỡ hoặc ngưng sử dụng BOM đó trước.",
-      });
+      const apiErr = getApiError(err, "Cập nhật sản phẩm thất bại.");
       showToast(apiErr.message, "error");
     }
   };
