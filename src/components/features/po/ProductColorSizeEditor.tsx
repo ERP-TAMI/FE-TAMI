@@ -192,7 +192,7 @@ export function ProductColorSizeEditor({
             key={colorKey}
             className="rounded-xl border border-gray-200 bg-white p-3.5 dark:border-gray-800 dark:bg-gray-900 space-y-3"
           >
-            {/* Tên màu + mã màu + xóa — tất cả trên 1 hàng */}
+            {/* Tên màu + xóa — trên 1 hàng */}
             <div className="flex items-center gap-2.5">
               <input
                 type="text"
@@ -205,16 +205,6 @@ export function ProductColorSizeEditor({
                     ? "border-error-400 focus:border-error-500 focus:ring-error-500 dark:border-error-500"
                     : "border-gray-300 focus:border-brand-500 focus:ring-brand-500 dark:border-gray-700"
                 }`}
-              />
-
-              <input
-                type="text"
-                disabled={disabled}
-                value={color.colorCode || ""}
-                onChange={(e) => handleUpdateColor(colorIdx, { colorCode: e.target.value })}
-                placeholder="#FFFFFF"
-                title="Mã màu (hex)"
-                className="w-20 shrink-0 rounded-lg border border-gray-300 bg-white px-2 py-2 text-xs font-mono text-gray-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
               />
 
               {allowMultipleColors && displayedColors.length > 1 && !disabled && (
