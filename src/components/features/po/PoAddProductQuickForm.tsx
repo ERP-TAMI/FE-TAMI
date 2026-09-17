@@ -1,8 +1,9 @@
-import { useState, useMemo } from "react";
-import { Button } from "@/components/shared";
-import { useStyles } from "@/hooks/useStyles";
+import { useState, useMemo, useRef } from "react";
+import { Button, ConfirmDialog, SearchableSelect } from "@/components/shared";
+import { useInfiniteStyles } from "@/hooks/useStyles";
 import { useImportFitPreview } from "@/hooks/usePurchaseOrders";
 import { CheckLineIcon } from "@/icons";
+import type { Style } from "@/types/style";
 import type {
   CreatePoProductInput,
   ImportFitOptions,
@@ -33,9 +34,31 @@ export function PoAddProductQuickForm({
 }: Props) {
   const [mode, setMode] = useState<"select" | "manual">("select");
   const [sourceStyleId, setSourceStyleId] = useState("");
-  const [productCode, setProductCode] = useState("");
-  const [productName, setProductName] = useState("");
-  const [category, setCategory] = useState("");
+
+  // Mã/Tên/Danh mục có 2 bộ giá trị riêng cho từng chế độ, xem giải thích
+  // trong PoAddProductModal.tsx.
+  const [selectFields, setSelectFields] = useState({
+    productCode: "",
+    productName: "",
+    category: "",
+  });
+  const [manualFields, setManualFields] = useState({
+    productCode: "",
+    productName: "",
+    category: "",
+  });
+  const activeFields = mode === "select" ? selectFields : manualFields;
+  const setActiveFields = mode === "select" ? setSelectFields : setManualFields;
+  const productCode = activeFields.productCode;
+  const productName = activeFields.productName;
+  const category = activeFields.category;
+  const setProductCode = (value: string) =>
+    setActiveFields((f) => ({ ...f, productCode: value }));
+  const setProductName = (value: string) =>
+    setActiveFields((f) => ({ ...f, productName: value }));
+  const setCategory = (value: string) =>
+    setActiveFields((f) => ({ ...f, category: value }));
+
   const [materialNote, setMaterialNote] = useState("");
   const [attachedDocIds, setAttachedDocIds] = useState<string[]>([]);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -52,6 +75,15 @@ export function PoAddProductQuickForm({
     },
   ]);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<{
+    productCode?: string;
+    productName?: string;
+    colors?: string;
+  }>({});
+  const productCodeInputRef = useRef<HTMLInputElement>(null);
+  const productNameInputRef = useRef<HTMLInputElement>(null);
+  const colorsCardRef = useRef<HTMLDivElement>(null);
+  const [showImportConfirm, setShowImportConfirm] = useState(false);
 
   // Import options
   const [copySteps, setCopySteps] = useState(true);
@@ -59,22 +91,49 @@ export function PoAddProductQuickForm({
   const [copyProductionDoc, setCopyProductionDoc] = useState(true);
   const [copyDocuments, setCopyDocuments] = useState(false);
 
-  const { data: stylesData } = useStyles({ limit: 100 });
-  const styleList = useMemo(() => stylesData?.data || [], [stylesData?.data]);
+  // Danh mục Style có thể lên tới hàng trăm/ngàn dòng — tải theo trang qua ô
+  // tìm kiếm (SearchableSelect ở chế độ async), xem giải thích trong
+  // PoAddProductModal.tsx.
+  const [styleSearch, setStyleSearch] = useState("");
+  const {
+    data: stylesPages,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading: isStylesLoading,
+  } = useInfiniteStyles(styleSearch);
+  const styleList = useMemo(
+    () => stylesPages?.pages.flatMap((p) => p.data) ?? [],
+    [stylesPages],
+  );
 
   const { data: fitPreview, isLoading: isPreviewLoading } = useImportFitPreview(
     mode === "select" && sourceStyleId ? sourceStyleId : undefined,
   );
 
-  const selectedSourceStyle = useMemo(
-    () => styleList.find((s) => s.id === sourceStyleId),
-    [styleList, sourceStyleId],
-  );
+  const [selectedSourceStyle, setSelectedSourceStyle] = useState<Style | null>(null);
+
+  const styleOptions = useMemo(() => {
+    const opts = styleList.map((s) => ({
+      value: s.id,
+      label: `${s.styleCode} — ${s.styleName}`,
+      sublabel: s.category || undefined,
+    }));
+    if (selectedSourceStyle && !styleList.some((s) => s.id === selectedSourceStyle.id)) {
+      opts.unshift({
+        value: selectedSourceStyle.id,
+        label: `${selectedSourceStyle.styleCode} — ${selectedSourceStyle.styleName}`,
+        sublabel: selectedSourceStyle.category || undefined,
+      });
+    }
+    return opts;
+  }, [styleList, selectedSourceStyle]);
 
   const handleSelectStyle = (id: string) => {
     setSourceStyleId(id);
     const found = styleList.find((s) => s.id === id);
     if (found) {
+      setSelectedSourceStyle(found);
       setProductCode(found.styleCode);
       setProductName(found.styleName);
       setCategory(found.category || "");
@@ -82,10 +141,12 @@ export function PoAddProductQuickForm({
   };
 
   const handleReset = () => {
+    setMode("select");
     setSourceStyleId("");
-    setProductCode("");
-    setProductName("");
-    setCategory("");
+    setSelectedSourceStyle(null);
+    setStyleSearch("");
+    setSelectFields({ productCode: "", productName: "", category: "" });
+    setManualFields({ productCode: "", productName: "", category: "" });
     setMaterialNote("");
     setDeadline("");
     setColors([
@@ -100,12 +161,14 @@ export function PoAddProductQuickForm({
       },
     ]);
     setErrorMsg(null);
+    setFieldErrors({});
     setCopySteps(true);
     setCopySamples(false);
     setCopyProductionDoc(true);
     setCopyDocuments(false);
     setAttachedDocIds([]);
     setIsDragOver(false);
+    setShowImportConfirm(false);
     onAttachedDocsChange?.([]);
   };
 
@@ -168,14 +231,71 @@ export function PoAddProductQuickForm({
     onAttachedDocsChange?.(next);
   };
 
-  const handleSubmit = async () => {
+  const validateFields = (): boolean => {
     setErrorMsg(null);
-    if (!productCode.trim()) {
-      setErrorMsg("Mã sản phẩm không được để trống.");
-      return;
+
+    const errors: typeof fieldErrors = {};
+    if (!productCode.trim()) errors.productCode = "Mã sản phẩm không được để trống.";
+    if (!productName.trim()) errors.productName = "Tên sản phẩm không được để trống.";
+
+    const namedColors = colors.filter((c) => c.colorName.trim().length > 0);
+    if (namedColors.length === 0) {
+      errors.colors = "Vui lòng nhập ít nhất một màu sắc sản phẩm.";
+    } else {
+      const seenNames = new Set<string>();
+      for (const c of namedColors) {
+        const name = c.colorName.trim();
+        if (seenNames.has(name)) {
+          errors.colors = `Màu "${name}" bị lặp lại — mỗi màu chỉ được khai báo một lần.`;
+          break;
+        }
+        seenNames.add(name);
+      }
+      if (!errors.colors) {
+        for (const c of namedColors) {
+          const seenLabels = new Set<string>();
+          for (const s of c.sizes || []) {
+            const label = s.sizeLabel.trim().toUpperCase();
+            if (!label) continue;
+            if (seenLabels.has(label)) {
+              errors.colors = `Size "${label}" bị lặp lại trong màu "${c.colorName.trim()}".`;
+              break;
+            }
+            seenLabels.add(label);
+          }
+          if (errors.colors) break;
+        }
+      }
+      if (!errors.colors) {
+        const hasQuantity = namedColors.some((c) =>
+          (c.sizes || []).some((s) => Number(s.quantity) > 0),
+        );
+        if (!hasQuantity) {
+          errors.colors = "Vui lòng nhập số lượng (pcs) cho ít nhất một size — tổng sản lượng đang là 0.";
+        }
+      }
     }
-    if (!productName.trim()) {
-      setErrorMsg("Tên sản phẩm không được để trống.");
+
+    setFieldErrors(errors);
+
+    if (errors.productCode) {
+      productCodeInputRef.current?.focus();
+    } else if (errors.productName) {
+      productNameInputRef.current?.focus();
+    } else if (errors.colors) {
+      colorsCardRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleSubmit = async () => {
+    if (!validateFields()) return;
+
+    // Import từ Fit: bắt buộc xem qua bản xem trước những gì sẽ sao chép
+    // trước khi tạo, giống bước "Xác nhận" của PoAddProductModal.
+    if (mode === "select" && sourceStyleId && !showImportConfirm) {
+      setShowImportConfirm(true);
       return;
     }
 
@@ -189,7 +309,6 @@ export function PoAddProductQuickForm({
       .map((c) => ({
         id: c.id,
         colorName: c.colorName.trim(),
-        colorCode: c.colorCode?.trim() || undefined,
         sizes: (c.sizes || [])
           .filter((s) => s.sizeLabel.trim().length > 0)
           .map((s) => ({
@@ -213,11 +332,15 @@ export function PoAddProductQuickForm({
       handleClose();
     } catch (err: unknown) {
       setErrorMsg(err instanceof Error ? err.message : "Có lỗi xảy ra khi thêm sản phẩm.");
+    } finally {
+      setShowImportConfirm(false);
     }
   };
 
   const inputCls =
     "w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs text-gray-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-800/80 dark:text-white placeholder-gray-400";
+  const errorInputCls =
+    "!border-error-400 focus:!border-error-500 focus:!ring-error-500/20 dark:!border-error-500";
 
   return (
     <div className="flex flex-col gap-4">
@@ -245,29 +368,47 @@ export function PoAddProductQuickForm({
         </div>
       )}
 
-      {/* ── MODE SWITCH ────────────────────────────────────────────────────── */}
-      <div className="flex rounded-xl border border-gray-200 bg-gray-50/80 p-0.5 dark:border-gray-700 dark:bg-gray-900">
+      {/* ── CHỌN NGUỒN TẠO SẢN PHẨM — 2 thẻ radio rõ ràng ─────────────────────── */}
+      <div className="grid grid-cols-2 gap-2">
         <button
           type="button"
           onClick={() => setMode("select")}
-          className={`flex-1 rounded-lg py-1.5 px-3 text-xs font-semibold transition-all cursor-pointer ${
+          aria-pressed={mode === "select"}
+          className={`flex items-center gap-2 rounded-xl border p-2.5 text-left transition-all cursor-pointer ${
             mode === "select"
-              ? "bg-white text-brand-600 shadow-sm dark:bg-gray-800 dark:text-brand-400"
-              : "text-gray-500 hover:text-gray-700 dark:text-gray-400"
+              ? "border-brand-400 bg-brand-50/70 dark:border-brand-600 dark:bg-brand-950/30"
+              : "border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:hover:bg-gray-800/60"
           }`}
         >
-          Từ Style / Fit có sẵn
+          <span
+            className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 ${
+              mode === "select" ? "border-brand-600" : "border-gray-300 dark:border-gray-600"
+            }`}
+          >
+            {mode === "select" && <span className="h-1.5 w-1.5 rounded-full bg-brand-600" />}
+          </span>
+          <span className="text-xs font-bold text-gray-900 dark:text-white">
+            Từ Mẫu Fit có sẵn
+          </span>
         </button>
         <button
           type="button"
-          onClick={() => { setMode("manual"); setSourceStyleId(""); setProductCode(""); setProductName(""); setCategory(""); }}
-          className={`flex-1 rounded-lg py-1.5 px-3 text-xs font-semibold transition-all cursor-pointer ${
+          onClick={() => setMode("manual")}
+          aria-pressed={mode === "manual"}
+          className={`flex items-center gap-2 rounded-xl border p-2.5 text-left transition-all cursor-pointer ${
             mode === "manual"
-              ? "bg-white text-brand-600 shadow-sm dark:bg-gray-800 dark:text-brand-400"
-              : "text-gray-500 hover:text-gray-700 dark:text-gray-400"
+              ? "border-brand-400 bg-brand-50/70 dark:border-brand-600 dark:bg-brand-950/30"
+              : "border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:hover:bg-gray-800/60"
           }`}
         >
-          Nhập thủ công
+          <span
+            className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 ${
+              mode === "manual" ? "border-brand-600" : "border-gray-300 dark:border-gray-600"
+            }`}
+          >
+            {mode === "manual" && <span className="h-1.5 w-1.5 rounded-full bg-brand-600" />}
+          </span>
+          <span className="text-xs font-bold text-gray-900 dark:text-white">Nhập thủ công</span>
         </button>
       </div>
 
@@ -276,20 +417,22 @@ export function PoAddProductQuickForm({
         <div className="rounded-xl border border-brand-200/70 bg-brand-50/40 p-3 space-y-3 dark:border-brand-900/40 dark:bg-brand-950/20">
           <div>
             <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
-              Chọn Style Mẫu Fit gốc <span className="text-error-500">*</span>
+              Chọn Mẫu Fit gốc <span className="text-error-500">*</span>
             </label>
-            <select
+            <SearchableSelect
               value={sourceStyleId}
-              onChange={(e) => handleSelectStyle(e.target.value)}
-              className={inputCls}
-            >
-              <option value="">-- Chọn một Style có sẵn --</option>
-              {styleList.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.styleCode} — {s.styleName}
-                </option>
-              ))}
-            </select>
+              onChange={handleSelectStyle}
+              placeholder="-- Chọn một Mẫu Fit có sẵn --"
+              searchPlaceholder="Gõ mã hoặc tên để tìm..."
+              emptyMessage="Không tìm thấy Mẫu Fit phù hợp."
+              options={styleOptions}
+              async
+              onSearchChange={setStyleSearch}
+              isLoading={isStylesLoading}
+              isFetchingMore={isFetchingNextPage}
+              hasMore={Boolean(hasNextPage)}
+              onLoadMore={() => void fetchNextPage()}
+            />
           </div>
 
           {/* Preview + Copy options khi đã chọn style */}
@@ -344,7 +487,7 @@ export function PoAddProductQuickForm({
                     { label: "Bảng công đoạn", checked: copySteps, set: setCopySteps },
                     { label: "Đợt may mẫu & ảnh", checked: copySamples, set: setCopySamples },
                     { label: "Tài liệu sản xuất", checked: copyProductionDoc, set: setCopyProductionDoc },
-                    { label: "Tệp đính kèm Style", checked: copyDocuments, set: setCopyDocuments },
+                    { label: "Tệp đính kèm Mẫu Fit", checked: copyDocuments, set: setCopyDocuments },
                   ].map((item) => (
                     <label key={item.label} className="flex items-center gap-1.5 cursor-pointer">
                       <input
@@ -372,24 +515,42 @@ export function PoAddProductQuickForm({
               Mã sản phẩm <span className="text-error-500">*</span>
             </label>
             <input
+              ref={productCodeInputRef}
               type="text"
               placeholder="PROD-2026-001"
               value={productCode}
-              onChange={(e) => setProductCode(e.target.value)}
-              className={`${inputCls} font-mono`}
+              onChange={(e) => {
+                setProductCode(e.target.value);
+                if (fieldErrors.productCode) setFieldErrors((prev) => ({ ...prev, productCode: undefined }));
+              }}
+              className={`${inputCls} font-mono ${fieldErrors.productCode ? errorInputCls : ""}`}
             />
+            {fieldErrors.productCode && (
+              <p className="mt-1 text-[11px] font-medium text-error-600 dark:text-error-400">
+                {fieldErrors.productCode}
+              </p>
+            )}
           </div>
           <div>
             <label className="block text-[11px] font-semibold text-gray-600 dark:text-gray-400 mb-1">
               Tên sản phẩm <span className="text-error-500">*</span>
             </label>
             <input
+              ref={productNameInputRef}
               type="text"
               placeholder="Áo thun Polo Regular"
               value={productName}
-              onChange={(e) => setProductName(e.target.value)}
-              className={inputCls}
+              onChange={(e) => {
+                setProductName(e.target.value);
+                if (fieldErrors.productName) setFieldErrors((prev) => ({ ...prev, productName: undefined }));
+              }}
+              className={`${inputCls} ${fieldErrors.productName ? errorInputCls : ""}`}
             />
+            {fieldErrors.productName && (
+              <p className="mt-1 text-[11px] font-medium text-error-600 dark:text-error-400">
+                {fieldErrors.productName}
+              </p>
+            )}
           </div>
         </div>
 
@@ -435,15 +596,24 @@ export function PoAddProductQuickForm({
         </div>
 
         {/* Màu sắc & Bảng phân bổ size */}
-        <div className="space-y-1 pt-1">
+        <div ref={colorsCardRef} className="space-y-1 pt-1">
           <label className="block text-[11px] font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wide">
-            Màu sắc &amp; Bảng size
+            Màu sắc &amp; Số lượng <span className="text-error-500 normal-case">*</span>
           </label>
           <ProductColorSizeEditor
             colors={colors}
-            onChange={setColors}
+            onChange={(next) => {
+              setColors(next);
+              if (fieldErrors.colors) setFieldErrors((prev) => ({ ...prev, colors: undefined }));
+            }}
             allowMultipleColors={true}
+            showValidationErrors={Boolean(fieldErrors.colors)}
           />
+          {fieldErrors.colors && (
+            <p className="mt-1 text-[11px] font-medium text-error-600 dark:text-error-400">
+              {fieldErrors.colors}
+            </p>
+          )}
         </div>
       </div>
 
@@ -570,6 +740,41 @@ export function PoAddProductQuickForm({
             : "+ Tạo sản phẩm"}
         </Button>
       </div>
+
+      <ConfirmDialog
+        open={showImportConfirm}
+        title="Xác nhận import dữ liệu từ Fit"
+        description={
+          <div className="space-y-2 text-left">
+            <p>
+              Sản phẩm <strong>{productCode || "—"}</strong> sẽ được tạo dựa trên{" "}
+              <strong>{selectedSourceStyle?.styleCode}</strong> — {selectedSourceStyle?.styleName}.
+              Các mục dưới đây sẽ được sao chép thành bản riêng của sản phẩm:
+            </p>
+            <ul className="list-disc space-y-0.5 pl-5">
+              <li className={copySteps ? "" : "text-gray-400 line-through"}>
+                Bảng công đoạn ({fitPreview?.operationSteps?.length || 0})
+              </li>
+              <li className={copySamples ? "" : "text-gray-400 line-through"}>
+                Đợt may mẫu & ảnh ({fitPreview?.sampleRounds?.length || 0})
+              </li>
+              <li className={copyProductionDoc ? "" : "text-gray-400 line-through"}>
+                Tài liệu SX tiếng Việt
+              </li>
+              <li className={copyDocuments ? "" : "text-gray-400 line-through"}>
+                Tài liệu đính kèm Mẫu Fit ({fitPreview?.documents?.length || 0})
+              </li>
+            </ul>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Sau khi tạo, sửa hoặc xóa dữ liệu này trên sản phẩm sẽ không ảnh hưởng Mẫu Fit nguồn.
+            </p>
+          </div>
+        }
+        confirmLabel="Xác nhận import"
+        isSubmitting={isPending}
+        onConfirm={() => void handleSubmit()}
+        onClose={() => setShowImportConfirm(false)}
+      />
     </div>
   );
 }

@@ -253,6 +253,14 @@ export default function PoProductDetailPage() {
   const [editDeadline, setEditDeadline] = useState("");
   const [editCmBaseDays, setEditCmBaseDays] = useState(30);
   const [editColors, setEditColors] = useState<ProductColorItem[]>([]);
+  const [editFieldErrors, setEditFieldErrors] = useState<{
+    productCode?: string;
+    productName?: string;
+    colors?: string;
+  }>({});
+  const editProductCodeInputRef = useRef<HTMLInputElement>(null);
+  const editProductNameInputRef = useRef<HTMLInputElement>(null);
+  const editColorsCardRef = useRef<HTMLDivElement>(null);
 
   // Local state for image handling (phong cách GeneralTab)
   const [imageUrl, setImageUrl] = useState<string | null>(null);
@@ -393,12 +401,84 @@ export default function PoProductDetailPage() {
         ? JSON.parse(JSON.stringify(product.colors))
         : [],
     );
+    setEditFieldErrors({});
     setIsEditModalOpen(true);
+  };
+
+  const validateEditFields = (): boolean => {
+    const errors: typeof editFieldErrors = {};
+    if (!editProductCode.trim()) errors.productCode = "Mã sản phẩm không được để trống.";
+    if (!editProductName.trim()) errors.productName = "Tên sản phẩm không được để trống.";
+
+    const namedColors = editColors.filter((c) => c.colorName.trim().length > 0);
+    if (namedColors.length === 0) {
+      errors.colors = "Vui lòng nhập ít nhất một màu sắc sản phẩm.";
+    } else {
+      const seenNames = new Set<string>();
+      for (const c of namedColors) {
+        const name = c.colorName.trim();
+        if (seenNames.has(name)) {
+          errors.colors = `Màu "${name}" bị lặp lại — mỗi màu chỉ được khai báo một lần.`;
+          break;
+        }
+        seenNames.add(name);
+      }
+      if (!errors.colors) {
+        for (const c of namedColors) {
+          const seenLabels = new Set<string>();
+          for (const s of c.sizes || []) {
+            const label = s.sizeLabel.trim().toUpperCase();
+            if (!label) continue;
+            if (seenLabels.has(label)) {
+              errors.colors = `Size "${label}" bị lặp lại trong màu "${c.colorName.trim()}".`;
+              break;
+            }
+            seenLabels.add(label);
+          }
+          if (errors.colors) break;
+        }
+      }
+      if (!errors.colors) {
+        const hasQuantity = namedColors.some((c) =>
+          (c.sizes || []).some((s) => Number(s.quantity) > 0),
+        );
+        if (!hasQuantity) {
+          errors.colors =
+            "Vui lòng nhập số lượng (pcs) cho ít nhất một size — tổng sản lượng đang là 0.";
+        }
+      }
+    }
+
+    setEditFieldErrors(errors);
+    if (errors.productCode) {
+      editProductCodeInputRef.current?.focus();
+    } else if (errors.productName) {
+      editProductNameInputRef.current?.focus();
+    } else if (errors.colors) {
+      editColorsCardRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+
+    return Object.keys(errors).length === 0;
   };
 
   const handleSaveEditProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!poId || !productId) return;
+    if (!validateEditFields()) return;
+
+    const cleanColors = editColors
+      .filter((c) => c.colorName.trim().length > 0)
+      .map((c) => ({
+        id: c.id,
+        colorName: c.colorName.trim(),
+        sizes: (c.sizes || [])
+          .filter((s) => s.sizeLabel.trim().length > 0)
+          .map((s) => ({
+            sizeLabel: s.sizeLabel.trim().toUpperCase(),
+            quantity: Number(s.quantity) || 0,
+          })),
+      }));
+
     try {
       await updateProductMutation.mutateAsync({
         id: poId,
@@ -410,7 +490,7 @@ export default function PoProductDetailPage() {
           materialNote: editMaterialNote.trim() || undefined,
           deadline: editDeadline || undefined,
           as3bCmBaseDays: Number(editCmBaseDays) || 30,
-          colors: editColors,
+          colors: cleanColors,
         },
       });
       showToast("Đã cập nhật thông tin sản phẩm thành công.");
@@ -1133,6 +1213,22 @@ export default function PoProductDetailPage() {
                   </dd>
                 </div>
               )}
+
+              {product.sourceStyle && product.importedAt && (
+                <div>
+                  <dt className="text-sm text-gray-500 dark:text-gray-400">Ngày import từ Fit</dt>
+                  <dd
+                    className="font-semibold text-gray-800 dark:text-gray-200"
+                    title={
+                      product.importedBy
+                        ? `Người import: ${product.importedBy}`
+                        : undefined
+                    }
+                  >
+                    {formatDate(product.importedAt)}
+                  </dd>
+                </div>
+              )}
             </dl>
 
             {/* Thẻ liên kết nhanh sang Tab 2: Bảng size */}
@@ -1257,7 +1353,6 @@ export default function PoProductDetailPage() {
                     <tr>
                       <th className="px-5 py-3.5 w-12 text-center">STT</th>
                       <th className="px-4 py-3.5">Phối màu</th>
-                      <th className="px-4 py-3.5">Mã màu</th>
                       {uniqueSizes.map((size) => (
                         <th key={size} className="px-3 py-3.5 text-center font-mono font-bold text-gray-800 dark:text-gray-200">
                           {size}
@@ -1278,18 +1373,7 @@ export default function PoProductDetailPage() {
                         <tr key={color.id || idx} className="hover:bg-gray-50/70 dark:hover:bg-gray-800/50 transition-colors">
                           <td className="px-5 py-3.5 text-center font-mono text-gray-400">{idx + 1}</td>
                           <td className="px-4 py-3.5 font-semibold text-gray-900 dark:text-white">
-                            <div className="flex items-center gap-2.5">
-                              {color.colorCode && (
-                                <span
-                                  className="h-6 w-6 shrink-0 rounded-full border-2 border-gray-300 shadow-xs ring-1 ring-black/5 dark:border-gray-600"
-                                  style={{ backgroundColor: color.colorCode }}
-                                />
-                              )}
-                              <span>{color.colorName}</span>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3.5 font-mono text-[11px] text-gray-500 dark:text-gray-400">
-                            {color.colorCode || "—"}
+                            {color.colorName}
                           </td>
                           {uniqueSizes.map((size) => {
                             const sizeItem = (color.sizes || []).find((s) => s.sizeLabel === size);
@@ -1467,13 +1551,8 @@ export default function PoProductDetailPage() {
                       key={c.id || i}
                       className="flex items-center gap-3 p-3 rounded-xl border border-gray-100 bg-gray-50/60 dark:border-gray-800 dark:bg-gray-800/40"
                     >
-                      <span
-                        className="w-8 h-8 rounded-xl border border-gray-200 shadow-2xs shrink-0"
-                        style={{ backgroundColor: c.colorCode || "#cccccc" }}
-                      />
                       <div className="min-w-0 flex-1">
                         <p className="text-xs font-bold text-gray-900 dark:text-white truncate">{c.colorName}</p>
-                        <p className="text-[11px] font-mono text-gray-400 mt-0.5">Mã: {c.colorCode || "—"}</p>
                       </div>
                       <span className="text-xs font-mono font-semibold text-brand-600 dark:text-brand-400 shrink-0">
                         {qty.toLocaleString()} pcs
@@ -1889,12 +1968,26 @@ export default function PoProductDetailPage() {
                   Mã sản phẩm <span className="text-red-500">*</span>
                 </label>
                 <input
+                  ref={editProductCodeInputRef}
                   type="text"
                   value={editProductCode}
-                  onChange={(e) => setEditProductCode(e.target.value)}
+                  onChange={(e) => {
+                    setEditProductCode(e.target.value);
+                    if (editFieldErrors.productCode)
+                      setEditFieldErrors((prev) => ({ ...prev, productCode: undefined }));
+                  }}
                   required
-                  className="mt-1 h-10 w-full rounded-lg border border-gray-300 px-3 font-mono text-sm text-gray-900 dark:text-white dark:bg-gray-800 dark:border-gray-700 transition-colors focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  className={`mt-1 h-10 w-full rounded-lg border px-3 font-mono text-sm text-gray-900 dark:text-white dark:bg-gray-800 transition-colors focus:outline-none focus:ring-2 ${
+                    editFieldErrors.productCode
+                      ? "border-error-400 focus:border-error-500 focus:ring-error-500/20 dark:border-error-500"
+                      : "border-gray-300 dark:border-gray-700 focus:border-blue-500 focus:ring-blue-500/20"
+                  }`}
                 />
+                {editFieldErrors.productCode && (
+                  <p className="mt-1 text-xs font-medium text-error-600 dark:text-error-400">
+                    {editFieldErrors.productCode}
+                  </p>
+                )}
               </div>
 
               <div>
@@ -1902,12 +1995,26 @@ export default function PoProductDetailPage() {
                   Tên sản phẩm <span className="text-red-500">*</span>
                 </label>
                 <input
+                  ref={editProductNameInputRef}
                   type="text"
                   value={editProductName}
-                  onChange={(e) => setEditProductName(e.target.value)}
+                  onChange={(e) => {
+                    setEditProductName(e.target.value);
+                    if (editFieldErrors.productName)
+                      setEditFieldErrors((prev) => ({ ...prev, productName: undefined }));
+                  }}
                   required
-                  className="mt-1 h-10 w-full rounded-lg border border-gray-300 px-3 text-sm text-gray-900 dark:text-white dark:bg-gray-800 dark:border-gray-700 transition-colors focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  className={`mt-1 h-10 w-full rounded-lg border px-3 text-sm text-gray-900 dark:text-white dark:bg-gray-800 transition-colors focus:outline-none focus:ring-2 ${
+                    editFieldErrors.productName
+                      ? "border-error-400 focus:border-error-500 focus:ring-error-500/20 dark:border-error-500"
+                      : "border-gray-300 dark:border-gray-700 focus:border-blue-500 focus:ring-blue-500/20"
+                  }`}
                 />
+                {editFieldErrors.productName && (
+                  <p className="mt-1 text-xs font-medium text-error-600 dark:text-error-400">
+                    {editFieldErrors.productName}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -1965,11 +2072,24 @@ export default function PoProductDetailPage() {
             </div>
 
             {/* Trình soạn thảo Phân bổ Màu sắc & Cỡ số */}
-            <div className="pt-2 border-t border-gray-100 dark:border-gray-800">
+            <div
+              ref={editColorsCardRef}
+              className="pt-2 border-t border-gray-100 dark:border-gray-800"
+            >
               <ProductColorSizeEditor
                 colors={editColors}
-                onChange={setEditColors}
+                onChange={(next) => {
+                  setEditColors(next);
+                  if (editFieldErrors.colors)
+                    setEditFieldErrors((prev) => ({ ...prev, colors: undefined }));
+                }}
+                showValidationErrors={Boolean(editFieldErrors.colors)}
               />
+              {editFieldErrors.colors && (
+                <p className="mt-1 text-xs font-medium text-error-600 dark:text-error-400">
+                  {editFieldErrors.colors}
+                </p>
+              )}
             </div>
 
             <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-gray-100 dark:border-gray-800">

@@ -150,7 +150,6 @@ export interface ProductColorSizeItem {
 export interface ProductColorItem {
   id?: string;
   colorName: string;
-  colorCode?: string;
   orderIndex?: number;
   sizes: ProductColorSizeItem[];
   totalQuantity?: number;
@@ -210,7 +209,6 @@ export interface CreatePoProductInput {
   colors?: Array<{
     id?: string;
     colorName: string;
-    colorCode?: string;
     sizes: Array<{ sizeLabel: string; quantity: number }>;
   }>;
 }
@@ -228,7 +226,6 @@ export interface UpdatePoProductInput {
   colors?: Array<{
     id?: string;
     colorName: string;
-    colorCode?: string;
     sizes: Array<{ sizeLabel: string; quantity: number }>;
   }>;
 }
