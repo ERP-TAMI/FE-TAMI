@@ -9,23 +9,30 @@ import { LockIcon, PencilIcon } from "@/icons";
 import { useProfile } from "@/hooks/useProfile";
 import { useToast } from "@/hooks/useToast";
 import { getApiError, type ApiError } from "@/lib/apiError";
+import { canManageUsers } from "@/lib/areaAccess";
+import { useAuthStore, type AuthUser } from "@/store/authStore";
 
-function getAreaRoot(pathname: string): { label: string; to: string } {
+function getAreaRoot(pathname: string, user: AuthUser | null): { label: string; to?: string } {
   if (pathname.startsWith("/management/"))
     return { label: "Khu Quản lý", to: "/management/dashboard" };
-  if (pathname.startsWith("/it/")) return { label: "Khu IT", to: "/it/dashboard" };
+  if (pathname.startsWith("/it/")) {
+    return canManageUsers(user)
+      ? { label: "Quản trị người dùng", to: "/it/users" }
+      : { label: "Khu IT" };
+  }
   return { label: "Hệ thống", to: "/dashboard" };
 }
 
 export default function ProfilePage() {
   const { pathname } = useLocation();
+  const currentUser = useAuthStore((state) => state.user);
   const { profile, updateProfile, changePassword } = useProfile();
   const { toast, showToast, hideToast } = useToast();
   const [profileError, setProfileError] = useState<ApiError>();
   const [passwordError, setPasswordError] = useState<ApiError>();
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
-  const areaRoot = getAreaRoot(pathname);
+  const areaRoot = getAreaRoot(pathname, currentUser);
 
   const submitProfile = async (input: UpdateProfileInput) => {
     setProfileError(undefined);

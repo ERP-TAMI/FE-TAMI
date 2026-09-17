@@ -304,14 +304,15 @@ describe("UsersPage", () => {
     ).toBeTruthy();
   });
 
-  it.each([
-    ["/it/users", "/it/dashboard"],
-    ["/management/users", "/management/dashboard"],
-  ])("links the %s breadcrumb to its area dashboard", (path, dashboardPath) => {
-    renderPage(path);
+  it("does not link IT user management back to itself via a dashboard breadcrumb", () => {
+    renderPage("/it/users");
+    expect(screen.queryByRole("link", { name: "Dashboard" })).toBeNull();
+  });
 
+  it("keeps the management dashboard breadcrumb for SA", () => {
+    renderPage("/management/users");
     expect(screen.getByRole("link", { name: "Dashboard" }).getAttribute("href")).toBe(
-      dashboardPath,
+      "/management/dashboard",
     );
   });
 
