@@ -146,7 +146,14 @@ export function ProductColorSizeEditor({
   // Tên màu là lỗi gốc — nếu màu còn chưa có tên thì báo mỗi tổng số lượng
   // là 0 nữa sẽ tạo 2 cảnh báo cho cùng 1 nguyên nhân, rối mắt không cần thiết.
   const anyNameMissing = displayedColors.some((c) => !c.colorName.trim());
-  const showZeroQuantityWarning = showValidationErrors && grandTotal === 0 && !anyNameMissing;
+  // Chỉ tính qty của các màu ĐÃ đặt tên — khớp với điều kiện chặn submit ở
+  // component cha (namedColors.some(qty>0)), nếu không cảnh báo này có thể
+  // tắt/bật sai lệch với lý do form thực sự bị chặn.
+  const namedColorsTotal = useMemo(
+    () => calcTotalFromColors(displayedColors.filter((c) => c.colorName.trim())),
+    [displayedColors],
+  );
+  const showZeroQuantityWarning = showValidationErrors && namedColorsTotal === 0 && !anyNameMissing;
 
   // Tên trùng chỉ tính khi đã có tên (khác lỗi "thiếu tên" ở trên) — BE từ
   // chối UNIQUE(product_id, color_name) đúng theo tên đã trim, so khớp y hệt

@@ -1321,19 +1321,10 @@ export default function PoDetailPage() {
                             {line.colors && line.colors.length > 0 && (
                               <div className="flex items-center gap-1 pt-0.5 overflow-hidden">
                                 <span className="text-[10px] text-gray-400 shrink-0">{line.colors.length} màu:</span>
-                                <div className="flex items-center gap-1 overflow-x-auto">
-                                  {line.colors.slice(0, 4).map((c, i) => (
-                                    <span
-                                      key={i}
-                                      className="w-2.5 h-2.5 rounded-full border border-gray-300 dark:border-gray-600 shrink-0"
-                                      style={{ backgroundColor: c.colorCode || "#94a3b8" }}
-                                      title={c.colorName}
-                                    />
-                                  ))}
-                                  {line.colors.length > 4 && (
-                                    <span className="text-[9px] text-gray-400 font-mono">+{line.colors.length - 4}</span>
-                                  )}
-                                </div>
+                                <span className="text-[10px] text-gray-500 dark:text-gray-400 truncate">
+                                  {line.colors.slice(0, 4).map((c) => c.colorName).join(", ")}
+                                  {line.colors.length > 4 && ` +${line.colors.length - 4}`}
+                                </span>
                               </div>
                             )}
                           </div>
@@ -1561,19 +1552,10 @@ export default function PoDetailPage() {
                           {line.colors && line.colors.length > 0 && (
                             <div className="flex items-center gap-1.5 pt-0.5 overflow-hidden">
                               <span className="text-[10px] text-gray-400 shrink-0">{line.colors.length} màu:</span>
-                              <div className="flex items-center gap-1 overflow-x-auto">
-                                {line.colors.slice(0, 5).map((c, i) => (
-                                  <span
-                                    key={i}
-                                    className="w-2.5 h-2.5 rounded-full border border-gray-300 dark:border-gray-600 shrink-0"
-                                    style={{ backgroundColor: c.colorCode || "#94a3b8" }}
-                                    title={c.colorName}
-                                  />
-                                ))}
-                                {line.colors.length > 5 && (
-                                  <span className="text-[9px] text-gray-400 font-mono">+{line.colors.length - 5}</span>
-                                )}
-                              </div>
+                              <span className="text-[10px] text-gray-500 dark:text-gray-400 truncate">
+                                {line.colors.slice(0, 5).map((c) => c.colorName).join(", ")}
+                                {line.colors.length > 5 && ` +${line.colors.length - 5}`}
+                              </span>
                             </div>
                           )}
                         </div>
@@ -1616,14 +1598,6 @@ export default function PoDetailPage() {
                             </span>
                             {line.colors && line.colors.length > 0 && (
                               <div className="flex items-center justify-end gap-1 mt-0.5">
-                                {line.colors.slice(0, 3).map((c, i) => (
-                                  <span
-                                    key={i}
-                                    className="w-2 h-2 rounded-full border border-gray-300 dark:border-gray-600 shrink-0"
-                                    style={{ backgroundColor: c.colorCode || "#94a3b8" }}
-                                    title={c.colorName}
-                                  />
-                                ))}
                                 <span className="text-[10px] text-gray-400 font-normal">({line.colors.length} màu)</span>
                               </div>
                             )}

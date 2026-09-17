@@ -309,7 +309,6 @@ export function PoAddProductQuickForm({
       .map((c) => ({
         id: c.id,
         colorName: c.colorName.trim(),
-        colorCode: c.colorCode?.trim() || undefined,
         sizes: (c.sizes || [])
           .filter((s) => s.sizeLabel.trim().length > 0)
           .map((s) => ({
@@ -610,6 +609,11 @@ export function PoAddProductQuickForm({
             allowMultipleColors={true}
             showValidationErrors={Boolean(fieldErrors.colors)}
           />
+          {fieldErrors.colors && (
+            <p className="mt-1 text-[11px] font-medium text-error-600 dark:text-error-400">
+              {fieldErrors.colors}
+            </p>
+          )}
         </div>
       </div>
 

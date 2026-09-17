@@ -224,6 +224,35 @@ export function PoAddProductModal({
     onClose();
   };
 
+  // Điều kiện colors hợp lệ để hiện dấu tick "hoàn thành" ở Step 1 — phải khớp
+  // với phần colors-check trong validateStep1 bên dưới, nếu không dấu tick sẽ
+  // nói "xong" trong khi bấm Tiếp tục vẫn bị chặn.
+  const step1ColorsValid = useMemo(() => {
+    const namedColors = colors.filter((c) => c.colorName.trim().length > 0);
+    if (namedColors.length === 0) return false;
+
+    const seenNames = new Set<string>();
+    for (const c of namedColors) {
+      const name = c.colorName.trim();
+      if (seenNames.has(name)) return false;
+      seenNames.add(name);
+    }
+
+    for (const c of namedColors) {
+      const seenLabels = new Set<string>();
+      for (const s of c.sizes || []) {
+        const label = s.sizeLabel.trim().toUpperCase();
+        if (!label) continue;
+        if (seenLabels.has(label)) return false;
+        seenLabels.add(label);
+      }
+    }
+
+    return namedColors.some((c) => (c.sizes || []).some((s) => Number(s.quantity) > 0));
+  }, [colors]);
+
+  const step1Complete = Boolean(productCode.trim() && productName.trim() && step1ColorsValid);
+
   const validateStep1 = (): boolean => {
     setErrorMsg(null);
 
@@ -318,7 +347,6 @@ export function PoAddProductModal({
       .map((c) => ({
         id: c.id,
         colorName: c.colorName.trim(),
-        colorCode: c.colorCode?.trim() || undefined,
         sizes: (c.sizes || [])
           .filter((s) => s.sizeLabel.trim().length > 0)
           .map((s) => ({
@@ -373,12 +401,12 @@ export function PoAddProductModal({
               className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold transition-all ${
                 currentStep === 1
                   ? "bg-brand-600 text-white shadow-sm"
-                  : productCode.trim() && productName.trim()
+                  : step1Complete
                   ? "bg-emerald-500 text-white"
                   : "bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-300"
               }`}
             >
-              {productCode.trim() && productName.trim() && currentStep !== 1 ? (
+              {step1Complete && currentStep !== 1 ? (
                 <CheckLineIcon className="h-3.5 w-3.5" />
               ) : (
                 "1"
@@ -831,6 +859,11 @@ export function PoAddProductModal({
                 allowMultipleColors={true}
                 showValidationErrors={Boolean(fieldErrors.colors)}
               />
+              {fieldErrors.colors && (
+                <p className="mt-1.5 text-xs font-medium text-error-600 dark:text-error-400">
+                  {fieldErrors.colors}
+                </p>
+              )}
             </div>
 
             {/* Step 1 Footer */}

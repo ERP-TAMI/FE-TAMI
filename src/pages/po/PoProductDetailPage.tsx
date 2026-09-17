@@ -471,7 +471,6 @@ export default function PoProductDetailPage() {
       .map((c) => ({
         id: c.id,
         colorName: c.colorName.trim(),
-        colorCode: c.colorCode?.trim() || undefined,
         sizes: (c.sizes || [])
           .filter((s) => s.sizeLabel.trim().length > 0)
           .map((s) => ({
@@ -1354,7 +1353,6 @@ export default function PoProductDetailPage() {
                     <tr>
                       <th className="px-5 py-3.5 w-12 text-center">STT</th>
                       <th className="px-4 py-3.5">Phối màu</th>
-                      <th className="px-4 py-3.5">Mã màu</th>
                       {uniqueSizes.map((size) => (
                         <th key={size} className="px-3 py-3.5 text-center font-mono font-bold text-gray-800 dark:text-gray-200">
                           {size}
@@ -1375,18 +1373,7 @@ export default function PoProductDetailPage() {
                         <tr key={color.id || idx} className="hover:bg-gray-50/70 dark:hover:bg-gray-800/50 transition-colors">
                           <td className="px-5 py-3.5 text-center font-mono text-gray-400">{idx + 1}</td>
                           <td className="px-4 py-3.5 font-semibold text-gray-900 dark:text-white">
-                            <div className="flex items-center gap-2.5">
-                              {color.colorCode && (
-                                <span
-                                  className="h-6 w-6 shrink-0 rounded-full border-2 border-gray-300 shadow-xs ring-1 ring-black/5 dark:border-gray-600"
-                                  style={{ backgroundColor: color.colorCode }}
-                                />
-                              )}
-                              <span>{color.colorName}</span>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3.5 font-mono text-[11px] text-gray-500 dark:text-gray-400">
-                            {color.colorCode || "—"}
+                            {color.colorName}
                           </td>
                           {uniqueSizes.map((size) => {
                             const sizeItem = (color.sizes || []).find((s) => s.sizeLabel === size);
@@ -1564,13 +1551,8 @@ export default function PoProductDetailPage() {
                       key={c.id || i}
                       className="flex items-center gap-3 p-3 rounded-xl border border-gray-100 bg-gray-50/60 dark:border-gray-800 dark:bg-gray-800/40"
                     >
-                      <span
-                        className="w-8 h-8 rounded-xl border border-gray-200 shadow-2xs shrink-0"
-                        style={{ backgroundColor: c.colorCode || "#cccccc" }}
-                      />
                       <div className="min-w-0 flex-1">
                         <p className="text-xs font-bold text-gray-900 dark:text-white truncate">{c.colorName}</p>
-                        <p className="text-[11px] font-mono text-gray-400 mt-0.5">Mã: {c.colorCode || "—"}</p>
                       </div>
                       <span className="text-xs font-mono font-semibold text-brand-600 dark:text-brand-400 shrink-0">
                         {qty.toLocaleString()} pcs
@@ -2103,6 +2085,11 @@ export default function PoProductDetailPage() {
                 }}
                 showValidationErrors={Boolean(editFieldErrors.colors)}
               />
+              {editFieldErrors.colors && (
+                <p className="mt-1 text-xs font-medium text-error-600 dark:text-error-400">
+                  {editFieldErrors.colors}
+                </p>
+              )}
             </div>
 
             <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-gray-100 dark:border-gray-800">
