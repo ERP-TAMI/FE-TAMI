@@ -55,7 +55,7 @@ export default function UsersPage() {
     page,
     limit: PAGE_SIZE,
   });
-  const dashboardPath = pathname.startsWith("/it/") ? "/it/dashboard" : "/management/dashboard";
+  const isItArea = pathname.startsWith("/it/");
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -188,11 +188,15 @@ export default function UsersPage() {
       />
       <section aria-labelledby="page-title" className="space-y-4">
         <PageHeader
-          breadcrumb={[
-            { label: "Dashboard", to: dashboardPath },
-            { label: "Hệ thống" },
-            { label: "Quản trị người dùng" },
-          ]}
+          breadcrumb={
+            isItArea
+              ? [{ label: "Quản trị người dùng" }]
+              : [
+                  { label: "Dashboard", to: "/management/dashboard" },
+                  { label: "Hệ thống" },
+                  { label: "Quản trị người dùng" },
+                ]
+          }
           title="Quản trị người dùng"
           stats={users.data ? [{ label: "người dùng", value: users.data.meta.total }] : undefined}
           action={{

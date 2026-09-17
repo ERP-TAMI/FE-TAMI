@@ -9,6 +9,7 @@ async function mockLogin(page: Page, roleCode: string, permissions: string[]) {
     id: "22222222-2222-4222-8222-222222222222",
     email: `${roleCode.toLowerCase()}@tami.test`,
     fullName: roleCode === "IT" ? "Nhân viên IT" : "Người dùng kiểm thử",
+    phone: null,
     roleCode,
     roleName: roleCode === "IT" ? "Công nghệ thông tin" : roleCode,
     permissions,
@@ -35,6 +36,7 @@ const users = [
     phone: "0901234567",
     role: { code: "IT", name: "Công nghệ thông tin" },
     accountStatus: "active",
+    passwordSetupRequired: false,
   },
   {
     id: "11111111-1111-4111-8111-111111111111",
@@ -43,6 +45,7 @@ const users = [
     phone: null,
     role: { code: "SA", name: "Quản trị hệ thống" },
     accountStatus: "locked",
+    passwordSetupRequired: false,
   },
 ];
 
@@ -70,19 +73,22 @@ async function mockUserList(page: Page) {
   });
 }
 
-test("IT lands in its own area and opens user management", async ({ page }) => {
+test("IT lands directly on user management in the TailAdmin-style shell", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await mockLogin(page, "IT", ["system.users.manage"]);
   await mockUserList(page);
   await login(page, "it@tami.test");
 
-  await expect(page).toHaveURL(/\/it\/dashboard$/);
-  await expect(page.getByRole("heading", { name: "Khu IT" })).toBeVisible();
-  const navigation = page.getByRole("navigation", { name: "Điều hướng IT" });
-  await expect(navigation.getByRole("link")).toHaveCount(1);
-  await navigation.getByRole("link", { name: "Quản trị người dùng" }).click();
   await expect(page).toHaveURL(/\/it\/users$/);
+  await expect(page.getByRole("heading", { name: "Khu IT" })).toHaveCount(0);
+  await expect(page.getByText("Mở Quản trị người dùng")).toHaveCount(0);
+  const navigation = page.getByRole("navigation", { name: "Chức năng IT" });
+  await expect(navigation.getByRole("link")).toHaveCount(1);
+  await expect(navigation.getByRole("link", { name: "Quản trị người dùng" })).toHaveAttribute(
+    "aria-current",
+    "page",
+  );
   await expect(page.getByRole("heading", { name: "Quản trị người dùng" })).toBeVisible();
   await expect(page.getByRole("cell", { name: "Nhân viên IT" })).toBeVisible();
   await expect(page.getByRole("row").filter({ hasText: "sa@tami.test" })).toBeVisible();
@@ -108,11 +114,18 @@ test("IT lands in its own area and opens user management", async ({ page }) => {
   for (const width of [320, 768, 1024, 1440]) {
     await page.setViewportSize({ width, height: 900 });
     await expect(page.getByRole("heading", { name: "Quản trị người dùng" })).toBeVisible();
+    if (width < 1024) {
+      await page.getByRole("button", { name: "Bật/tắt điều hướng IT" }).click();
+      await expect(navigation).toBeVisible();
+      await page.getByRole("button", { name: "Đóng điều hướng IT" }).click();
+    }
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
     ).toBe(true);
   }
 
+  await page.goto("/it/dashboard");
+  await expect(page).toHaveURL(/\/it\/users$/);
   await page.reload();
   await expect(page).toHaveURL(/\/it\/users$/);
   await page.getByRole("button", { name: "Tài khoản" }).click();

@@ -41,7 +41,6 @@ import UsersPage from "@/pages/admin/UsersPage";
 import StyleListPage from "@/pages/styles/StyleListPage";
 import StyleDetailPage from "@/pages/styles/StyleDetailPage";
 import AuditLogPage from "@/pages/audit/AuditLogPage";
-import ItDashboardPage from "@/pages/it/ItDashboardPage";
 import ProfilePage from "@/pages/account/ProfilePage";
 import ForbiddenPage from "@/pages/ForbiddenPage";
 import NotFoundPage from "@/pages/NotFoundPage";
@@ -85,8 +84,8 @@ export function AppRoutes() {
           </Route>
           <Route path="it" element={<ItRoute />}>
             <Route element={<ItLayout />}>
-              <Route index element={<Navigate to="dashboard" replace />} />
-              <Route path="dashboard" element={<ItDashboardPage />} />
+              <Route index element={<Navigate to={getLandingPath(user)} replace />} />
+              <Route path="dashboard" element={<Navigate to={getLandingPath(user)} replace />} />
               <Route path="profile" element={<ProfilePage />} />
               <Route element={<UserManagementRoute />}>
                 <Route path="users" element={<UsersPage />} />

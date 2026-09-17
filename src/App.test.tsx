@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createMemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -170,7 +170,7 @@ function renderApp() {
 describe("application routes", () => {
   it.each([
     ["/management/profile", "Khu Quản lý"],
-    ["/it/profile", "Khu IT"],
+    ["/it/profile", "Quản trị người dùng"],
     ["/profile", "Hệ thống"],
   ] as const)(
     "renders the account page at %s with the correct area breadcrumb",
@@ -181,11 +181,25 @@ describe("application routes", () => {
       renderApp();
 
       expect(screen.getByRole("heading", { name: "Tài khoản của tôi" })).toBeTruthy();
-      expect(screen.getByRole("link", { name: rootLabel })).toBeTruthy();
+      expect(
+        within(screen.getByRole("navigation", { name: "Điều hướng phân cấp" })).getByRole("link", {
+          name: rootLabel,
+        }),
+      ).toBeTruthy();
       expect(screen.getByRole("heading", { name: "Thông tin cá nhân" })).toBeTruthy();
       expect(screen.getByRole("heading", { name: "Bảo mật" })).toBeTruthy();
     },
   );
+
+  it("does not link an IT profile to user management without permission", () => {
+    signInAsIt([]);
+    window.history.pushState({}, "", "/it/profile");
+    renderApp();
+
+    const breadcrumb = screen.getByRole("navigation", { name: "Điều hướng phân cấp" });
+    expect(within(breadcrumb).getByText("Khu IT")).toBeTruthy();
+    expect(within(breadcrumb).queryByRole("link", { name: "Quản trị người dùng" })).toBeNull();
+  });
 
   it("renders the dashboard shell", () => {
     signIn();
@@ -337,17 +351,32 @@ describe("application routes", () => {
     expect(await screen.findByRole("heading", { name: "Dashboard" })).toBeTruthy();
   });
 
-  it("lets IT enter its own area and open user management", async () => {
+  it("redirects the legacy IT dashboard straight to user management", async () => {
     signInAsIt();
     window.history.pushState({}, "", "/it/dashboard");
     const { router } = renderApp();
 
-    expect(screen.getByRole("heading", { name: "Khu IT" })).toBeTruthy();
-    expect(screen.getByRole("navigation", { name: "Điều hướng IT" })).toBeTruthy();
-    fireEvent.click(screen.getByRole("link", { name: "Quản trị người dùng" }));
-
     expect(await screen.findByRole("heading", { name: "Quản trị người dùng" })).toBeTruthy();
     expect(router.state.location.pathname).toBe("/it/users");
+    expect(screen.queryByRole("heading", { name: "Khu IT" })).toBeNull();
+    expect(screen.queryByText("Mở Quản trị người dùng")).toBeNull();
+    expect(screen.getByRole("navigation", { name: "Chức năng IT" })).toBeTruthy();
+    expect(
+      screen.getByRole("link", { name: "Quản trị người dùng" }).getAttribute("aria-current"),
+    ).toBe("page");
+    expect(screen.getByRole("complementary", { name: "Điều hướng IT" })).toBeTruthy();
+  });
+
+  it("collapses the IT sidebar without hiding the accessible user-management link", async () => {
+    signInAsIt();
+    window.history.pushState({}, "", "/it/users");
+    renderApp();
+
+    fireEvent.click(screen.getByRole("button", { name: "Bật/tắt điều hướng IT" }));
+    expect(screen.getByRole("complementary", { name: "Điều hướng IT" }).className).toContain(
+      "w-[80px]",
+    );
+    expect(screen.getByRole("link", { name: "Quản trị người dùng" })).toBeTruthy();
   });
 
   it("shows user management in the management area for SA", async () => {

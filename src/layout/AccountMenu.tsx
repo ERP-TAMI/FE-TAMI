@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { authApi } from "@/api/auth.api";
-import { canAccessItArea, canAccessManagement } from "@/lib/areaAccess";
+import { canAccessItArea, canAccessManagement, getLandingPath } from "@/lib/areaAccess";
 import { useAuthStore } from "@/store/authStore";
 
 export default function AccountMenu({ area }: { area: "management" | "employee" | "it" }) {
@@ -91,7 +91,7 @@ export default function AccountMenu({ area }: { area: "management" | "employee" 
               Vào hệ thống nhân viên
             </Link>
           ) : canAccessItArea(user) ? (
-            <Link className={actionClass} to="/it/dashboard" onClick={() => setOpen(false)}>
+            <Link className={actionClass} to={getLandingPath(user)} onClick={() => setOpen(false)}>
               Về khu IT
             </Link>
           ) : (

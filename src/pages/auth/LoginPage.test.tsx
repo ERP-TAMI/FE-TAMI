@@ -90,7 +90,7 @@ describe("LoginPage", () => {
     expect(mockNavigate).toHaveBeenCalledWith("/management/dashboard", { replace: true });
   });
 
-  it("redirects an IT login to the IT dashboard", async () => {
+  it("redirects an IT login directly to user management", async () => {
     vi.mocked(authApi.login).mockResolvedValue({
       accessToken: "signed.it.token",
       user: {
@@ -112,7 +112,7 @@ describe("LoginPage", () => {
     fillAndSubmit("it@tami.test", "correct-password");
 
     await waitFor(() => expect(mockNavigate).toHaveBeenCalled());
-    expect(mockNavigate).toHaveBeenCalledWith("/it/dashboard", { replace: true });
+    expect(mockNavigate).toHaveBeenCalledWith("/it/users", { replace: true });
   });
 
   it("shows a Vietnamese error for wrong credentials and does not navigate", async () => {
