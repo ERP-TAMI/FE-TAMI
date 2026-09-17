@@ -22,6 +22,21 @@ describe("getApiError", () => {
     ).toEqual({ code: "RESOURCE_NOT_FOUND", message: "Không tìm thấy dữ liệu yêu cầu." });
   });
 
+  it("explains when password setup must be completed first", () => {
+    expect(
+      getApiError(
+        axiosError({
+          code: "PASSWORD_SETUP_REQUIRED",
+          message: "Bạn cần hoàn tất thiết lập mật khẩu trước.",
+        }),
+        "Không thể xử lý yêu cầu.",
+      ),
+    ).toEqual({
+      code: "PASSWORD_SETUP_REQUIRED",
+      message: "Bạn cần hoàn tất thiết lập mật khẩu trước.",
+    });
+  });
+
   it("never exposes an unrecognized English backend message", () => {
     expect(
       getApiError(

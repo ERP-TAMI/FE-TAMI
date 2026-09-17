@@ -4,6 +4,7 @@ export type AuthUser = {
   id: string;
   email: string;
   fullName: string;
+  phone: string | null;
   roleCode: string;
   roleName: string;
   permissions: string[];
@@ -51,6 +52,7 @@ type AuthState = {
   user: AuthUser | null;
   accessToken: string | null;
   setSession: (user: AuthUser, accessToken: string) => void;
+  updateUser: (user: AuthUser) => void;
   clearSession: () => void;
   setStatus: (status: AuthStatus) => void;
 };
@@ -63,6 +65,12 @@ export const useAuthStore = create<AuthState>((set) => ({
     writePersistedSession({ user, accessToken });
     set({ user, accessToken, status: "authenticated" });
   },
+  updateUser: (user) =>
+    set((state) => {
+      if (!state.accessToken) return state;
+      writePersistedSession({ user, accessToken: state.accessToken });
+      return { user };
+    }),
   clearSession: () => {
     writePersistedSession(null);
     set({ user: null, accessToken: null, status: "unauthenticated" });

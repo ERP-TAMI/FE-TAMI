@@ -25,6 +25,9 @@ const defaultApiErrorMessages: Record<string, string> = {
   ACCOUNT_TEMPORARILY_LOCKED:
     "Tài khoản đang tạm khoá do đăng nhập sai nhiều lần. Vui lòng thử lại sau.",
   ACCOUNT_INACTIVE: "Tài khoản của bạn đã bị vô hiệu hoá. Vui lòng liên hệ quản trị viên.",
+  CURRENT_PASSWORD_INCORRECT: "Mật khẩu hiện tại không đúng.",
+  PASSWORD_REUSE_NOT_ALLOWED: "Mật khẩu mới phải khác mật khẩu hiện tại.",
+  PASSWORD_SETUP_REQUIRED: "Bạn cần hoàn tất thiết lập mật khẩu trước.",
 };
 
 export function getApiError(

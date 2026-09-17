@@ -12,6 +12,16 @@ export type AuthResponse = {
   user: AuthUser;
 };
 
+export type UpdateProfileInput = {
+  fullName: string;
+  phone: string | null;
+};
+
+export type ChangePasswordInput = {
+  currentPassword: string;
+  newPassword: string;
+};
+
 export const authApi = {
   async login(email: string, password: string): Promise<AuthResponse> {
     const response = await apiClient.post("/auth/login", { email, password });
@@ -23,6 +33,13 @@ export const authApi = {
   async me(): Promise<AuthUser> {
     const response = await apiClient.get("/auth/me");
     return authUserSchema.parse(response.data);
+  },
+  async updateProfile(input: UpdateProfileInput): Promise<AuthUser> {
+    const response = await apiClient.patch("/auth/me", input);
+    return authUserSchema.parse(response.data);
+  },
+  async changePassword(input: ChangePasswordInput): Promise<void> {
+    await apiClient.patch("/auth/me/password", input);
   },
   async validatePasswordSetup(token: string): Promise<{ valid: true; expiresAt: string }> {
     const response = await apiClient.post("/auth/password-setup/validate", { token });

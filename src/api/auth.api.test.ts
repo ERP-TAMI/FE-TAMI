@@ -6,6 +6,7 @@ vi.mock("@/lib/apiClient", () => ({
   default: {
     post: vi.fn(),
     get: vi.fn(),
+    patch: vi.fn(),
   },
 }));
 
@@ -37,6 +38,48 @@ describe("authApi password reset", () => {
     expect(apiClient.post).toHaveBeenNthCalledWith(2, "/auth/password-reset/complete", {
       token: "token",
       password: "new password",
+    });
+  });
+});
+
+describe("authApi profile", () => {
+  const user = {
+    id: "e10e8593-747a-4fa8-933c-84f550e1da13",
+    email: "user@tami.test",
+    fullName: "Nguyễn Văn A",
+    phone: "0901234567",
+    roleCode: "NVKH",
+    roleName: "Nhân viên kinh doanh",
+    permissions: [],
+  };
+
+  beforeEach(() => vi.clearAllMocks());
+
+  it("updates only editable profile fields and parses the response", async () => {
+    vi.mocked(apiClient.patch).mockResolvedValue({
+      data: { ...user, fullName: "Tên mới", phone: null },
+    });
+
+    await expect(
+      authApi.updateProfile({ fullName: "Tên mới", phone: null }),
+    ).resolves.toMatchObject({ fullName: "Tên mới", phone: null });
+    expect(apiClient.patch).toHaveBeenCalledWith("/auth/me", {
+      fullName: "Tên mới",
+      phone: null,
+    });
+  });
+
+  it("changes the current user's password without sending its confirmation", async () => {
+    vi.mocked(apiClient.patch).mockResolvedValue({ data: undefined });
+
+    await authApi.changePassword({
+      currentPassword: "current-password",
+      newPassword: "new-password",
+    });
+
+    expect(apiClient.patch).toHaveBeenCalledWith("/auth/me/password", {
+      currentPassword: "current-password",
+      newPassword: "new-password",
     });
   });
 });

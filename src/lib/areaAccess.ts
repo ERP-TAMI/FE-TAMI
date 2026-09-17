@@ -14,7 +14,7 @@ export function canManageUsers(user: AuthUser | null): boolean {
 }
 
 export function getLandingPath(user: AuthUser | null): string {
-  if (canAccessItArea(user)) return "/it/dashboard";
+  if (canAccessItArea(user)) return canManageUsers(user) ? "/it/users" : "/it/profile";
   if (canAccessManagement(user)) return "/management/dashboard";
   return "/dashboard";
 }
