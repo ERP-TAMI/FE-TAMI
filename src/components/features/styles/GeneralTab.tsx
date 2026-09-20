@@ -50,15 +50,15 @@ export function GeneralTab({
 
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 items-start pt-3">
-      {/* Left Column: Product Photo Visual Focus (40% / 5 cols) */}
-      <div className="lg:col-span-5 space-y-4">
-        <div className="overflow-hidden rounded-2xl border border-gray-200/80 bg-white p-4 shadow-xs dark:border-gray-800 dark:bg-gray-900">
+      {/* Left Column: Product Photo Visual Focus (33% / 4 cols) */}
+      <div className="lg:col-span-4 space-y-3">
+        <div className="overflow-hidden rounded-2xl border border-gray-200/80 bg-white p-3 shadow-xs dark:border-gray-800 dark:bg-gray-900">
           {imageUrl ? (
             <div className="relative group overflow-hidden rounded-xl bg-gray-50 dark:bg-gray-800/60 border border-gray-100 dark:border-gray-800">
               <img
                 src={imageUrl}
                 alt={style.styleName}
-                className="aspect-[4/5] w-full object-contain"
+                className="aspect-square w-full object-contain"
               />
               <div className="absolute bottom-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
                 <button
@@ -83,14 +83,14 @@ export function GeneralTab({
               onDragOver={onDragOver}
               onDragLeave={onDragLeave}
               onClick={() => fileInputRef.current?.click()}
-              className={`relative flex aspect-[4/5] w-full cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed p-8 text-center transition-colors ${
+              className={`relative flex aspect-square w-full cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed p-6 text-center transition-colors ${
                 isDragging
                   ? "border-blue-500 bg-blue-50/50 dark:bg-blue-950/30"
                   : "border-gray-200 hover:border-gray-300 bg-gray-50/50 dark:border-gray-800 dark:bg-gray-800/40"
               }`}
             >
               <StyleImagePlaceholder
-                className="h-32 w-32 text-gray-300 dark:text-gray-600 mb-4"
+                className="h-16 w-16 text-gray-300 dark:text-gray-600 mb-3"
               />
               <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">
                 Thêm ảnh mẫu
@@ -114,8 +114,8 @@ export function GeneralTab({
         />
       </div>
 
-      {/* Right Column: Prominent Style Information (60% / 7 cols) */}
-      <div className="lg:col-span-7 space-y-5">
+      {/* Right Column: Prominent Style Information (67% / 8 cols) */}
+      <div className="lg:col-span-8 space-y-4">
         <div className="space-y-2.5">
           <div className="flex items-center justify-between gap-3">
             <h3 className="text-sm font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
@@ -132,23 +132,23 @@ export function GeneralTab({
             )}
           </div>
           <dl className="divide-y divide-gray-100 dark:divide-gray-800/80 border-t border-b border-gray-100 dark:border-gray-800/80">
-            <div className="flex items-center py-2.5 text-sm">
+            <div className="flex items-center py-2 text-sm">
               <dt className="w-1/3 shrink-0 font-semibold text-gray-600 dark:text-gray-400">
                 Mã mẫu
               </dt>
-              <dd className="w-2/3 min-w-0 font-mono text-base font-bold text-blue-600 dark:text-blue-400">
+              <dd className="w-2/3 min-w-0 font-mono text-sm font-bold text-blue-600 dark:text-blue-400">
                 {style.styleCode}
               </dd>
             </div>
-            <div className="flex items-center py-2.5 text-sm">
+            <div className="flex items-center py-2 text-sm">
               <dt className="w-1/3 shrink-0 font-semibold text-gray-600 dark:text-gray-400">
                 Tên mẫu
               </dt>
-              <dd className="w-2/3 min-w-0 break-words text-base font-bold text-gray-900 dark:text-white">
+              <dd className="w-2/3 min-w-0 break-words text-sm font-bold text-gray-900 dark:text-white">
                 {style.styleName}
               </dd>
             </div>
-            <div className="flex items-center py-2.5 text-sm">
+            <div className="flex items-center py-2 text-sm">
               <dt className="w-1/3 shrink-0 font-semibold text-gray-600 dark:text-gray-400">
                 Dòng sản phẩm
               </dt>
@@ -156,7 +156,7 @@ export function GeneralTab({
                 {style.category || "—"}
               </dd>
             </div>
-            <div className="flex items-center py-2.5 text-sm">
+            <div className="flex items-center py-2 text-sm">
               <dt className="w-1/3 shrink-0 font-semibold text-gray-600 dark:text-gray-400">
                 Trạng thái
               </dt>
