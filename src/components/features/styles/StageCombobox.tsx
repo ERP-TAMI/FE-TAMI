@@ -401,7 +401,7 @@ export function StageCombobox({
             maxHeight: pos.maxHeight,
             zIndex: 99999,
           }}
-          className="rounded-2xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-2xl ring-1 ring-black/5 overflow-hidden flex flex-col font-outfit"
+          className="rounded-2xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-2xl ring-1 ring-black/5 overflow-hidden flex flex-col font-sans"
           onMouseDown={(e) => e.stopPropagation()}
         >
           {filteredOptions.length === 0 ? (
@@ -481,7 +481,7 @@ export function StageCombobox({
   const errorId = error ? `stage-combobox-error-${parentGroupId || "row"}` : undefined;
 
   return (
-    <div ref={wrapRef} className="relative w-full font-outfit">
+    <div ref={wrapRef} className="relative w-full font-sans">
       <div
         className={`flex items-center rounded-2xl border bg-white dark:bg-gray-900 transition-all duration-200 ${
           open
