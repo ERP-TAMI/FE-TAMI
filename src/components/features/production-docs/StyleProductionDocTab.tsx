@@ -48,11 +48,11 @@ interface Props {
 
 function SectionHeader({ num, title }: { num: string; title: string }) {
   return (
-    <div className="flex items-center gap-2">
-      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-red-600 text-xs font-bold text-white">
+    <div className="flex items-center gap-2 border-b border-brand-100 pb-2 dark:border-brand-900/40">
+      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-brand-600 text-xs font-bold text-white">
         {num}
       </span>
-      <h3 className="text-sm font-bold tracking-wide text-red-700 uppercase underline dark:text-red-400">
+      <h3 className="text-sm font-bold tracking-wide text-brand-700 uppercase dark:text-brand-400">
         {title}
       </h3>
     </div>
@@ -1098,8 +1098,8 @@ export function StyleProductionDocTab({
             >
               <div className="flex items-center justify-between">
                 {isEditing ? (
-                  <div className="flex min-w-0 flex-1 items-center gap-2">
-                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-red-600 text-xs font-bold text-white">
+                  <div className="flex min-w-0 flex-1 items-center gap-2 border-b border-brand-100 pb-2 dark:border-brand-900/40">
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-600 text-xs font-bold text-white">
                       {secNum}
                     </span>
                     <input
@@ -1119,7 +1119,7 @@ export function StyleProductionDocTab({
                       }}
                       data-field={`section-title-${idx}`}
                       placeholder={`TÊN MỤC ${secNum}`}
-                      className="min-w-0 flex-1 border-0 border-b border-dashed border-red-200 bg-transparent py-1 text-sm font-extrabold text-red-700 uppercase underline outline-none focus:border-red-500 dark:border-red-900 dark:text-red-400"
+                      className="min-w-0 flex-1 rounded border-0 bg-transparent px-1 -mx-1 py-1 text-sm font-extrabold text-brand-700 uppercase outline-none focus:bg-brand-50 dark:text-brand-400 dark:focus:bg-brand-950/30"
                     />
                     {fieldErrors[`section-title-${idx}`] && (
                       <span className="absolute mt-10 text-xs font-medium text-red-600 dark:text-red-400">
