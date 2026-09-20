@@ -26,6 +26,7 @@ import { styleOperationStepsApi, type StyleOperationStepItem } from "@/api/style
 import { stageGroupApi, type StageGroup, type StageGroupSubItem } from "@/api/stage-group.api";
 import { useToast } from "@/hooks/useToast";
 import { resolveImageUrl } from "@/lib/imageUtils";
+import { getApiError } from "@/lib/apiError";
 
 function formatMetric(value: number, digits = 2, suffix = "") {
   if (!Number.isFinite(value) || value <= 0) return "—";
@@ -215,12 +216,17 @@ export function StyleOperationStepTable({
         return true;
       } catch (err) {
         console.error("Save failed:", err);
+        const apiError = getApiError(
+          err,
+          "Không thể lưu quy trình công đoạn, vui lòng thử lại.",
+        );
+        showToast(apiError.message, "error");
         return false;
       } finally {
         setIsSaving(false);
       }
     },
-    [onSave, baseDays, commonNote, rows],
+    [onSave, baseDays, commonNote, rows, showToast],
   );
 
   const rowKeys = steps.map((r) => r.id).join(",");
