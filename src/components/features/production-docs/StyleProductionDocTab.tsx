@@ -1590,6 +1590,29 @@ export function StyleProductionDocTab({
         variant={toast?.variant}
         onClose={hideToast}
       />
+
+      {isEditing && (
+        <div className="sticky bottom-0 z-30 -mx-4 flex items-center justify-end gap-2 border-t border-gray-200 bg-white/95 px-4 py-3 backdrop-blur-xs dark:border-gray-800 dark:bg-gray-900/95 md:-mx-6 md:px-6">
+          <button
+            type="button"
+            onClick={() => setIsEditing(false)}
+            disabled={createDoc.isPending || updateDoc.isPending || updateProductDoc.isPending}
+            className="inline-flex min-h-10 items-center justify-center rounded-xl border border-gray-300 bg-white px-4 text-sm font-semibold text-gray-900 transition-colors hover:bg-gray-50 focus:ring-4 focus:ring-gray-200 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+          >
+            Hủy
+          </button>
+          <button
+            type="button"
+            onClick={() => void handleSave()}
+            disabled={createDoc.isPending || updateDoc.isPending || updateProductDoc.isPending}
+            className="inline-flex min-h-10 min-w-32 items-center justify-center rounded-xl bg-gray-900 px-5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-gray-800 focus:ring-4 focus:ring-gray-300 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-200"
+          >
+            {createDoc.isPending || updateDoc.isPending || updateProductDoc.isPending
+              ? "Đang lưu..."
+              : "Lưu tài liệu"}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
