@@ -26,9 +26,11 @@ const NETWORK_ERROR_MESSAGE =
 
 type LocationState = { from?: { pathname: string } };
 
+// TODO: remove before this reaches a shared branch — test-only convenience
+// default so login doesn't need retyping credentials on every reload.
 const DEV_DEFAULT_VALUES: FormValues = {
-  email: "",
-  password: "",
+  email: "sa@tami.test",
+  password: "123456",
 };
 
 export default function LoginPage() {
