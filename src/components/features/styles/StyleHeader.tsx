@@ -6,14 +6,12 @@ interface Props {
   styleCode: string;
   styleName: string;
   status: StyleStatus;
-  onEditClick?: () => void;
 }
 
 export function StyleHeader({
   styleCode,
   styleName,
   status,
-  onEditClick,
 }: Props) {
   return (
     <div className="space-y-2.5">
@@ -28,26 +26,14 @@ export function StyleHeader({
 
       {/* Unified identity card */}
       <div className="-mt-1 rounded-2xl border border-gray-200 bg-white px-4 py-2.5 shadow-xs dark:border-gray-800 dark:bg-gray-900">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-2.5">
-            <h1 className="text-base sm:text-lg font-bold tracking-tight leading-none text-gray-900 dark:text-white">
-              {styleName}
-            </h1>
-            <span className="font-mono text-sm font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50 px-2.5 py-0.5 rounded-md border border-blue-100 dark:border-blue-900/40">
-              {styleCode}
-            </span>
-            <StyleStatusBadge status={status} />
-          </div>
-
-          {onEditClick && (
-            <button
-              type="button"
-              onClick={onEditClick}
-              className="inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white px-3.5 py-1.5 text-xs font-semibold text-gray-700 shadow-xs hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700 transition-colors shrink-0"
-            >
-              Chỉnh sửa
-            </button>
-          )}
+        <div className="flex flex-wrap items-center gap-2.5">
+          <h1 className="text-base sm:text-lg font-bold tracking-tight leading-none text-gray-900 dark:text-white">
+            {styleName}
+          </h1>
+          <span className="font-mono text-sm font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50 px-2.5 py-0.5 rounded-md border border-blue-100 dark:border-blue-900/40">
+            {styleCode}
+          </span>
+          <StyleStatusBadge status={status} />
         </div>
       </div>
     </div>
