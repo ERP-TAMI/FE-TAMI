@@ -198,8 +198,9 @@ function CompactImageUploader({
                 <button
                   type="button"
                   onClick={() => onRemove(i)}
-                  className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs text-white shadow-xs transition-transform hover:scale-110 hover:bg-red-600"
+                  className="absolute -top-2.5 -right-2.5 flex h-7 w-7 items-center justify-center rounded-full bg-red-500 text-sm text-white shadow-xs transition-transform hover:scale-110 hover:bg-red-600"
                   title="Xóa ảnh"
+                  aria-label="Xóa ảnh"
                 >
                   ✕
                 </button>
@@ -1221,40 +1222,40 @@ export function StyleProductionDocTab({
                                 : "text-gray-900 dark:text-white"
                             }`}
                           />
-                          <div className="flex shrink-0 items-center justify-end gap-1">
+                          <div className="flex shrink-0 items-center justify-end gap-3">
                             {grp.kind !== "text" && (
-                              <>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const updated = [...sections];
-                                updated[idx].imageGroups![grpIdx].headingColor = "red";
-                                setSections(updated);
-                              }}
-                              className={`min-h-9 w-12 rounded-lg px-2 text-sm font-semibold transition-colors focus:ring-2 focus:ring-gray-300 focus:outline-none ${
-                                grp.headingColor === "red"
-                                  ? "bg-red-600 text-white"
-                                  : "bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-200"
-                              }`}
-                            >
-                              Đỏ
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const updated = [...sections];
-                                updated[idx].imageGroups![grpIdx].headingColor = "black";
-                                setSections(updated);
-                              }}
-                              className={`min-h-9 w-12 rounded-lg px-2 text-sm font-semibold transition-colors focus:ring-2 focus:ring-gray-300 focus:outline-none ${
-                                grp.headingColor === "black"
-                                  ? "bg-gray-900 text-white"
-                                  : "bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-200"
-                              }`}
-                            >
-                              Đen
-                            </button>
-                              </>
+                              <div className="inline-flex overflow-hidden rounded-lg border border-gray-300 dark:border-gray-700">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const updated = [...sections];
+                                    updated[idx].imageGroups![grpIdx].headingColor = "red";
+                                    setSections(updated);
+                                  }}
+                                  className={`min-h-9 w-12 text-sm font-semibold transition-colors focus:z-10 focus:ring-2 focus:ring-gray-300 focus:outline-none ${
+                                    grp.headingColor === "red"
+                                      ? "bg-red-600 text-white"
+                                      : "bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
+                                  }`}
+                                >
+                                  Đỏ
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const updated = [...sections];
+                                    updated[idx].imageGroups![grpIdx].headingColor = "black";
+                                    setSections(updated);
+                                  }}
+                                  className={`min-h-9 w-12 border-l border-gray-300 text-sm font-semibold transition-colors focus:z-10 focus:ring-2 focus:ring-gray-300 focus:outline-none dark:border-gray-700 ${
+                                    grp.headingColor === "black"
+                                      ? "bg-gray-900 text-white"
+                                      : "bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
+                                  }`}
+                                >
+                                  Đen
+                                </button>
+                              </div>
                             )}
                             <button
                               type="button"
