@@ -14,7 +14,7 @@ import {
   ChevronRight,
   Save,
 } from "lucide-react";
-import type { BomLineItem, CreateBomLinePayload, UpdateBomLinePayload } from "@/types/bom";
+import type { BomLineItem, CreateBomLinePayload, UpdateBomLinePayload, ReorderBomLineItem } from "@/types/bom";
 import {
   canAddBomLine,
   canDeleteBomLine,
@@ -38,7 +38,7 @@ interface BomLinesTableProps {
   onAddLine: () => void;
   onEditLine: (line: BomLineItem) => void;
   onDeleteLine: (line: BomLineItem) => void;
-  onReorderLines: (newLineIds: string[]) => void;
+  onReorderLines: (items: ReorderBomLineItem[]) => void;
   isReordering?: boolean;
   onAddLineInline?: (payload: CreateBomLinePayload) => Promise<void> | void;
   onUpdateLineInline?: (lineId: string, payload: UpdateBomLinePayload) => Promise<void> | void;
@@ -305,23 +305,29 @@ export function BomLinesTable({
     return Math.round(rawSum * 10000) / 10000;
   }, [lines, dirtyLineIds, editingLineId, isAccounting, editUnitCost, localCosts]);
 
-  // Reorder helpers
-  const handleMoveUp = (index: number) => {
-    if (index === 0) return;
-    const newLines = [...filteredLines];
-    const temp = newLines[index];
-    newLines[index] = newLines[index - 1];
-    newLines[index - 1] = temp;
-    onReorderLines(newLines.map((l) => l.id));
+  // Detect active filter — reorder is disabled while search/group is active
+  // because sending a subset would leave other lines' orderIndex unchanged,
+  // violating the unique constraint (revisionId, orderIndex) on the BE.
+  const isFiltered = Boolean(search.trim() || selectedGroup !== "all");
+
+  // Reorder helpers — always operate on the FULL lines list so every
+  // orderIndex is re-assigned contiguously in a single request.
+  const handleMoveUp = (idx: number) => {
+    if (idx === 0 || isFiltered) return;
+    const newLines = [...lines];
+    const temp = newLines[idx];
+    newLines[idx] = newLines[idx - 1];
+    newLines[idx - 1] = temp;
+    onReorderLines(newLines.map((l, i) => ({ lineId: l.id, orderIndex: i })));
   };
 
-  const handleMoveDown = (index: number) => {
-    if (index === filteredLines.length - 1) return;
-    const newLines = [...filteredLines];
-    const temp = newLines[index];
-    newLines[index] = newLines[index + 1];
-    newLines[index + 1] = temp;
-    onReorderLines(newLines.map((l) => l.id));
+  const handleMoveDown = (idx: number) => {
+    if (idx === lines.length - 1 || isFiltered) return;
+    const newLines = [...lines];
+    const temp = newLines[idx];
+    newLines[idx] = newLines[idx + 1];
+    newLines[idx + 1] = temp;
+    onReorderLines(newLines.map((l, i) => ({ lineId: l.id, orderIndex: i })));
   };
 
   const totalCols = 6 + (canViewCost ? 2 : 0) + 1 + (hasActions ? 1 : 0);
@@ -475,19 +481,19 @@ export function BomLinesTable({
                             <div className="flex flex-col opacity-0 transition-opacity group-hover:opacity-100">
                               <button
                                 type="button"
-                                disabled={idx === 0 || isReordering}
+                                disabled={idx === 0 || isReordering || isFiltered}
                                 onClick={() => handleMoveUp(idx)}
-                                className="cursor-pointer text-gray-400 hover:text-gray-700 disabled:opacity-20"
-                                title="Di chuyển lên"
+                                className="cursor-pointer text-gray-400 hover:text-gray-700 disabled:opacity-20 disabled:cursor-not-allowed"
+                                title={isFiltered ? "Xóa bộ lọc để sắp xếp lại" : "Di chuyển lên"}
                               >
                                 <ArrowUp className="h-3 w-3" />
                               </button>
                               <button
                                 type="button"
-                                disabled={idx === filteredLines.length - 1 || isReordering}
+                                disabled={idx === lines.length - 1 || isReordering || isFiltered}
                                 onClick={() => handleMoveDown(idx)}
-                                className="cursor-pointer text-gray-400 hover:text-gray-700 disabled:opacity-20"
-                                title="Di chuyển xuống"
+                                className="cursor-pointer text-gray-400 hover:text-gray-700 disabled:opacity-20 disabled:cursor-not-allowed"
+                                title={isFiltered ? "Xóa bộ lọc để sắp xếp lại" : "Di chuyển xuống"}
                               >
                                 <ArrowDown className="h-3 w-3" />
                               </button>

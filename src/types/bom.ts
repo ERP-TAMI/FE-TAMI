@@ -185,8 +185,13 @@ export interface UpdateBomLinePayload {
   orderIndex?: number;
 }
 
+export interface ReorderBomLineItem {
+  lineId: string;
+  orderIndex: number;
+}
+
 export interface ReorderBomLinesPayload {
-  lineIds: string[];
+  items: ReorderBomLineItem[];
 }
 
 export interface ForwardBomPayload {

@@ -127,9 +127,9 @@ export function PoProductBomTab({
     }
   };
 
-  const handleReorder = async (newLineIds: string[]) => {
+  const handleReorder = async (items: import("@/types/bom").ReorderBomLineItem[]) => {
     try {
-      await reorderLinesMutation.mutateAsync({ lineIds: newLineIds });
+      await reorderLinesMutation.mutateAsync({ items });
       showToast("Đã sắp xếp lại thứ tự vật tư", "success");
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { message?: string } }; message?: string };
