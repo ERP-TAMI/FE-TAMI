@@ -111,8 +111,12 @@ export const bomsApi = {
   },
 
   async reorderLines(id: string, payload: import("@/types/bom").ReorderBomLinesPayload): Promise<import("@/types/bom").BomLineItem[]> {
+    let items = payload.items;
+    if ((!items || items.length === 0) && Array.isArray(payload.lineIds)) {
+      items = payload.lineIds.map((lineId, orderIndex) => ({ lineId, orderIndex }));
+    }
     const cleanBody = {
-      items: Array.isArray(payload.items) ? payload.items : [],
+      items: Array.isArray(items) ? items : [],
     };
     const res = await apiClient.put<import("@/types/bom").BomLineItem[]>(`/boms/${id}/lines/reorder`, cleanBody);
     return res.data;

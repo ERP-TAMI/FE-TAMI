@@ -14,7 +14,7 @@ import {
   ChevronRight,
   Save,
 } from "lucide-react";
-import type { BomLineItem, CreateBomLinePayload, UpdateBomLinePayload, ReorderBomLineItem } from "@/types/bom";
+import type { BomLineItem, CreateBomLinePayload, UpdateBomLinePayload } from "@/types/bom";
 import {
   canAddBomLine,
   canDeleteBomLine,
@@ -38,7 +38,7 @@ interface BomLinesTableProps {
   onAddLine: () => void;
   onEditLine: (line: BomLineItem) => void;
   onDeleteLine: (line: BomLineItem) => void;
-  onReorderLines: (items: ReorderBomLineItem[]) => void;
+  onReorderLines: (newLineIds: string[]) => void;
   isReordering?: boolean;
   onAddLineInline?: (payload: CreateBomLinePayload) => Promise<void> | void;
   onUpdateLineInline?: (lineId: string, payload: UpdateBomLinePayload) => Promise<void> | void;
@@ -318,7 +318,7 @@ export function BomLinesTable({
     const temp = newLines[idx];
     newLines[idx] = newLines[idx - 1];
     newLines[idx - 1] = temp;
-    onReorderLines(newLines.map((l, i) => ({ lineId: l.id, orderIndex: i })));
+    onReorderLines(newLines.map((l) => l.id));
   };
 
   const handleMoveDown = (idx: number) => {
@@ -327,7 +327,7 @@ export function BomLinesTable({
     const temp = newLines[idx];
     newLines[idx] = newLines[idx + 1];
     newLines[idx + 1] = temp;
-    onReorderLines(newLines.map((l, i) => ({ lineId: l.id, orderIndex: i })));
+    onReorderLines(newLines.map((l) => l.id));
   };
 
   const totalCols = 6 + (canViewCost ? 2 : 0) + 1 + (hasActions ? 1 : 0);

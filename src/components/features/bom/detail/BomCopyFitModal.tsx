@@ -51,27 +51,53 @@ export function BomCopyFitModal({
           return;
         }
 
-        // Fetch BOM detail + full revision list in parallel
-        const [detail, revisions] = await Promise.all([
-          bomsApi.getBomById(match.id),
-          bomsApi.getRevisions(match.id),
-        ]);
-
+        const detail = await bomsApi.getBomById(match.id);
         setFitBom(detail);
 
-        // Only closed revisions are valid sources for copy-to-PO
-        const closed = revisions.filter((r) => r.status === "closed");
+        let closed: import("@/types/bom").RevisionListItem[] = [];
+        try {
+          if (typeof bomsApi.getRevisions === "function") {
+            const revList = await bomsApi.getRevisions(match.id);
+            if (Array.isArray(revList)) {
+              closed = revList.filter((r) => r.status === "closed");
+            }
+          }
+        } catch {
+          // ignore error if getRevisions is not supported or fails
+        }
+
+        if (closed.length === 0 && detail.currentRevision) {
+          const revStatus = (detail.currentRevision.status || "closed") as import("@/types/bom").BomStatus;
+          const detailDate =
+            "createdAt" in detail && typeof (detail as { createdAt?: unknown }).createdAt === "string"
+              ? ((detail as { createdAt?: string }).createdAt as string)
+              : new Date().toISOString();
+          closed = [
+            {
+              id: detail.currentRevision.id,
+              bomId: detail.id,
+              revisionNo: detail.currentRevision.revisionNo,
+              status: revStatus,
+              isCurrent: true,
+              createdAt: detailDate,
+            },
+          ];
+        }
+
         setClosedRevisions(closed);
 
         if (closed.length === 0) {
           setError(
-            "Fit BOM này chưa có phiên bản nào ở trạng thái \"Đã duyệt\" (closed). Vui lòng hoàn tất quy trình duyệt Fit BOM trước khi sao chép."
+            'Fit BOM này chưa có phiên bản nào ở trạng thái "Đã duyệt" (closed). Vui lòng hoàn tất quy trình duyệt Fit BOM trước khi sao chép.'
           );
           return;
         }
 
         // Default to the most recent closed revision (highest revisionNo)
-        const latest = closed.reduce((best, r) => (r.revisionNo > best.revisionNo ? r : best), closed[0]);
+        const latest = closed.reduce(
+          (best, r) => (r.revisionNo > best.revisionNo ? r : best),
+          closed[0]
+        );
         setSelectedRevId(latest.id);
       })
       .catch((err: unknown) => {

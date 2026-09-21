@@ -191,7 +191,8 @@ export interface ReorderBomLineItem {
 }
 
 export interface ReorderBomLinesPayload {
-  items: ReorderBomLineItem[];
+  lineIds?: string[];
+  items?: ReorderBomLineItem[];
 }
 
 export interface ForwardBomPayload {

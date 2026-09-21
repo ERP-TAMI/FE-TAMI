@@ -458,9 +458,9 @@ export default function BomDetailPage() {
     }
   };
 
-  const handleReorderLines = async (items: import("@/types/bom").ReorderBomLineItem[]) => {
+  const handleReorderLines = async (lineIds: string[]) => {
     try {
-      await reorderLinesMutation.mutateAsync({ items });
+      await reorderLinesMutation.mutateAsync({ lineIds });
       showToast("Đã sắp xếp lại thứ tự vật tư", "success");
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { message?: string } }; message?: string };

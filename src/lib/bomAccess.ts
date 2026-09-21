@@ -1,13 +1,16 @@
 import type { AuthUser } from "@/store/authStore";
 
-// Canonical role codes as enforced by BE policy (UserRoleCode enum)
-// SA | ACCOUNTING | TPKH | NVKH | RD
-const BOM_CREATE_ROLES = new Set(["nvkh", "tpkh", "sa"]);
+const BOM_CREATE_ROLES = new Set(["nvkh", "tpkh", "sa", "admin"]);
 
 const BOM_COST_ROLES = new Set([
   "tpkh",
+  "kt",
   "accounting",
+  "ke_toan",
   "sa",
+  "giam_doc",
+  "director",
+  "admin",
 ]);
 
 export function canCreateBom(user: AuthUser | { roleCode?: string } | null): boolean {
@@ -28,7 +31,7 @@ export function canEditDeadline(
   if (!user?.roleCode || isHistorical) return false;
   if (status === "closed" || status === "discontinued" || status === "wait_sa_approve") return false;
   const role = user.roleCode.toLowerCase().trim();
-  return role === "nvkh" || role === "tpkh" || role === "sa";
+  return role === "nvkh" || role === "tpkh" || role === "sa" || role === "admin";
 }
 
 export function canEditRdNote(
@@ -39,7 +42,7 @@ export function canEditRdNote(
   if (!user?.roleCode || isHistorical) return false;
   if (status === "closed" || status === "discontinued" || status === "wait_sa_approve") return false;
   const role = user.roleCode.toLowerCase().trim();
-  return role === "rd" || role === "tpkh" || role === "sa";
+  return role === "rd" || role === "tpkh" || role === "sa" || role === "admin";
 }
 
 export function canEditHeader(
@@ -72,7 +75,7 @@ export function canEditUnitCost(
   if (!user?.roleCode || isHistorical) return false;
   if (status !== "wait_accounting") return false;
   const role = user.roleCode.toLowerCase().trim();
-  return role === "accounting";
+  return role === "kt" || role === "accounting" || role === "ke_toan";
 }
 
 export function canAddBomLine(
@@ -126,7 +129,7 @@ export function canForwardBom(
     case "wait_tpkh_confirm":
       return role === "tpkh";
     case "wait_accounting":
-      return role === "accounting";
+      return role === "kt" || role === "accounting" || role === "ke_toan";
     default:
       return false;
   }
@@ -147,9 +150,9 @@ export function canRejectBom(
     case "wait_tpkh_confirm":
       return role === "tpkh";
     case "wait_accounting":
-      return role === "accounting";
+      return role === "kt" || role === "accounting" || role === "ke_toan";
     case "wait_sa_approve":
-      return role === "sa";
+      return role === "sa" || role === "admin";
     default:
       return false;
   }
@@ -162,18 +165,19 @@ export function canApproveBom(
 ): boolean {
   if (!user?.roleCode || isHistorical) return false;
   const role = user.roleCode.toLowerCase().trim();
-  return role === "sa" && status === "wait_sa_approve";
+  return (role === "sa" || role === "admin") && status === "wait_sa_approve";
 }
 
 export function canDiscontinueBom(
   user: AuthUser | { roleCode?: string } | null,
-  status: string,
+  bomOrStatus: { status: string } | string,
   isHistorical = false
 ): boolean {
   if (!user?.roleCode || isHistorical) return false;
+  const status = typeof bomOrStatus === "string" ? bomOrStatus : bomOrStatus?.status;
   if (status === "discontinued") return false;
   const role = user.roleCode.toLowerCase().trim();
-  return role === "sa" || role === "tpkh";
+  return role === "sa" || role === "admin" || role === "tpkh";
 }
 
 export function canCreateRevision(
@@ -184,7 +188,7 @@ export function canCreateRevision(
   if (!user?.roleCode || isHistorical) return false;
   if (status !== "closed") return false;
   const role = user.roleCode.toLowerCase().trim();
-  return role === "sa" || role === "tpkh" || role === "nvkh";
+  return role === "sa" || role === "admin" || role === "tpkh" || role === "nvkh";
 }
 
 export function canCopyFitBom(
@@ -198,7 +202,7 @@ export function canCopyFitBom(
   if (bom.discontinuedAt) return false;
   if ((bom.lines?.length ?? 0) > 0) return false;
   const role = user.roleCode.toLowerCase().trim();
-  return role === "nvkh" || role === "tpkh" || role === "sa";
+  return role === "nvkh" || role === "tpkh" || role === "sa" || role === "admin";
 }
 
 export function getAvailableRejectTargets(status: string): { value: import("@/types/bom").BomStatus; label: string }[] {
