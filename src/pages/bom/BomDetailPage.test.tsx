@@ -294,7 +294,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockSearchParams = new URLSearchParams();
-    hooks.mockUser = { roleCode: "TPKH", fullName: "Trưởng phòng KH" };
+    hooks.mockUser = { roleCode: "NVKH", fullName: "Nhân viên Kế hoạch" };
     hooks.useBom.mockReturnValue({
       data: mockFitBom,
       isLoading: false,
@@ -324,6 +324,10 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
         {
           id: "hist-1",
           revisionId: "rev-1",
+          oldStatus: "wait_nvkh",
+          newStatus: "wait_rd",
+          action: "forward",
+          changedAt: "2026-09-18T00:00:00.000Z",
           fromStatus: "wait_nvkh",
           toStatus: "wait_rd",
           createdAt: "2026-09-18T00:00:00.000Z",
@@ -335,21 +339,35 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
     });
     hooks.useBomRevisionDiff.mockReturnValue({
       data: {
-        revisionId: "rev-1",
-        compareWithRevisionId: "rev-0",
+        bomId: "fit-bom-1",
+        targetRevisionId: "rev-1",
+        targetRevisionNo: 1,
+        baseRevisionId: "rev-0",
+        baseRevisionNo: 0,
+        totalAdded: 1,
+        totalRemoved: 0,
+        totalChanged: 1,
+        totalUnchanged: 0,
         items: [
           {
+            materialId: "mat-1",
             diffType: "ADDED",
             materialNameSnapshot: "Vải Lót Oxford",
             materialGroupSnapshot: "Vải lót",
             unitSnapshot: "Mét",
+            oldLine: null,
+            newLine: { consumption: 0.8, unitCost: 35000, lineCost: 28000, note: null, orderIndex: 0 },
+            source: null,
             target: { consumption: 0.8, unitCost: 35000 },
           },
           {
+            materialId: "mat-2",
             diffType: "CHANGED",
             materialNameSnapshot: "Cúc áo nhựa 4 lỗ",
             materialGroupSnapshot: "Phụ liệu may",
             unitSnapshot: "Chiếc",
+            oldLine: { consumption: 6, unitCost: 500, lineCost: 3000, note: null, orderIndex: 1 },
+            newLine: { consumption: 8, unitCost: 500, lineCost: 4000, note: null, orderIndex: 1 },
             source: { consumption: 6, unitCost: 500 },
             target: { consumption: 8, unitCost: 500 },
           },
@@ -1302,7 +1320,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
     });
 
     it("61. Concurrency conflict (409) during forward displays error toast and refetches detail", async () => {
-      hooks.mockUser = { roleCode: "TPKH", fullName: "TPKH" };
+      hooks.mockUser = { roleCode: "NVKH", fullName: "NVKH" };
       const refetchSpy = vi.fn();
       hooks.useBom.mockReturnValue({
         data: mockFitBom,

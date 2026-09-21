@@ -454,6 +454,10 @@ describe("PR-11: BOM V2 Final Integration & E2E Regression", () => {
         {
           id: "hist-1",
           revisionId: "rev-po-01",
+          oldStatus: "wait_nvkh",
+          newStatus: "wait_rd",
+          action: "forward",
+          changedAt: "2026-09-10T00:00:00Z",
           fromStatus: "wait_nvkh",
           toStatus: "wait_rd",
           createdAt: "2026-09-10T00:00:00Z",
@@ -466,14 +470,25 @@ describe("PR-11: BOM V2 Final Integration & E2E Regression", () => {
 
     hooks.useBomRevisionDiff.mockReturnValue({
       data: {
-        revisionId: "rev-po-01",
-        compareWithRevisionId: "rev-po-00",
+        bomId: "bom-v2-test-id",
+        targetRevisionId: "rev-po-01",
+        targetRevisionNo: 1,
+        baseRevisionId: "rev-po-00",
+        baseRevisionNo: 0,
+        totalAdded: 1,
+        totalRemoved: 0,
+        totalChanged: 0,
+        totalUnchanged: 0,
         items: [
           {
+            materialId: "mat-01",
             diffType: "ADDED",
             materialNameSnapshot: "Keo dựng vải",
             materialGroupSnapshot: "Phụ liệu",
             unitSnapshot: "Mét",
+            oldLine: null,
+            newLine: { consumption: 0.5, unitCost: 15000, lineCost: 7500, note: null, orderIndex: 0 },
+            source: null,
             target: { consumption: 0.5, unitCost: 15000 },
           },
         ],
@@ -711,6 +726,7 @@ describe("PR-11: BOM V2 Final Integration & E2E Regression", () => {
     });
 
     it("11. lines table renders material snapshots and action buttons according to revision state", () => {
+      hooks.mockUser = { roleCode: "NVKH", fullName: "Nhân viên Kế hoạch" };
       renderWithRouter(<BomDetailPage />, { initialEntries: ["/bom/bom-v2-test-id"] });
 
       expect(screen.getByText("Vải Kaki Spandex")).toBeTruthy();

@@ -1,5 +1,6 @@
 import { Trash2, AlertTriangle } from "lucide-react";
 import type { BomLineItem } from "@/types/bom";
+import { Modal } from "@/components/shared/Modal";
 
 interface BomLineDeleteDialogProps {
   isOpen: boolean;
@@ -19,11 +20,14 @@ export function BomLineDeleteDialog({
   if (!isOpen || !line) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs">
-      <div className="flex w-full max-w-md flex-col rounded-2xl border border-gray-200/80 bg-white p-6 shadow-xl dark:border-gray-800 dark:bg-gray-900">
+    <Modal
+      open={isOpen}
+      onClose={onClose}
+      size="md"
+      title={
         <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400">
-            <AlertTriangle className="h-6 w-6" />
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400">
+            <AlertTriangle className="h-5 w-5" />
           </div>
           <div>
             <h3 className="text-base font-bold text-gray-900 dark:text-white">
@@ -34,19 +38,9 @@ export function BomLineDeleteDialog({
             </p>
           </div>
         </div>
-
-        <div className="mt-4 rounded-xl border border-rose-100 bg-rose-50/50 p-3.5 text-theme-sm text-gray-800 dark:border-rose-900/30 dark:bg-rose-950/20 dark:text-gray-200">
-          <p className="font-semibold text-rose-900 dark:text-rose-300">
-            Bạn có chắc chắn muốn xóa vật tư này?
-          </p>
-          <div className="mt-1 text-theme-xs text-gray-600 dark:text-gray-400">
-            <span className="font-medium text-gray-900 dark:text-white">{line.materialNameSnapshot}</span>
-            {line.materialGroupSnapshot && ` • Nhóm: ${line.materialGroupSnapshot}`}
-            {line.unitSnapshot && ` • ĐVT: ${line.unitSnapshot}`}
-          </div>
-        </div>
-
-        <div className="mt-6 flex items-center justify-end gap-3">
+      }
+      footer={
+        <div className="flex items-center justify-end gap-3">
           <button
             type="button"
             onClick={onClose}
@@ -65,7 +59,18 @@ export function BomLineDeleteDialog({
             <span>{isSubmitting ? "Đang xóa..." : "Xóa vật tư"}</span>
           </button>
         </div>
+      }
+    >
+      <div className="rounded-xl border border-rose-100 bg-rose-50/50 p-3.5 text-theme-sm text-gray-800 dark:border-rose-900/30 dark:bg-rose-950/20 dark:text-gray-200">
+        <p className="font-semibold text-rose-900 dark:text-rose-300">
+          Bạn có chắc chắn muốn xóa vật tư này?
+        </p>
+        <div className="mt-1 text-theme-xs text-gray-600 dark:text-gray-400">
+          <span className="font-medium text-gray-900 dark:text-white">{line.materialNameSnapshot}</span>
+          {line.materialGroupSnapshot && ` • Nhóm: ${line.materialGroupSnapshot}`}
+          {line.unitSnapshot && ` • ĐVT: ${line.unitSnapshot}`}
+        </div>
       </div>
-    </div>
+    </Modal>
   );
 }

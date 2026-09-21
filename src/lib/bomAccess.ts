@@ -29,7 +29,7 @@ export function canEditDeadline(
   isHistorical = false
 ): boolean {
   if (!user?.roleCode || isHistorical) return false;
-  if (status === "closed" || status === "discontinued") return false;
+  if (status === "closed" || status === "discontinued" || status === "wait_sa_approve") return false;
   const role = user.roleCode.toLowerCase().trim();
   return role === "nvkh" || role === "tpkh" || role === "sa" || role === "admin";
 }
@@ -40,7 +40,7 @@ export function canEditRdNote(
   isHistorical = false
 ): boolean {
   if (!user?.roleCode || isHistorical) return false;
-  if (status === "closed" || status === "discontinued") return false;
+  if (status === "closed" || status === "discontinued" || status === "wait_sa_approve") return false;
   const role = user.roleCode.toLowerCase().trim();
   return role === "rd" || role === "tpkh" || role === "sa" || role === "admin";
 }
@@ -59,11 +59,11 @@ export function canEditTechnicalLines(
   isHistorical = false
 ): boolean {
   if (!user?.roleCode || isHistorical) return false;
-  if (status === "closed" || status === "discontinued") return false;
+  if (status === "closed" || status === "discontinued" || status === "wait_sa_approve" || status === "wait_accounting") return false;
   const role = user.roleCode.toLowerCase().trim();
-  if (role === "tpkh" && (status === "wait_nvkh" || status === "wait_rd" || status === "wait_tpkh_confirm")) return true;
-  if (role === "nvkh" && status === "wait_nvkh") return true;
-  if (role === "rd" && status === "wait_rd") return true;
+  if (status === "wait_nvkh") return role === "nvkh";
+  if (status === "wait_rd") return role === "rd";
+  if (status === "wait_tpkh_confirm") return role === "tpkh";
   return false;
 }
 
@@ -120,13 +120,12 @@ export function canForwardBom(
   if (!user?.roleCode || isHistorical) return false;
   if (status === "closed" || status === "discontinued" || status === "wait_sa_approve") return false;
   const role = user.roleCode.toLowerCase().trim();
-  if (role === "sa" || role === "admin") return true;
 
   switch (status) {
     case "wait_nvkh":
-      return role === "nvkh" || role === "tpkh";
+      return role === "nvkh";
     case "wait_rd":
-      return role === "rd" || role === "tpkh";
+      return role === "rd";
     case "wait_tpkh_confirm":
       return role === "tpkh";
     case "wait_accounting":
@@ -144,15 +143,14 @@ export function canRejectBom(
   if (!user?.roleCode || isHistorical) return false;
   if (status === "wait_nvkh" || status === "closed" || status === "discontinued") return false;
   const role = user.roleCode.toLowerCase().trim();
-  if (role === "sa" || role === "admin") return true;
 
   switch (status) {
     case "wait_rd":
-      return role === "rd" || role === "tpkh";
+      return role === "rd";
     case "wait_tpkh_confirm":
       return role === "tpkh";
     case "wait_accounting":
-      return role === "kt" || role === "accounting" || role === "ke_toan" || role === "tpkh";
+      return role === "kt" || role === "accounting" || role === "ke_toan";
     case "wait_sa_approve":
       return role === "sa" || role === "admin";
     default:

@@ -47,8 +47,11 @@ export function BomHistoryTab({ history, isLoading }: BomHistoryTabProps) {
 
         <div className="flex flex-col gap-6">
           {history.map((item, idx) => {
-            const isReject = item.reason != null;
-            const isApprove = item.toStatus === "closed";
+            const fromStatus = item.oldStatus !== undefined ? item.oldStatus : item.fromStatus;
+            const toStatus = item.newStatus || item.toStatus || "wait_nvkh";
+            const changedAt = item.changedAt || item.createdAt;
+            const isReject = item.action === "reject" || item.reason != null;
+            const isApprove = item.action === "approve" || toStatus === "closed";
 
             return (
               <div key={item.id || idx} className="relative flex items-start gap-4">
@@ -75,12 +78,23 @@ export function BomHistoryTab({ history, isLoading }: BomHistoryTabProps) {
                 <div className="flex-1 rounded-xl border border-gray-100 bg-gray-50/50 p-4 dark:border-gray-800 dark:bg-gray-800/40">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
-                      <BomStatusBadge status={item.fromStatus} showDot={false} />
-                      <ArrowRight className="h-3.5 w-3.5 text-gray-400" />
-                      <BomStatusBadge status={item.toStatus} />
+                      {fromStatus ? (
+                        <>
+                          <BomStatusBadge status={fromStatus} showDot={false} />
+                          <ArrowRight className="h-3.5 w-3.5 text-gray-400" />
+                          <BomStatusBadge status={toStatus} />
+                        </>
+                      ) : (
+                        <>
+                          <span className="text-theme-xs font-semibold text-gray-600 dark:text-gray-300">
+                            Khởi tạo:
+                          </span>
+                          <BomStatusBadge status={toStatus} />
+                        </>
+                      )}
                     </div>
                     <span className="text-[11px] text-gray-500 dark:text-gray-400">
-                      {formatDate(item.createdAt)}
+                      {formatDate(changedAt)}
                     </span>
                   </div>
 

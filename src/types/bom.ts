@@ -250,17 +250,32 @@ export interface RevisionDiffItem {
   materialGroupSnapshot?: string | null;
   unitSnapshot: string;
   diffType: RevisionDiffType;
+  oldLine?: RevisionDiffLineSnapshot | null;
+  newLine?: RevisionDiffLineSnapshot | null;
   source?: RevisionDiffLineSnapshot | null;
   target?: RevisionDiffLineSnapshot | null;
+  changes?: Record<string, { old: unknown; new: unknown }>;
 }
 
 export interface RevisionDiffResponse {
-  currentRevision: {
+  bomId?: string;
+  targetRevisionId?: string;
+  targetRevisionNo?: number;
+  baseRevisionId?: string;
+  baseRevisionNo?: number;
+  oldCostPerUnit?: number | null;
+  newCostPerUnit?: number | null;
+  costDifference?: number | null;
+  totalAdded?: number;
+  totalRemoved?: number;
+  totalChanged?: number;
+  totalUnchanged?: number;
+  currentRevision?: {
     id: string;
     revisionNo: number;
     status: BomStatus;
   };
-  comparedRevision: {
+  comparedRevision?: {
     id: string;
     revisionNo: number;
     status: BomStatus;
@@ -271,12 +286,16 @@ export interface RevisionDiffResponse {
 export interface BomWorkflowHistoryItem {
   id: string;
   revisionId: string;
-  fromStatus: BomStatus;
-  toStatus: BomStatus;
+  oldStatus?: BomStatus | null;
+  newStatus?: BomStatus;
+  fromStatus?: BomStatus;
+  toStatus?: BomStatus;
+  action?: string;
   reason?: string | null;
   note?: string | null;
   changedBy?: string | null;
-  createdAt: string | Date;
+  changedAt?: string | Date;
+  createdAt?: string | Date;
 }
 
 export type AggregateBreakdownType = "none" | "color" | "size" | "color_size";

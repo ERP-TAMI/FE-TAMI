@@ -32,6 +32,9 @@ export const bomsApi = {
   async getBomStats(params: QueryBomStatsParams = {}): Promise<BomStats> {
     const cleanParams: Record<string, string> = {};
     if (params.month) cleanParams.month = params.month;
+    if (params.year) cleanParams.year = String(params.year);
+    if (params.startDate) cleanParams.startDate = params.startDate;
+    if (params.endDate) cleanParams.endDate = params.endDate;
     if (params.type) cleanParams.type = params.type;
 
     const res = await apiClient.get<BomStats>("/boms/stats", {
@@ -155,8 +158,21 @@ export const bomsApi = {
   },
 
   async getRevisionHistory(id: string, revisionId: string): Promise<import("@/types/bom").BomWorkflowHistoryItem[]> {
-    const res = await apiClient.get<import("@/types/bom").BomWorkflowHistoryItem[]>(`/boms/${id}/revisions/${revisionId}/history`);
-    return res.data;
+    const res = await apiClient.get<Record<string, unknown>[]>(`/boms/${id}/revisions/${revisionId}/history`);
+    return (res.data || []).map((item) => ({
+      ...item,
+      id: String(item.id || ""),
+      revisionId: String(item.revisionId || revisionId),
+      oldStatus: (item.oldStatus !== undefined ? item.oldStatus : (item.fromStatus ?? null)) as import("@/types/bom").BomStatus | null,
+      newStatus: (item.newStatus ?? item.toStatus) as import("@/types/bom").BomStatus,
+      fromStatus: (item.fromStatus ?? item.oldStatus ?? item.newStatus) as import("@/types/bom").BomStatus,
+      toStatus: (item.toStatus ?? item.newStatus) as import("@/types/bom").BomStatus,
+      action: item.action as string | undefined,
+      reason: item.reason as string | null | undefined,
+      changedBy: item.changedBy as string | null | undefined,
+      changedAt: (item.changedAt ?? item.createdAt) as string | Date,
+      createdAt: (item.createdAt ?? item.changedAt) as string | Date,
+    }));
   },
 
   async getRevisionDiff(
@@ -164,13 +180,30 @@ export const bomsApi = {
     revisionId: string,
     compareWithRevisionId?: string
   ): Promise<import("@/types/bom").RevisionDiffResponse> {
-    const res = await apiClient.get<import("@/types/bom").RevisionDiffResponse>(
+    const res = await apiClient.get<Record<string, unknown>>(
       `/boms/${id}/revisions/${revisionId}/diff`,
       {
         params: compareWithRevisionId ? { compareWithRevisionId } : undefined,
       }
     );
-    return res.data;
+    const data = res.data || {};
+    const rawItems = (Array.isArray(data.items) ? data.items : []) as Record<string, unknown>[];
+    const items = rawItems.map((item) => ({
+      ...item,
+      materialId: String(item.materialId || ""),
+      materialNameSnapshot: String(item.materialNameSnapshot || ""),
+      materialGroupSnapshot: item.materialGroupSnapshot as string | null | undefined,
+      unitSnapshot: String(item.unitSnapshot || ""),
+      diffType: (item.diffType || "UNCHANGED") as import("@/types/bom").RevisionDiffType,
+      oldLine: (item.oldLine !== undefined ? item.oldLine : (item.source ?? null)) as import("@/types/bom").RevisionDiffLineSnapshot | null | undefined,
+      newLine: (item.newLine !== undefined ? item.newLine : (item.target ?? null)) as import("@/types/bom").RevisionDiffLineSnapshot | null | undefined,
+      source: (item.source !== undefined ? item.source : (item.oldLine ?? null)) as import("@/types/bom").RevisionDiffLineSnapshot | null | undefined,
+      target: (item.target !== undefined ? item.target : (item.newLine ?? null)) as import("@/types/bom").RevisionDiffLineSnapshot | null | undefined,
+    }));
+    return {
+      ...(data as unknown as import("@/types/bom").RevisionDiffResponse),
+      items,
+    };
   },
 
   async copyFromFit(id: string, payload?: import("@/types/bom").CopyFitToPoPayload): Promise<BomDetail> {
