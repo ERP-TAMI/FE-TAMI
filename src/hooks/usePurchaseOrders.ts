@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueries, useMutation, useQueryClient } from "@tanstack/react-query";
 import { poApi, type UploadProgress } from "@/api/po.api";
 import type {
   CreatePoInput,
@@ -215,6 +215,22 @@ export function usePoProducts(
     queryKey: PO_KEYS.products(id || "", query),
     queryFn: () => poApi.getProducts(id!, query),
     enabled: Boolean(id) && (options?.enabled ?? true),
+  });
+}
+
+/**
+ * Lấy danh sách sản phẩm cho nhiều PO cùng lúc (song song qua useQueries).
+ */
+export function useMultiPoProducts(
+  poIds: string[],
+  query: PoProductQuery = {},
+) {
+  return useQueries({
+    queries: poIds.map((poId) => ({
+      queryKey: PO_KEYS.products(poId, query),
+      queryFn: () => poApi.getProducts(poId, query),
+      enabled: Boolean(poId),
+    })),
   });
 }
 

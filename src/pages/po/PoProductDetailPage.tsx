@@ -43,6 +43,8 @@ import { ProductStatusBadge } from "@/components/features/po/ProductStatusBadge"
 import { ProductColorSizeEditor } from "@/components/features/po/ProductColorSizeEditor";
 import { ProductVersionedFileGroup } from "@/components/features/po/ProductVersionedFileGroup";
 import { PoSplitDocumentPreview } from "@/components/features/po/PoSplitDocumentPreview";
+import { PoProductBomTab } from "@/components/features/po/PoProductBomTab";
+import { FileSpreadsheet } from "lucide-react";
 import type {
   ProductColorItem,
   ProductDocumentItem,
@@ -99,6 +101,7 @@ export default function PoProductDetailPage() {
   const isSizesTab = tab === "sizes" || tab === "size-breakdown" || tab === "size";
   const isColorsTab = tab === "colors" || tab === "color-palette" || tab === "palette";
   const isStepsTab = tab === "operation-steps" || tab === "steps";
+  const isBomTab = tab === "bom" || tab === "materials" || tab === "boms";
   const isProductionDocTab = tab === "production-doc";
   const isSamplesTab = tab === "samples";
   const isDocumentsTab = tab === "documents";
@@ -107,6 +110,7 @@ export default function PoProductDetailPage() {
     | "sizes"
     | "colors"
     | "steps"
+    | "bom"
     | "production_doc"
     | "samples"
     | "documents" = isSizesTab
@@ -115,6 +119,8 @@ export default function PoProductDetailPage() {
     ? "colors"
     : isStepsTab
     ? "steps"
+    : isBomTab
+    ? "bom"
     : isProductionDocTab
     ? "production_doc"
     : isSamplesTab
@@ -130,9 +136,11 @@ export default function PoProductDetailPage() {
     | "sizes"
     | "colors"
     | "steps"
+    | "bom"
     | "production_doc"
     | "samples"
-    | "documents"    | null
+    | "documents"
+    | null
   >(null);
   const [pendingNavigation, setPendingNavigation] = useState<string | null>(null);
 
@@ -179,9 +187,11 @@ export default function PoProductDetailPage() {
       | "sizes"
       | "colors"
       | "steps"
+      | "bom"
       | "production_doc"
       | "samples"
-      | "documents"  ) => {
+      | "documents"
+  ) => {
     if (!poId || !productId) return;
     if (nextTab === "sizes") {
       navigate(`/po/${poId}/products/${productId}/sizes`);
@@ -189,13 +199,15 @@ export default function PoProductDetailPage() {
       navigate(`/po/${poId}/products/${productId}/colors`);
     } else if (nextTab === "production_doc") {
       navigate(`/po/${poId}/products/${productId}/production-doc`);
+    } else if (nextTab === "bom") {
+      navigate(`/po/${poId}/products/${productId}/bom`);
     } else if (nextTab === "steps") {
       navigate(`/po/${poId}/products/${productId}/operation-steps`);
     } else if (nextTab === "samples") {
       navigate(`/po/${poId}/products/${productId}/samples`);
     } else if (nextTab === "documents") {
       navigate(`/po/${poId}/products/${productId}/documents`);
-        } else {
+    } else {
       navigate(`/po/${poId}/products/${productId}/detail`);
     }
   };
@@ -206,9 +218,11 @@ export default function PoProductDetailPage() {
       | "sizes"
       | "colors"
       | "steps"
+      | "bom"
       | "production_doc"
       | "samples"
-      | "documents"  ) => {
+      | "documents"
+  ) => {
     if ((isProductionDocEditing || isOperationStepsEditing) && nextTab !== activeTab) {
       setPendingTab(nextTab);
       return;
@@ -1047,6 +1061,20 @@ export default function PoProductDetailPage() {
               )}
             </button>
 
+            {/* TAB NGUYÊN PHỤ LIỆU (BOM) */}
+            <button
+              type="button"
+              onClick={() => handleTabChange("bom")}
+              className={`flex items-center gap-2 border-b-2 py-2.5 px-1 text-sm font-semibold transition-colors cursor-pointer whitespace-nowrap ${
+                activeTab === "bom"
+                  ? "border-brand-500 text-brand-600 dark:text-brand-400"
+                  : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              }`}
+            >
+              <FileSpreadsheet className="w-4 h-4" />
+              Nguyên phụ liệu (BOM)
+            </button>
+
             <button
               type="button"
               onClick={() => handleTabChange("production_doc")}
@@ -1599,6 +1627,19 @@ export default function PoProductDetailPage() {
           styleCode={product.productCode}
           styleName={product.productName}
           onImageChange={(file) => void handleUploadAndSaveImage(file)}
+        />
+      )}
+
+      {/* ========================================================================= */}
+      {/* TAB NGUYÊN PHỤ LIỆU (BOM) VỚI BẢNG INLINE TABLE                          */}
+      {/* ========================================================================= */}
+      {activeTab === "bom" && (
+        <PoProductBomTab
+          productId={product.id}
+          productCode={product.productCode}
+          productName={product.productName}
+          poId={poId || ""}
+          isProductLocked={isProductLocked}
         />
       )}
 

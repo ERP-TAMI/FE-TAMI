@@ -281,13 +281,31 @@ layer(base);
 }
 
 @layer utilities {
-  /* For Remove Date Icon */
+  /* For Remove Date/Time Spin Button */
   input[type="date"]::-webkit-inner-spin-button,
-  input[type="time"]::-webkit-inner-spin-button,
-  input[type="date"]::-webkit-calendar-picker-indicator,
-  input[type="time"]::-webkit-calendar-picker-indicator {
+  input[type="time"]::-webkit-inner-spin-button {
     display: none;
     -webkit-appearance: none;
+  }
+
+  /* Calendar picker indicators: visible, interactive and themed */
+  input[type="date"]::-webkit-calendar-picker-indicator,
+  input[type="month"]::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+    opacity: 0.65;
+    padding: 2px;
+    border-radius: 4px;
+    transition: opacity 0.15s ease-in-out;
+  }
+
+  input[type="date"]::-webkit-calendar-picker-indicator:hover,
+  input[type="month"]::-webkit-calendar-picker-indicator:hover {
+    opacity: 1;
+  }
+
+  .dark input[type="date"]::-webkit-calendar-picker-indicator,
+  .dark input[type="month"]::-webkit-calendar-picker-indicator {
+    filter: invert(0.85);
   }
 }
 

@@ -27,6 +27,8 @@ import ForgotPasswordPage from "@/pages/auth/ForgotPasswordPage";
 import ResetPasswordPage from "@/pages/auth/ResetPasswordPage";
 import DashboardPage from "@/pages/Dashboard/DashboardPage";
 import BomPage from "@/pages/bom/BomPage";
+import BomDetailPage from "@/pages/bom/BomDetailPage";
+import BomAggregatePage from "@/pages/bom/BomAggregatePage";
 import PoPage from "@/pages/po/PoPage";
 import PoDetailPage from "@/pages/po/PoDetailPage";
 import PoProductDetailPage from "@/pages/po/PoProductDetailPage";
@@ -105,6 +107,8 @@ export function AppRoutes() {
             <Route path="styles/:id/documents" element={<StyleDetailPage />} />
             <Route path="styles/:id/sample-rounds" element={<StyleDetailPage />} />
             <Route path="bom" element={<BomPage />} />
+            <Route path="bom/aggregate" element={<BomAggregatePage />} />
+            <Route path="bom/:id" element={<BomDetailPage />} />
             <Route path="po" element={<PoPage />} />
             <Route path="po/:id" element={<PoDetailPage />} />
             <Route path="po/:id/detail" element={<PoDetailPage />} />

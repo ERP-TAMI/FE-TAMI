@@ -8,6 +8,8 @@ export type PaginationProps = {
   totalPages: number;
   itemLabel: string;
   onPageChange: (page: number) => void;
+  showSummary?: boolean;
+  className?: string;
 };
 
 function getVisiblePages(page: number, totalPages: number): Array<number | "ellipsis"> {
@@ -33,6 +35,8 @@ export function Pagination({
   totalPages,
   itemLabel,
   onPageChange,
+  showSummary = true,
+  className,
 }: PaginationProps) {
   if (totalItems === 0) return null;
 
@@ -41,10 +45,17 @@ export function Pagination({
   const pages = getVisiblePages(page, totalPages);
 
   return (
-    <footer className="flex flex-col gap-4 border-t border-gray-200 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6 dark:border-gray-800">
-      <p className="text-theme-sm text-gray-500 dark:text-gray-400">
-        Hiển thị {firstItem}–{lastItem} trên {totalItems} {itemLabel}
-      </p>
+    <footer
+      className={
+        className ||
+        "flex flex-col gap-4 border-t border-gray-200 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6 dark:border-gray-800"
+      }
+    >
+      {showSummary && (
+        <p className="text-theme-sm text-gray-500 dark:text-gray-400">
+          Hiển thị {firstItem}–{lastItem} trên {totalItems} {itemLabel}
+        </p>
+      )}
 
       <nav
         aria-label={`Phân trang ${itemLabel}`}
