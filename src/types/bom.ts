@@ -1,13 +1,13 @@
-export type BomType = 'fit' | 'po';
+export type BomType = "fit" | "po";
 
 export type BomStatus =
-  | 'wait_nvkh'
-  | 'wait_rd'
-  | 'wait_tpkh_confirm'
-  | 'wait_accounting'
-  | 'wait_sa_approve'
-  | 'closed'
-  | 'discontinued';
+  | "wait_nvkh"
+  | "wait_rd"
+  | "wait_tpkh_confirm"
+  | "wait_accounting"
+  | "wait_sa_approve"
+  | "closed"
+  | "discontinued";
 
 export interface StyleSummary {
   id: string;
@@ -31,6 +31,7 @@ export interface PurchaseOrderSummary {
 export interface PurchaseOrderProductSummary {
   id: string;
   purchaseOrderId: string;
+  sourceStyleId?: string | null;
   productCode: string;
   productName: string;
   category?: string | null;
@@ -122,8 +123,8 @@ export interface QueryBomsParams {
   product?: string;
   page?: number;
   limit?: number;
-  sortBy?: 'bomCode' | 'createdAt' | 'updatedAt' | 'deadline';
-  sortOrder?: 'ASC' | 'DESC';
+  sortBy?: "bomCode" | "createdAt" | "updatedAt" | "deadline";
+  sortOrder?: "ASC" | "DESC";
 }
 
 export interface QueryBomStatsParams {
@@ -135,14 +136,14 @@ export interface QueryBomStatsParams {
 }
 
 export interface CreateFitBomPayload {
-  type: 'fit';
+  type: "fit";
   styleId: string;
   deadline?: string;
   rdNote?: string;
 }
 
 export interface CreatePoBomPayload {
-  type: 'po';
+  type: "po";
   purchaseOrderProductId: string;
   deadline?: string;
   rdNote?: string;
@@ -240,7 +241,7 @@ export interface RevisionDetail extends RevisionListItem {
   costPerUnit: number | null;
 }
 
-export type RevisionDiffType = 'ADDED' | 'REMOVED' | 'CHANGED' | 'UNCHANGED';
+export type RevisionDiffType = "ADDED" | "REMOVED" | "CHANGED" | "UNCHANGED";
 
 export interface RevisionDiffLineSnapshot {
   consumption: number;
@@ -361,5 +362,3 @@ export interface BomAggregateParams {
   page?: number;
   limit?: number;
 }
-
-

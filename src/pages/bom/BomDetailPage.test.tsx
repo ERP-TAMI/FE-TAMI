@@ -115,17 +115,15 @@ vi.mock("@/api/boms.api", () => ({
             },
           },
         ],
-      })
+      }),
     ),
     getBomById: vi.fn().mockResolvedValue({
       id: "fit-src-uuid",
       bomCode: "BOM-FIT-ST101",
       type: "fit",
       style: { id: "style-2", styleCode: "ST202", styleName: "Áo sơ mi Oxford" },
-      currentRevision: { id: "rev-fit-src-1", revisionNo: 1 },
-      lines: [
-        { id: "l-fit-1", materialNameSnapshot: "Vải Cotton", consumption: 1.5 },
-      ],
+      currentRevision: { id: "rev-fit-src-1", revisionNo: 1, status: "closed" },
+      lines: [{ id: "l-fit-1", materialNameSnapshot: "Vải Cotton", consumption: 1.5 }],
     }),
   },
 }));
@@ -356,7 +354,13 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
             materialGroupSnapshot: "Vải lót",
             unitSnapshot: "Mét",
             oldLine: null,
-            newLine: { consumption: 0.8, unitCost: 35000, lineCost: 28000, note: null, orderIndex: 0 },
+            newLine: {
+              consumption: 0.8,
+              unitCost: 35000,
+              lineCost: 28000,
+              note: null,
+              orderIndex: 0,
+            },
             source: null,
             target: { consumption: 0.8, unitCost: 35000 },
           },
@@ -404,7 +408,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       render(
         <BrowserRouter>
           <BomDetailPage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
       expect(screen.getByTestId("bom-detail-skeleton")).toBeTruthy();
     });
@@ -420,7 +424,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       render(
         <BrowserRouter>
           <BomDetailPage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
       expect(screen.getByText("Không thể tải chi tiết BOM")).toBeTruthy();
       expect(screen.getByText("Không thể kết nối máy chủ")).toBeTruthy();
@@ -438,7 +442,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       render(
         <BrowserRouter>
           <BomDetailPage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
       expect(screen.getByText("BOM không tồn tại")).toBeTruthy();
       const backBtn = screen.getByText("Về danh sách");
@@ -450,7 +454,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       render(
         <BrowserRouter>
           <BomDetailPage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
       expect(screen.getByText(/Mẫu Fit: ST101/i)).toBeTruthy();
       expect(screen.getByText("Áo sơ mi Oxford")).toBeTruthy();
@@ -461,7 +465,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       render(
         <BrowserRouter>
           <BomDetailPage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
       expect(screen.getByText(/PO BOM: PO-2026-001 - Váy Maxi Họa Tiết/i)).toBeTruthy();
       expect(screen.getAllByText("PO-2026-001").length).toBeGreaterThan(0);
@@ -472,7 +476,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       render(
         <BrowserRouter>
           <BomDetailPage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
       expect(screen.getByText(/Màu: Đỏ/i)).toBeTruthy();
     });
@@ -482,7 +486,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       render(
         <BrowserRouter>
           <BomDetailPage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
       expect(screen.getAllByText(/500 SP|500 sản phẩm/i).length).toBeGreaterThan(0);
     });
@@ -493,19 +497,19 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       render(
         <BrowserRouter>
           <BomDetailPage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
       expect(screen.getAllByText(/150\.000/i).length).toBeGreaterThan(0);
       expect(screen.getAllByText(/75\.000\.000/i).length).toBeGreaterThan(0);
     });
 
     it("9. displays Cost Per Unit and Order Cost for Accounting role", () => {
-      hooks.mockUser = { roleCode: "KT", fullName: "Kế toán viên" };
+      hooks.mockUser = { roleCode: "ACCOUNTING", fullName: "Kế toán viên" };
       hooks.useBom.mockReturnValue({ data: mockPoBom, isLoading: false });
       render(
         <BrowserRouter>
           <BomDetailPage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
       expect(screen.getAllByText(/150\.000/i).length).toBeGreaterThan(0);
     });
@@ -516,7 +520,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       render(
         <BrowserRouter>
           <BomDetailPage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
       expect(screen.getAllByText(/150\.000/i).length).toBeGreaterThan(0);
     });
@@ -527,7 +531,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       render(
         <BrowserRouter>
           <BomDetailPage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
       expect(screen.getByText("Bảo mật chi phí")).toBeTruthy();
       expect(screen.queryByText("150.000 ₫")).toBeNull();
@@ -539,7 +543,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       render(
         <BrowserRouter>
           <BomDetailPage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
       expect(screen.getByText("Bảo mật chi phí")).toBeTruthy();
       expect(screen.queryByText("150.000 ₫")).toBeNull();
@@ -552,7 +556,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       render(
         <BrowserRouter>
           <BomDetailPage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
       expect(screen.getAllByText(/0\s*₫/i).length).toBeGreaterThan(0);
     });
@@ -564,7 +568,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       render(
         <BrowserRouter>
           <BomDetailPage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
       expect(screen.getAllByText(/Chờ kế toán tính giá|—/i).length).toBeGreaterThan(0);
     });
@@ -579,14 +583,16 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       render(
         <BrowserRouter>
           <BomDetailPage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
       const editHeaderBtn = screen.getByText("Sửa Header");
       fireEvent.click(editHeaderBtn);
 
       expect(screen.getByText("Chỉnh sửa thông tin Header")).toBeTruthy();
       expect(screen.getByText(/Hạn hoàn thành \(Deadline\)/i)).toBeTruthy();
-      expect(screen.getByText(/Ghi chú kỹ thuật R&D \(Chỉ đọc với vai trò hiện tại\)/i)).toBeTruthy();
+      expect(
+        screen.getByText(/Ghi chú kỹ thuật R&D \(Chỉ đọc với vai trò hiện tại\)/i),
+      ).toBeTruthy();
     });
 
     it("16. RD can open Header edit modal and sees rdNote editable but deadline readonly", () => {
@@ -596,7 +602,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       render(
         <BrowserRouter>
           <BomDetailPage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
       const editHeaderBtn = screen.getByText("Sửa Header");
       fireEvent.click(editHeaderBtn);
@@ -610,7 +616,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       render(
         <BrowserRouter>
           <BomDetailPage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
       const editHeaderBtn = screen.getByText("Sửa Header");
       fireEvent.click(editHeaderBtn);
@@ -631,18 +637,18 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       render(
         <BrowserRouter>
           <BomDetailPage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
       const editHeaderBtn = screen.getByText("Sửa Header");
       expect(editHeaderBtn).toBeTruthy();
     });
 
     it("19. Accounting cannot edit header fields (Sửa Header button hidden)", () => {
-      hooks.mockUser = { roleCode: "KT", fullName: "Kế toán" };
+      hooks.mockUser = { roleCode: "ACCOUNTING", fullName: "Kế toán" };
       render(
         <BrowserRouter>
           <BomDetailPage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
       expect(screen.queryByText("Sửa Header")).toBeNull();
     });
@@ -658,7 +664,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       render(
         <BrowserRouter>
           <BomDetailPage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
       expect(screen.getByText(/Định mức này đã bị Ngừng sử dụng/i)).toBeTruthy();
       expect(screen.getByText(/Khách hàng hủy mã hàng/i)).toBeTruthy();
@@ -676,7 +682,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       render(
         <BrowserRouter>
           <BomDetailPage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
       expect(screen.queryByText("Sửa Header")).toBeNull();
       expect(screen.queryByText("Thêm nguyên liệu")).toBeNull();
@@ -692,7 +698,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       render(
         <BrowserRouter>
           <BomDetailPage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
       expect(screen.queryByText("Sửa Header")).toBeNull();
     });
@@ -706,7 +712,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       render(
         <BrowserRouter>
           <BomDetailPage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
       expect(screen.getByText("Vải Cotton 100%")).toBeTruthy();
       expect(screen.getAllByText("Vải chính").length).toBeGreaterThan(0);
@@ -729,7 +735,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       render(
         <BrowserRouter>
           <BomDetailPage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
       expect(screen.getByText("Vải Cotton 100%")).toBeTruthy();
     });
@@ -740,7 +746,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       render(
         <BrowserRouter>
           <BomDetailPage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
       expect(screen.getByText("Chưa có dòng nguyên phụ liệu nào")).toBeTruthy();
     });
@@ -749,7 +755,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       render(
         <BrowserRouter>
           <BomDetailPage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
       const searchInput = screen.getByPlaceholderText(/Tìm kiếm theo tên vật tư/i);
       fireEvent.change(searchInput, { target: { value: "Cúc" } });
@@ -762,7 +768,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       render(
         <BrowserRouter>
           <BomDetailPage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
       const groupSelect = screen.getByDisplayValue(/Tất cả nhóm/i);
       fireEvent.change(groupSelect, { target: { value: "Phụ liệu may" } });
@@ -781,7 +787,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       render(
         <BrowserRouter>
           <BomDetailPage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
       const addBtn = screen.getByText("Thêm nguyên liệu");
       fireEvent.click(addBtn);
@@ -793,7 +799,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       render(
         <BrowserRouter>
           <BomDetailPage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
       const addBtn = screen.getByText("Thêm nguyên liệu");
       fireEvent.click(addBtn);
@@ -805,7 +811,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       render(
         <BrowserRouter>
           <BomDetailPage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
       fireEvent.click(screen.getByText("Thêm nguyên liệu"));
 
@@ -827,7 +833,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       render(
         <BrowserRouter>
           <BomDetailPage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
       fireEvent.click(screen.getByText("Thêm nguyên liệu"));
 
@@ -839,7 +845,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       render(
         <BrowserRouter>
           <BomDetailPage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
       fireEvent.click(screen.getByText("Thêm nguyên liệu"));
 
@@ -862,11 +868,11 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
     });
 
     it("33. Accounting cannot add material line (button hidden)", () => {
-      hooks.mockUser = { roleCode: "KT", fullName: "Kế toán" };
+      hooks.mockUser = { roleCode: "ACCOUNTING", fullName: "Kế toán" };
       render(
         <BrowserRouter>
           <BomDetailPage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
       expect(screen.queryByText("Thêm nguyên liệu")).toBeNull();
     });
@@ -876,7 +882,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       render(
         <BrowserRouter>
           <BomDetailPage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
       expect(screen.queryByText("Thêm nguyên liệu")).toBeNull();
     });
@@ -891,7 +897,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       render(
         <BrowserRouter>
           <BomDetailPage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
       const editBtns = screen.getAllByTitle("Chỉnh sửa dòng vật tư");
       fireEvent.click(editBtns[0]);
@@ -912,7 +918,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       render(
         <BrowserRouter>
           <BomDetailPage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
       const editBtns = screen.getAllByTitle("Chỉnh sửa dòng vật tư");
       fireEvent.click(editBtns[0]);
@@ -927,7 +933,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       render(
         <BrowserRouter>
           <BomDetailPage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
       const editBtns = screen.getAllByTitle("Chỉnh sửa dòng vật tư");
       expect(editBtns.length).toBeGreaterThan(0);
@@ -936,12 +942,12 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
     });
 
     it("38. Accounting at wait_accounting only sees and edits unitCost", () => {
-      hooks.mockUser = { roleCode: "KT", fullName: "Kế toán" };
+      hooks.mockUser = { roleCode: "ACCOUNTING", fullName: "Kế toán" };
       hooks.useBom.mockReturnValue({ data: mockPoBom, isLoading: false });
       render(
         <BrowserRouter>
           <BomDetailPage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
       const editBtns = screen.getAllByTitle("Chỉnh sửa dòng vật tư");
       fireEvent.click(editBtns[0]);
@@ -952,12 +958,12 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
     });
 
     it("39. Accounting can input unitCost = 0 (0 VND valid cost)", async () => {
-      hooks.mockUser = { roleCode: "KT", fullName: "Kế toán" };
+      hooks.mockUser = { roleCode: "ACCOUNTING", fullName: "Kế toán" };
       hooks.useBom.mockReturnValue({ data: mockPoBom, isLoading: false });
       render(
         <BrowserRouter>
           <BomDetailPage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
       const editBtns = screen.getAllByTitle("Chỉnh sửa dòng vật tư");
       fireEvent.click(editBtns[0]);
@@ -977,12 +983,12 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
     });
 
     it("40. Accounting entering decimal unitCost = 12500.5 submits valid number", async () => {
-      hooks.mockUser = { roleCode: "KT", fullName: "Kế toán" };
+      hooks.mockUser = { roleCode: "ACCOUNTING", fullName: "Kế toán" };
       hooks.useBom.mockReturnValue({ data: mockPoBom, isLoading: false });
       render(
         <BrowserRouter>
           <BomDetailPage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
       const editBtns = screen.getAllByTitle("Chỉnh sửa dòng vật tư");
       fireEvent.click(editBtns[0]);
@@ -1007,7 +1013,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       render(
         <BrowserRouter>
           <BomDetailPage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
       expect(screen.queryByTitle("Chỉnh sửa dòng vật tư")).toBeNull();
     });
@@ -1021,7 +1027,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       render(
         <BrowserRouter>
           <BomDetailPage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
       const delBtns = screen.getAllByTitle("Xóa dòng vật tư");
       fireEvent.click(delBtns[0]);
@@ -1034,7 +1040,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       render(
         <BrowserRouter>
           <BomDetailPage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
       const delBtns = screen.getAllByTitle("Xóa dòng vật tư");
       fireEvent.click(delBtns[0]);
@@ -1050,7 +1056,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       render(
         <BrowserRouter>
           <BomDetailPage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
       const delBtns = screen.getAllByTitle("Xóa dòng vật tư");
       fireEvent.click(delBtns[0]);
@@ -1064,12 +1070,12 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
     });
 
     it("45. Accounting cannot delete material line (button hidden)", () => {
-      hooks.mockUser = { roleCode: "KT", fullName: "Kế toán" };
+      hooks.mockUser = { roleCode: "ACCOUNTING", fullName: "Kế toán" };
       hooks.useBom.mockReturnValue({ data: mockPoBom, isLoading: false });
       render(
         <BrowserRouter>
           <BomDetailPage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
       expect(screen.queryByTitle("Xóa dòng vật tư")).toBeNull();
     });
@@ -1080,7 +1086,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       render(
         <BrowserRouter>
           <BomDetailPage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
       expect(screen.queryByTitle("Xóa dòng vật tư")).toBeNull();
     });
@@ -1089,7 +1095,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       render(
         <BrowserRouter>
           <BomDetailPage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
       const downBtns = screen.getAllByTitle("Di chuyển xuống");
       fireEvent.click(downBtns[0]);
@@ -1105,7 +1111,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       render(
         <BrowserRouter>
           <BomDetailPage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
       const upBtns = screen.getAllByTitle("Di chuyển lên");
       fireEvent.click(upBtns[1]);
@@ -1118,12 +1124,12 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
     });
 
     it("49. Accounting cannot reorder lines (buttons hidden)", () => {
-      hooks.mockUser = { roleCode: "KT", fullName: "Kế toán" };
+      hooks.mockUser = { roleCode: "ACCOUNTING", fullName: "Kế toán" };
       hooks.useBom.mockReturnValue({ data: mockPoBom, isLoading: false });
       render(
         <BrowserRouter>
           <BomDetailPage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
       expect(screen.queryByTitle("Di chuyển lên")).toBeNull();
     });
@@ -1134,7 +1140,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       render(
         <BrowserRouter>
           <BomDetailPage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
       expect(screen.queryByTitle("Di chuyển lên")).toBeNull();
     });
@@ -1149,7 +1155,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       render(
         <BrowserRouter>
           <BomDetailPage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
       const fwdBtn = screen.getByText("Chuyển RD");
       fireEvent.click(fwdBtn);
@@ -1169,7 +1175,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       render(
         <BrowserRouter>
           <BomDetailPage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
       const fwdBtn = screen.getByText("Chuyển TPKH");
       fireEvent.click(fwdBtn);
@@ -1189,7 +1195,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       render(
         <BrowserRouter>
           <BomDetailPage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
       const fwdBtn = screen.getByText("Chuyển Kế toán");
       fireEvent.click(fwdBtn);
@@ -1203,12 +1209,12 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
     });
 
     it("54. N4 (wait_accounting): Accounting sees 'Chuyển SA' and submits forward", async () => {
-      hooks.mockUser = { roleCode: "KT", fullName: "Kế toán" };
+      hooks.mockUser = { roleCode: "ACCOUNTING", fullName: "Kế toán" };
       hooks.useBom.mockReturnValue({ data: mockPoBom, isLoading: false });
       render(
         <BrowserRouter>
           <BomDetailPage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
       const fwdBtn = screen.getByText("Chuyển SA");
       fireEvent.click(fwdBtn);
@@ -1228,7 +1234,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       render(
         <BrowserRouter>
           <BomDetailPage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
       const approveBtn = screen.getByText("Phê duyệt BOM");
       fireEvent.click(approveBtn);
@@ -1248,7 +1254,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       render(
         <BrowserRouter>
           <BomDetailPage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
       fireEvent.click(screen.getByText("Trả lại"));
 
@@ -1264,7 +1270,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       render(
         <BrowserRouter>
           <BomDetailPage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
       fireEvent.click(screen.getByText("Trả lại"));
 
@@ -1273,12 +1279,12 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
     });
 
     it("58. Reject from N4 (wait_accounting) allows target N3 ONLY", () => {
-      hooks.mockUser = { roleCode: "KT", fullName: "Kế toán" };
+      hooks.mockUser = { roleCode: "ACCOUNTING", fullName: "Kế toán" };
       hooks.useBom.mockReturnValue({ data: mockPoBom, isLoading: false });
       render(
         <BrowserRouter>
           <BomDetailPage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
       fireEvent.click(screen.getByText("Trả lại"));
 
@@ -1294,7 +1300,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       render(
         <BrowserRouter>
           <BomDetailPage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
       fireEvent.click(screen.getByText("Trả lại"));
 
@@ -1311,7 +1317,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       render(
         <BrowserRouter>
           <BomDetailPage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
       fireEvent.click(screen.getByText("Trả lại"));
 
@@ -1334,7 +1340,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       render(
         <BrowserRouter>
           <BomDetailPage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
       fireEvent.click(screen.getByText("Chuyển RD"));
       fireEvent.click(screen.getByText("Xác nhận chuyển bước"));
@@ -1343,7 +1349,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
         expect(refetchSpy).toHaveBeenCalled();
         expect(hooks.mockToast.showToast).toHaveBeenCalledWith(
           expect.stringContaining("Dữ liệu đã bị thay đổi"),
-          "error"
+          "error",
         );
       });
     });
@@ -1358,7 +1364,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       render(
         <BrowserRouter>
           <BomDetailPage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
       const moreBtn = screen.getByLabelText("Thao tác khác");
       fireEvent.click(moreBtn);
@@ -1385,7 +1391,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       render(
         <BrowserRouter>
           <BomDetailPage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
       const moreBtn = screen.getByLabelText("Thao tác khác");
       fireEvent.click(moreBtn);
@@ -1397,17 +1403,17 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       render(
         <BrowserRouter>
           <BomDetailPage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
       expect(screen.queryByLabelText("Thao tác khác")).toBeNull();
     });
 
     it("65. Accounting cannot discontinue (action hidden)", () => {
-      hooks.mockUser = { roleCode: "KT", fullName: "Kế toán" };
+      hooks.mockUser = { roleCode: "ACCOUNTING", fullName: "Kế toán" };
       render(
         <BrowserRouter>
           <BomDetailPage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
       expect(screen.queryByLabelText("Thao tác khác")).toBeNull();
     });
@@ -1417,7 +1423,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       render(
         <BrowserRouter>
           <BomDetailPage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
       fireEvent.click(screen.getByLabelText("Thao tác khác"));
       fireEvent.click(screen.getByText(/Ngừng sử dụng \(Discontinue\)/i));
@@ -1442,7 +1448,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       render(
         <BrowserRouter>
           <BomDetailPage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
       expect(screen.getByText(/Rev 2 \(Đang làm việc\)/i)).toBeTruthy();
     });
@@ -1457,7 +1463,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       render(
         <BrowserRouter>
           <BomDetailPage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
 
       expect(screen.getByText(/Revision lịch sử \(Chế độ chỉ đọc\)/i)).toBeTruthy();
@@ -1474,7 +1480,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       render(
         <BrowserRouter>
           <BomDetailPage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
 
       expect(screen.queryByText("Thêm nguyên liệu")).toBeNull();
@@ -1490,7 +1496,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       render(
         <BrowserRouter>
           <BomDetailPage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
       expect(screen.getByText("Tạo phiên bản mới")).toBeTruthy();
     });
@@ -1501,7 +1507,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       render(
         <BrowserRouter>
           <BomDetailPage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
       fireEvent.click(screen.getByText("Tạo phiên bản mới"));
 
@@ -1523,7 +1529,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       render(
         <BrowserRouter>
           <BomDetailPage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
       fireEvent.click(screen.getByText(/Lịch sử phiên bản/i));
 
@@ -1535,7 +1541,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       render(
         <BrowserRouter>
           <BomDetailPage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
       fireEvent.click(screen.getByText(/Nhật ký duyệt/i));
 
@@ -1547,7 +1553,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       render(
         <BrowserRouter>
           <BomDetailPage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
       fireEvent.click(screen.getByText(/Lịch sử phiên bản/i));
       fireEvent.click(screen.getByText("So sánh Diff"));
@@ -1563,7 +1569,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       render(
         <BrowserRouter>
           <BomDetailPage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
       fireEvent.click(screen.getByText(/Lịch sử phiên bản/i));
       fireEvent.click(screen.getByText("So sánh Diff"));
@@ -1593,7 +1599,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       render(
         <BrowserRouter>
           <BomDetailPage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
       fireEvent.click(screen.getByLabelText("Thao tác khác"));
       expect(screen.getByText("Nhập từ Fit BOM")).toBeTruthy();
@@ -1616,7 +1622,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       render(
         <BrowserRouter>
           <BomDetailPage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
       expect(screen.queryByText("Nhập từ Fit BOM")).toBeNull();
     });
@@ -1625,7 +1631,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       render(
         <BrowserRouter>
           <BomDetailPage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
       expect(screen.queryByText("Nhập từ Fit BOM")).toBeNull();
     });
@@ -1647,7 +1653,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       render(
         <BrowserRouter>
           <BomDetailPage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
       fireEvent.click(screen.getByLabelText("Thao tác khác"));
       fireEvent.click(screen.getByText("Nhập từ Fit BOM"));
@@ -1678,7 +1684,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       render(
         <BrowserRouter>
           <BomDetailPage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
       expect(screen.queryByText("Nhập từ Fit BOM")).toBeNull();
     });
@@ -1729,7 +1735,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       render(
         <BrowserRouter>
           <BomDetailPage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
 
       const inputs = screen.getAllByTitle("Nhập đơn giá ($)");
@@ -1761,7 +1767,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       render(
         <BrowserRouter>
           <BomDetailPage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
 
       const inputs = screen.getAllByTitle("Nhập đơn giá ($)");
@@ -1782,7 +1788,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
         });
         expect(hooks.mockToast.showToast).toHaveBeenCalledWith(
           "Đã lưu thành công 2 đơn giá vật tư",
-          "success"
+          "success",
         );
       });
     });
@@ -1793,7 +1799,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       render(
         <BrowserRouter>
           <BomDetailPage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
 
       const inputs = screen.getAllByTitle("Nhập đơn giá ($)");
@@ -1805,7 +1811,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
 
       expect(hooks.mockToast.showToast).toHaveBeenCalledWith(
         expect.stringContaining("chưa lưu"),
-        "error"
+        "error",
       );
     });
 
@@ -1829,7 +1835,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
         render(
           <BrowserRouter>
             <BomDetailPage />
-          </BrowserRouter>
+          </BrowserRouter>,
         );
         const dashes = screen.getAllByText("—");
         expect(dashes.length).toBeGreaterThanOrEqual(1);
@@ -1854,7 +1860,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
         render(
           <BrowserRouter>
             <BomDetailPage />
-          </BrowserRouter>
+          </BrowserRouter>,
         );
         expect(screen.getAllByText("$0.0000").length).toBeGreaterThanOrEqual(1);
         expect(screen.getAllByText("0 ₫").length).toBeGreaterThanOrEqual(1);
@@ -1879,7 +1885,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
         render(
           <BrowserRouter>
             <BomDetailPage />
-          </BrowserRouter>
+          </BrowserRouter>,
         );
         // Clean state (dirtyCount === 0): MUST display backend lineCost $15.7500, NOT $20.0000
         expect(screen.getAllByText("$15.7500").length).toBeGreaterThanOrEqual(1);
@@ -1906,7 +1912,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
         render(
           <BrowserRouter>
             <BomDetailPage />
-          </BrowserRouter>
+          </BrowserRouter>,
         );
         // Initially clean state: no "Dự kiến" badges
         expect(screen.queryByText("Dự kiến")).toBeNull();

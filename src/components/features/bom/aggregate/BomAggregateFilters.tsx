@@ -1,15 +1,20 @@
-import { useState, useMemo, useRef, useEffect } from "react";
-import { RotateCcw, Calendar, ChevronDown, FileText, Search, Filter, Layers } from "lucide-react";
-import type { AggregateBreakdownType, BomAggregateItem, BomListItem, PurchaseOrderSummary } from "@/types/bom";
+import { useState, useMemo } from "react";
+import { RotateCcw, ChevronDown, FileText, Search, Filter, Layers, Package } from "lucide-react";
+import type {
+  AggregateBreakdownType,
+  BomAggregateItem,
+  BomListItem,
+  PurchaseOrderSummary,
+} from "@/types/bom";
 import { BomAggregateSummary } from "./BomAggregateSummary";
 import { useBoms } from "@/hooks/useBoms";
+import { usePoProducts } from "@/hooks/usePurchaseOrders";
 import { useStyles } from "@/hooks/useStyles";
 import { useMaterials } from "@/hooks/useMaterials";
 import { useMaterialGroups } from "@/hooks/useMaterialGroups";
 import type { Style } from "@/types/style";
 import type { Material } from "@/types/material";
-
-export type PeriodType = "this_month" | "last_month" | "this_quarter" | "this_year" | "custom";
+import type { PurchaseOrderProductItem } from "@/types/po";
 
 interface BomAggregateFiltersProps {
   purchaseOrderId?: string;
@@ -29,9 +34,6 @@ interface BomAggregateFiltersProps {
   isFiltering: boolean;
   onClearFilters: () => void;
   onApplyFilters?: () => void;
-  period?: PeriodType;
-  onPeriodChange?: (period: PeriodType) => void;
-  dateRangeStr?: string;
   totalCount?: number;
   bomCount?: number;
   items?: BomAggregateItem[];
@@ -55,55 +57,12 @@ export function BomAggregateFilters({
   isFiltering,
   onClearFilters,
   onApplyFilters,
-  period: externalPeriod,
-  onPeriodChange,
-  dateRangeStr: externalDateRangeStr,
   totalCount,
   bomCount,
   items,
 }: BomAggregateFiltersProps) {
-  const [internalPeriod, setInternalPeriod] = useState<PeriodType>("this_month");
-  const period = externalPeriod || internalPeriod;
-
   const [selectedGroup, setSelectedGroup] = useState<string>("");
   const [isExtraOpen, setIsExtraOpen] = useState<boolean>(false);
-  const [isDateOpen, setIsDateOpen] = useState<boolean>(false);
-  const [customStart, setCustomStart] = useState<string>("2026-09-01");
-  const [customEnd, setCustomEnd] = useState<string>("2026-09-30");
-
-  const dateDropdownRef = useRef<HTMLDivElement>(null);
-
-  // Close date popover when clicking outside
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (dateDropdownRef.current && !dateDropdownRef.current.contains(event.target as Node)) {
-        setIsDateOpen(false);
-      }
-    }
-    if (isDateOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-    }
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [isDateOpen]);
-
-  const handleSelectPeriod = (p: PeriodType) => {
-    setInternalPeriod(p);
-    onPeriodChange?.(p);
-    setIsDateOpen(false);
-  };
-
-  const handleApplyCustomDate = () => {
-    if (customStart && customEnd) {
-      setInternalPeriod("custom");
-      onPeriodChange?.("custom");
-      setIsDateOpen(false);
-    }
-  };
-
-  // Date range string provided by parent container (single source of truth)
-  const dateRangeStr = externalDateRangeStr || "";
 
   // Lấy danh sách BOM type=po, revision đã đóng (closed)
   const { data: approvedBomsResponse } = useBoms({
@@ -118,9 +77,16 @@ export function BomAggregateFilters({
     { enabled: Boolean(purchaseOrderId) },
   );
 
+  const { data: poProductsResponse } = usePoProducts(
+    purchaseOrderId,
+    { limit: 100 },
+    { enabled: Boolean(purchaseOrderId) },
+  );
+  const poProducts: PurchaseOrderProductItem[] = poProductsResponse?.items || [];
+
   const allApprovedBoms: BomListItem[] = useMemo(
     () => approvedBomsResponse?.data || [],
-    [approvedBomsResponse?.data]
+    [approvedBomsResponse?.data],
   );
 
   // Tổng hợp danh sách PO unique từ các BOM đã duyệt
@@ -148,13 +114,13 @@ export function BomAggregateFilters({
       return allApprovedBoms.filter(
         (bom) =>
           bom.purchaseOrder?.id === purchaseOrderId ||
-          bom.purchaseOrder?.poCode === purchaseOrderId
+          bom.purchaseOrder?.poCode === purchaseOrderId,
       );
     }
     return allApprovedBoms;
   }, [allApprovedBoms, poBomsResponse?.data, purchaseOrderId]);
 
-  const currentBomId = bomId || purchaseOrderProductId;
+  const currentBomId = bomId;
 
   const { data: styleResponse } = useStyles({ limit: 100 });
   const styleList: Style[] = styleResponse?.data || [];
@@ -182,7 +148,6 @@ export function BomAggregateFilters({
   };
 
   const handleClear = () => {
-    setInternalPeriod("this_month");
     setSelectedGroup("");
     setIsExtraOpen(false);
     onBomChange?.(undefined);
@@ -195,190 +160,37 @@ export function BomAggregateFilters({
       {/* Hidden summary for tests */}
       {totalCount !== undefined && (
         <div className="sr-only">
-          <BomAggregateSummary
-            totalCount={totalCount}
-            bomCount={bomCount}
-            items={items || []}
-          />
+          <BomAggregateSummary totalCount={totalCount} bomCount={bomCount} items={items || []} />
         </div>
       )}
 
       {/* Row 1: Left KPI Summary & Filter Inputs & Actions */}
       <div className="flex flex-wrap items-end justify-between gap-3 sm:gap-4">
-        {/* 1. Thời gian */}
-        <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-semibold text-gray-700 dark:text-gray-300">
-            Thời gian
-          </label>
-          <div className="flex flex-wrap items-center gap-2">
-            <div ref={dateDropdownRef} className="relative">
-              <button
-                type="button"
-                data-testid="aggregate-date-range-btn"
-                aria-label="Chọn khoảng thời gian"
-                aria-expanded={isDateOpen}
-                onClick={() => setIsDateOpen((prev) => !prev)}
-                className="relative flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-xs text-gray-700 shadow-2xs hover:border-blue-500 focus:outline-none dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300 cursor-pointer transition-colors"
-              >
-                <Calendar className="h-4 w-4 text-gray-500 shrink-0" />
-                <span className="font-medium font-mono text-xs">
-                  {dateRangeStr.replace("–", "➔")}
-                </span>
-                <ChevronDown
-                  className={`h-3.5 w-3.5 text-gray-400 shrink-0 ml-0.5 transition-transform duration-200 ${
-                    isDateOpen ? "rotate-180" : ""
-                  }`}
-                />
-              </button>
-
-              {/* Date Range Dropdown Popover */}
-              {isDateOpen && (
-                <div className="absolute left-0 top-full mt-1.5 z-50 w-64 rounded-2xl border border-gray-200 bg-white p-3 shadow-xl dark:border-gray-800 dark:bg-gray-900 animate-in fade-in-50 zoom-in-95 duration-100">
-                  <div className="mb-2 text-[11px] font-semibold text-gray-400 uppercase tracking-wider px-1">
-                    Chọn khoảng thời gian
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    {[
-                      { key: "this_month" as PeriodType, label: "Tháng này" },
-                      { key: "last_month" as PeriodType, label: "Tháng trước" },
-                      { key: "this_quarter" as PeriodType, label: "Quý này" },
-                      { key: "this_year" as PeriodType, label: "Năm nay" },
-                    ].map((item) => (
-                      <button
-                        key={item.key}
-                        type="button"
-                        onClick={() => handleSelectPeriod(item.key)}
-                        className={`flex items-center justify-between rounded-xl px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer ${
-                          period === item.key
-                            ? "bg-blue-50 text-blue-600 font-semibold dark:bg-blue-950/50 dark:text-blue-400"
-                            : "text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800"
-                        }`}
-                      >
-                        <span>{item.label}</span>
-                        {period === item.key && (
-                          <span className="h-2 w-2 rounded-full bg-blue-600 dark:bg-blue-400" />
-                        )}
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* Custom Date Range Section */}
-                  <div className="mt-2.5 pt-2.5 border-t border-gray-100 dark:border-gray-800">
-                    <div className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 mb-2 px-1">
-                      Tùy chọn khoảng ngày
-                    </div>
-                    <div className="flex flex-col gap-2">
-                      <div className="flex items-center gap-2">
-                        <span className="text-[11px] text-gray-400 w-14 shrink-0">Từ ngày:</span>
-                        <input
-                          type="date"
-                          value={customStart}
-                          onChange={(e) => setCustomStart(e.target.value)}
-                          className="flex-1 rounded-lg border border-gray-200 bg-white px-2 py-1 text-xs text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 focus:outline-none focus:border-blue-500"
-                        />
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-[11px] text-gray-400 w-14 shrink-0">Đến ngày:</span>
-                        <input
-                          type="date"
-                          value={customEnd}
-                          onChange={(e) => setCustomEnd(e.target.value)}
-                          className="flex-1 rounded-lg border border-gray-200 bg-white px-2 py-1 text-xs text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 focus:outline-none focus:border-blue-500"
-                        />
-                      </div>
-                      <button
-                        type="button"
-                        onClick={handleApplyCustomDate}
-                        className="mt-1 w-full rounded-lg bg-blue-600 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 transition-colors cursor-pointer"
-                      >
-                        Áp dụng khoảng ngày
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Quick date pills */}
-            <div className="inline-flex items-center rounded-xl bg-gray-100 p-0.5 dark:bg-gray-800 text-xs">
-              <button
-                type="button"
-                onClick={() => handleSelectPeriod("this_month")}
-                className={`cursor-pointer inline-flex items-center rounded-lg px-2.5 py-1 text-xs font-medium transition-all ${
-                  period === "this_month"
-                    ? "bg-blue-600 text-white font-semibold shadow-xs"
-                    : "text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"
-                }`}
-              >
-                Tháng này
-              </button>
-              <button
-                type="button"
-                onClick={() => handleSelectPeriod("last_month")}
-                className={`cursor-pointer inline-flex items-center rounded-lg px-2.5 py-1 text-xs font-medium transition-all ${
-                  period === "last_month"
-                    ? "bg-blue-600 text-white font-semibold shadow-xs"
-                    : "text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"
-                }`}
-              >
-                Tháng trước
-              </button>
-              <button
-                type="button"
-                onClick={() => handleSelectPeriod("this_quarter")}
-                className={`cursor-pointer inline-flex items-center rounded-lg px-2.5 py-1 text-xs font-medium transition-all ${
-                  period === "this_quarter"
-                    ? "bg-blue-600 text-white font-semibold shadow-xs"
-                    : "text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"
-                }`}
-              >
-                Quý này
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsDateOpen(true)}
-                className={`cursor-pointer inline-flex items-center rounded-lg px-2.5 py-1 text-xs font-medium transition-all ${
-                  period === "custom"
-                    ? "bg-blue-600 text-white font-semibold shadow-xs"
-                    : "text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"
-                }`}
-              >
-                Tùy chọn
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* 2. Trạng thái BOM */}
-        <div className="flex flex-col gap-1.5 min-w-[130px]">
+        {/* 1. Trạng thái BOM */}
+        <div className="flex min-w-[130px] flex-col gap-1.5">
           <label className="text-xs font-semibold text-gray-700 dark:text-gray-300">
             Trạng thái BOM
           </label>
-          <div className="flex items-center gap-2 rounded-xl border border-gray-200 bg-gray-50/70 py-1.5 px-3 text-xs font-medium text-gray-700 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300">
-            <span className="h-2 w-2 rounded-full bg-emerald-500 shrink-0" />
+          <div className="flex items-center gap-2 rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-1.5 text-xs font-medium text-gray-700 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300">
+            <span className="h-2 w-2 shrink-0 rounded-full bg-emerald-500" />
             <span>Đã duyệt</span>
           </div>
         </div>
 
         {/* 3. BOM */}
-        <div className="flex flex-col gap-1.5 min-w-[180px]">
-          <label className="text-xs font-semibold text-gray-700 dark:text-gray-300">
-            BOM
-          </label>
+        <div className="flex min-w-[180px] flex-col gap-1.5">
+          <label className="text-xs font-semibold text-gray-700 dark:text-gray-300">BOM</label>
           <div className="relative">
             <select
               id="aggregate-bom-select"
               data-testid="aggregate-bom-select"
               value={currentBomId || ""}
               onChange={(e) => handleBomSelect(e.target.value)}
-              className="w-full appearance-none rounded-xl border border-gray-200 bg-white py-1.5 pl-7 pr-7 text-xs text-gray-700 shadow-2xs hover:border-blue-300 focus:border-blue-500 focus:outline-none dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300 cursor-pointer transition-colors"
+              className="w-full cursor-pointer appearance-none rounded-xl border border-gray-200 bg-white py-1.5 pr-7 pl-7 text-xs text-gray-700 shadow-2xs transition-colors hover:border-blue-300 focus:border-blue-500 focus:outline-none dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300"
             >
-              <option value="">
-                {purchaseOrderId ? "Tất cả BOM trong đơn" : "Tất cả BOM"}
-              </option>
+              <option value="">{purchaseOrderId ? "Tất cả BOM trong đơn" : "Tất cả BOM"}</option>
               {eligibleBoms.map((bom: BomListItem) => {
-                const productCode =
-                  bom.product?.productCode || bom.style?.styleCode || bom.bomCode;
+                const productCode = bom.product?.productCode || bom.style?.styleCode || bom.bomCode;
                 return (
                   <option key={bom.id} value={bom.id}>
                     {productCode}
@@ -386,13 +198,13 @@ export function BomAggregateFilters({
                 );
               })}
             </select>
-            <Layers className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 pointer-events-none text-gray-400" />
-            <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 pointer-events-none text-gray-400" />
+            <Layers className="pointer-events-none absolute top-1/2 left-2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
+            <ChevronDown className="pointer-events-none absolute top-1/2 right-2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
           </div>
         </div>
 
         {/* 4. Đơn hàng (PO) */}
-        <div className="flex flex-col gap-1.5 min-w-[180px]">
+        <div className="flex min-w-[180px] flex-col gap-1.5">
           <label className="text-xs font-semibold text-gray-700 dark:text-gray-300">
             Đơn hàng (PO)
           </label>
@@ -402,7 +214,7 @@ export function BomAggregateFilters({
               data-testid="aggregate-po-select"
               value={purchaseOrderId || ""}
               onChange={(e) => handlePoSelect(e.target.value)}
-              className="w-full appearance-none rounded-xl border border-gray-200 bg-white py-1.5 pl-7 pr-7 text-xs text-gray-700 shadow-2xs hover:border-blue-300 focus:border-blue-500 focus:outline-none dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300 cursor-pointer transition-colors"
+              className="w-full cursor-pointer appearance-none rounded-xl border border-gray-200 bg-white py-1.5 pr-7 pl-7 text-xs text-gray-700 shadow-2xs transition-colors hover:border-blue-300 focus:border-blue-500 focus:outline-none dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300"
             >
               <option value="">Tất cả đơn hàng</option>
               {approvedPoList.map((po: PurchaseOrderSummary) => (
@@ -411,12 +223,36 @@ export function BomAggregateFilters({
                 </option>
               ))}
             </select>
-            <FileText className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 pointer-events-none text-gray-400" />
-            <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 pointer-events-none text-gray-400" />
+            <FileText className="pointer-events-none absolute top-1/2 left-2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
+            <ChevronDown className="pointer-events-none absolute top-1/2 right-2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
           </div>
         </div>
 
-        {/* 5. Đặt lại & Bộ lọc nâng cao */}
+        {/* 5. Sản phẩm */}
+        <div className="flex min-w-[180px] flex-col gap-1.5">
+          <label className="text-xs font-semibold text-gray-700 dark:text-gray-300">Sản phẩm</label>
+          <div className="relative">
+            <select
+              id="aggregate-product-select"
+              data-testid="aggregate-product-select"
+              value={purchaseOrderProductId || ""}
+              onChange={(e) => onProductChange?.(e.target.value || undefined)}
+              disabled={!purchaseOrderId}
+              className="w-full cursor-pointer appearance-none rounded-xl border border-gray-200 bg-white py-1.5 pr-7 pl-7 text-xs text-gray-700 shadow-2xs transition-colors hover:border-blue-300 focus:border-blue-500 focus:outline-none disabled:cursor-not-allowed disabled:bg-gray-50 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300 dark:disabled:bg-gray-800"
+            >
+              <option value="">{purchaseOrderId ? "Tất cả sản phẩm" : "Chọn PO trước"}</option>
+              {poProducts.map((product) => (
+                <option key={product.id} value={product.id}>
+                  {product.productCode} - {product.productName}
+                </option>
+              ))}
+            </select>
+            <Package className="pointer-events-none absolute top-1/2 left-2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
+            <ChevronDown className="pointer-events-none absolute top-1/2 right-2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
+          </div>
+        </div>
+
+        {/* 6. Đặt lại & Bộ lọc nâng cao */}
         <div className="flex items-end gap-2">
           {isFiltering && (
             <button
@@ -425,7 +261,7 @@ export function BomAggregateFilters({
               onClick={handleClear}
               title="Đặt lại bộ lọc"
               aria-label="Đặt lại bộ lọc"
-              className="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 shadow-2xs hover:bg-gray-50 hover:text-gray-900 hover:border-gray-300 transition-colors dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800 animate-in fade-in-50 duration-150"
+              className="animate-in fade-in-50 inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 shadow-2xs transition-colors duration-150 hover:border-gray-300 hover:bg-gray-50 hover:text-gray-900 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800"
             >
               <RotateCcw className="h-3.5 w-3.5 text-gray-500" />
               <span>Đặt lại</span>
@@ -435,7 +271,7 @@ export function BomAggregateFilters({
           <button
             type="button"
             onClick={() => setIsExtraOpen((prev) => !prev)}
-            className="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-blue-200/80 bg-blue-50/60 px-3.5 py-1.5 text-xs font-semibold text-blue-600 shadow-2xs hover:bg-blue-100/70 transition-colors dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-400"
+            className="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-blue-200/80 bg-blue-50/60 px-3.5 py-1.5 text-xs font-semibold text-blue-600 shadow-2xs transition-colors hover:bg-blue-100/70 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-400"
           >
             <Filter className="h-3.5 w-3.5" />
             <span>{isExtraOpen ? "Ẩn bộ lọc" : "Bộ lọc nâng cao"}</span>
@@ -445,7 +281,7 @@ export function BomAggregateFilters({
 
       {/* Extra Filters (Toggled when clicking 'Bộ lọc nâng cao') */}
       {isExtraOpen && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 border-t border-gray-100 dark:border-gray-800 items-end">
+        <div className="grid grid-cols-1 items-end gap-3 border-t border-gray-100 pt-3 sm:grid-cols-3 dark:border-gray-800">
           {/* Nhóm NPL */}
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-semibold text-gray-700 dark:text-gray-300">
@@ -455,7 +291,7 @@ export function BomAggregateFilters({
               <select
                 value={selectedGroup}
                 onChange={(e) => handleGroupSelect(e.target.value)}
-                className="w-full appearance-none rounded-xl border border-gray-200 bg-white py-1.5 px-3 pr-8 text-xs text-gray-700 shadow-2xs focus:border-blue-500 focus:outline-none dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300 cursor-pointer"
+                className="w-full cursor-pointer appearance-none rounded-xl border border-gray-200 bg-white px-3 py-1.5 pr-8 text-xs text-gray-700 shadow-2xs focus:border-blue-500 focus:outline-none dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300"
               >
                 <option value="">Tất cả nhóm</option>
                 {materialGroups.map((g) => (
@@ -464,7 +300,7 @@ export function BomAggregateFilters({
                   </option>
                 ))}
               </select>
-              <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 pointer-events-none text-gray-400" />
+              <ChevronDown className="pointer-events-none absolute top-1/2 right-2.5 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
             </div>
           </div>
 
@@ -477,7 +313,7 @@ export function BomAggregateFilters({
               <select
                 value={styleId || ""}
                 onChange={(e) => onStyleChange(e.target.value || undefined)}
-                className="w-full appearance-none rounded-xl border border-gray-200 bg-white py-1.5 px-3 pr-8 text-xs text-gray-700 shadow-2xs focus:border-blue-500 focus:outline-none dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300 cursor-pointer"
+                className="w-full cursor-pointer appearance-none rounded-xl border border-gray-200 bg-white px-3 py-1.5 pr-8 text-xs text-gray-700 shadow-2xs focus:border-blue-500 focus:outline-none dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300"
               >
                 <option value="">Tất cả mẫu</option>
                 {styleList.map((s: Style) => (
@@ -486,7 +322,7 @@ export function BomAggregateFilters({
                   </option>
                 ))}
               </select>
-              <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 pointer-events-none text-gray-400" />
+              <ChevronDown className="pointer-events-none absolute top-1/2 right-2.5 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
             </div>
           </div>
 
@@ -496,7 +332,7 @@ export function BomAggregateFilters({
               type="button"
               data-testid="extra-reset-btn"
               onClick={handleClear}
-              className="flex-1 inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-gray-200 bg-white py-1.5 px-3 text-xs font-medium text-gray-700 shadow-2xs hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
+              className="inline-flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 shadow-2xs hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
             >
               <RotateCcw className="h-3.5 w-3.5" />
               <span>Đặt lại</span>
@@ -504,7 +340,7 @@ export function BomAggregateFilters({
             <button
               type="button"
               onClick={onApplyFilters}
-              className="flex-1 inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-xl bg-blue-600 py-1.5 px-3 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 transition-colors"
+              className="inline-flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow-xs transition-colors hover:bg-blue-700"
             >
               <Search className="h-3.5 w-3.5" />
               <span>Áp dụng</span>

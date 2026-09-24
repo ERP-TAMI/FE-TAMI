@@ -209,9 +209,7 @@ describe("BomPage (PR-08 Frontend BOM V2)", () => {
 
     hooks.usePurchaseOrders.mockReturnValue({
       data: {
-        items: [
-          { id: "po-1", poCode: "PO-2026-001", customerNameSnapshot: "Uniqlo Vietnam" },
-        ],
+        items: [{ id: "po-1", poCode: "PO-2026-001", customerNameSnapshot: "Uniqlo Vietnam" }],
       },
       isLoading: false,
     });
@@ -335,9 +333,7 @@ describe("BomPage (PR-08 Frontend BOM V2)", () => {
       fireEvent.click(fitBtn);
 
       // Verify useBoms was invoked with type filter
-      expect(hooks.useBoms).toHaveBeenCalledWith(
-        expect.objectContaining({ type: "fit", page: 1 }),
-      );
+      expect(hooks.useBoms).toHaveBeenCalledWith(expect.objectContaining({ type: "fit", page: 1 }));
     });
 
     it("filters by status when changing status dropdown", () => {
@@ -354,9 +350,7 @@ describe("BomPage (PR-08 Frontend BOM V2)", () => {
     it("searches and debounces text changes", async () => {
       renderBomPage();
 
-      const searchInput = screen.getByPlaceholderText(
-        "Mã Fit / Style / Sản phẩm...",
-      );
+      const searchInput = screen.getByPlaceholderText("Mã Fit / Style / Sản phẩm...");
       fireEvent.change(searchInput, { target: { value: "cotton" } });
 
       await waitFor(
@@ -375,9 +369,7 @@ describe("BomPage (PR-08 Frontend BOM V2)", () => {
       const clearBtn = screen.getByRole("button", { name: /Làm mới|Xóa lọc/ });
       fireEvent.click(clearBtn);
 
-      expect(hooks.useBoms).toHaveBeenCalledWith(
-        expect.objectContaining({ page: 1 }),
-      );
+      expect(hooks.useBoms).toHaveBeenCalledWith(expect.objectContaining({ page: 1 }));
     });
 
     it("handles month picker change in stats header", () => {
@@ -386,9 +378,7 @@ describe("BomPage (PR-08 Frontend BOM V2)", () => {
       const monthInput = screen.getByLabelText("Chọn tháng thống kê");
       fireEvent.change(monthInput, { target: { value: "2026-03" } });
 
-      expect(hooks.useBomStats).toHaveBeenCalledWith(
-        expect.objectContaining({ month: "2026-03" }),
-      );
+      expect(hooks.useBomStats).toHaveBeenCalledWith(expect.objectContaining({ month: "2026-03" }));
     });
 
     it("switches to year mode and updates stats", () => {
@@ -400,9 +390,7 @@ describe("BomPage (PR-08 Frontend BOM V2)", () => {
       const yearSelect = screen.getByLabelText("Chọn năm thống kê");
       fireEvent.change(yearSelect, { target: { value: "2025" } });
 
-      expect(hooks.useBomStats).toHaveBeenCalledWith(
-        expect.objectContaining({ year: "2025" }),
-      );
+      expect(hooks.useBomStats).toHaveBeenCalledWith(expect.objectContaining({ year: "2025" }));
     });
 
     it("switches to dateRange mode and updates stats with start and end dates", () => {
@@ -445,9 +433,7 @@ describe("BomPage (PR-08 Frontend BOM V2)", () => {
       const nextBtn = screen.getByLabelText("Trang sau");
       fireEvent.click(nextBtn);
 
-      expect(hooks.useBoms).toHaveBeenCalledWith(
-        expect.objectContaining({ page: 2 }),
-      );
+      expect(hooks.useBoms).toHaveBeenCalledWith(expect.objectContaining({ page: 2 }));
     });
 
     it("toggles sorting when clicking column headers", () => {
@@ -456,9 +442,7 @@ describe("BomPage (PR-08 Frontend BOM V2)", () => {
       const bomCodeHeader = screen.getByText("SẢN PHẨM");
       fireEvent.click(bomCodeHeader);
 
-      expect(hooks.useBoms).toHaveBeenCalledWith(
-        expect.objectContaining({ sortBy: "bomCode" }),
-      );
+      expect(hooks.useBoms).toHaveBeenCalledWith(expect.objectContaining({ sortBy: "bomCode" }));
     });
   });
 
@@ -540,7 +524,7 @@ describe("BomPage (PR-08 Frontend BOM V2)", () => {
   // ──────────────────────────────────────────────────────────────────────────
   describe("5. Create Button Permissions", () => {
     it("shows '+ Tạo BOM' button for NVKH, TPKH, and SA roles", () => {
-      const allowedRoles = ["NVKH", "TPKH", "SA", "ADMIN"];
+      const allowedRoles = ["NVKH", "TPKH", "SA"];
       for (const role of allowedRoles) {
         hooks.mockUser = { roleCode: role, fullName: `User ${role}` };
         const { unmount } = renderBomPage();
@@ -570,9 +554,7 @@ describe("BomPage (PR-08 Frontend BOM V2)", () => {
       const createBtn = screen.getByRole("button", { name: /Tạo BOM/i });
       fireEvent.click(createBtn);
 
-      expect(
-        screen.getByText("Tạo mới Định mức Nguyên phụ liệu (BOM)"),
-      ).toBeTruthy();
+      expect(screen.getByText("Tạo mới Định mức Nguyên phụ liệu (BOM)")).toBeTruthy();
       expect(screen.getByText("Chọn loại BOM")).toBeTruthy();
     });
 
@@ -806,10 +788,7 @@ describe("BomPage (PR-08 Frontend BOM V2)", () => {
 
     it("displays clear conflict error when creating duplicate FIT BOM (409 Conflict)", async () => {
       hooks.createBom.mutateAsync.mockRejectedValueOnce(
-        createAxiosError(
-          { code: "CONFLICT", message: "A BOM for this style already exists" },
-          409,
-        ),
+        createAxiosError({ code: "CONFLICT", message: "A BOM for this style already exists" }, 409),
       );
 
       renderBomPage();
@@ -827,9 +806,7 @@ describe("BomPage (PR-08 Frontend BOM V2)", () => {
 
       await waitFor(() => {
         expect(
-          screen.getByText(
-            "Mẫu Fit này đã có BOM. Mỗi Style chỉ có tối đa 1 Fit BOM.",
-          ),
+          screen.getByText("Mẫu Fit này đã có BOM. Mỗi Style chỉ có tối đa 1 Fit BOM."),
         ).toBeTruthy();
       });
     });
@@ -854,7 +831,9 @@ describe("BomPage (PR-08 Frontend BOM V2)", () => {
       });
 
       fireEvent.click(screen.getByRole("button", { name: /Tiếp tục/i }));
-      expect(screen.getByText("Vui lòng chọn ít nhất một sản phẩm thuộc đơn hàng PO.")).toBeTruthy();
+      expect(
+        screen.getByText("Vui lòng chọn ít nhất một sản phẩm thuộc đơn hàng PO."),
+      ).toBeTruthy();
     });
 
     it("handles generic server errors safely when create API fails", async () => {
@@ -878,9 +857,7 @@ describe("BomPage (PR-08 Frontend BOM V2)", () => {
       fireEvent.click(screen.getByRole("button", { name: /Xác nhận tạo BOM/i }));
 
       await waitFor(() => {
-        expect(
-          screen.getByText("Máy chủ đang gặp sự cố. Vui lòng thử lại sau."),
-        ).toBeTruthy();
+        expect(screen.getByText("Máy chủ đang gặp sự cố. Vui lòng thử lại sau.")).toBeTruthy();
       });
     });
 

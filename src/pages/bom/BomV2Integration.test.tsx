@@ -4,12 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import BomPage from "./BomPage";
 import BomDetailPage from "./BomDetailPage";
 import BomAggregatePage from "./BomAggregatePage";
-import type {
-  BomListItem,
-  BomDetail,
-  RevisionDetail,
-  BomAggregateItem,
-} from "@/types/bom";
+import type { BomListItem, BomDetail, RevisionDetail, BomAggregateItem } from "@/types/bom";
 
 // =========================================================================
 // HOISTED MOCKS & ROUTING CONFIGURATION
@@ -85,10 +80,8 @@ vi.mock("@/api/boms.api", () => ({
       bomCode: "BOM-FIT-ST01",
       type: "fit",
       style: { id: "style-1", styleCode: "ST-01", styleName: "Áo sơ mi Oxford" },
-      currentRevision: { id: "rev-fit-src-1", revisionNo: 1 },
-      lines: [
-        { id: "l-fit-1", materialNameSnapshot: "Vải Cotton", consumption: 1.5 },
-      ],
+      currentRevision: { id: "rev-fit-src-1", revisionNo: 1, status: "closed" },
+      lines: [{ id: "l-fit-1", materialNameSnapshot: "Vải Cotton", consumption: 1.5 }],
     }),
   },
 }));
@@ -361,7 +354,7 @@ const mockAggregateItems: BomAggregateItem[] = [
 // Helper to render with MemoryRouter
 function renderWithRouter(
   ui: React.ReactNode,
-  { initialEntries = ["/bom"] }: { initialEntries?: string[] } = {}
+  { initialEntries = ["/bom"] }: { initialEntries?: string[] } = {},
 ) {
   return render(
     <MemoryRouter initialEntries={initialEntries}>
@@ -370,7 +363,7 @@ function renderWithRouter(
         <Route path="/bom/:id" element={ui} />
         <Route path="/bom/aggregate" element={ui} />
       </Routes>
-    </MemoryRouter>
+    </MemoryRouter>,
   );
 }
 
@@ -487,7 +480,13 @@ describe("PR-11: BOM V2 Final Integration & E2E Regression", () => {
             materialGroupSnapshot: "Phụ liệu",
             unitSnapshot: "Mét",
             oldLine: null,
-            newLine: { consumption: 0.5, unitCost: 15000, lineCost: 7500, note: null, orderIndex: 0 },
+            newLine: {
+              consumption: 0.5,
+              unitCost: 15000,
+              lineCost: 7500,
+              note: null,
+              orderIndex: 0,
+            },
             source: null,
             target: { consumption: 0.5, unitCost: 15000 },
           },
@@ -572,9 +571,7 @@ describe("PR-11: BOM V2 Final Integration & E2E Regression", () => {
       const fitBtn = screen.getByRole("button", { name: "Mẫu Fit" });
       fireEvent.click(fitBtn);
 
-      expect(hooks.useBoms).toHaveBeenCalledWith(
-        expect.objectContaining({ type: "fit", page: 1 })
-      );
+      expect(hooks.useBoms).toHaveBeenCalledWith(expect.objectContaining({ type: "fit", page: 1 }));
     });
 
     it("3. filters by status and resets page to 1", () => {
@@ -584,7 +581,7 @@ describe("PR-11: BOM V2 Final Integration & E2E Regression", () => {
       fireEvent.change(statusFilter, { target: { value: "closed" } });
 
       expect(hooks.useBoms).toHaveBeenCalledWith(
-        expect.objectContaining({ status: "closed", page: 1 })
+        expect.objectContaining({ status: "closed", page: 1 }),
       );
     });
 
@@ -596,11 +593,9 @@ describe("PR-11: BOM V2 Final Integration & E2E Regression", () => {
 
       await waitFor(
         () => {
-          expect(hooks.useBoms).toHaveBeenCalledWith(
-            expect.objectContaining({ search: "Oxford" })
-          );
+          expect(hooks.useBoms).toHaveBeenCalledWith(expect.objectContaining({ search: "Oxford" }));
         },
-        { timeout: 1500 }
+        { timeout: 1500 },
       );
     });
 
@@ -611,9 +606,7 @@ describe("PR-11: BOM V2 Final Integration & E2E Regression", () => {
       expect(page2Btn).toBeTruthy();
       fireEvent.click(page2Btn);
 
-      expect(hooks.useBoms).toHaveBeenCalledWith(
-        expect.objectContaining({ page: 2 })
-      );
+      expect(hooks.useBoms).toHaveBeenCalledWith(expect.objectContaining({ page: 2 }));
     });
 
     it("6. clicking on a BOM row navigates cleanly to /bom/:id", () => {
@@ -636,9 +629,7 @@ describe("PR-11: BOM V2 Final Integration & E2E Regression", () => {
       const createBtn = screen.getByLabelText("Thêm nguyên liệu - Tạo BOM");
       fireEvent.click(createBtn);
 
-      expect(
-        screen.getByText("Tạo mới Định mức Nguyên phụ liệu (BOM)")
-      ).toBeTruthy();
+      expect(screen.getByText("Tạo mới Định mức Nguyên phụ liệu (BOM)")).toBeTruthy();
       expect(screen.getByText("Chọn loại BOM")).toBeTruthy();
     });
 
@@ -669,7 +660,7 @@ describe("PR-11: BOM V2 Final Integration & E2E Regression", () => {
           expect.objectContaining({
             type: "fit",
             styleId: "style-1",
-          })
+          }),
         );
         expect(hooks.mockNavigate).toHaveBeenCalledWith("/bom/new-fit-bom-123");
       });
@@ -704,7 +695,7 @@ describe("PR-11: BOM V2 Final Integration & E2E Regression", () => {
           expect.objectContaining({
             type: "po",
             purchaseOrderProductId: "prod-1",
-          })
+          }),
         );
         expect(hooks.mockNavigate).toHaveBeenCalledWith("/bom/new-po-bom-456");
       });
@@ -832,7 +823,7 @@ describe("PR-11: BOM V2 Final Integration & E2E Regression", () => {
         expect(hooks.refetchBom).toHaveBeenCalled();
         expect(hooks.mockToast.showToast).toHaveBeenCalledWith(
           expect.stringMatching(/Dữ liệu đã bị thay đổi bởi người khác/i),
-          "error"
+          "error",
         );
       });
     });
@@ -918,7 +909,7 @@ describe("PR-11: BOM V2 Final Integration & E2E Regression", () => {
 
       expect(hooks.useBomRevisionDetail).toHaveBeenCalledWith(
         "bom-v2-test-id",
-        "rev-historical-99"
+        "rev-historical-99",
       );
     });
 
@@ -1074,7 +1065,7 @@ describe("PR-11: BOM V2 Final Integration & E2E Regression", () => {
         expect.objectContaining({
           purchaseOrderId: "po-1",
           page: 1,
-        })
+        }),
       );
     });
 
@@ -1092,7 +1083,7 @@ describe("PR-11: BOM V2 Final Integration & E2E Regression", () => {
           materialId: "mat-1",
           page: 2,
           limit: 50,
-        })
+        }),
       );
     });
 

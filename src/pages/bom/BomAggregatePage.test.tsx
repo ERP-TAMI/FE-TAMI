@@ -189,14 +189,15 @@ describe("BomAggregatePage", () => {
     });
 
     hooks.usePoProducts.mockImplementation((id?: string) => ({
-      data: id === "po-1"
-        ? {
-            items: [
-              { id: "prod-1", productCode: "PRD-01", productName: "Áo Polo Nam" },
-              { id: "prod-2", productCode: "PRD-02", productName: "Quần Khaki" },
-            ],
-          }
-        : { items: [] },
+      data:
+        id === "po-1"
+          ? {
+              items: [
+                { id: "prod-1", productCode: "PRD-01", productName: "Áo Polo Nam" },
+                { id: "prod-2", productCode: "PRD-02", productName: "Quần Khaki" },
+              ],
+            }
+          : { items: [] },
       isLoading: false,
     }));
 
@@ -283,7 +284,7 @@ describe("BomAggregatePage", () => {
       render(
         <BrowserRouter>
           <BomAggregatePage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
 
       expect(screen.getByRole("heading", { name: "Tổng hợp nhu cầu NPL" })).toBeTruthy();
@@ -306,7 +307,7 @@ describe("BomAggregatePage", () => {
       render(
         <BrowserRouter>
           <BomAggregatePage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
 
       expect(screen.getByTestId("bom-aggregate-skeleton")).toBeTruthy();
@@ -326,7 +327,7 @@ describe("BomAggregatePage", () => {
       render(
         <BrowserRouter>
           <BomAggregatePage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
 
       expect(screen.getByTestId("bom-aggregate-error")).toBeTruthy();
@@ -346,7 +347,7 @@ describe("BomAggregatePage", () => {
       render(
         <BrowserRouter>
           <BomAggregatePage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
 
       const retryBtn = screen.getByTestId("aggregate-retry-btn");
@@ -367,12 +368,14 @@ describe("BomAggregatePage", () => {
       render(
         <BrowserRouter>
           <BomAggregatePage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
 
       expect(screen.getByText("Chưa có dữ liệu NPL")).toBeTruthy();
       expect(
-        screen.getByText("Chưa có BOM PO nào ở trạng thái đã đóng (closed) để tổng hợp nhu cầu nguyên phụ liệu.")
+        screen.getByText(
+          "Chưa có BOM PO nào ở trạng thái đã đóng (closed) để tổng hợp nhu cầu nguyên phụ liệu.",
+        ),
       ).toBeTruthy();
       expect(screen.queryByTestId("clear-filters-btn")).toBeNull();
     });
@@ -391,7 +394,7 @@ describe("BomAggregatePage", () => {
       render(
         <BrowserRouter>
           <BomAggregatePage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
 
       expect(screen.getByText("Chưa có dữ liệu NPL")).toBeTruthy();
@@ -410,7 +413,7 @@ describe("BomAggregatePage", () => {
       render(
         <BrowserRouter>
           <BomAggregatePage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
 
       const poSelect = screen.getByTestId("aggregate-po-select");
@@ -424,7 +427,7 @@ describe("BomAggregatePage", () => {
       render(
         <BrowserRouter>
           <BomAggregatePage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
 
       const bomSelect = screen.getByTestId("aggregate-bom-select");
@@ -442,7 +445,7 @@ describe("BomAggregatePage", () => {
       render(
         <BrowserRouter>
           <BomAggregatePage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
 
       const bomSelect = screen.getByTestId("aggregate-bom-select");
@@ -454,7 +457,7 @@ describe("BomAggregatePage", () => {
       render(
         <BrowserRouter>
           <BomAggregatePage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
 
       const styleSelect = screen.getByTestId("aggregate-style-select");
@@ -466,7 +469,7 @@ describe("BomAggregatePage", () => {
       render(
         <BrowserRouter>
           <BomAggregatePage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
 
       const matSelect = screen.getByTestId("aggregate-material-select");
@@ -478,7 +481,7 @@ describe("BomAggregatePage", () => {
       render(
         <BrowserRouter>
           <BomAggregatePage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
 
       const searchInput = screen.getByTestId("aggregate-search-input") as HTMLInputElement;
@@ -491,7 +494,7 @@ describe("BomAggregatePage", () => {
       render(
         <BrowserRouter>
           <BomAggregatePage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
 
       const searchInput = screen.getByTestId("aggregate-search-input");
@@ -511,7 +514,7 @@ describe("BomAggregatePage", () => {
       render(
         <BrowserRouter>
           <BomAggregatePage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
 
       const breakdownSelect = screen.getByTestId("aggregate-breakdown-select");
@@ -526,7 +529,7 @@ describe("BomAggregatePage", () => {
       render(
         <BrowserRouter>
           <BomAggregatePage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
 
       const clearBtn = screen.getByTestId("clear-filters-btn");
@@ -545,7 +548,7 @@ describe("BomAggregatePage", () => {
       render(
         <BrowserRouter>
           <BomAggregatePage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
 
       expect(hooks.useBomAggregate).toHaveBeenCalledWith(
@@ -556,7 +559,7 @@ describe("BomAggregatePage", () => {
           breakdown: "color",
           page: 2,
           limit: 50,
-        })
+        }),
       );
     });
   });
@@ -569,7 +572,7 @@ describe("BomAggregatePage", () => {
       render(
         <BrowserRouter>
           <BomAggregatePage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
 
       expect(screen.getByText("Vải Cotton 100%")).toBeTruthy();
@@ -582,7 +585,7 @@ describe("BomAggregatePage", () => {
       render(
         <BrowserRouter>
           <BomAggregatePage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
 
       expect(screen.getByText("Mét")).toBeTruthy();
@@ -593,7 +596,7 @@ describe("BomAggregatePage", () => {
       render(
         <BrowserRouter>
           <BomAggregatePage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
 
       // 2500 formatted as 2.500
@@ -618,7 +621,7 @@ describe("BomAggregatePage", () => {
       render(
         <BrowserRouter>
           <BomAggregatePage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
 
       expect(screen.getByText("Mét")).toBeTruthy();
@@ -643,7 +646,7 @@ describe("BomAggregatePage", () => {
       render(
         <BrowserRouter>
           <BomAggregatePage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
 
       expect(screen.getByText("45")).toBeTruthy();
@@ -665,7 +668,7 @@ describe("BomAggregatePage", () => {
       render(
         <BrowserRouter>
           <BomAggregatePage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
 
       const paginationSelect = screen.getByTestId("aggregate-page-size-select");
@@ -690,7 +693,7 @@ describe("BomAggregatePage", () => {
       render(
         <BrowserRouter>
           <BomAggregatePage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
 
       const page2Btn = screen.getByRole("button", { name: "Trang 2" });
@@ -708,7 +711,7 @@ describe("BomAggregatePage", () => {
       render(
         <BrowserRouter>
           <BomAggregatePage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
 
       const expandBtn = screen.getByTestId("expand-btn-0");
@@ -727,7 +730,7 @@ describe("BomAggregatePage", () => {
       render(
         <BrowserRouter>
           <BomAggregatePage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
 
       const expandBtn = screen.getByTestId("expand-btn-1");
@@ -758,7 +761,7 @@ describe("BomAggregatePage", () => {
       render(
         <BrowserRouter>
           <BomAggregatePage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
 
       const expandBtn = screen.getByTestId("expand-btn-0");
@@ -774,7 +777,7 @@ describe("BomAggregatePage", () => {
       render(
         <BrowserRouter>
           <BomAggregatePage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
 
       const expandBtn = screen.getByTestId("expand-btn-0");
@@ -804,15 +807,13 @@ describe("BomAggregatePage", () => {
       render(
         <BrowserRouter>
           <BomAggregatePage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
 
       const expandBtn = screen.getByTestId("expand-btn-0");
       fireEvent.click(expandBtn);
 
-      expect(
-        screen.getByText("Không có dữ liệu phân rã chi tiết cho vật tư này")
-      ).toBeTruthy();
+      expect(screen.getByText("Không có dữ liệu phân rã chi tiết cho vật tư này")).toBeTruthy();
     });
   });
 
@@ -825,7 +826,7 @@ describe("BomAggregatePage", () => {
       render(
         <BrowserRouter>
           <BomAggregatePage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
 
       expect(screen.queryByText("Đơn giá")).toBeNull();
@@ -837,7 +838,7 @@ describe("BomAggregatePage", () => {
       render(
         <BrowserRouter>
           <BomAggregatePage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
 
       expect(screen.queryByText("Đơn giá")).toBeNull();
@@ -849,7 +850,7 @@ describe("BomAggregatePage", () => {
       render(
         <BrowserRouter>
           <BomAggregatePage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
 
       expect(screen.queryByText("Đơn giá")).toBeNull();
@@ -861,7 +862,7 @@ describe("BomAggregatePage", () => {
       render(
         <BrowserRouter>
           <BomAggregatePage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
 
       expect(screen.queryByText("Đơn giá")).toBeNull();
@@ -873,7 +874,7 @@ describe("BomAggregatePage", () => {
       render(
         <BrowserRouter>
           <BomAggregatePage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
 
       expect(screen.queryByText("Đơn giá")).toBeNull();
@@ -897,7 +898,7 @@ describe("BomAggregatePage", () => {
       render(
         <BrowserRouter>
           <BomAggregatePage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
 
       expect(screen.getByText("2.500")).toBeTruthy();
@@ -922,7 +923,7 @@ describe("BomAggregatePage", () => {
       render(
         <BrowserRouter>
           <BomAggregatePage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
 
       const summaryContainer = screen.getByTestId("bom-aggregate-summary");
@@ -947,7 +948,7 @@ describe("BomAggregatePage", () => {
       render(
         <BrowserRouter>
           <BomAggregatePage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
 
       expect(screen.queryByText("Chưa đủ dữ liệu giá")).toBeNull();
@@ -964,7 +965,7 @@ describe("BomAggregatePage", () => {
       render(
         <BrowserRouter>
           <BomAggregatePage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
 
       const refreshBtn = screen.getByTestId("aggregate-refresh-btn");
@@ -980,7 +981,7 @@ describe("BomAggregatePage", () => {
       render(
         <BrowserRouter>
           <BomAggregatePage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
 
       expect(hooks.useBomAggregate).toHaveBeenCalledWith(
@@ -988,7 +989,28 @@ describe("BomAggregatePage", () => {
           purchaseOrderId: "po-1",
           breakdown: "color",
           search: "Poly",
-        })
+        }),
+      );
+    });
+
+    it("38b. product filter uses purchaseOrderProductId without aliasing it to bomId", () => {
+      mockSearchParams.set("purchaseOrderId", "po-1");
+      mockSearchParams.set("purchaseOrderProductId", "prod-1");
+
+      render(
+        <BrowserRouter>
+          <BomAggregatePage />
+        </BrowserRouter>,
+      );
+
+      expect(hooks.useBomAggregate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          purchaseOrderProductId: "prod-1",
+          bomId: undefined,
+        }),
+      );
+      expect((screen.getByTestId("aggregate-product-select") as HTMLSelectElement).value).toBe(
+        "prod-1",
       );
     });
 
@@ -997,7 +1019,7 @@ describe("BomAggregatePage", () => {
       render(
         <BrowserRouter>
           <BomAggregatePage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
 
       const poSelect = screen.getByTestId("aggregate-po-select");
@@ -1011,7 +1033,7 @@ describe("BomAggregatePage", () => {
       render(
         <BrowserRouter>
           <BomAggregatePage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
 
       const breakdownSelect = screen.getByTestId("aggregate-breakdown-select");
@@ -1043,7 +1065,7 @@ describe("BomAggregatePage", () => {
       render(
         <BrowserRouter>
           <BomAggregatePage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
 
       expect(screen.getByText("Tham số truy vấn không hợp lệ")).toBeTruthy();
@@ -1067,7 +1089,7 @@ describe("BomAggregatePage", () => {
       render(
         <BrowserRouter>
           <BomAggregatePage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
 
       expect(screen.getByText("Bạn không có quyền truy cập dữ liệu này")).toBeTruthy();
@@ -1086,11 +1108,11 @@ describe("BomAggregatePage", () => {
       render(
         <BrowserRouter>
           <BomAggregatePage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
 
       expect(
-        screen.getByText("Đã xảy ra lỗi khi kết nối với máy chủ. Vui lòng thử lại.")
+        screen.getByText("Đã xảy ra lỗi khi kết nối với máy chủ. Vui lòng thử lại."),
       ).toBeTruthy();
     });
   });
@@ -1103,7 +1125,7 @@ describe("BomAggregatePage", () => {
       render(
         <BrowserRouter>
           <BomAggregatePage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
 
       expect(screen.queryByText("Theo sản phẩm")).toBeNull();
@@ -1116,7 +1138,7 @@ describe("BomAggregatePage", () => {
       render(
         <BrowserRouter>
           <BomAggregatePage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
 
       const colorSizeTabBtn = screen.getByTestId("tab-color-size");
@@ -1130,7 +1152,7 @@ describe("BomAggregatePage", () => {
       render(
         <BrowserRouter>
           <BomAggregatePage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
 
       // Switch to color_size tab
@@ -1158,7 +1180,7 @@ describe("BomAggregatePage", () => {
       render(
         <BrowserRouter>
           <BomAggregatePage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
 
       expect(screen.getByTestId("bom-aggregate-size-matrix-table")).toBeTruthy();
@@ -1184,7 +1206,7 @@ describe("BomAggregatePage", () => {
       render(
         <BrowserRouter>
           <BomAggregatePage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
 
       const detailedBtn = screen.getByTestId("display-mode-detailed");
@@ -1214,7 +1236,7 @@ describe("BomAggregatePage", () => {
       render(
         <BrowserRouter>
           <BomAggregatePage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
 
       const expandBtn = screen.getByTestId("expand-btn-0");
@@ -1242,7 +1264,7 @@ describe("BomAggregatePage", () => {
       render(
         <BrowserRouter>
           <BomAggregatePage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
 
       // Verify Mã NPL is not in the size matrix table headers
@@ -1265,7 +1287,7 @@ describe("BomAggregatePage", () => {
       render(
         <BrowserRouter>
           <BomAggregatePage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
 
       const bomSelect = screen.getByTestId("aggregate-bom-select") as HTMLSelectElement;
@@ -1285,7 +1307,7 @@ describe("BomAggregatePage", () => {
       render(
         <BrowserRouter>
           <BomAggregatePage />
-        </BrowserRouter>
+        </BrowserRouter>,
       );
 
       const poSelect = screen.getByTestId("aggregate-po-select") as HTMLSelectElement;
@@ -1301,5 +1323,3 @@ describe("BomAggregatePage", () => {
     });
   });
 });
-
-

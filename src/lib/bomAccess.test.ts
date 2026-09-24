@@ -56,8 +56,8 @@ describe("bomAccess - Permission Matrix & Workflow Guards", () => {
       expect(canForwardBom(roles.admin, "wait_tpkh_confirm")).toBe(false);
     });
 
-    it("at wait_accounting (N4): ONLY kt/accounting can forward", () => {
-      expect(canForwardBom(roles.kt, "wait_accounting")).toBe(true);
+    it("at wait_accounting (N4): ONLY accounting can forward", () => {
+      expect(canForwardBom(roles.kt, "wait_accounting")).toBe(false);
       expect(canForwardBom(roles.accounting, "wait_accounting")).toBe(true);
       expect(canForwardBom(roles.nvkh, "wait_accounting")).toBe(false);
       expect(canForwardBom(roles.rd, "wait_accounting")).toBe(false);
@@ -102,16 +102,16 @@ describe("bomAccess - Permission Matrix & Workflow Guards", () => {
       expect(canRejectBom(roles.sa, "wait_tpkh_confirm")).toBe(false);
     });
 
-    it("at wait_accounting (N4): ONLY kt/accounting can reject (tpkh/sa cannot)", () => {
-      expect(canRejectBom(roles.kt, "wait_accounting")).toBe(true);
+    it("at wait_accounting (N4): ONLY accounting can reject (tpkh/sa cannot)", () => {
+      expect(canRejectBom(roles.kt, "wait_accounting")).toBe(false);
       expect(canRejectBom(roles.accounting, "wait_accounting")).toBe(true);
       expect(canRejectBom(roles.tpkh, "wait_accounting")).toBe(false);
       expect(canRejectBom(roles.sa, "wait_accounting")).toBe(false);
     });
 
-    it("at wait_sa_approve (N5): ONLY sa and admin can reject", () => {
+    it("at wait_sa_approve (N5): ONLY sa can reject", () => {
       expect(canRejectBom(roles.sa, "wait_sa_approve")).toBe(true);
-      expect(canRejectBom(roles.admin, "wait_sa_approve")).toBe(true);
+      expect(canRejectBom(roles.admin, "wait_sa_approve")).toBe(false);
       expect(canRejectBom(roles.tpkh, "wait_sa_approve")).toBe(false);
       expect(canRejectBom(roles.kt, "wait_sa_approve")).toBe(false);
     });
@@ -123,9 +123,9 @@ describe("bomAccess - Permission Matrix & Workflow Guards", () => {
   });
 
   describe("canApproveBom", () => {
-    it("ONLY sa and admin at wait_sa_approve can approve", () => {
+    it("ONLY sa at wait_sa_approve can approve", () => {
       expect(canApproveBom(roles.sa, "wait_sa_approve")).toBe(true);
-      expect(canApproveBom(roles.admin, "wait_sa_approve")).toBe(true);
+      expect(canApproveBom(roles.admin, "wait_sa_approve")).toBe(false);
       expect(canApproveBom(roles.tpkh, "wait_sa_approve")).toBe(false);
       expect(canApproveBom(roles.kt, "wait_sa_approve")).toBe(false);
       expect(canApproveBom(roles.sa, "wait_accounting")).toBe(false);
@@ -160,8 +160,8 @@ describe("bomAccess - Permission Matrix & Workflow Guards", () => {
   });
 
   describe("canEditUnitCost", () => {
-    it("only kt/accounting at wait_accounting can edit unit cost", () => {
-      expect(canEditUnitCost(roles.kt, "wait_accounting")).toBe(true);
+    it("only accounting at wait_accounting can edit unit cost", () => {
+      expect(canEditUnitCost(roles.kt, "wait_accounting")).toBe(false);
       expect(canEditUnitCost(roles.accounting, "wait_accounting")).toBe(true);
       expect(canEditUnitCost(roles.tpkh, "wait_accounting")).toBe(false);
       expect(canEditUnitCost(roles.sa, "wait_accounting")).toBe(false);
@@ -188,10 +188,10 @@ describe("bomAccess - Permission Matrix & Workflow Guards", () => {
   });
 
   describe("canDiscontinueBom", () => {
-    it("allows tpkh, sa, admin to discontinue an active bom", () => {
+    it("allows tpkh and sa to discontinue an active bom", () => {
       expect(canDiscontinueBom(roles.tpkh, "wait_nvkh")).toBe(true);
       expect(canDiscontinueBom(roles.sa, "wait_rd")).toBe(true);
-      expect(canDiscontinueBom(roles.admin, "closed")).toBe(true);
+      expect(canDiscontinueBom(roles.admin, "closed")).toBe(false);
       expect(canDiscontinueBom(roles.nvkh, "wait_nvkh")).toBe(false);
       expect(canDiscontinueBom(roles.tpkh, "discontinued")).toBe(false);
     });

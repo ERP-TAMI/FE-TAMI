@@ -1,9 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import {
-  AlertCircle,
-  RotateCw,
-} from "lucide-react";
+import { AlertCircle, RotateCw } from "lucide-react";
 import {
   useBom,
   useUpdateBom,
@@ -101,23 +98,21 @@ export default function BomDetailPage() {
   const isHistorical = Boolean(
     selectedRevisionParam &&
       bom?.currentRevision?.id &&
-      selectedRevisionParam !== bom.currentRevision.id
+      selectedRevisionParam !== bom.currentRevision.id,
   );
 
   // Query Historical Revision Detail if requested
   const { data: historicalRevision, isLoading: isLoadingHistorical } = useBomRevisionDetail(
     id,
-    isHistorical ? selectedRevisionParam! : undefined
+    isHistorical ? selectedRevisionParam! : undefined,
   );
 
   // Query History
-  const activeRevisionId = isHistorical
-    ? selectedRevisionParam!
-    : bom?.currentRevision?.id;
+  const activeRevisionId = isHistorical ? selectedRevisionParam! : bom?.currentRevision?.id;
 
   const { data: history, isLoading: isLoadingHistory } = useBomRevisionHistory(
     id,
-    activeRevisionId
+    activeRevisionId,
   );
 
   // Mutation Hooks
@@ -155,14 +150,12 @@ export default function BomDetailPage() {
   const [hasUnsavedAccountingCosts, setHasUnsavedAccountingCosts] = useState(false);
   const blocker = useUnsavedChangesWarning(
     hasUnsavedAccountingCosts,
-    "Bạn có các đơn giá vật tư đã thay đổi nhưng chưa bấm 'Lưu nháp'. Vui lòng bấm lưu để không bị mất dữ liệu!"
+    "Bạn có các đơn giá vật tư đã thay đổi nhưng chưa bấm 'Lưu nháp'. Vui lòng bấm lưu để không bị mất dữ liệu!",
   );
 
   // Sync inputs when bom lines change
   const activeBomLines: BomLineItem[] = useMemo(() => {
-    return isHistorical
-      ? (historicalRevision?.lines as BomLineItem[]) || []
-      : bom?.lines || [];
+    return isHistorical ? (historicalRevision?.lines as BomLineItem[]) || [] : bom?.lines || [];
   }, [isHistorical, historicalRevision?.lines, bom?.lines]);
 
   useEffect(() => {
@@ -172,10 +165,7 @@ export default function BomDetailPage() {
         activeBomLines.forEach((l) => {
           if (!next[l.id]) {
             next[l.id] = {
-              consumption:
-                l.consumption && Number(l.consumption) > 0
-                  ? String(l.consumption)
-                  : "",
+              consumption: l.consumption && Number(l.consumption) > 0 ? String(l.consumption) : "",
               note: l.note || "",
             };
           }
@@ -216,21 +206,19 @@ export default function BomDetailPage() {
         <h2 className="mt-4 text-xl font-bold text-gray-900 dark:text-white">
           Không thể tải chi tiết BOM
         </h2>
-        <p className="mt-1 max-w-md text-theme-sm text-gray-500 dark:text-gray-400">
-          {errorMsg}
-        </p>
+        <p className="text-theme-sm mt-1 max-w-md text-gray-500 dark:text-gray-400">{errorMsg}</p>
         <div className="mt-6 flex items-center gap-3">
           <button
             type="button"
             onClick={() => navigate("/bom")}
-            className="cursor-pointer rounded-xl border border-gray-200 bg-white px-4 py-2 text-theme-sm font-semibold text-gray-700 hover:bg-gray-50 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800"
+            className="text-theme-sm cursor-pointer rounded-xl border border-gray-200 bg-white px-4 py-2 font-semibold text-gray-700 hover:bg-gray-50 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800"
           >
             Về danh sách
           </button>
           <button
             type="button"
             onClick={() => refetchBom()}
-            className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-brand-500 px-4 py-2 text-theme-sm font-semibold text-white shadow-xs hover:bg-brand-600"
+            className="bg-brand-500 text-theme-sm hover:bg-brand-600 inline-flex cursor-pointer items-center gap-2 rounded-xl px-4 py-2 font-semibold text-white shadow-xs"
           >
             <RotateCw className="h-4 w-4" />
             <span>Thử lại</span>
@@ -244,33 +232,30 @@ export default function BomDetailPage() {
   const currentStatus = isHistorical
     ? (historicalRevision?.status as BomStatus) || "closed"
     : bom.status === "discontinued" || Boolean(bom.discontinuedAt)
-    ? "discontinued"
-    : bom.status || bom.currentRevision?.status || "wait_nvkh";
+      ? "discontinued"
+      : bom.status || bom.currentRevision?.status || "wait_nvkh";
 
   const displayLines = isHistorical
     ? (historicalRevision?.lines as BomLineItem[]) || []
     : bom.lines || [];
 
   const displayCostPerUnit = isHistorical
-    ? historicalRevision?.costPerUnit ?? null
+    ? (historicalRevision?.costPerUnit ?? null)
     : bom.costPerUnit;
 
-  const displayOrderCost = isHistorical
-    ? null
-    : bom.currentOrderCost;
+  const displayOrderCost = isHistorical ? null : bom.currentOrderCost;
 
   const isRdEntryMode =
-    currentStatus === "wait_rd" &&
-    canEditTechnicalLines(user, currentStatus, isHistorical);
+    currentStatus === "wait_rd" && canEditTechnicalLines(user, currentStatus, isHistorical);
 
   const handleSaveAllAccountingCosts = async (
-    updates: { lineId: string; unitCost: number | null }[]
+    updates: { lineId: string; unitCost: number | null }[],
   ) => {
     try {
       await Promise.all(
         updates.map(({ lineId, unitCost }) =>
-          updateLineMutation.mutateAsync({ lineId, payload: { unitCost } })
-        )
+          updateLineMutation.mutateAsync({ lineId, payload: { unitCost } }),
+        ),
       );
       setHasUnsavedAccountingCosts(false);
       showToast(`Đã lưu thành công ${updates.length} đơn giá vật tư`, "success");
@@ -281,11 +266,7 @@ export default function BomDetailPage() {
     }
   };
 
-  const handleChangeRdInput = (
-    lineId: string,
-    field: "consumption" | "note",
-    value: string
-  ) => {
+  const handleChangeRdInput = (lineId: string, field: "consumption" | "note", value: string) => {
     setRdInputs((prev) => ({
       ...prev,
       [lineId]: {
@@ -299,10 +280,7 @@ export default function BomDetailPage() {
     const resetState: Record<string, RdLineInputState> = {};
     displayLines.forEach((l) => {
       resetState[l.id] = {
-        consumption:
-          l.consumption && Number(l.consumption) > 0
-            ? String(l.consumption)
-            : "",
+        consumption: l.consumption && Number(l.consumption) > 0 ? String(l.consumption) : "",
         note: l.note || "",
       };
     });
@@ -346,7 +324,7 @@ export default function BomDetailPage() {
     if (unentered.length > 0) {
       showToast(
         `Còn ${unentered.length} vật tư chưa nhập định mức. Vui lòng nhập đầy đủ trước khi hoàn tất.`,
-        "error"
+        "error",
       );
       return;
     }
@@ -464,7 +442,10 @@ export default function BomDetailPage() {
       showToast("Đã sắp xếp lại thứ tự vật tư", "success");
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { message?: string } }; message?: string };
-      showToast(axiosErr?.response?.data?.message || axiosErr?.message || "Lỗi khi sắp xếp", "error");
+      showToast(
+        axiosErr?.response?.data?.message || axiosErr?.message || "Lỗi khi sắp xếp",
+        "error",
+      );
     }
   };
 
@@ -543,170 +524,160 @@ export default function BomDetailPage() {
     <div className="relative min-h-screen w-full">
       {/* Main content: shrinks and yields room when drawer is open */}
       <div
-        className={`flex flex-col gap-6 p-4 sm:p-6 lg:p-8 transition-all duration-300 min-w-0 ${
+        className={`flex min-w-0 flex-col gap-6 p-4 transition-all duration-300 sm:p-6 lg:p-8 ${
           isLineModalOpen ? "lg:mr-[480px]" : ""
         }`}
       >
-      {/* 1. Header & Quick Actions */}
-      <BomDetailHeader
-        bom={bom}
-        revisions={revisions}
-        selectedRevisionId={selectedRevisionParam || bom.currentRevision?.id}
-        isHistorical={isHistorical}
-        onSelectRevision={handleSelectRevision}
-        onOpenEditHeaderModal={() => setIsEditHeaderOpen(true)}
-        onOpenAddLineModal={handleOpenAddLine}
-        onOpenForwardModal={() => {
-          if (hasUnsavedAccountingCosts) {
-            showToast(
-              "Bạn có các đơn giá vật tư đã thay đổi nhưng chưa lưu. Vui lòng bấm 'Lưu nháp' trước khi chuyển bước!",
-              "error"
-            );
-            return;
-          }
-          setIsForwardModalOpen(true);
-        }}
-        onOpenRejectModal={() => setIsRejectModalOpen(true)}
-        onOpenApproveModal={() => setIsApproveModalOpen(true)}
-        onOpenCreateRevisionModal={() => setIsCreateRevModalOpen(true)}
-        onOpenCopyFitModal={() => setIsCopyFitModalOpen(true)}
-        onOpenDiscontinueModal={() => setIsDiscontinueModalOpen(true)}
-        onSaveDraft={isRdEntryMode ? handleSaveRdDraft : undefined}
-        isSavingDraft={isSavingRdDraft}
-      />
+        {/* 1. Header & Quick Actions */}
+        <BomDetailHeader
+          bom={bom}
+          revisions={revisions}
+          selectedRevisionId={selectedRevisionParam || bom.currentRevision?.id}
+          isHistorical={isHistorical}
+          onSelectRevision={handleSelectRevision}
+          onOpenEditHeaderModal={() => setIsEditHeaderOpen(true)}
+          onOpenAddLineModal={handleOpenAddLine}
+          onOpenForwardModal={() => {
+            if (hasUnsavedAccountingCosts) {
+              showToast(
+                "Bạn có các đơn giá vật tư đã thay đổi nhưng chưa lưu. Vui lòng bấm 'Lưu nháp' trước khi chuyển bước!",
+                "error",
+              );
+              return;
+            }
+            setIsForwardModalOpen(true);
+          }}
+          onOpenRejectModal={() => setIsRejectModalOpen(true)}
+          onOpenApproveModal={() => setIsApproveModalOpen(true)}
+          onOpenCreateRevisionModal={() => setIsCreateRevModalOpen(true)}
+          onOpenCopyFitModal={() => setIsCopyFitModalOpen(true)}
+          onOpenDiscontinueModal={() => setIsDiscontinueModalOpen(true)}
+          onSaveDraft={isRdEntryMode ? handleSaveRdDraft : undefined}
+          isSavingDraft={isSavingRdDraft}
+        />
 
-      {/* 2. Workflow State Stepper */}
-      <BomWorkflowStepper
-        status={currentStatus}
-        discontinuedAt={bom.discontinuedAt}
-      />
+        {/* 2. Workflow State Stepper */}
+        <BomWorkflowStepper status={currentStatus} discontinuedAt={bom.discontinuedAt} />
 
-      {/* 3. 4 KPI Summary Cards */}
-      <BomDetailKpiCards bom={bom} />
+        {/* 3. 4 KPI Summary Cards */}
+        <BomDetailKpiCards bom={bom} />
 
-      {/* 4. Tabs: Hide visually in RD mode to match mockup, but keep DOM for accessibility */}
-      <div className={isRdEntryMode ? "sr-only" : "border-b border-gray-200 dark:border-gray-800"}>
-        <div className="flex items-center gap-8">
-          <button
-            type="button"
-            onClick={() => setActiveTab("lines")}
-            className={`cursor-pointer border-b-2 py-3 text-sm font-semibold transition-colors ${
-              activeTab === "lines"
-                ? "border-brand-600 text-brand-600 dark:border-brand-400 dark:text-brand-400"
-                : "border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-            }`}
-          >
-            Nguyên liệu ({displayLines.length})
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab("revisions")}
-            className={`cursor-pointer border-b-2 py-3 text-sm font-semibold transition-colors ${
-              activeTab === "revisions"
-                ? "border-brand-600 text-brand-600 dark:border-brand-400 dark:text-brand-400"
-                : "border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-            }`}
-          >
-            <span className="sr-only">Lịch sử phiên bản</span>
-            <span>Lịch sử</span>
-          </button>
-
-          {bom.type === "po" && (
+        {/* 4. Tabs: Hide visually in RD mode to match mockup, but keep DOM for accessibility */}
+        <div
+          className={isRdEntryMode ? "sr-only" : "border-b border-gray-200 dark:border-gray-800"}
+        >
+          <div className="flex items-center gap-8">
             <button
               type="button"
-              onClick={() => setActiveTab("aggregate")}
+              onClick={() => setActiveTab("lines")}
               className={`cursor-pointer border-b-2 py-3 text-sm font-semibold transition-colors ${
-                activeTab === "aggregate"
+                activeTab === "lines"
                   ? "border-brand-600 text-brand-600 dark:border-brand-400 dark:text-brand-400"
                   : "border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
               }`}
             >
-              Tổng hợp
+              Nguyên liệu ({displayLines.length})
             </button>
-          )}
 
-          <button
-            type="button"
-            onClick={() => setActiveTab("history")}
-            className="sr-only"
-          >
-            Nhật ký duyệt
-          </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("revisions")}
+              className={`cursor-pointer border-b-2 py-3 text-sm font-semibold transition-colors ${
+                activeTab === "revisions"
+                  ? "border-brand-600 text-brand-600 dark:border-brand-400 dark:text-brand-400"
+                  : "border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              }`}
+            >
+              <span className="sr-only">Lịch sử phiên bản</span>
+              <span>Lịch sử</span>
+            </button>
+
+            {bom.type === "po" && (
+              <button
+                type="button"
+                onClick={() => setActiveTab("aggregate")}
+                className={`cursor-pointer border-b-2 py-3 text-sm font-semibold transition-colors ${
+                  activeTab === "aggregate"
+                    ? "border-brand-600 text-brand-600 dark:border-brand-400 dark:text-brand-400"
+                    : "border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                }`}
+              >
+                Tổng hợp
+              </button>
+            )}
+
+            <button type="button" onClick={() => setActiveTab("history")} className="sr-only">
+              Nhật ký duyệt
+            </button>
+          </div>
         </div>
-      </div>
 
-      {/* 5. Tab Contents */}
-      {activeTab === "lines" && (
-        <div className="relative">
-          {isLoadingHistorical && (
-            <div className="mb-3 rounded-xl border border-gray-200 bg-gray-50 p-4 text-center text-theme-xs text-gray-500">
-              Đang tải dữ liệu của revision lịch sử...
-            </div>
-          )}
-          {isRdEntryMode ? (
-            <>
-              <BomRdEntryTable
+        {/* 5. Tab Contents */}
+        {activeTab === "lines" && (
+          <div className="relative">
+            {isLoadingHistorical && (
+              <div className="text-theme-xs mb-3 rounded-xl border border-gray-200 bg-gray-50 p-4 text-center text-gray-500">
+                Đang tải dữ liệu của revision lịch sử...
+              </div>
+            )}
+            {isRdEntryMode ? (
+              <>
+                <BomRdEntryTable
+                  lines={displayLines}
+                  inputs={rdInputs}
+                  onChangeInput={handleChangeRdInput}
+                  onEditLine={handleOpenEditLine}
+                  isEditingInModal={isLineModalOpen}
+                />
+                <BomRdBottomBar
+                  totalCount={displayLines.length}
+                  enteredCount={enteredRdCount}
+                  onCancel={handleCancelRdInputs}
+                  onComplete={handleFinishRd}
+                  isSubmitting={isFinishingRd}
+                />
+              </>
+            ) : (
+              <BomLinesTable
                 lines={displayLines}
-                inputs={rdInputs}
-                onChangeInput={handleChangeRdInput}
+                currentStatus={currentStatus}
+                isHistorical={isHistorical}
+                costPerUnit={displayCostPerUnit}
+                currentOrderQuantity={bom.currentOrderQuantity}
+                currentOrderCost={displayOrderCost}
+                onAddLine={handleOpenAddLine}
                 onEditLine={handleOpenEditLine}
+                onDeleteLine={handleOpenDeleteLine}
+                onReorderLines={handleReorderLines}
+                isReordering={reorderLinesMutation.isPending}
+                onAddLineInline={handleCreateLine}
+                onUpdateLineInline={(lineId, payload) =>
+                  updateLineMutation.mutateAsync({ lineId, payload }).then(() => {
+                    showToast("Đã cập nhật dòng vật tư", "success");
+                  })
+                }
+                onSaveAllCosts={handleSaveAllAccountingCosts}
+                onDirtyStateChange={setHasUnsavedAccountingCosts}
                 isEditingInModal={isLineModalOpen}
               />
-              <BomRdBottomBar
-                totalCount={displayLines.length}
-                enteredCount={enteredRdCount}
-                onCancel={handleCancelRdInputs}
-                onComplete={handleFinishRd}
-                isSubmitting={isFinishingRd}
-              />
-            </>
-          ) : (
-            <BomLinesTable
-              lines={displayLines}
-              currentStatus={currentStatus}
-              isHistorical={isHistorical}
-              costPerUnit={displayCostPerUnit}
-              currentOrderQuantity={bom.currentOrderQuantity}
-              currentOrderCost={displayOrderCost}
-              onAddLine={handleOpenAddLine}
-              onEditLine={handleOpenEditLine}
-              onDeleteLine={handleOpenDeleteLine}
-              onReorderLines={handleReorderLines}
-              isReordering={reorderLinesMutation.isPending}
-              onAddLineInline={handleCreateLine}
-              onUpdateLineInline={(lineId, payload) =>
-                updateLineMutation.mutateAsync({ lineId, payload }).then(() => {
-                  showToast("Đã cập nhật dòng vật tư", "success");
-                })
-              }
-              onSaveAllCosts={handleSaveAllAccountingCosts}
-              onDirtyStateChange={setHasUnsavedAccountingCosts}
-              isEditingInModal={isLineModalOpen}
-            />
-          )}
-        </div>
-      )}
+            )}
+          </div>
+        )}
 
-      {activeTab === "revisions" && (
-        <BomRevisionsTab
-          revisions={revisions || []}
-          isLoading={isLoadingRevisions}
-          currentRevisionId={bom.currentRevision?.id}
-          onOpenDiff={(revId) => setDiffModalRevId(revId)}
-        />
-      )}
+        {activeTab === "revisions" && (
+          <BomRevisionsTab
+            revisions={revisions || []}
+            isLoading={isLoadingRevisions}
+            currentRevisionId={bom.currentRevision?.id}
+            onOpenDiff={(revId) => setDiffModalRevId(revId)}
+          />
+        )}
 
-      {activeTab === "history" && (
-        <BomHistoryTab
-          history={history || []}
-          isLoading={isLoadingHistory}
-        />
-      )}
+        {activeTab === "history" && (
+          <BomHistoryTab history={history || []} isLoading={isLoadingHistory} />
+        )}
 
-      {activeTab === "aggregate" && bom.type === "po" && (
-        <BomAggregateTab bomId={bom.id} />
-      )}
+        {activeTab === "aggregate" && bom.type === "po" && <BomAggregateTab bomId={bom.id} />}
       </div>
 
       {/* 6. Modals */}
@@ -775,7 +746,12 @@ export default function BomDetailPage() {
 
       <BomCopyFitModal
         isOpen={isCopyFitModalOpen}
-        styleId={bom.style?.id}
+        styleId={
+          bom.style?.id ??
+          bom.product?.sourceStyleId ??
+          bom.purchaseOrderProduct?.sourceStyleId ??
+          undefined
+        }
         styleCode={bom.style?.styleCode}
         onClose={() => setIsCopyFitModalOpen(false)}
         onSubmit={handleCopyFit}
