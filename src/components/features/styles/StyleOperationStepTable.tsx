@@ -26,6 +26,7 @@ import { styleOperationStepsApi, type StyleOperationStepItem } from "@/api/style
 import { stageGroupApi, type StageGroup, type StageGroupSubItem } from "@/api/stage-group.api";
 import { useToast } from "@/hooks/useToast";
 import { resolveImageUrl } from "@/lib/imageUtils";
+import { getApiError } from "@/lib/apiError";
 
 function formatMetric(value: number, digits = 2, suffix = "") {
   if (!Number.isFinite(value) || value <= 0) return "—";
@@ -215,12 +216,17 @@ export function StyleOperationStepTable({
         return true;
       } catch (err) {
         console.error("Save failed:", err);
+        const apiError = getApiError(
+          err,
+          "Không thể lưu quy trình công đoạn, vui lòng thử lại.",
+        );
+        showToast(apiError.message, "error");
         return false;
       } finally {
         setIsSaving(false);
       }
     },
-    [onSave, baseDays, commonNote, rows],
+    [onSave, baseDays, commonNote, rows, showToast],
   );
 
   const rowKeys = steps.map((r) => r.id).join(",");
@@ -1047,7 +1053,7 @@ export function StyleOperationStepTable({
                         data-operation-row-index={idx}
                         className={`transition-colors ${rowBg}`}
                       >
-                        <td className={`${rowPaddingY} px-2 text-center font-mono text-gray-400`}>
+                        <td className={`${rowPaddingY} px-2 text-center font-mono font-semibold text-gray-700 dark:text-gray-300`}>
                           {isChildRow ? "" : visibleRowCount}
                         </td>
 
@@ -1342,6 +1348,26 @@ export function StyleOperationStepTable({
               )}
             </table>
           </div>
+
+          {isEditing && (
+            <div className="shrink-0 flex items-center justify-end gap-2 border-t border-gray-100 bg-white p-3 dark:border-gray-800 dark:bg-gray-900">
+              <Button variant="outline" size="sm" onClick={requestCloseEditor} disabled={isSaving}>
+                Hủy
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={async () => {
+                  const saved = await triggerSave();
+                  if (saved) handleEditClose();
+                }}
+                disabled={isSaving}
+              >
+                <CheckLineIcon className="w-4 h-4" />
+                {isSaving ? "Đang lưu..." : "Lưu quy trình"}
+              </Button>
+            </div>
+          )}
         </div>
 
       </div>
