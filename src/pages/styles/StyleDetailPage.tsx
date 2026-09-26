@@ -323,7 +323,6 @@ export default function StyleDetailPage() {
           styleCode={style.styleCode}
           styleName={style.styleName}
           status={style.status}
-          onEditClick={activeTab === "general" ? () => setIsEditModalOpen(true) : undefined}
         />
 
         <div className="border-b border-gray-200 dark:border-gray-800">
@@ -410,6 +409,7 @@ export default function StyleDetailPage() {
           onClearImage={clearLocalImage}
           onToggleStatus={() => void handleToggleStatus()}
           isStatusPending={statusUpdate.isPending}
+          onEditClick={() => setIsEditModalOpen(true)}
         />
       ) : activeTab === "steps" ? (
         <StyleOperationStepTable

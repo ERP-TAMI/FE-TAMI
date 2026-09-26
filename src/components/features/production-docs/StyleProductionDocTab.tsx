@@ -48,11 +48,11 @@ interface Props {
 
 function SectionHeader({ num, title }: { num: string; title: string }) {
   return (
-    <div className="flex items-center gap-2">
-      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-red-600 text-xs font-bold text-white">
+    <div className="flex items-center gap-2 border-b border-brand-100 pb-2 dark:border-brand-900/40">
+      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-brand-600 text-xs font-bold text-white">
         {num}
       </span>
-      <h3 className="text-sm font-bold tracking-wide text-red-700 uppercase underline dark:text-red-400">
+      <h3 className="text-sm font-bold tracking-wide text-brand-700 uppercase dark:text-brand-400">
         {title}
       </h3>
     </div>
@@ -198,8 +198,9 @@ function CompactImageUploader({
                 <button
                   type="button"
                   onClick={() => onRemove(i)}
-                  className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs text-white shadow-xs transition-transform hover:scale-110 hover:bg-red-600"
+                  className="absolute -top-2.5 -right-2.5 flex h-7 w-7 items-center justify-center rounded-full bg-red-500 text-sm text-white shadow-xs transition-transform hover:scale-110 hover:bg-red-600"
                   title="Xóa ảnh"
+                  aria-label="Xóa ảnh"
                 >
                   ✕
                 </button>
@@ -1098,8 +1099,8 @@ export function StyleProductionDocTab({
             >
               <div className="flex items-center justify-between">
                 {isEditing ? (
-                  <div className="flex min-w-0 flex-1 items-center gap-2">
-                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-red-600 text-xs font-bold text-white">
+                  <div className="flex min-w-0 flex-1 items-center gap-2 border-b border-brand-100 pb-2 dark:border-brand-900/40">
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-600 text-xs font-bold text-white">
                       {secNum}
                     </span>
                     <input
@@ -1119,7 +1120,7 @@ export function StyleProductionDocTab({
                       }}
                       data-field={`section-title-${idx}`}
                       placeholder={`TÊN MỤC ${secNum}`}
-                      className="min-w-0 flex-1 border-0 border-b border-dashed border-red-200 bg-transparent py-1 text-sm font-extrabold text-red-700 uppercase underline outline-none focus:border-red-500 dark:border-red-900 dark:text-red-400"
+                      className="min-w-0 flex-1 rounded border-0 bg-transparent px-1 -mx-1 py-1 text-sm font-extrabold text-brand-700 uppercase outline-none focus:bg-brand-50 dark:text-brand-400 dark:focus:bg-brand-950/30"
                     />
                     {fieldErrors[`section-title-${idx}`] && (
                       <span className="absolute mt-10 text-xs font-medium text-red-600 dark:text-red-400">
@@ -1221,40 +1222,40 @@ export function StyleProductionDocTab({
                                 : "text-gray-900 dark:text-white"
                             }`}
                           />
-                          <div className="flex shrink-0 items-center justify-end gap-1">
+                          <div className="flex shrink-0 items-center justify-end gap-3">
                             {grp.kind !== "text" && (
-                              <>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const updated = [...sections];
-                                updated[idx].imageGroups![grpIdx].headingColor = "red";
-                                setSections(updated);
-                              }}
-                              className={`min-h-9 w-12 rounded-lg px-2 text-sm font-semibold transition-colors focus:ring-2 focus:ring-gray-300 focus:outline-none ${
-                                grp.headingColor === "red"
-                                  ? "bg-red-600 text-white"
-                                  : "bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-200"
-                              }`}
-                            >
-                              Đỏ
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const updated = [...sections];
-                                updated[idx].imageGroups![grpIdx].headingColor = "black";
-                                setSections(updated);
-                              }}
-                              className={`min-h-9 w-12 rounded-lg px-2 text-sm font-semibold transition-colors focus:ring-2 focus:ring-gray-300 focus:outline-none ${
-                                grp.headingColor === "black"
-                                  ? "bg-gray-900 text-white"
-                                  : "bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-200"
-                              }`}
-                            >
-                              Đen
-                            </button>
-                              </>
+                              <div className="inline-flex overflow-hidden rounded-lg border border-gray-300 dark:border-gray-700">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const updated = [...sections];
+                                    updated[idx].imageGroups![grpIdx].headingColor = "red";
+                                    setSections(updated);
+                                  }}
+                                  className={`min-h-9 w-12 text-sm font-semibold transition-colors focus:z-10 focus:ring-2 focus:ring-gray-300 focus:outline-none ${
+                                    grp.headingColor === "red"
+                                      ? "bg-red-600 text-white"
+                                      : "bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
+                                  }`}
+                                >
+                                  Đỏ
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const updated = [...sections];
+                                    updated[idx].imageGroups![grpIdx].headingColor = "black";
+                                    setSections(updated);
+                                  }}
+                                  className={`min-h-9 w-12 border-l border-gray-300 text-sm font-semibold transition-colors focus:z-10 focus:ring-2 focus:ring-gray-300 focus:outline-none dark:border-gray-700 ${
+                                    grp.headingColor === "black"
+                                      ? "bg-gray-900 text-white"
+                                      : "bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
+                                  }`}
+                                >
+                                  Đen
+                                </button>
+                              </div>
                             )}
                             <button
                               type="button"
@@ -1590,6 +1591,29 @@ export function StyleProductionDocTab({
         variant={toast?.variant}
         onClose={hideToast}
       />
+
+      {isEditing && (
+        <div className="sticky bottom-0 z-30 -mx-4 flex items-center justify-end gap-2 border-t border-gray-200 bg-white/95 px-4 py-3 backdrop-blur-xs dark:border-gray-800 dark:bg-gray-900/95 md:-mx-6 md:px-6">
+          <button
+            type="button"
+            onClick={() => setIsEditing(false)}
+            disabled={createDoc.isPending || updateDoc.isPending || updateProductDoc.isPending}
+            className="inline-flex min-h-10 items-center justify-center rounded-xl border border-gray-300 bg-white px-4 text-sm font-semibold text-gray-900 transition-colors hover:bg-gray-50 focus:ring-4 focus:ring-gray-200 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+          >
+            Hủy
+          </button>
+          <button
+            type="button"
+            onClick={() => void handleSave()}
+            disabled={createDoc.isPending || updateDoc.isPending || updateProductDoc.isPending}
+            className="inline-flex min-h-10 min-w-32 items-center justify-center rounded-xl bg-gray-900 px-5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-gray-800 focus:ring-4 focus:ring-gray-300 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-200"
+          >
+            {createDoc.isPending || updateDoc.isPending || updateProductDoc.isPending
+              ? "Đang lưu..."
+              : "Lưu tài liệu"}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

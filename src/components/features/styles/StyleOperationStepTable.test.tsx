@@ -76,7 +76,7 @@ describe("StyleOperationStepTable", () => {
     fireEvent.click(screen.getByRole("button", { name: "Chỉnh sửa" }));
 
     expect(screen.queryByRole("button", { name: "Chỉnh sửa" })).toBeNull();
-    expect(screen.getByRole("button", { name: /Lưu quy trình/i })).toBeTruthy();
+    expect(screen.getAllByRole("button", { name: /Lưu quy trình/i })[0]).toBeTruthy();
     expect(screen.getByRole("button", { name: /Thêm công đoạn/i })).toBeTruthy();
   });
 
@@ -101,7 +101,7 @@ describe("StyleOperationStepTable", () => {
 
     expect(onSave).not.toHaveBeenCalled();
 
-    fireEvent.click(screen.getByRole("button", { name: /Lưu quy trình/i }));
+    fireEvent.click(screen.getAllByRole("button", { name: /Lưu quy trình/i })[0]);
 
     await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
     const savedSteps = onSave.mock.calls[0][0] as Partial<StyleOperationStepItem>[];
@@ -125,7 +125,7 @@ describe("StyleOperationStepTable", () => {
     const downButtons = screen.getAllByTitle("Đưa công đoạn xuống");
     fireEvent.click(downButtons[0]);
 
-    fireEvent.click(screen.getByRole("button", { name: /Lưu quy trình/i }));
+    fireEvent.click(screen.getAllByRole("button", { name: /Lưu quy trình/i })[0]);
 
     await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
     const savedSteps = onSave.mock.calls[0][0] as Partial<StyleOperationStepItem>[];
@@ -151,7 +151,7 @@ describe("StyleOperationStepTable", () => {
     const noteInput = screen.getByRole("textbox", { name: "Ghi chú chung" });
     expect((noteInput as HTMLTextAreaElement).value).toBe("Ghi chú cắt");
     fireEvent.change(noteInput, { target: { value: "Ghi chú chung" } });
-    fireEvent.click(screen.getByRole("button", { name: /Lưu quy trình/i }));
+    fireEvent.click(screen.getAllByRole("button", { name: /Lưu quy trình/i })[0]);
 
     await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
     const savedSteps = onSave.mock.calls[0][0] as Partial<StyleOperationStepItem>[];
@@ -171,7 +171,7 @@ describe("StyleOperationStepTable", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Chỉnh sửa" }));
     fireEvent.click(screen.getByRole("button", { name: /Thêm công đoạn/i }));
-    fireEvent.click(screen.getByRole("button", { name: /Lưu quy trình/i }));
+    fireEvent.click(screen.getAllByRole("button", { name: /Lưu quy trình/i })[0]);
 
     const error = await screen.findByRole("alert");
     expect(onSave).not.toHaveBeenCalled();
