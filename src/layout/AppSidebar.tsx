@@ -24,7 +24,14 @@ type NavItem = {
 const navItems: NavItem[] = [
   { name: "Dashboard", path: "/dashboard", icon: <GridIcon /> },
   { name: "Mẫu Fit", path: "/styles", icon: <PageIcon /> },
-  { name: "BOM", path: "/bom", icon: <BoxCubeIcon /> },
+  {
+    name: "Quản lý NPL",
+    icon: <BoxCubeIcon />,
+    children: [
+      { name: "PO BOM", path: "/bom" },
+      { name: "Tổng hợp nhu cầu", path: "/bom/aggregate" },
+    ],
+  },
   { name: "Purchase Orders", path: "/po", icon: <ListIcon /> },
   {
     name: "Dữ liệu chung",
@@ -124,13 +131,23 @@ export default function AppSidebar() {
                       <NavLink
                         key={child.path}
                         to={child.path}
+                        end={child.path === "/bom"}
                         className={({ isActive }) =>
-                          `menu-dropdown-item ${
-                            isActive ? "menu-dropdown-item-active" : "menu-dropdown-item-inactive"
+                          `menu-dropdown-item flex items-center gap-2 ${
+                            isActive ? "menu-dropdown-item-active font-semibold" : "menu-dropdown-item-inactive"
                           }`
                         }
                       >
-                        {child.name}
+                        {({ isActive }) => (
+                          <>
+                            <span
+                              className={`h-1.5 w-1.5 rounded-full shrink-0 transition-colors ${
+                                isActive ? "bg-brand-500 ring-2 ring-brand-500/20" : "bg-gray-300 dark:bg-gray-700"
+                              }`}
+                            />
+                            <span>{child.name}</span>
+                          </>
+                        )}
                       </NavLink>
                     ))}
                   </div>
