@@ -585,15 +585,15 @@ describe("PR-11: BOM V2 Final Integration & E2E Regression", () => {
       );
     });
 
-    it("4. debounces search input updates before triggering query", async () => {
+    it("4. debounces style filter updates before triggering query", async () => {
       renderWithRouter(<BomPage />, { initialEntries: ["/bom"] });
 
-      const searchInput = screen.getByPlaceholderText("Mã Fit / Style / Sản phẩm...");
-      fireEvent.change(searchInput, { target: { value: "Oxford" } });
+      const styleInput = screen.getByPlaceholderText("Mã Fit / Style...");
+      fireEvent.change(styleInput, { target: { value: "Oxford" } });
 
       await waitFor(
         () => {
-          expect(hooks.useBoms).toHaveBeenCalledWith(expect.objectContaining({ search: "Oxford" }));
+          expect(hooks.useBoms).toHaveBeenCalledWith(expect.objectContaining({ style: "Oxford" }));
         },
         { timeout: 1500 },
       );
@@ -804,6 +804,7 @@ describe("PR-11: BOM V2 Final Integration & E2E Regression", () => {
         expect(hooks.useRejectBom.mutateAsync).toHaveBeenCalledWith({
           targetStatus: "wait_nvkh",
           reason: "Cần chỉnh lại định mức vải",
+          expectedRowVersion: 1,
         });
       });
     });
@@ -1007,6 +1008,7 @@ describe("PR-11: BOM V2 Final Integration & E2E Regression", () => {
       await waitFor(() => {
         expect(hooks.useDiscontinueBom.mutateAsync).toHaveBeenCalledWith({
           reason: "Khách hàng hủy đơn hàng",
+          expectedRowVersion: 1,
         });
       });
     });

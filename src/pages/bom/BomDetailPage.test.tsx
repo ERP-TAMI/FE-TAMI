@@ -1382,6 +1382,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       await waitFor(() => {
         expect(hooks.discontinueBom.mutateAsync).toHaveBeenCalledWith({
           reason: "Hủy mã hàng theo đề xuất",
+          expectedRowVersion: 1,
         });
       });
     });

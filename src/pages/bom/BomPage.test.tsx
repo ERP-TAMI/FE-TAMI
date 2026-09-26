@@ -347,16 +347,16 @@ describe("BomPage (PR-08 Frontend BOM V2)", () => {
       );
     });
 
-    it("searches and debounces text changes", async () => {
+    it("debounces style filter changes", async () => {
       renderBomPage();
 
-      const searchInput = screen.getByPlaceholderText("Mã Fit / Style / Sản phẩm...");
-      fireEvent.change(searchInput, { target: { value: "cotton" } });
+      const styleInput = screen.getByPlaceholderText("Mã Fit / Style...");
+      fireEvent.change(styleInput, { target: { value: "cotton" } });
 
       await waitFor(
         () => {
           expect(hooks.useBoms).toHaveBeenCalledWith(
-            expect.objectContaining({ search: "cotton", page: 1 }),
+            expect.objectContaining({ style: "cotton", page: 1 }),
           );
         },
         { timeout: 600 },
