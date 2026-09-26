@@ -27,8 +27,8 @@ export interface BomAggregateSizeMatrixTableProps {
 
 import { sortSizes, getColorDotClass } from "@/lib/bomAggregateUtils";
 
-function formatQty(value: number): string {
-  if (value === 0) return "—";
+function formatQty(value: number | null | undefined): string {
+  if (value == null || Number.isNaN(Number(value))) return "—";
   return Number(value).toLocaleString("vi-VN", {
     minimumFractionDigits: 0,
     maximumFractionDigits: 2,
@@ -238,18 +238,18 @@ export function BomAggregateSizeMatrixTable({
   };
 
   // Helper to compute quantity of an item for a specific size
-  const getItemQtyForSize = (item: BomAggregateItem, size: string): number => {
+  const getItemQtyForSize = (item: BomAggregateItem, size: string): number | undefined => {
     const bList = item.breakdown || [];
-    return bList
-      .filter((b) => b.sizeLabel?.trim().toUpperCase() === size.toUpperCase())
-      .reduce((sum, b) => sum + (Number(b.requiredQuantity) || 0), 0);
+    const matches = bList.filter((b) => b.sizeLabel?.trim().toUpperCase() === size.toUpperCase());
+    if (matches.length === 0) return undefined;
+    return matches.reduce((sum, b) => sum + (Number(b.requiredQuantity) || 0), 0);
   };
 
   // Calculate column totals for each size
   const sizeColumnTotals = useMemo(() => {
     const totals: Record<string, number> = {};
     sizeKeys.forEach((s) => {
-      totals[s] = items.reduce((sum, it) => sum + getItemQtyForSize(it, s), 0);
+      totals[s] = items.reduce((sum, it) => sum + (getItemQtyForSize(it, s) ?? 0), 0);
     });
     return totals;
   }, [items, sizeKeys]);
@@ -454,9 +454,7 @@ export function BomAggregateSizeMatrixTable({
                                 key={size}
                                 className="min-w-[65px] px-2 py-2 text-center font-mono text-xs font-bold text-blue-700 dark:text-blue-300"
                               >
-                                {pg.sizes[size] > 0
-                                  ? formatQty(pg.sizes[size])
-                                  : "—"}
+                                {formatQty(pg.sizes[size])}
                               </td>
                             ))}
                             <td className="w-28 px-4 py-2 text-right font-mono text-xs font-bold text-blue-700 dark:text-blue-300">
@@ -489,9 +487,7 @@ export function BomAggregateSizeMatrixTable({
                                   key={size}
                                   className="min-w-[65px] px-2 py-2 text-center font-mono text-xs text-gray-700 dark:text-gray-300"
                                 >
-                                  {c.sizes[size] > 0
-                                    ? formatQty(c.sizes[size])
-                                    : "—"}
+                                  {formatQty(c.sizes[size])}
                                 </td>
                               ))}
                               <td className="w-28 px-4 py-2 text-right font-mono text-xs font-bold text-gray-900 dark:text-white">

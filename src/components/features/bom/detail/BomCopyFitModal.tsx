@@ -39,7 +39,7 @@ export function BomCopyFitModal({
     bomsApi
       .getBoms({
         type: "fit",
-        style: styleCode,
+        style: styleId || styleCode,
         limit: 10,
       })
       .then(async (res) => {

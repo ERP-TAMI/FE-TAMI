@@ -14,6 +14,7 @@ import { BomStatsCards, type PeriodMode } from "@/components/features/bom/BomSta
 import { BomFilters } from "@/components/features/bom/BomFilters";
 import { BomTable } from "@/components/features/bom/BomTable";
 import { BomCreateWizardModal } from "@/components/features/bom/BomCreateWizardModal";
+import { bomsApi } from "@/api/boms.api";
 
 export default function BomPage() {
   const navigate = useNavigate();
@@ -36,7 +37,10 @@ export default function BomPage() {
   const typeParam: BomType | "all" =
     rawType === "fit" || rawType === "po" ? rawType : "all";
   const statusParam = searchParams.get("status") || "";
-  const searchParam = searchParams.get("search") || "";
+  const purchaseOrderParam = searchParams.get("purchaseOrder") || "";
+  const styleParam = searchParams.get("style") || "";
+  const productParam = searchParams.get("product") || "";
+  const colorParam = searchParams.get("color") || "";
   
   // Period filter state (default is current month)
   const currentMonth = getCurrentMonthString();
@@ -95,12 +99,16 @@ export default function BomPage() {
     });
   };
 
-  const handleSearchChange = (newSearch: string) => {
-    updateQueryParams({
-      search: newSearch.trim() || undefined,
-      page: 1,
-    });
-  };
+  const handleFiltersChange = useCallback(
+    (filters: { purchaseOrder: string; style: string; product: string; color: string }) => {
+      updateQueryParams({
+        ...filters,
+        search: undefined,
+        page: 1,
+      });
+    },
+    [updateQueryParams],
+  );
 
   const handlePeriodModeChange = (newMode: PeriodMode) => {
     updateQueryParams({
@@ -144,6 +152,10 @@ export default function BomPage() {
     updateQueryParams({
       type: undefined,
       status: undefined,
+      purchaseOrder: undefined,
+      style: undefined,
+      product: undefined,
+      color: undefined,
       search: undefined,
       page: 1,
     });
@@ -175,7 +187,10 @@ export default function BomPage() {
   } = useBoms({
     type: typeParam !== "all" ? typeParam : undefined,
     status: statusParam || undefined,
-    search: searchParam || undefined,
+    purchaseOrder: purchaseOrderParam || undefined,
+    style: styleParam || undefined,
+    product: productParam || undefined,
+    color: colorParam || undefined,
     page: pageParam,
     limit: limitParam,
     sortBy: sortByParam,
@@ -201,16 +216,14 @@ export default function BomPage() {
   const totalPages = bomsData?.meta.totalPages ?? 1;
 
   const isFiltering =
-    typeParam !== "all" || Boolean(statusParam) || Boolean(searchParam);
+    typeParam !== "all" || Boolean(statusParam) || Boolean(purchaseOrderParam) ||
+    Boolean(styleParam) || Boolean(productParam) || Boolean(colorParam);
 
   const handleViewDetail = (id: string, tab?: string) => {
     navigate(tab ? `/bom/${id}?tab=${tab}` : `/bom/${id}`);
   };
 
-  const handleDuplicate = (item: BomListItem) => {
-    setIsCreateOpen(true);
-    showToast(`Nhân bản định mức: Tạo mới dựa trên mẫu ${item.bomCode}`, "success");
-  };
+  const handleOpenBom = (item: BomListItem) => handleViewDetail(item.id);
 
   const handleDelete = (item: BomListItem) => {
     setDeletingBom(item);
@@ -219,8 +232,10 @@ export default function BomPage() {
   const handleConfirmDiscontinue = async () => {
     if (!deletingBom) return;
     try {
+      const detail = await bomsApi.getBomById(deletingBom.id);
       await discontinueMutation.mutateAsync({
         reason: "Ngừng sử dụng từ danh sách BOM",
+        expectedRowVersion: detail.rowVersion,
       });
       showToast(
         `Đã ngừng sử dụng bảng định mức ${deletingBom.bomCode}`,
@@ -309,8 +324,11 @@ export default function BomPage() {
         onTypeChange={handleTypeChange}
         status={statusParam}
         onStatusChange={handleStatusChange}
-        search={searchParam}
-        onSearchChange={handleSearchChange}
+        purchaseOrder={purchaseOrderParam}
+        style={styleParam}
+        product={productParam}
+        color={colorParam}
+        onFiltersChange={handleFiltersChange}
         isFiltering={isFiltering}
         onClearFilters={handleClearFilters}
       />
@@ -330,7 +348,7 @@ export default function BomPage() {
         onClearFilters={handleClearFilters}
         canCreate={canCreate}
         onCreateClick={() => setIsCreateOpen(true)}
-        onDuplicate={handleDuplicate}
+        onOpenBom={handleOpenBom}
         onDelete={handleDelete}
       />
 

@@ -3,7 +3,7 @@ import {
   Shirt,
 } from "lucide-react";
 import type { BomDetail } from "@/types/bom";
-import { canViewBomCost, formatUSD, formatVND, formatDate } from "@/lib/bomAccess";
+import { canViewBomCost, formatVND, formatDate } from "@/lib/bomAccess";
 import { useAuthStore } from "@/store/authStore";
 
 interface BomDetailKpiCardsProps {
@@ -102,8 +102,7 @@ export function BomDetailKpiCards({ bom }: BomDetailKpiCardsProps) {
           <div className="text-base font-bold text-gray-900 dark:text-white font-mono">
             {bom.costPerUnit != null ? (
               <>
-                <span>{formatUSD(bom.costPerUnit)}</span>
-                <span className="sr-only">{formatVND(bom.costPerUnit)}</span>
+                <span>{formatVND(bom.costPerUnit)}</span>
               </>
             ) : (
               "—"
@@ -111,8 +110,7 @@ export function BomDetailKpiCards({ bom }: BomDetailKpiCardsProps) {
           </div>
           {bom.currentOrderCost != null && (
             <div className="text-[11px] text-gray-500 dark:text-gray-400 font-mono">
-              Tổng: <span>{formatUSD(bom.currentOrderCost)}</span>
-              <span className="sr-only">{formatVND(bom.currentOrderCost)}</span>
+              Tổng: <span>{formatVND(bom.currentOrderCost)}</span>
             </div>
           )}
         </div>

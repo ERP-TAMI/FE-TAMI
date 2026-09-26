@@ -18,6 +18,7 @@ export const bomsApi = {
     if (params.style?.trim()) cleanParams.style = params.style.trim();
     if (params.purchaseOrder?.trim()) cleanParams.purchaseOrder = params.purchaseOrder.trim();
     if (params.product?.trim()) cleanParams.product = params.product.trim();
+    if (params.color?.trim()) cleanParams.color = params.color.trim();
     if (params.page !== undefined && params.page !== null) cleanParams.page = params.page;
     if (params.limit !== undefined && params.limit !== null) cleanParams.limit = params.limit;
     if (params.sortBy) cleanParams.sortBy = params.sortBy;
@@ -73,6 +74,7 @@ export const bomsApi = {
   async discontinueBom(id: string, payload: import("@/types/bom").DiscontinueBomPayload): Promise<BomDetail> {
     const cleanBody = {
       reason: payload.reason?.trim() || "",
+      expectedRowVersion: payload.expectedRowVersion,
     };
     const res = await apiClient.post<BomDetail>(`/boms/${id}/discontinue`, cleanBody);
     return res.data;
@@ -122,9 +124,12 @@ export const bomsApi = {
     return res.data;
   },
 
-  async forwardBom(id: string, payload?: import("@/types/bom").ForwardBomPayload): Promise<BomDetail> {
+  async forwardBom(id: string, payload: import("@/types/bom").ForwardBomPayload): Promise<BomDetail> {
     const text = (payload?.reason || payload?.note)?.trim();
-    const body = text ? { reason: text } : {};
+    const body = {
+      ...(text ? { reason: text } : {}),
+      expectedRowVersion: payload.expectedRowVersion,
+    };
     const res = await apiClient.post<BomDetail>(`/boms/${id}/forward`, body);
     return res.data;
   },
@@ -133,14 +138,18 @@ export const bomsApi = {
     const cleanBody = {
       targetStatus: payload.targetStatus,
       reason: payload.reason?.trim() || "",
+      expectedRowVersion: payload.expectedRowVersion,
     };
     const res = await apiClient.post<BomDetail>(`/boms/${id}/reject`, cleanBody);
     return res.data;
   },
 
-  async approveBom(id: string, payload?: import("@/types/bom").ApproveBomPayload): Promise<BomDetail> {
-    const text = ((payload as Record<string, unknown>)?.reason as string | undefined || payload?.note)?.trim();
-    const body = text ? { reason: text } : {};
+  async approveBom(id: string, payload: import("@/types/bom").ApproveBomPayload): Promise<BomDetail> {
+    const text = (payload.reason || payload.note)?.trim();
+    const body = {
+      ...(text ? { reason: text } : {}),
+      expectedRowVersion: payload.expectedRowVersion,
+    };
     const res = await apiClient.post<BomDetail>(`/boms/${id}/approve`, body);
     return res.data;
   },

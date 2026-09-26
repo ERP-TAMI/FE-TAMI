@@ -250,20 +250,30 @@ export default function BomDetailPage() {
 
   const handleSaveAllAccountingCosts = async (
     updates: { lineId: string; unitCost: number | null }[],
-  ) => {
-    try {
-      await Promise.all(
-        updates.map(({ lineId, unitCost }) =>
-          updateLineMutation.mutateAsync({ lineId, payload: { unitCost } }),
-        ),
-      );
-      setHasUnsavedAccountingCosts(false);
-      showToast(`Đã lưu thành công ${updates.length} đơn giá vật tư`, "success");
-    } catch (err: unknown) {
-      const axiosErr = err as { response?: { data?: { message?: string } } };
-      showToast(axiosErr?.response?.data?.message || "Lỗi khi lưu đơn giá", "error");
-      throw err;
+  ): Promise<string[]> => {
+    const failedLineIds: string[] = [];
+    let savedCount = 0;
+    for (const { lineId, unitCost } of updates) {
+      try {
+        await updateLineMutation.mutateAsync({ lineId, payload: { unitCost } });
+        savedCount += 1;
+      } catch {
+        failedLineIds.push(lineId);
+      }
     }
+    setHasUnsavedAccountingCosts(failedLineIds.length > 0);
+    if (failedLineIds.length === 0) {
+      showToast(`Đã lưu thành công ${savedCount} đơn giá vật tư`, "success");
+    } else {
+      const failedMaterials = failedLineIds.map(
+        (lineId) => displayLines.find((line) => line.id === lineId)?.materialNameSnapshot || lineId,
+      );
+      showToast(
+        `Đã lưu ${savedCount}/${updates.length} đơn giá. Lỗi ở: ${failedMaterials.join(", ")}.`,
+        "error",
+      );
+    }
+    return failedLineIds;
   };
 
   const handleChangeRdInput = (lineId: string, field: "consumption" | "note", value: string) => {
@@ -345,13 +355,20 @@ export default function BomDetailPage() {
       });
       await Promise.all(updates);
 
+      const latest = await refetchBom();
       await forwardMutation.mutateAsync({
         note: "Đã hoàn tất nhập định mức",
+        expectedRowVersion: latest?.data?.rowVersion ?? bom.rowVersion,
       });
       showToast("Đã hoàn tất định mức và chuyển TPKH thành công", "success");
     } catch (err: unknown) {
-      const axiosErr = err as { response?: { data?: { message?: string } } };
-      showToast(axiosErr?.response?.data?.message || "Lỗi khi hoàn tất", "error");
+      const axiosErr = err as { response?: { status?: number; data?: { message?: string } } };
+      if (axiosErr?.response?.status === 409) {
+        showToast("Dữ liệu đã bị thay đổi bởi người khác, hệ thống đang tải lại...", "error");
+        refetchBom();
+      } else {
+        showToast(axiosErr?.response?.data?.message || "Lỗi khi hoàn tất", "error");
+      }
     } finally {
       setIsFinishingRd(false);
     }
@@ -404,11 +421,21 @@ export default function BomDetailPage() {
     showToast("Đã thêm nguyên phụ liệu vào BOM", "success");
   };
 
-  const handleCreateBatchLines = async (payloads: CreateBomLinePayload[]) => {
+  const handleCreateBatchLines = async (payloads: CreateBomLinePayload[]): Promise<string[]> => {
+    const failedMaterialIds: string[] = [];
+    let createdCount = 0;
     for (const payload of payloads) {
-      await addLineMutation.mutateAsync(payload);
+      try {
+        await addLineMutation.mutateAsync(payload);
+        createdCount += 1;
+      } catch {
+        if (payload.materialId) failedMaterialIds.push(payload.materialId);
+      }
     }
-    showToast(`Đã thêm ${payloads.length} nguyên phụ liệu vào BOM`, "success");
+    if (failedMaterialIds.length === 0) {
+      showToast(`Đã thêm ${createdCount} nguyên phụ liệu vào BOM`, "success");
+    }
+    return failedMaterialIds;
   };
 
   const handleUpdateLine = async (payload: UpdateBomLinePayload) => {
@@ -452,7 +479,7 @@ export default function BomDetailPage() {
   // Handlers for Workflow Actions
   const handleForward = async (note?: string) => {
     try {
-      await forwardMutation.mutateAsync({ note });
+      await forwardMutation.mutateAsync({ note, expectedRowVersion: bom.rowVersion });
       showToast("Đã chuyển bước thành công", "success");
     } catch (err: unknown) {
       const axiosErr = err as { response?: { status?: number; data?: { message?: string } } };
@@ -467,7 +494,11 @@ export default function BomDetailPage() {
 
   const handleReject = async (targetStatus: BomStatus, reason: string) => {
     try {
-      await rejectMutation.mutateAsync({ targetStatus, reason });
+      await rejectMutation.mutateAsync({
+        targetStatus,
+        reason,
+        expectedRowVersion: bom.rowVersion,
+      });
       showToast("Đã trả lại định mức về bước trước", "success");
     } catch (err: unknown) {
       const axiosErr = err as { response?: { status?: number; data?: { message?: string } } };
@@ -482,21 +513,31 @@ export default function BomDetailPage() {
 
   const handleApprove = async (note?: string) => {
     try {
-      await approveMutation.mutateAsync({ note });
+      await approveMutation.mutateAsync({ note, expectedRowVersion: bom.rowVersion });
       showToast("Đã phê duyệt đóng BOM thành công", "success");
     } catch (err: unknown) {
-      const axiosErr = err as { response?: { data?: { message?: string } } };
-      showToast(axiosErr?.response?.data?.message || "Lỗi khi phê duyệt", "error");
+      const axiosErr = err as { response?: { status?: number; data?: { message?: string } } };
+      if (axiosErr?.response?.status === 409) {
+        showToast("Dữ liệu đã bị thay đổi bởi người khác, hệ thống đang tải lại...", "error");
+        refetchBom();
+      } else {
+        showToast(axiosErr?.response?.data?.message || "Lỗi khi phê duyệt", "error");
+      }
     }
   };
 
   const handleDiscontinue = async (reason: string) => {
     try {
-      await discontinueMutation.mutateAsync({ reason });
+      await discontinueMutation.mutateAsync({ reason, expectedRowVersion: bom.rowVersion });
       showToast("Đã ngừng sử dụng BOM", "success");
     } catch (err: unknown) {
-      const axiosErr = err as { response?: { data?: { message?: string } } };
-      showToast(axiosErr?.response?.data?.message || "Lỗi khi ngừng sử dụng", "error");
+      const axiosErr = err as { response?: { status?: number; data?: { message?: string } } };
+      if (axiosErr?.response?.status === 409) {
+        showToast("Dữ liệu đã bị thay đổi bởi người khác, hệ thống đang tải lại...", "error");
+        refetchBom();
+      } else {
+        showToast(axiosErr?.response?.data?.message || "Lỗi khi ngừng sử dụng", "error");
+      }
     }
   };
 

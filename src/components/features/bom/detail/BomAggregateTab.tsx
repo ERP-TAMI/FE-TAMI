@@ -1,6 +1,6 @@
 import { Layers, Package } from "lucide-react";
 import { useBomAggregate } from "@/hooks/useBoms";
-import { formatUSD, formatVND, canViewBomCost } from "@/lib/bomAccess";
+import { formatVND, canViewBomCost } from "@/lib/bomAccess";
 import { useAuthStore } from "@/store/authStore";
 
 interface BomAggregateTabProps {
@@ -63,7 +63,7 @@ export function BomAggregateTab({ bomId }: BomAggregateTabProps) {
                 Tổng nhu cầu NPL
               </th>
               {canSeeCost && (
-                <th className="py-3.5 pl-2 pr-4 text-right">Tổng chi phí ước tính ($)</th>
+                <th className="py-3.5 pl-2 pr-4 text-right">Tổng chi phí ước tính (₫)</th>
               )}
             </tr>
           </thead>
@@ -103,8 +103,7 @@ export function BomAggregateTab({ bomId }: BomAggregateTabProps) {
                   <td className="py-3.5 pl-2 pr-4 text-right font-mono text-sm font-semibold text-gray-900 dark:text-white">
                     {item.totalEstimatedCost != null ? (
                       <>
-                        <span>{formatUSD(item.totalEstimatedCost)}</span>
-                        <span className="sr-only">{formatVND(item.totalEstimatedCost)}</span>
+                        <span>{formatVND(item.totalEstimatedCost)}</span>
                       </>
                     ) : (
                       "—"

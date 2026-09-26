@@ -10,7 +10,6 @@ import {
   ArrowUp,
   ArrowDown,
   Plus,
-  Copy,
   History,
   Download,
   Trash2,
@@ -18,7 +17,7 @@ import {
 import type { BomListItem } from "@/types/bom";
 import { BomTypeBadge } from "./BomTypeBadge";
 import { BomStatusBadge } from "./BomStatusBadge";
-import { formatUSD, formatVND, formatDate, BOM_STATUS_CONFIG } from "@/lib/bomAccess";
+import { formatVND, formatDate, BOM_STATUS_CONFIG } from "@/lib/bomAccess";
 
 interface BomTableProps {
   items: BomListItem[];
@@ -34,7 +33,7 @@ interface BomTableProps {
   onClearFilters: () => void;
   canCreate?: boolean;
   onCreateClick?: () => void;
-  onDuplicate?: (item: BomListItem) => void;
+  onOpenBom?: (item: BomListItem) => void;
   onDelete?: (item: BomListItem) => void;
 }
 
@@ -118,7 +117,7 @@ export function BomTable({
   onClearFilters,
   canCreate,
   onCreateClick,
-  onDuplicate,
+  onOpenBom,
   onDelete,
 }: BomTableProps) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -231,7 +230,7 @@ export function BomTable({
               </th>
               {canViewCost && (
                 <th scope="col" className="px-4 py-3.5 font-semibold text-right">
-                  GIÁ THÀNH / SP ($)
+                  GIÁ THÀNH / SP (₫)
                 </th>
               )}
               <th
@@ -419,8 +418,7 @@ export function BomTable({
                           <span className="text-gray-400">—</span>
                         ) : item.costPerUnit !== null ? (
                           <span className="font-semibold text-gray-900 dark:text-white">
-                            <span>{formatUSD(item.costPerUnit)}</span>
-                            <span className="sr-only">{formatVND(item.costPerUnit)}</span>
+                            {formatVND(item.costPerUnit)}
                           </span>
                         ) : (
                           <span className="text-gray-400">—</span>
@@ -515,13 +513,13 @@ export function BomTable({
                 e.stopPropagation();
                 const item = menuState.item;
                 setMenuState(null);
-                if (onDuplicate) onDuplicate(item);
+                if (onOpenBom) onOpenBom(item);
                 else onViewDetail(item.id);
               }}
               className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs font-medium text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-800"
             >
-              <Copy className="h-3.5 w-3.5 text-gray-400" />
-              <span>Nhân bản</span>
+              <Eye className="h-3.5 w-3.5 text-gray-400" />
+              <span>Mở BOM</span>
             </button>
             <button
               type="button"

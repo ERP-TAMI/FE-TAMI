@@ -418,19 +418,35 @@ export function BomCreateWizardModal({ open, onClose }: BomCreateWizardModalProp
           handleClose();
           navigate(`/bom/${created.id}`);
         } else {
-          const results = await Promise.all(
-            selectedStyleIds.map((styleId) =>
-              createBomMutation.mutateAsync({
+          const failedIds: string[] = [];
+          const succeededCodes: string[] = [];
+          const failures: string[] = [];
+          for (const styleId of selectedStyleIds) {
+            const styleCode = selectedStyles.find((style) => style.id === styleId)?.styleCode || styleId;
+            try {
+              const created = await createBomMutation.mutateAsync({
                 type: "fit",
                 styleId,
                 deadline: deadline || undefined,
                 rdNote: rdNote.trim() || undefined,
-              }),
-            ),
-          );
+              });
+              succeededCodes.push(`${styleCode} → ${created.bomCode}`);
+            } catch (err: unknown) {
+              failedIds.push(styleId);
+              failures.push(`${styleCode}: ${getApiError(err, "Không thể tạo BOM").message}`);
+            }
+          }
+
+          if (failures.length > 0) {
+            setSelectedStyleIds(failedIds);
+            setErrorMessage(
+              `Đã tạo ${succeededCodes.length}/${selectedStyleIds.length} BOM.\n${succeededCodes.length ? `Thành công: ${succeededCodes.join("; ")}\n` : ""}Thất bại: ${failures.join("; ")}\nChỉ còn giữ các mục thất bại để bạn có thể thử lại.`,
+            );
+            return;
+          }
 
           showToast(
-            `Đã tạo thành công ${results.length} bảng BOM cho các Mẫu Fit.`,
+            `Đã tạo thành công ${succeededCodes.length} bảng BOM cho các Mẫu Fit.`,
           );
           handleClose();
         }
@@ -441,8 +457,11 @@ export function BomCreateWizardModal({ open, onClose }: BomCreateWizardModalProp
         }
 
         // Create BOMs for all selected products across all selected POs
-        const results = await Promise.all(
-          selectedProductIds.map((productId) => {
+        const failedIds: string[] = [];
+        const succeededCodes: string[] = [];
+        const succeededIds: string[] = [];
+        const failures: string[] = [];
+        for (const productId of selectedProductIds) {
             const item = selectedProductsWithDetails.find((d) => d.product.id === productId);
             const poId = item?.poId || selectedPoIds[0];
             const productDeadline =
@@ -450,22 +469,38 @@ export function BomCreateWizardModal({ open, onClose }: BomCreateWizardModalProp
                 ? poDeadlines[poId]
                 : deadline || undefined;
 
-            return createBomMutation.mutateAsync({
-              type: "po",
-              purchaseOrderProductId: productId,
-              deadline: productDeadline,
-              rdNote: rdNote.trim() || undefined,
-            });
-          }),
-        );
+            const productCode = item?.product.productCode || productId;
+            try {
+              const created = await createBomMutation.mutateAsync({
+                type: "po",
+                purchaseOrderProductId: productId,
+                deadline: productDeadline,
+                rdNote: rdNote.trim() || undefined,
+              });
+              succeededCodes.push(`${productCode} → ${created.bomCode}`);
+              succeededIds.push(created.id);
+            } catch (err: unknown) {
+              failedIds.push(productId);
+              failures.push(`${productCode}: ${getApiError(err, "Không thể tạo BOM").message}`);
+            }
+        }
 
-        if (results.length === 1) {
-          showToast(`Đã tạo BOM ${results[0].bomCode} thành công.`);
+        if (failures.length > 0) {
+          setSelectedProductIds(failedIds);
+          setErrorMessage(
+            `Đã tạo ${succeededCodes.length}/${selectedProductIds.length} BOM.\n${succeededCodes.length ? `Thành công: ${succeededCodes.join("; ")}\n` : ""}Thất bại: ${failures.join("; ")}\nChỉ còn giữ các mục thất bại để bạn có thể thử lại.`,
+          );
+          return;
+        }
+
+        if (selectedProductIds.length === 1) {
+          const codeSeparator = succeededCodes[0].indexOf(" → ");
+          showToast(`Đã tạo BOM ${succeededCodes[0].slice(codeSeparator + 3)} thành công.`);
           handleClose();
-          navigate(`/bom/${results[0].id}`);
+          navigate(`/bom/${succeededIds[0]}`);
         } else {
           showToast(
-            `Đã tạo thành công ${results.length} bảng BOM cho ${selectedPoIds.length} đơn hàng PO.`,
+            `Đã tạo thành công ${succeededCodes.length} bảng BOM cho ${selectedPoIds.length} đơn hàng PO.`,
           );
           handleClose();
         }
@@ -654,7 +689,7 @@ export function BomCreateWizardModal({ open, onClose }: BomCreateWizardModalProp
 
         {/* Error Alert */}
         {errorMessage && (
-          <div className="flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700 dark:border-rose-900/40 dark:bg-rose-950/20 dark:text-rose-300">
+          <div className="flex items-start gap-2 whitespace-pre-line rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700 dark:border-rose-900/40 dark:bg-rose-950/20 dark:text-rose-300">
             <AlertCircle className="h-4 w-4 shrink-0" />
             <span>{errorMessage}</span>
           </div>

@@ -8,10 +8,20 @@ interface BomFiltersProps {
   onTypeChange: (type: BomType | "all") => void;
   status: string;
   onStatusChange: (status: string) => void;
-  search: string;
-  onSearchChange: (search: string) => void;
+  purchaseOrder: string;
+  style: string;
+  product: string;
+  color: string;
+  onFiltersChange: (filters: BomSearchFilters) => void;
   isFiltering: boolean;
   onClearFilters: () => void;
+}
+
+export interface BomSearchFilters {
+  purchaseOrder: string;
+  style: string;
+  product: string;
+  color: string;
 }
 
 export function BomFilters({
@@ -19,35 +29,41 @@ export function BomFilters({
   onTypeChange,
   status,
   onStatusChange,
-  search,
-  onSearchChange,
+  purchaseOrder,
+  style,
+  product,
+  color,
+  onFiltersChange,
   isFiltering,
   onClearFilters,
 }: BomFiltersProps) {
-  const [localSearch, setLocalSearch] = useState(search);
-  const [poFilter, setPoFilter] = useState("");
-  const [colorFilter, setColorFilter] = useState("");
+  const [poFilter, setPoFilter] = useState(purchaseOrder);
+  const [styleFilter, setStyleFilter] = useState(style);
+  const [productFilter, setProductFilter] = useState(product);
+  const [colorFilter, setColorFilter] = useState(color);
 
   useEffect(() => {
-    setLocalSearch(search);
-  }, [search]);
+    setPoFilter(purchaseOrder);
+    setStyleFilter(style);
+    setProductFilter(product);
+    setColorFilter(color);
+  }, [purchaseOrder, style, product, color]);
 
   useEffect(() => {
     const handler = setTimeout(() => {
-      const combined = [poFilter, localSearch, colorFilter]
-        .map((s) => s.trim())
-        .filter(Boolean)
-        .join(" ");
-
-      if (combined !== search) {
-        onSearchChange(combined);
-      }
+      onFiltersChange({
+        purchaseOrder: poFilter.trim(),
+        style: styleFilter.trim(),
+        product: productFilter.trim(),
+        color: colorFilter.trim(),
+      });
     }, 350);
     return () => clearTimeout(handler);
-  }, [localSearch, poFilter, colorFilter, search, onSearchChange]);
+  }, [poFilter, styleFilter, productFilter, colorFilter, onFiltersChange]);
 
   const handleClearAll = () => {
-    setLocalSearch("");
+    setStyleFilter("");
+    setProductFilter("");
     setPoFilter("");
     setColorFilter("");
     onClearFilters();
@@ -56,8 +72,9 @@ export function BomFilters({
   const hasAnyFilter =
     isFiltering ||
     Boolean(poFilter.trim()) ||
-    Boolean(colorFilter.trim()) ||
-    Boolean(localSearch.trim());
+    Boolean(styleFilter.trim()) ||
+    Boolean(productFilter.trim()) ||
+    Boolean(colorFilter.trim());
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-gray-200/80 bg-white p-3.5 shadow-xs dark:border-gray-800 dark:bg-gray-900">
@@ -129,14 +146,26 @@ export function BomFilters({
           />
         </div>
 
-        {/* Mã Fit / Style / Sản phẩm Search */}
+        {/* Mã Fit / Style Search */}
         <div className="relative min-w-[200px] flex-1 sm:w-60">
           <Search className="pointer-events-none absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
           <input
             type="text"
-            value={localSearch}
-            onChange={(e) => setLocalSearch(e.target.value)}
-            placeholder="Mã Fit / Style / Sản phẩm..."
+            value={styleFilter}
+            onChange={(e) => setStyleFilter(e.target.value)}
+            placeholder="Mã Fit / Style..."
+            className="w-full rounded-xl border border-gray-200/80 bg-white py-1.5 pr-2.5 pl-8 text-xs text-gray-800 shadow-xs placeholder:text-gray-400 focus:border-brand-500 focus:outline-none dark:border-gray-800 dark:bg-gray-900 dark:text-gray-200"
+          />
+        </div>
+
+        {/* PO product search */}
+        <div className="relative min-w-[160px] flex-1 sm:w-48">
+          <Search className="pointer-events-none absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
+          <input
+            type="text"
+            value={productFilter}
+            onChange={(e) => setProductFilter(e.target.value)}
+            placeholder="Mã sản phẩm PO..."
             className="w-full rounded-xl border border-gray-200/80 bg-white py-1.5 pr-2.5 pl-8 text-xs text-gray-800 shadow-xs placeholder:text-gray-400 focus:border-brand-500 focus:outline-none dark:border-gray-800 dark:bg-gray-900 dark:text-gray-200"
           />
         </div>

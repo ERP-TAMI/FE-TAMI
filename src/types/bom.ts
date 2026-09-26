@@ -121,6 +121,7 @@ export interface QueryBomsParams {
   style?: string;
   purchaseOrder?: string;
   product?: string;
+  color?: string;
   page?: number;
   limit?: number;
   sortBy?: "bomCode" | "createdAt" | "updatedAt" | "deadline";
@@ -168,6 +169,7 @@ export interface UpdateBomPayload {
 
 export interface DiscontinueBomPayload {
   reason: string;
+  expectedRowVersion: number;
 }
 
 export interface CreateBomLinePayload {
@@ -199,16 +201,19 @@ export interface ReorderBomLinesPayload {
 export interface ForwardBomPayload {
   reason?: string;
   note?: string;
+  expectedRowVersion: number;
 }
 
 export interface RejectBomPayload {
   targetStatus: BomStatus;
   reason: string;
+  expectedRowVersion: number;
 }
 
 export interface ApproveBomPayload {
   reason?: string;
   note?: string;
+  expectedRowVersion: number;
 }
 
 export interface CreateRevisionPayload {

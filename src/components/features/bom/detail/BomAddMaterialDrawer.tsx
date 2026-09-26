@@ -14,7 +14,7 @@ export interface BomAddMaterialDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmitCreate?: (payload: CreateBomLinePayload) => Promise<void>;
-  onSubmitCreateBatch?: (payloads: CreateBomLinePayload[]) => Promise<void>;
+  onSubmitCreateBatch?: (payloads: CreateBomLinePayload[]) => Promise<string[] | void>;
   onSubmitUpdate?: (payload: UpdateBomLinePayload) => Promise<void>;
   initialLine?: BomLineItem | null;
   existingLines?: BomLineItem[];
@@ -46,6 +46,8 @@ export function BomAddMaterialDrawer({
   const [materials, setMaterials] = useState<Material[]>([]);
   const [materialSearch, setMaterialSearch] = useState("");
   const [isLoadingMaterials, setIsLoadingMaterials] = useState(false);
+  const [materialsLoadError, setMaterialsLoadError] = useState<string | null>(null);
+  const [materialsLoadAttempt, setMaterialsLoadAttempt] = useState(0);
 
   // Single selection mode (for test compatibility & legacy)
   const [selectedMaterial, setSelectedMaterial] = useState<Material | null>(null);
@@ -77,19 +79,24 @@ export function BomAddMaterialDrawer({
   useEffect(() => {
     if (isOpen && isTechnicalRole) {
       setIsLoadingMaterials(true);
+      setMaterialsLoadError(null);
       materialApi
         .list()
         .then((res) => {
           setMaterials(Array.isArray(res) ? res : []);
         })
-        .catch(() => {
+        .catch((err: unknown) => {
           setMaterials([]);
+          const axiosErr = err as { response?: { data?: { message?: string } }; message?: string };
+          setMaterialsLoadError(
+            axiosErr?.response?.data?.message || axiosErr?.message || "Không thể tải danh mục vật tư.",
+          );
         })
         .finally(() => {
           setIsLoadingMaterials(false);
         });
     }
-  }, [isOpen, isTechnicalRole]);
+  }, [isOpen, isTechnicalRole, materialsLoadAttempt]);
 
   // Reset form when drawer opens/closes or initialLine changes
   useEffect(() => {
@@ -181,14 +188,39 @@ export function BomAddMaterialDrawer({
     setIsBatchSubmitting(true);
     try {
       if (onSubmitCreateBatch) {
-        await onSubmitCreateBatch(payloads);
+        const failedMaterialIds = (await onSubmitCreateBatch(payloads)) || [];
+        if (failedMaterialIds.length > 0) {
+          setSelectedMaterialIds(new Set(failedMaterialIds));
+          const failedLabels = failedMaterialIds.map((materialId) => {
+            const material = materials.find((item) => item.id === materialId);
+            return material?.materialCode || material?.materialName || materialId;
+          });
+          setError(
+            `Đã thêm ${payloads.length - failedMaterialIds.length}/${payloads.length} vật tư. Chưa thêm được: ${failedLabels.join(", ")}. Chỉ giữ lại các vật tư thất bại để bạn thử lại.`,
+          );
+          return;
+        }
       } else if (onSubmitCreate) {
         let count = 0;
+        const failedMaterials: string[] = [];
         setBatchProgress({ current: 0, total: payloads.length });
         for (const p of payloads) {
           count++;
           setBatchProgress({ current: count, total: payloads.length });
-          await onSubmitCreate(p);
+          try {
+            await onSubmitCreate(p);
+          } catch (err: unknown) {
+            const material = materials.find((item) => item.id === p.materialId);
+            const axiosErr = err as { response?: { data?: { message?: string } }; message?: string };
+            failedMaterials.push(
+              `${material?.materialCode || p.materialId}: ${axiosErr?.response?.data?.message || axiosErr?.message || "Không thể thêm vật tư"}`,
+            );
+          }
+        }
+        if (failedMaterials.length > 0) {
+          throw new Error(
+            `Đã xử lý ${payloads.length} vật tư; không thêm được ${failedMaterials.length}: ${failedMaterials.join("; ")}`,
+          );
         }
       }
       onClose();
@@ -536,6 +568,18 @@ export function BomAddMaterialDrawer({
               {isLoadingMaterials ? (
                 <div className="p-8 text-center text-xs text-gray-400">
                   Đang tải danh mục vật tư...
+                </div>
+              ) : materialsLoadError ? (
+                <div role="alert" className="flex flex-col items-center gap-3 p-8 text-center text-xs text-rose-600 dark:text-rose-300">
+                  <AlertCircle className="h-5 w-5" />
+                  <span>{materialsLoadError}</span>
+                  <button
+                    type="button"
+                    onClick={() => setMaterialsLoadAttempt((attempt) => attempt + 1)}
+                    className="rounded-lg border border-rose-300 px-3 py-1.5 font-semibold hover:bg-rose-50 dark:border-rose-800 dark:hover:bg-rose-950/30"
+                  >
+                    Thử tải lại
+                  </button>
                 </div>
               ) : (activeTab === "selected" ? selectedMaterialsList : filteredMaterials).length === 0 ? (
                 <div className="p-8 text-center text-xs text-gray-400">

@@ -137,7 +137,7 @@ export function useReorderBomLines(bomId: string) {
 export function useForwardBom(bomId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (payload?: ForwardBomPayload) => bomsApi.forwardBom(bomId, payload),
+    mutationFn: (payload: ForwardBomPayload) => bomsApi.forwardBom(bomId, payload),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: bomKeys.detail(bomId) });
       void queryClient.invalidateQueries({ queryKey: bomKeys.revisions(bomId) });
@@ -163,7 +163,7 @@ export function useRejectBom(bomId: string) {
 export function useApproveBom(bomId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (payload?: ApproveBomPayload) => bomsApi.approveBom(bomId, payload),
+    mutationFn: (payload: ApproveBomPayload) => bomsApi.approveBom(bomId, payload),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: bomKeys.detail(bomId) });
       void queryClient.invalidateQueries({ queryKey: bomKeys.revisions(bomId) });
@@ -248,4 +248,3 @@ export function useBomAggregate(
     queryFn: () => bomsApi.getBomAggregate(idOrParams, params),
   });
 }
-

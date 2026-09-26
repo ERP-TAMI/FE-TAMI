@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { GitCompare, ArrowRight } from "lucide-react";
 import { useBomRevisionDiff, useBomRevisions } from "@/hooks/useBoms";
-import { formatUSD, formatVND, canViewBomCost } from "@/lib/bomAccess";
+import { formatVND, canViewBomCost } from "@/lib/bomAccess";
 import { useAuthStore } from "@/store/authStore";
 import { Modal } from "@/components/shared/Modal";
 
@@ -110,7 +110,7 @@ export function BomRevisionDiffModal({
               )}
               {canSeeCost && diffData.costDifference !== undefined && diffData.costDifference !== null && (
                 <span className={`rounded-md px-2 py-0.5 ${diffData.costDifference > 0 ? "bg-amber-50 text-amber-700" : diffData.costDifference < 0 ? "bg-emerald-50 text-emerald-700" : "bg-gray-100 text-gray-600"}`}>
-                  Δ: {formatUSD(diffData.costDifference)}
+                  Δ: {formatVND(diffData.costDifference)}
                 </span>
               )}
             </div>
@@ -135,7 +135,7 @@ export function BomRevisionDiffModal({
                   <th className="px-3 py-2.5">Vật tư</th>
                   <th className="px-3 py-2.5 text-center">ĐVT</th>
                   <th className="px-3 py-2.5 text-right">Định mức tiêu hao</th>
-                  {canSeeCost && <th className="px-3 py-2.5 text-right">Đơn giá ($)</th>}
+                  {canSeeCost && <th className="px-3 py-2.5 text-right">Đơn giá (₫)</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
@@ -206,19 +206,16 @@ export function BomRevisionDiffModal({
                           {item.diffType === "CHANGED" && source?.unitCost !== target?.unitCost ? (
                             <div className="flex items-center justify-end gap-1.5">
                               <span className="line-through text-gray-400">
-                                <span>{formatUSD(source?.unitCost)}</span>
-                                <span className="sr-only">{formatVND(source?.unitCost)}</span>
+                                <span>{formatVND(source?.unitCost)}</span>
                               </span>
                               <ArrowRight className="h-3 w-3 text-amber-500" />
                               <span className="font-semibold text-amber-600">
-                                <span>{formatUSD(target?.unitCost)}</span>
-                                <span className="sr-only">{formatVND(target?.unitCost)}</span>
+                                <span>{formatVND(target?.unitCost)}</span>
                               </span>
                             </div>
                           ) : (
                             <span>
-                              <span>{formatUSD(target?.unitCost ?? source?.unitCost)}</span>
-                              <span className="sr-only">{formatVND(target?.unitCost ?? source?.unitCost)}</span>
+                              <span>{formatVND(target?.unitCost ?? source?.unitCost)}</span>
                             </span>
                           )}
                         </td>

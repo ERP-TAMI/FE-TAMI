@@ -107,7 +107,7 @@ export function BomAggregateBreakdown({
       uniqueColors.forEach((color) => {
         const row = [
           color,
-          ...uniqueSizes.map((size) => cellMap.get(`${color}__${size}`) || 0),
+          ...uniqueSizes.map((size) => cellMap.get(`${color}__${size}`) ?? ""),
           colorTotals.get(color) || 0,
         ];
         lines.push(row.map(csvCell).join(","));
@@ -349,9 +349,9 @@ export function BomAggregateBreakdown({
                             </div>
                           </td>
                           {uniqueSizes.map((size) => {
-                            const cellQty = cellMap.get(`${color}__${size}`) || 0;
+                            const cellQty = cellMap.get(`${color}__${size}`);
                             const cellPct =
-                              grandTotal > 0
+                              cellQty !== undefined && grandTotal > 0
                                 ? ((cellQty / grandTotal) * 100).toFixed(1)
                                 : "0.0";
                             return (
@@ -359,7 +359,7 @@ export function BomAggregateBreakdown({
                                 key={size}
                                 className="py-2.5 text-center font-mono text-gray-700 dark:text-gray-300 px-2"
                               >
-                                {cellQty > 0
+                                {cellQty !== undefined
                                   ? showPercent
                                     ? `${cellPct}%`
                                     : formatQuantity(cellQty)
@@ -406,4 +406,3 @@ export function BomAggregateBreakdown({
     </div>
   );
 }
-
