@@ -23,7 +23,7 @@ import {
   canEditUnitCost,
   canEditTechnicalLines,
   canViewBomCost,
-  formatVND,
+  formatUSD,
   formatYield,
 } from "@/lib/bomAccess";
 import { useAuthStore } from "@/store/authStore";
@@ -409,10 +409,10 @@ export function BomLinesTable({
                 {canViewCost && (
                   <>
                     <th className="px-3.5 py-3.5 text-right font-bold text-gray-700 dark:text-gray-200">
-                      Đơn giá (₫)
+                      Đơn giá ($)
                     </th>
                     <th className="px-3.5 py-3.5 text-right font-bold text-blue-600 dark:text-blue-400">
-                      Thành tiền (₫)
+                      Thành tiền ($)
                     </th>
                   </>
                 )}
@@ -591,15 +591,15 @@ export function BomLinesTable({
                                     ? "border-amber-500 ring-1 ring-amber-400 dark:border-amber-400"
                                     : "border-gray-300 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 dark:border-gray-700"
                                 }`}
-                                title="Nhập đơn giá (₫)"
+                                title="Nhập đơn giá ($)"
                               />
-                              <span className="text-[11px] text-gray-400 font-medium">₫</span>
+                              <span className="text-[11px] text-gray-400 font-medium">$</span>
                             </div>
                           ) : (
                             <span className="font-mono text-xs font-semibold text-gray-900 dark:text-white">
                               {line.unitCost != null && Number(line.unitCost) >= 0 ? (
                                 <>
-                                  <span>{formatVND(line.unitCost)}</span>
+                                  <span>{formatUSD(line.unitCost)}</span>
                                 </>
                               ) : isAccounting ? (
                                 <span className="rounded bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
@@ -626,7 +626,7 @@ export function BomLinesTable({
                                   Dự kiến
                                 </span>
                               )}
-                              <span>{formatVND(lineTotal)}</span>
+                              <span>{formatUSD(lineTotal)}</span>
                             </div>
                           ) : (
                             <span className="text-gray-400 font-normal">—</span>
@@ -731,7 +731,7 @@ export function BomLinesTable({
                         <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-800 dark:bg-amber-900/50 dark:text-amber-200">
                           Dự kiến
                         </span>
-                        <span>{formatVND(previewTotalLineCost)}</span>
+                        <span>{formatUSD(previewTotalLineCost)}</span>
                       </div>
                     ) : (
                       (() => {
@@ -744,7 +744,7 @@ export function BomLinesTable({
                         }
                         return (
                           <>
-                            <span>{formatVND(effectiveCost)}</span>
+                            <span>{formatUSD(effectiveCost)}</span>
                           </>
                         );
                       })()
@@ -763,7 +763,7 @@ export function BomLinesTable({
                           <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-800 dark:bg-amber-900/50 dark:text-amber-200">
                             Dự kiến
                           </span>
-                          <span>{formatVND(previewTotalLineCost * currentOrderQuantity)}</span>
+                          <span>{formatUSD(previewTotalLineCost * currentOrderQuantity)}</span>
                         </div>
                       ) : (
                         (() => {
@@ -778,7 +778,7 @@ export function BomLinesTable({
                           }
                           return (
                             <>
-                            <span>{formatVND(effectiveOrderCost)}</span>
+                            <span>{formatUSD(effectiveOrderCost)}</span>
                             </>
                           );
                         })()

@@ -499,8 +499,8 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
           <BomDetailPage />
         </BrowserRouter>,
       );
-      expect(screen.getAllByText(/150\.000/i).length).toBeGreaterThan(0);
-      expect(screen.getAllByText(/75\.000\.000/i).length).toBeGreaterThan(0);
+      expect(screen.getAllByText("$150,000.0000").length).toBeGreaterThan(0);
+      expect(screen.getAllByText("$75,000,000.0000").length).toBeGreaterThan(0);
     });
 
     it("9. displays Cost Per Unit and Order Cost for Accounting role", () => {
@@ -511,7 +511,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
           <BomDetailPage />
         </BrowserRouter>,
       );
-      expect(screen.getAllByText(/150\.000/i).length).toBeGreaterThan(0);
+      expect(screen.getAllByText("$150,000.0000").length).toBeGreaterThan(0);
     });
 
     it("10. displays Cost Per Unit and Order Cost for SA role", () => {
@@ -522,7 +522,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
           <BomDetailPage />
         </BrowserRouter>,
       );
-      expect(screen.getAllByText(/150\.000/i).length).toBeGreaterThan(0);
+      expect(screen.getAllByText("$150,000.0000").length).toBeGreaterThan(0);
     });
 
     it("11. masks Cost Per Unit and Order Cost for NVKH role", () => {
@@ -534,7 +534,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
         </BrowserRouter>,
       );
       expect(screen.getByText("Bảo mật chi phí")).toBeTruthy();
-      expect(screen.queryByText("150.000 ₫")).toBeNull();
+      expect(screen.queryByText("$150,000.0000")).toBeNull();
     });
 
     it("12. masks Cost Per Unit and Order Cost for RD role", () => {
@@ -546,10 +546,10 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
         </BrowserRouter>,
       );
       expect(screen.getByText("Bảo mật chi phí")).toBeTruthy();
-      expect(screen.queryByText("150.000 ₫")).toBeNull();
+      expect(screen.queryByText("$150,000.0000")).toBeNull();
     });
 
-    it("13. displays '0 ₫' correctly when cost is 0 (not masked or dashed)", () => {
+    it("13. displays '$0.0000' correctly when cost is 0 (not masked or dashed)", () => {
       const zeroCostBom = { ...mockPoBom, costPerUnit: 0, currentOrderCost: 0 };
       hooks.mockUser = { roleCode: "TPKH", fullName: "TPKH" };
       hooks.useBom.mockReturnValue({ data: zeroCostBom, isLoading: false });
@@ -558,7 +558,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
           <BomDetailPage />
         </BrowserRouter>,
       );
-      expect(screen.getAllByText(/0\s*₫/i).length).toBeGreaterThan(0);
+      expect(screen.getAllByText("$0.0000").length).toBeGreaterThan(0);
     });
 
     it("14. displays '—' when cost is null", () => {
@@ -957,7 +957,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       expect(screen.queryByPlaceholderText(/Ví dụ: 1\.45/i)).toBeNull();
     });
 
-    it("39. Accounting can input unitCost = 0 (0 VND valid cost)", async () => {
+    it("39. Accounting can input unitCost = 0 (0 USD valid cost)", async () => {
       hooks.mockUser = { roleCode: "ACCOUNTING", fullName: "Kế toán" };
       hooks.useBom.mockReturnValue({ data: mockPoBom, isLoading: false });
       render(
@@ -1841,7 +1841,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
         expect(dashes.length).toBeGreaterThanOrEqual(1);
       });
 
-      it("85. displays '0 ₫' / '$0.0000' when backend costPerUnit and currentOrderCost are 0", () => {
+      it("85. displays '$0.0000' when backend costPerUnit and currentOrderCost are 0", () => {
         hooks.mockUser = { roleCode: "ACCOUNTING", fullName: "Kế toán viên" };
         hooks.useBom.mockReturnValue({
           data: {
@@ -1863,7 +1863,6 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
           </BrowserRouter>,
         );
         expect(screen.getAllByText("$0.0000").length).toBeGreaterThanOrEqual(1);
-        expect(screen.getAllByText("0 ₫").length).toBeGreaterThanOrEqual(1);
       });
 
       it("86. displays backend lineCost in clean state even if it differs from FE arithmetic", () => {

@@ -469,7 +469,7 @@ export function BomAddMaterialDrawer({
 
               <div>
                 <label className="mb-1.5 block text-xs font-semibold text-[#344054] dark:text-gray-300">
-                  Đơn giá nguyên phụ liệu (VND) <span className="text-rose-500">*</span>
+                  Đơn giá nguyên phụ liệu ($) <span className="text-rose-500">*</span>
                 </label>
                 <input
                   type="number"

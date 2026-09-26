@@ -17,7 +17,7 @@ import {
 import type { BomListItem } from "@/types/bom";
 import { BomTypeBadge } from "./BomTypeBadge";
 import { BomStatusBadge } from "./BomStatusBadge";
-import { formatVND, formatDate, BOM_STATUS_CONFIG } from "@/lib/bomAccess";
+import { formatUSD, formatDate, BOM_STATUS_CONFIG } from "@/lib/bomAccess";
 
 interface BomTableProps {
   items: BomListItem[];
@@ -230,7 +230,7 @@ export function BomTable({
               </th>
               {canViewCost && (
                 <th scope="col" className="px-4 py-3.5 font-semibold text-right">
-                  GIÁ THÀNH / SP (₫)
+                  GIÁ THÀNH / SP ($)
                 </th>
               )}
               <th
@@ -418,7 +418,7 @@ export function BomTable({
                           <span className="text-gray-400">—</span>
                         ) : item.costPerUnit !== null ? (
                           <span className="font-semibold text-gray-900 dark:text-white">
-                            {formatVND(item.costPerUnit)}
+                            {formatUSD(item.costPerUnit)}
                           </span>
                         ) : (
                           <span className="text-gray-400">—</span>

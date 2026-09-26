@@ -2,12 +2,12 @@ import { useState, Fragment } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import type { AggregateBreakdownType, BomAggregateItem } from "@/types/bom";
 import { BomAggregateBreakdown } from "./BomAggregateBreakdown";
+import { formatUSD } from "@/lib/bomAccess";
 
 export function formatCost(value: number | null | undefined): string {
   if (value == null || isNaN(Number(value))) return "—";
   const num = Number(value);
-  if (num === 0) return "0 ₫";
-  return num.toLocaleString("vi-VN", { maximumFractionDigits: 0 });
+  return formatUSD(num);
 }
 
 interface BomAggregateTableProps {
@@ -164,4 +164,3 @@ export function BomAggregateTable({
     </div>
   );
 }
-

@@ -450,43 +450,43 @@ describe("BomPage (PR-08 Frontend BOM V2)", () => {
   // 4. COST DISPLAY & ROLE MASKING
   // ──────────────────────────────────────────────────────────────────────────
   describe("4. Cost Display & Role Masking", () => {
-    it("displays formatted VND cost for TPKH role", () => {
+    it("displays formatted USD cost for TPKH role", () => {
       hooks.mockUser = { roleCode: "TPKH", fullName: "Trưởng phòng KH" };
       renderBomPage();
 
-      // PO BOM cost: 125,000 VND
-      expect(screen.getByText("125.000 ₫")).toBeTruthy();
+      // PO BOM cost: $125
+      expect(screen.getByText("$125,000.0000")).toBeTruthy();
     });
 
-    it("displays formatted VND cost for ACCOUNTING role", () => {
+    it("displays formatted USD cost for ACCOUNTING role", () => {
       hooks.mockUser = { roleCode: "ACCOUNTING", fullName: "Kế toán" };
       renderBomPage();
 
-      expect(screen.getByText("125.000 ₫")).toBeTruthy();
+      expect(screen.getByText("$125,000.0000")).toBeTruthy();
     });
 
-    it("displays formatted VND cost for SA (Admin/Director) role", () => {
+    it("displays formatted USD cost for SA (Admin/Director) role", () => {
       hooks.mockUser = { roleCode: "SA", fullName: "Ban Giám đốc" };
       renderBomPage();
 
-      expect(screen.getByText("125.000 ₫")).toBeTruthy();
+      expect(screen.getByText("$125,000.0000")).toBeTruthy();
     });
 
     it("masks cost to dash (—) for NVKH role", () => {
       hooks.mockUser = { roleCode: "NVKH", fullName: "Nhân viên Kế hoạch" };
       renderBomPage();
 
-      expect(screen.queryByText("125.000 ₫")).toBeNull();
+      expect(screen.queryByText("$125,000.0000")).toBeNull();
     });
 
     it("masks cost to dash (—) for RD role", () => {
       hooks.mockUser = { roleCode: "RD", fullName: "R&D" };
       renderBomPage();
 
-      expect(screen.queryByText("125.000 ₫")).toBeNull();
+      expect(screen.queryByText("$125,000.0000")).toBeNull();
     });
 
-    it("renders '0 ₫' accurately when cost is 0 (does not treat 0 as falsy null)", () => {
+    it("renders '$0.0000' accurately when cost is 0 (does not treat 0 as falsy null)", () => {
       hooks.mockUser = { roleCode: "TPKH", fullName: "Trưởng phòng KH" };
       const zeroCostItem: BomListItem = {
         ...mockBomPoItem,
@@ -506,7 +506,7 @@ describe("BomPage (PR-08 Frontend BOM V2)", () => {
 
       renderBomPage();
 
-      expect(screen.getByText("0 ₫")).toBeTruthy();
+      expect(screen.getByText("$0.0000")).toBeTruthy();
     });
 
     it("renders dash (—) for FIT BOM cost regardless of role", () => {
