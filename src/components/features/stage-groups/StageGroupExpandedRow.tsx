@@ -60,7 +60,7 @@ export function StageGroupExpandedRow({
           >
             <Table
               embedded
-              tableClassName="min-w-[1120px]"
+              tableClassName="min-w-[900px]"
               columns={loadingColumns}
               rows={[]}
               getRowKey={(_, index) => index}

@@ -67,7 +67,9 @@ export default function UnitListPage() {
     const nextStatus: MaterialStatus = unit.status === "active" ? "inactive" : "active";
     try {
       await updateStatus.mutateAsync({ id: unit.id, status: nextStatus });
-      showToast(nextStatus === "active" ? "Đã kích hoạt đơn vị tính." : "Đã vô hiệu hóa đơn vị tính.");
+      showToast(
+        nextStatus === "active" ? "Đã kích hoạt đơn vị tính." : "Đã vô hiệu hóa đơn vị tính.",
+      );
     } catch (error) {
       showToast(getApiError(error, "Không thể đổi trạng thái đơn vị tính.").message, "error");
     }
@@ -88,8 +90,11 @@ export default function UnitListPage() {
     <>
       <section aria-labelledby="units-tab-title" className="space-y-4">
         <div className="shadow-theme-xs overflow-visible rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
-          <div className="flex items-center justify-between gap-3 border-b border-gray-200 px-4 py-4 sm:px-6 dark:border-gray-800">
-            <h2 id="units-tab-title" className="text-sm font-semibold text-gray-700 dark:text-gray-200">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 px-4 py-4 sm:px-6 dark:border-gray-800">
+            <h2
+              id="units-tab-title"
+              className="text-sm font-semibold text-gray-700 dark:text-gray-200"
+            >
               Danh sách đơn vị tính
             </h2>
             <Button onClick={() => setEditing("create")}>
@@ -173,8 +178,8 @@ export default function UnitListPage() {
           title="Xóa đơn vị tính"
           description={
             <>
-              Bạn có chắc muốn xóa "{dialog.unit.name}"? Chỉ có thể xóa khi chưa có vật tư nào
-              tham chiếu.
+              Bạn có chắc muốn xóa "{dialog.unit.name}"? Chỉ có thể xóa khi chưa có vật tư nào tham
+              chiếu.
             </>
           }
           confirmLabel="Xóa"

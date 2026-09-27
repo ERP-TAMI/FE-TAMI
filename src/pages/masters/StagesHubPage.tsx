@@ -30,19 +30,18 @@ const TABS: TabConfig[] = [
   },
 ];
 
-const TAB_META: Record<StagesTab, { title: string; metaTitle: string; metaDescription: string }> =
-  {
-    stages: {
-      title: "Công đoạn",
-      metaTitle: "Công đoạn | TAMI ERP",
-      metaDescription: "Quản lý danh mục công đoạn",
-    },
-    groups: {
-      title: "Nhóm công đoạn",
-      metaTitle: "Nhóm công đoạn | TAMI ERP",
-      metaDescription: "Quản lý nhóm công đoạn",
-    },
-  };
+const TAB_META: Record<StagesTab, { title: string; metaTitle: string; metaDescription: string }> = {
+  stages: {
+    title: "Công đoạn",
+    metaTitle: "Công đoạn | TAMI ERP",
+    metaDescription: "Quản lý danh mục công đoạn",
+  },
+  groups: {
+    title: "Nhóm công đoạn",
+    metaTitle: "Nhóm công đoạn | TAMI ERP",
+    metaDescription: "Quản lý nhóm công đoạn",
+  },
+};
 
 function getActiveTab(pathname: string): StagesTab {
   return pathname.endsWith("/groups") ? "groups" : "stages";
@@ -66,15 +65,15 @@ export default function StagesHubPage() {
         title={meta.title}
       />
 
-      <div className="border-b border-gray-200 dark:border-gray-800">
-        <nav className="flex space-x-6" aria-label="Tabs">
+      <div className="overflow-x-auto border-b border-gray-200 dark:border-gray-800">
+        <nav className="flex w-max space-x-6" aria-label="Tabs">
           {TABS.map((tab) => (
             <button
               key={tab.key}
               type="button"
               onClick={() => navigate(tab.path)}
               aria-current={activeTab === tab.key ? "page" : undefined}
-              className={`flex items-center gap-2 border-b-2 py-2.5 px-1 text-sm font-semibold transition-colors cursor-pointer ${
+              className={`flex shrink-0 cursor-pointer items-center gap-2 border-b-2 px-1 py-2.5 text-sm font-semibold whitespace-nowrap transition-colors ${
                 activeTab === tab.key
                   ? "border-brand-500 text-brand-600 dark:text-brand-400"
                   : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"

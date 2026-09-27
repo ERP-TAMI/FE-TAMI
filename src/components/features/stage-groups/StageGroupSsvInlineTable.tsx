@@ -82,7 +82,10 @@ export function StageGroupSsvInlineTable({
       header: "Tên công đoạn con",
       width: "w-[21%]",
       render: (item) => (
-        <span className="block truncate font-semibold text-gray-900 dark:text-white">
+        <span
+          title={item.itemName}
+          className="block truncate font-semibold text-gray-900 dark:text-white"
+        >
           {item.itemName}
         </span>
       ),
@@ -92,7 +95,10 @@ export function StageGroupSsvInlineTable({
       header: "Mô tả",
       width: "w-[25%]",
       render: (item) => (
-        <span className="block truncate text-gray-500 dark:text-gray-400">
+        <span
+          title={item.description ?? undefined}
+          className="block truncate text-gray-500 dark:text-gray-400"
+        >
           {item.description || "—"}
         </span>
       ),
@@ -191,7 +197,7 @@ export function StageGroupSsvInlineTable({
       </div>
       <Table
         embedded
-        tableClassName="min-w-[1050px]"
+        tableClassName="min-w-[900px]"
         columns={columns}
         rows={items}
         getRowKey={(item) => item.id}

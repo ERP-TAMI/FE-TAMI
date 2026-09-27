@@ -138,14 +138,14 @@ export default function StageListPage() {
       <section aria-labelledby="stages-tab-title" className="space-y-4">
         <div className="shadow-theme-xs overflow-visible rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 px-4 py-4 sm:px-6 dark:border-gray-800">
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
               <h2
                 id="stages-tab-title"
-                className="text-sm font-semibold text-gray-700 dark:text-gray-200"
+                className="text-sm font-semibold whitespace-nowrap text-gray-700 dark:text-gray-200"
               >
                 Danh sách công đoạn
               </h2>
-              <div className="text-theme-xs flex items-center gap-2 rounded-full border border-gray-200/80 bg-gray-100 px-2.5 py-1 font-medium text-gray-500 dark:border-gray-700/80 dark:bg-gray-800/80 dark:text-gray-400">
+              <div className="text-theme-xs flex shrink-0 items-center gap-2 rounded-full border border-gray-200/80 bg-gray-100 px-2.5 py-1 font-medium whitespace-nowrap text-gray-500 dark:border-gray-700/80 dark:bg-gray-800/80 dark:text-gray-400">
                 <span>{stages.length} công đoạn</span>
                 <span aria-hidden="true">•</span>
                 <span className="text-success-600 dark:text-success-400">

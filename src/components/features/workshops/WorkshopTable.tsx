@@ -27,7 +27,10 @@ export function WorkshopTable({
       header: "Mã xưởng",
       width: "w-[11%]",
       render: (workshop) => (
-        <span className="block truncate font-semibold text-gray-900 dark:text-white">
+        <span
+          title={workshop.workshopCode}
+          className="block truncate font-semibold text-gray-900 dark:text-white"
+        >
           {workshop.workshopCode}
         </span>
       ),

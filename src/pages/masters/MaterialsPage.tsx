@@ -127,8 +127,11 @@ export default function MaterialsPage() {
     <>
       <section aria-labelledby="materials-tab-title" className="space-y-4">
         <div className="shadow-theme-xs overflow-visible rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
-          <div className="flex items-center justify-between gap-3 border-b border-gray-200 px-4 py-4 sm:px-6 dark:border-gray-800">
-            <h2 id="materials-tab-title" className="text-sm font-semibold text-gray-700 dark:text-gray-200">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 px-4 py-4 sm:px-6 dark:border-gray-800">
+            <h2
+              id="materials-tab-title"
+              className="text-sm font-semibold text-gray-700 dark:text-gray-200"
+            >
               Danh sách vật tư
             </h2>
             <Button onClick={() => setEditing("create")}>

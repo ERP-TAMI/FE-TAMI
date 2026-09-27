@@ -14,7 +14,11 @@ import { useMaterialGroupListView } from "@/hooks/useMaterialGroupListView";
 import { useToast } from "@/hooks/useToast";
 import { getApiError } from "@/lib/apiError";
 import { PlusIcon } from "@/icons";
-import type { MaterialGroup, MaterialGroupInput, MaterialGroupStatus } from "@/types/material-group";
+import type {
+  MaterialGroup,
+  MaterialGroupInput,
+  MaterialGroupStatus,
+} from "@/types/material-group";
 
 type Dialog = { type: "delete"; materialGroup: MaterialGroup } | undefined;
 const emptyMaterialGroups: MaterialGroup[] = [];
@@ -86,7 +90,7 @@ export default function MaterialGroupListPage() {
     <>
       <section aria-labelledby="material-groups-tab-title" className="space-y-4">
         <div className="shadow-theme-xs overflow-visible rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
-          <div className="flex items-center justify-between gap-3 border-b border-gray-200 px-4 py-4 sm:px-6 dark:border-gray-800">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 px-4 py-4 sm:px-6 dark:border-gray-800">
             <h2
               id="material-groups-tab-title"
               className="text-sm font-semibold text-gray-700 dark:text-gray-200"
@@ -174,8 +178,8 @@ export default function MaterialGroupListPage() {
           title="Xóa nhóm vật tư"
           description={
             <>
-              Bạn có chắc muốn xóa "{dialog.materialGroup.name}"? Chỉ có thể xóa khi chưa có vật
-              tư tham chiếu.
+              Bạn có chắc muốn xóa "{dialog.materialGroup.name}"? Chỉ có thể xóa khi chưa có vật tư
+              tham chiếu.
             </>
           }
           confirmLabel="Xóa"
