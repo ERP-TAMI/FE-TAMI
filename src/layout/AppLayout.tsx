@@ -3,19 +3,20 @@ import { SidebarProvider, useSidebar } from "@/context/SidebarContext";
 import AppHeader from "@/layout/AppHeader";
 import AppSidebar from "@/layout/AppSidebar";
 import Backdrop from "@/layout/Backdrop";
+import { UploadProgressWidget } from "@/components/shared";
 
 function LayoutContent() {
-  const { isExpanded, isHovered, isMobileOpen } = useSidebar();
+  const { isExpanded, isMobileOpen } = useSidebar();
 
   return (
-    <div className="min-h-screen xl:flex">
+    <div className="min-h-screen overflow-x-hidden xl:flex">
       <div>
         <AppSidebar />
         <Backdrop />
       </div>
       <div
-        className={`flex-1 transition-all duration-300 ease-in-out ${
-          isExpanded || isHovered ? "lg:ml-[250px]" : "lg:ml-[80px]"
+        className={`min-w-0 flex-1 transition-all duration-300 ease-in-out ${
+          isExpanded ? "lg:ml-[250px]" : "lg:ml-[80px]"
         } ${isMobileOpen ? "ml-0" : ""}`}
       >
         <AppHeader />
@@ -23,6 +24,7 @@ function LayoutContent() {
           <Outlet />
         </main>
       </div>
+      <UploadProgressWidget />
     </div>
   );
 }

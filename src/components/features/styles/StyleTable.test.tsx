@@ -12,7 +12,7 @@ const style: Style = {
   description: null,
   category: "Áo Polo",
   status: "draft",
-  baseImageVersionId: null,
+  baseImageKey: null,
   as3bCmBaseDays: 30,
   rowVersion: 1,
   createdBy: null,

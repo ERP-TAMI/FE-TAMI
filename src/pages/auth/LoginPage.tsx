@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { useLocation, useNavigate } from "react-router-dom";
-import { canAccessManagement, getLandingPath } from "@/lib/managementAccess";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { getPostLoginPath } from "@/lib/areaAccess";
 import { z } from "zod";
 import { Alert, Button, Input } from "@/components/shared";
 import PageMeta from "@/components/shared/PageMeta";
@@ -44,7 +44,7 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const redirectTo = (location.state as LocationState | null)?.from?.pathname ?? "/dashboard";
+  const redirectTo = (location.state as LocationState | null)?.from?.pathname;
 
   const submit = async (values: FormValues) => {
     setServerError(undefined);
@@ -52,19 +52,19 @@ export default function LoginPage() {
     try {
       const result = await authApi.login(values.email, values.password);
       setSession(result.user, result.accessToken);
-      const safeEmployeePath =
-        redirectTo.startsWith("/") &&
-        !redirectTo.startsWith("//") &&
-        !redirectTo.startsWith("/management") &&
-        redirectTo !== "/login";
-      navigate(
-        canAccessManagement(result.user) || !safeEmployeePath
-          ? getLandingPath(result.user)
-          : redirectTo,
-        { replace: true },
-      );
+      navigate(getPostLoginPath(result.user, redirectTo), { replace: true });
     } catch (error) {
-      setServerError(getApiError(error, NETWORK_ERROR_MESSAGE, LOGIN_ERROR_OVERRIDES));
+      const apiError = getApiError(error, NETWORK_ERROR_MESSAGE, LOGIN_ERROR_OVERRIDES);
+      if (apiError.code === "ACCOUNT_TEMPORARILY_LOCKED" && apiError.lockedUntil) {
+        const retryAt = new Date(apiError.lockedUntil);
+        if (!Number.isNaN(retryAt.getTime())) {
+          apiError.message = `${apiError.message} Có thể thử lại lúc ${new Intl.DateTimeFormat(
+            "vi-VN",
+            { dateStyle: "short", timeStyle: "short" },
+          ).format(retryAt)}.`;
+        }
+      }
+      setServerError(apiError);
     } finally {
       setIsSubmitting(false);
     }
@@ -99,13 +99,23 @@ export default function LoginPage() {
               error={formState.errors.email?.message}
               {...register("email")}
             />
-            <Input
-              label="Mật khẩu"
-              type="password"
-              placeholder="Nhập mật khẩu"
-              error={formState.errors.password?.message}
-              {...register("password")}
-            />
+            <div>
+              <Input
+                label="Mật khẩu"
+                type="password"
+                placeholder="Nhập mật khẩu"
+                error={formState.errors.password?.message}
+                {...register("password")}
+              />
+              <div className="mt-2 flex justify-end">
+                <Link
+                  className="text-theme-sm text-brand-600 inline-flex min-h-8 items-center rounded-sm hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 dark:text-brand-400 dark:focus-visible:ring-offset-gray-900"
+                  to="/forgot-password"
+                >
+                  Quên mật khẩu?
+                </Link>
+              </div>
+            </div>
             <Button type="submit" className="w-full" loading={isSubmitting}>
               Đăng nhập
             </Button>

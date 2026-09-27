@@ -72,10 +72,13 @@ function getFocusableElements(container: HTMLElement) {
 
 export type ModalProps = {
   open: boolean;
-  title: string;
+  title: ReactNode;
+  subtitle?: ReactNode;
   children: ReactNode;
   footer?: ReactNode;
   closeLabel?: string;
+  closeDisabled?: boolean;
+  closeOnClickOutside?: boolean;
   size?: "sm" | "md" | "lg" | "xl" | "2xl";
   onClose: () => void;
 };
@@ -83,18 +86,23 @@ export type ModalProps = {
 export function Modal({
   open,
   title,
+  subtitle,
   children,
   footer,
   closeLabel = "Đóng hộp thoại",
+  closeDisabled = false,
+  closeOnClickOutside = false,
   size = "md",
   onClose,
 }: ModalProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const dialogRef = useRef<HTMLElement>(null);
   const onCloseRef = useRef(onClose);
+  const closeDisabledRef = useRef(closeDisabled);
   const titleId = useId();
 
   onCloseRef.current = onClose;
+  closeDisabledRef.current = closeDisabled;
 
   useLayoutEffect(() => {
     const root = rootRef.current;
@@ -110,7 +118,7 @@ export function Modal({
     const handleKeyDown = (event: KeyboardEvent) => {
       if (openModalRoots.at(-1) !== root) return;
 
-      if (event.key === "Escape") {
+      if (event.key === "Escape" && !closeDisabledRef.current) {
         event.preventDefault();
         onCloseRef.current();
         return;
@@ -171,8 +179,9 @@ export function Modal({
     >
       <div
         aria-hidden="true"
-        className="absolute inset-0 cursor-default bg-gray-950/50"
-        onClick={onClose}
+        data-modal-backdrop="true"
+        className={`absolute inset-0 bg-gray-950/50 ${closeDisabled ? "cursor-wait" : "cursor-default"}`}
+        onClick={!closeDisabled && closeOnClickOutside ? onClose : undefined}
       />
       <section
         ref={dialogRef}
@@ -180,26 +189,38 @@ export function Modal({
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
-        className={`shadow-theme-lg relative z-10 max-h-[calc(100vh-3rem)] w-full overflow-y-auto rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900 ${sizeClass}`}
+        className={`shadow-theme-lg relative z-10 flex max-h-[calc(100vh-3rem)] w-full flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900 ${sizeClass}`}
       >
-        <div className="flex items-start justify-between gap-4">
-          <h2
-            id={titleId}
-            className="text-theme-lg font-semibold text-gray-900 dark:text-white"
-          >
-            {title}
-          </h2>
+        <div className="flex shrink-0 items-start justify-between gap-4 border-b border-gray-100 px-6 py-4 dark:border-gray-800">
+          <div>
+            <h2
+              id={titleId}
+              className="text-theme-lg font-semibold text-gray-900 dark:text-white"
+            >
+              {title}
+            </h2>
+            {subtitle && (
+              <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                {subtitle}
+              </p>
+            )}
+          </div>
           <button
             type="button"
             aria-label={closeLabel}
-            className="text-theme-xl leading-none text-gray-400 hover:text-gray-700 dark:hover:text-white"
+            disabled={closeDisabled}
+            className="text-theme-xl focus:ring-brand-500/20 cursor-pointer rounded-md leading-none text-gray-400 transition-colors hover:text-gray-700 focus:ring-3 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 dark:hover:text-white"
             onClick={onClose}
           >
             ×
           </button>
         </div>
-        <div className="mt-5">{children}</div>
-        {footer && <div className="mt-6 flex justify-end gap-3">{footer}</div>}
+        <div className="flex-1 overflow-y-auto px-6 py-5">{children}</div>
+        {footer && (
+          <div className="flex shrink-0 items-center justify-end gap-3 border-t border-gray-100 bg-gray-50/50 px-6 py-3.5 dark:border-gray-800 dark:bg-gray-900/50">
+            {footer}
+          </div>
+        )}
       </section>
     </div>,
     document.body,

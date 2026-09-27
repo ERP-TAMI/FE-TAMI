@@ -58,7 +58,7 @@ describe("StyleFormModal", () => {
       description: null,
       category: null,
       status: "active",
-      baseImageVersionId: null,
+      baseImageKey: null,
       as3bCmBaseDays: 30,
       rowVersion: 1,
       createdBy: null,

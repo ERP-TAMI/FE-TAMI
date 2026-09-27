@@ -41,6 +41,24 @@ describe("LoginPage", () => {
     expect(screen.getByRole("heading", { name: "Đăng nhập" })).toBeTruthy();
     expect(screen.getByLabelText("Email")).toBeTruthy();
     expect(screen.getByLabelText("Mật khẩu")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Quên mật khẩu?" }).getAttribute("href")).toBe(
+      "/forgot-password",
+    );
+  });
+
+  it("places the forgot-password action after the password field", () => {
+    render(
+      <MemoryRouter>
+        <LoginPage />
+      </MemoryRouter>,
+    );
+
+    const password = screen.getByLabelText("Mật khẩu");
+    const forgotPassword = screen.getByRole("link", { name: "Quên mật khẩu?" });
+
+    expect(
+      password.compareDocumentPosition(forgotPassword) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 
   it("logs in successfully and redirects to the dashboard", async () => {
@@ -50,6 +68,7 @@ describe("LoginPage", () => {
         id: "11111111-1111-1111-1111-111111111111",
         email: "sa@tami.test",
         fullName: "Quản trị hệ thống",
+        phone: null,
         roleCode: "SA",
         roleName: "Quản trị hệ thống",
         permissions: ["management.area.access"],
@@ -71,6 +90,31 @@ describe("LoginPage", () => {
     expect(mockNavigate).toHaveBeenCalledWith("/management/dashboard", { replace: true });
   });
 
+  it("redirects an IT login directly to user management", async () => {
+    vi.mocked(authApi.login).mockResolvedValue({
+      accessToken: "signed.it.token",
+      user: {
+        id: "22222222-2222-4222-8222-222222222222",
+        email: "it@tami.test",
+        fullName: "Nhân viên IT",
+        phone: null,
+        roleCode: "IT",
+        roleName: "Công nghệ thông tin",
+        permissions: ["system.users.manage"],
+      },
+    });
+
+    render(
+      <MemoryRouter>
+        <LoginPage />
+      </MemoryRouter>,
+    );
+    fillAndSubmit("it@tami.test", "correct-password");
+
+    await waitFor(() => expect(mockNavigate).toHaveBeenCalled());
+    expect(mockNavigate).toHaveBeenCalledWith("/it/users", { replace: true });
+  });
+
   it("shows a Vietnamese error for wrong credentials and does not navigate", async () => {
     vi.mocked(authApi.login).mockRejectedValue({
       isAxiosError: true,
@@ -89,10 +133,31 @@ describe("LoginPage", () => {
     expect(mockNavigate).not.toHaveBeenCalled();
   });
 
-  it("shows a distinct message for a locked account", async () => {
+  it("shows the administrator-lock message for a manually locked account", async () => {
     vi.mocked(authApi.login).mockRejectedValue({
       isAxiosError: true,
-      response: { status: 403, data: { code: "ACCOUNT_LOCKED" } },
+      response: { status: 403, data: { code: "ACCOUNT_MANUALLY_LOCKED" } },
+    });
+
+    render(
+      <MemoryRouter>
+        <LoginPage />
+      </MemoryRouter>,
+    );
+
+    fillAndSubmit("sa@tami.test", "whatever");
+
+    expect(
+      await screen.findByText(
+        "Tài khoản đã bị quản trị viên khóa. Vui lòng liên hệ quản trị viên.",
+      ),
+    ).toBeTruthy();
+  });
+
+  it("shows the retry message for a temporary failed-login lockout", async () => {
+    vi.mocked(authApi.login).mockRejectedValue({
+      isAxiosError: true,
+      response: { status: 403, data: { code: "ACCOUNT_TEMPORARILY_LOCKED" } },
     });
 
     render(
@@ -108,6 +173,28 @@ describe("LoginPage", () => {
         "Tài khoản đang tạm khoá do đăng nhập sai nhiều lần. Vui lòng thử lại sau.",
       ),
     ).toBeTruthy();
+  });
+
+  it("shows the unlock time returned on the fifth failed attempt", async () => {
+    vi.mocked(authApi.login).mockRejectedValue({
+      isAxiosError: true,
+      response: {
+        status: 403,
+        data: {
+          code: "ACCOUNT_TEMPORARILY_LOCKED",
+          lockedUntil: "2026-09-14T10:15:00.000Z",
+        },
+      },
+    });
+
+    render(
+      <MemoryRouter>
+        <LoginPage />
+      </MemoryRouter>,
+    );
+    fillAndSubmit("sa@tami.test", "wrong-password");
+
+    expect(await screen.findByText(/Có thể thử lại lúc/)).toBeTruthy();
   });
 
   it("shows a connection error message when the request has no response", async () => {

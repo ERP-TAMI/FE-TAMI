@@ -2,10 +2,10 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { authApi } from "@/api/auth.api";
-import { canAccessManagement } from "@/lib/managementAccess";
+import { canAccessItArea, canAccessManagement, getLandingPath } from "@/lib/areaAccess";
 import { useAuthStore } from "@/store/authStore";
 
-export default function AccountMenu({ area }: { area: "management" | "employee" }) {
+export default function AccountMenu({ area }: { area: "management" | "employee" | "it" }) {
   const user = useAuthStore((state) => state.user);
   const clearSession = useAuthStore((state) => state.clearSession);
   const [open, setOpen] = useState(false);
@@ -38,6 +38,8 @@ export default function AccountMenu({ area }: { area: "management" | "employee" 
   };
 
   if (!user) return null;
+  const profilePath =
+    area === "management" ? "/management/profile" : area === "it" ? "/it/profile" : "/profile";
   const actionClass =
     "block w-full rounded-lg px-3 py-2.5 text-left text-sm hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-brand-500 dark:hover:bg-gray-800";
   return (
@@ -81,9 +83,16 @@ export default function AccountMenu({ area }: { area: "management" | "employee" 
             <p className="font-medium break-words">{user.fullName}</p>
             <p className="text-xs text-gray-500 dark:text-gray-400">{user.roleName}</p>
           </div>
-          {area === "management" ? (
+          <Link className={actionClass} to={profilePath} onClick={() => setOpen(false)}>
+            Tài khoản của tôi
+          </Link>
+          {area === "management" || area === "it" ? (
             <Link className={actionClass} to="/dashboard" onClick={() => setOpen(false)}>
               Vào hệ thống nhân viên
+            </Link>
+          ) : canAccessItArea(user) ? (
+            <Link className={actionClass} to={getLandingPath(user)} onClick={() => setOpen(false)}>
+              Về khu IT
             </Link>
           ) : (
             canAccessManagement(user) && (

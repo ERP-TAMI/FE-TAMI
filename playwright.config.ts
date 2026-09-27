@@ -1,6 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
 const browserExecutable = process.env.PLAYWRIGHT_EXECUTABLE_PATH;
+const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? "http://127.0.0.1:5173";
 
 /**
  * Drives a real browser against the FE dev server (proxying to a real,
@@ -18,7 +19,7 @@ export default defineConfig({
   workers: 1,
   reporter: "list",
   use: {
-    baseURL: "http://127.0.0.1:5173",
+    baseURL,
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
     launchOptions: browserExecutable ? { executablePath: browserExecutable } : undefined,

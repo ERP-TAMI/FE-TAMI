@@ -8,6 +8,25 @@ afterEach(() => {
 });
 
 describe("Modal focus management", () => {
+  it("prevents every close interaction when closing is disabled", () => {
+    const onClose = vi.fn();
+
+    render(
+      <Modal open title="Đang xử lý" closeDisabled onClose={onClose}>
+        Nội dung
+      </Modal>,
+    );
+
+    const dialog = screen.getByRole("dialog", { name: "Đang xử lý" });
+    const closeButton = within(dialog).getByRole("button", { name: "Đóng hộp thoại" });
+    expect((closeButton as HTMLButtonElement).disabled).toBe(true);
+
+    fireEvent.keyDown(document, { key: "Escape" });
+    fireEvent.click(document.querySelector('[data-modal-backdrop="true"]')!);
+
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
   it("moves focus into the dialog and restores it to the trigger on close", () => {
     const trigger = document.createElement("button");
     trigger.dataset.testModalTrigger = "true";

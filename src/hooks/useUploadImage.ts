@@ -1,8 +1,8 @@
 import { useMutation } from "@tanstack/react-query";
-import { uploadsApi, type UploadResponse } from "@/api/uploads.api";
+import { uploadsApi, type UploadImageParams, type UploadImageResult } from "@/api/uploads.api";
 
 export function useUploadImage() {
-  return useMutation<UploadResponse, Error, File>({
-    mutationFn: (file: File) => uploadsApi.uploadImage(file),
+  return useMutation<UploadImageResult, Error, UploadImageParams>({
+    mutationFn: (params: UploadImageParams) => uploadsApi.uploadImage(params),
   });
 }

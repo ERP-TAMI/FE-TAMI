@@ -1,8 +1,17 @@
 import { NavLink, Outlet } from "react-router-dom";
 import { ThemeToggleButton } from "@/components/shared/ThemeToggleButton";
 import AccountMenu from "@/layout/AccountMenu";
+import { canManageUsers } from "@/lib/areaAccess";
+import { useAuthStore } from "@/store/authStore";
 
 export default function ManagementLayout() {
+  const user = useAuthStore((state) => state.user);
+  const navigation = [
+    ["/management/dashboard", "Dashboard quản lý"],
+    ["/management/purchase-orders", "Tổng quan PO"],
+    ...(canManageUsers(user) ? [["/management/users", "Quản trị người dùng"]] : []),
+  ];
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
       <aside className="border-b border-gray-200 bg-white p-4 lg:fixed lg:inset-y-0 lg:w-64 lg:border-r dark:border-gray-800 dark:bg-gray-900">
@@ -11,10 +20,7 @@ export default function ManagementLayout() {
           Khu Quản lý
         </p>
         <nav aria-label="Điều hướng Quản lý" className="flex flex-wrap gap-2 lg:flex-col">
-          {[
-            ["/management/dashboard", "Dashboard quản lý"],
-            ["/management/purchase-orders", "Tổng quan PO"],
-          ].map(([to, label]) => (
+          {navigation.map(([to, label]) => (
             <NavLink
               key={to}
               to={to}

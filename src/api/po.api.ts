@@ -1,9 +1,14 @@
+import axios from "axios";
 import apiClient from "@/lib/apiClient";
 import type {
   CreatePoInput,
   CreatePoProductInput,
   LinkPoDocumentInput,
   PaginatedPoResponse,
+  PaginatedResult,
+  PoDocumentPreviewResponse,
+  PoDocumentQuery,
+  PoProductQuery,
   PoQuery,
   PurchaseOrderDetail,
   PurchaseOrderDocumentItem,
@@ -12,8 +17,41 @@ import type {
   UpdatePoInput,
   UpdatePoProductInput,
   UpdatePoStatusInput,
-  PoDocumentPreviewResponse,
 } from "@/types/po";
+
+interface PresignPoDocumentResult {
+  objectKey: string;
+  uploadUrl: string;
+  expiresIn: number;
+}
+
+/** Đo 9 tệp: 1 luồng 55,7s — 3 luồng 21,4s — 5 luồng ~7s; trên 5 không nhanh thêm. */
+const UPLOAD_CONCURRENCY = 5;
+
+export interface UploadProgress {
+  done: number;
+  total: number;
+  fileName: string;
+}
+
+export interface UploadDocumentsOptions {
+  concurrency?: number;
+  onProgress?: (progress: UploadProgress) => void;
+}
+
+/**
+ * Detects a NestJS `ValidationPipe({ whitelist: true, forbidNonWhitelisted: true })`
+ * 400 rejection caused specifically by an unrecognized `fieldName` in the
+ * request body (message shape: `["property <field> should not exist"]`).
+ */
+function isWhitelistRejection(error: unknown, fieldName: string): boolean {
+  if (!axios.isAxiosError(error) || error.response?.status !== 400) return false;
+  const rawMessage = error.response?.data?.message;
+  const messages = Array.isArray(rawMessage) ? rawMessage : [rawMessage];
+  return messages.some(
+    (m) => typeof m === "string" && m.includes(fieldName) && m.includes("should not exist"),
+  );
+}
 
 export const poApi = {
   async findAll(query: PoQuery = {}): Promise<PaginatedPoResponse> {
@@ -42,6 +80,16 @@ export const poApi = {
     return response.data;
   },
 
+  async getDocuments(
+    id: string,
+    query: PoDocumentQuery = {},
+  ): Promise<PaginatedResult<PurchaseOrderDocumentItem>> {
+    const response = await apiClient.get<
+      PaginatedResult<PurchaseOrderDocumentItem>
+    >(`/purchase-orders/${id}/documents`, { params: query });
+    return response.data;
+  },
+
   async create(input: CreatePoInput): Promise<PurchaseOrderDetail> {
     const response = await apiClient.post<PurchaseOrderDetail>(
       "/purchase-orders",
@@ -56,6 +104,10 @@ export const poApi = {
       input,
     );
     return response.data;
+  },
+
+  async remove(id: string): Promise<void> {
+    await apiClient.delete(`/purchase-orders/${id}`);
   },
 
   async updateStatus(
@@ -103,10 +155,13 @@ export const poApi = {
     return response.data;
   },
 
-  async getProducts(id: string): Promise<PurchaseOrderProductItem[]> {
-    const response = await apiClient.get<PurchaseOrderProductItem[]>(
-      `/purchase-orders/${id}/products`,
-    );
+  async getProducts(
+    id: string,
+    query: PoProductQuery = {},
+  ): Promise<PaginatedResult<PurchaseOrderProductItem>> {
+    const response = await apiClient.get<
+      PaginatedResult<PurchaseOrderProductItem>
+    >(`/purchase-orders/${id}/products`, { params: query });
     return response.data;
   },
 
@@ -137,48 +192,373 @@ export const poApi = {
     await apiClient.delete(`/purchase-orders/${id}/products/${productId}`);
   },
 
+  async presignDocument(
+    id: string,
+    file: File,
+    purpose: string,
+  ): Promise<PresignPoDocumentResult> {
+    const response = await apiClient.post<PresignPoDocumentResult>(
+      `/purchase-orders/${id}/documents/presign`,
+      {
+        fileName: file.name,
+        mimeType: file.type,
+        sizeBytes: file.size,
+        purpose,
+      },
+    );
+    return response.data;
+  },
+
+  async uploadToS3(uploadUrl: string, file: File): Promise<void> {
+    const res = await fetch(uploadUrl, {
+      method: "PUT",
+      headers: { "Content-Type": file.type },
+      body: file,
+    });
+    if (!res.ok) {
+      throw new Error(`Tải tệp lên thất bại (HTTP ${res.status}).`);
+    }
+  },
+
+  async confirmDocument(
+    id: string,
+    objectKey: string,
+    file: File,
+    purpose: string,
+  ): Promise<PurchaseOrderDocumentItem> {
+    const response = await apiClient.post<PurchaseOrderDocumentItem>(
+      `/purchase-orders/${id}/documents/confirm`,
+      {
+        objectKey,
+        fileName: file.name,
+        mimeType: file.type,
+        sizeBytes: file.size,
+        purpose,
+      },
+    );
+    return response.data;
+  },
+
   async uploadDocument(
     id: string,
     file: File,
     purpose: string = "po_original",
   ): Promise<PurchaseOrderDocumentItem> {
-    const formData = new FormData();
-    formData.append("file", file);
-    const response = await apiClient.post<PurchaseOrderDocumentItem>(
-      `/purchase-orders/${id}/documents/upload`,
-      formData,
-      {
-        params: { purpose },
-        headers: { "Content-Type": "multipart/form-data" },
-      },
-    );
-    return response.data;
+    const presign = await poApi.presignDocument(id, file, purpose);
+    await poApi.uploadToS3(presign.uploadUrl, file);
+    return poApi.confirmDocument(id, presign.objectKey, file, purpose);
   },
 
+  /**
+   * Tải nhiều tệp cùng lúc.
+   *
+   * Đi qua đúng luồng presign → PUT S3 → confirm như `uploadDocument`. Trước
+   * đây hàm này gọi `documents/upload-multiple` (multipart), mà endpoint đó
+   * lưu tệp xuống ổ đĩa của server trong khi đường đọc luôn ký URL S3 — hệ quả
+   * là mọi tệp tải lên theo lô đều không mở xem được.
+   *
+   * Chạy tuần tự chứ không Promise.all: mỗi tệp là 3 lượt gọi mạng, bắn song
+   * song một lô lớn dễ làm nghẽn cả trình duyệt lẫn S3.
+   */
   async uploadDocuments(
     id: string,
     files: File[],
     purpose: string = "po_original",
+    options: UploadDocumentsOptions = {},
   ): Promise<PurchaseOrderDocumentItem[]> {
-    const formData = new FormData();
-    files.forEach((file) => formData.append("files", file));
-    const response = await apiClient.post<PurchaseOrderDocumentItem[]>(
-      `/purchase-orders/${id}/documents/upload-multiple`,
-      formData,
-      {
-        params: { purpose },
-        headers: { "Content-Type": "multipart/form-data" },
-      },
+    const { concurrency = UPLOAD_CONCURRENCY, onProgress } = options;
+    const uploaded: PurchaseOrderDocumentItem[] = new Array(files.length);
+    let done = 0;
+    let next = 0;
+
+    const worker = async () => {
+      for (;;) {
+        const index = next++;
+        if (index >= files.length) return;
+        const file = files[index];
+        uploaded[index] = await poApi.uploadDocument(id, file, purpose);
+        done += 1;
+        onProgress?.({ done, total: files.length, fileName: file.name });
+      }
+    };
+
+    await Promise.all(
+      Array.from({ length: Math.min(concurrency, files.length) }, worker),
     );
-    return response.data;
+    return uploaded;
   },
 
   async previewDocument(
     poId: string,
     documentId: string,
+    versionId?: string,
   ): Promise<PoDocumentPreviewResponse> {
     const response = await apiClient.get<PoDocumentPreviewResponse>(
       `/purchase-orders/${poId}/documents/${documentId}/preview`,
+      { params: versionId ? { versionId } : undefined },
+    );
+    return response.data;
+  },
+
+  // ─── Fit Import Preview ───────────────────────────────────────────────────
+
+  async getImportFitPreview(
+    styleId: string,
+  ): Promise<import("@/types/po").ImportFitPreviewResponse> {
+    const response = await apiClient.get<import("@/types/po").ImportFitPreviewResponse>(
+      `/purchase-orders/import-fit-preview/${styleId}`,
+    );
+    return response.data;
+  },
+
+  // ─── PO Product Detail & Sub-resources ─────────────────────────────────────
+
+  async getProductDetail(
+    poId: string,
+    productId: string,
+  ): Promise<import("@/types/po").PurchaseOrderProductDetail> {
+    const response = await apiClient.get<import("@/types/po").PurchaseOrderProductDetail>(
+      `/purchase-orders/${poId}/products/${productId}`,
+    );
+    return response.data;
+  },
+
+  async updateProductStatus(
+    poId: string,
+    productId: string,
+    status: string,
+    reason?: string,
+  ): Promise<PurchaseOrderProductItem> {
+    const response = await apiClient.patch<PurchaseOrderProductItem>(
+      `/purchase-orders/${poId}/products/${productId}/status`,
+      { status, reason },
+    );
+    return response.data;
+  },
+
+  async linkProductDocument(
+    poId: string,
+    productId: string,
+    documentId: string,
+    purpose?: string,
+  ): Promise<void> {
+    await apiClient.post(
+      `/purchase-orders/${poId}/products/${productId}/documents/${documentId}`,
+      { purpose },
+      { params: purpose ? { purpose } : undefined },
+    );
+  },
+
+  async updateProductDocumentPurpose(
+    poId: string,
+    productId: string,
+    documentId: string,
+    purpose: string,
+  ): Promise<void> {
+    await apiClient.patch(
+      `/purchase-orders/${poId}/products/${productId}/documents/${documentId}/purpose`,
+      { purpose },
+    );
+  },
+
+  async unlinkProductDocument(
+    poId: string,
+    productId: string,
+    documentId: string,
+  ): Promise<void> {
+    await apiClient.delete(
+      `/purchase-orders/${poId}/products/${productId}/documents/${documentId}`,
+    );
+  },
+
+  // ─── Product Document Uploads (S3 presign/confirm) ─────────────────────────
+  // Mirrors the top-level presignDocument/confirmDocument/uploadDocument
+  // pattern above, scoped to a single PO product. Reuses poApi.uploadToS3 for
+  // the raw S3 PUT so the fetch-based upload helper isn't duplicated.
+
+  async presignProductDocument(
+    poId: string,
+    productId: string,
+    file: File,
+    purpose: string,
+  ): Promise<PresignPoDocumentResult> {
+    const response = await apiClient.post<PresignPoDocumentResult>(
+      `/purchase-orders/${poId}/products/${productId}/documents/presign`,
+      {
+        fileName: file.name,
+        mimeType: file.type,
+        sizeBytes: file.size,
+        purpose,
+      },
+    );
+    return response.data;
+  },
+
+  async confirmProductDocument(
+    poId: string,
+    productId: string,
+    objectKey: string,
+    file: File,
+    purpose: string,
+  ): Promise<import("@/types/po").ProductDocumentItem> {
+    const response = await apiClient.post<import("@/types/po").ProductDocumentItem>(
+      `/purchase-orders/${poId}/products/${productId}/documents/confirm`,
+      {
+        objectKey,
+        fileName: file.name,
+        mimeType: file.type,
+        sizeBytes: file.size,
+        purpose,
+      },
+    );
+    return response.data;
+  },
+
+  async uploadProductDocument(
+    poId: string,
+    productId: string,
+    file: File,
+    purpose: string = "other",
+  ): Promise<import("@/types/po").ProductDocumentItem> {
+    const presign = await poApi.presignProductDocument(poId, productId, file, purpose);
+    await poApi.uploadToS3(presign.uploadUrl, file);
+    return poApi.confirmProductDocument(poId, productId, presign.objectKey, file, purpose);
+  },
+
+  async confirmProductDocumentVersion(
+    poId: string,
+    productId: string,
+    documentId: string,
+    objectKey: string,
+    file: File,
+    purpose: string,
+    changeReason?: string,
+  ): Promise<import("@/types/po").ProductDocumentItem> {
+    const url = `/purchase-orders/${poId}/products/${productId}/documents/${documentId}/versions/confirm`;
+    const basePayload = {
+      objectKey,
+      fileName: file.name,
+      mimeType: file.type,
+      sizeBytes: file.size,
+      purpose,
+    };
+    const trimmedReason = changeReason?.trim();
+    if (!trimmedReason) {
+      const response = await apiClient.post<import("@/types/po").ProductDocumentItem>(
+        url,
+        basePayload,
+      );
+      return response.data;
+    }
+    // NOTE: `changeReason` isn't part of the base confirm body shared with
+    // documents/confirm, but the existing version-upload UI requires a
+    // customer change-reason note (see PoProductDetailPage's "Lý do / Ghi
+    // chú thay đổi" field, historically sent to the old multipart versions
+    // endpoint). Try sending it along; the backend's global ValidationPipe
+    // runs with forbidNonWhitelisted, so if the versions/confirm DTO hasn't
+    // been extended to accept it yet, fall back to the base payload rather
+    // than failing the whole upload.
+    try {
+      const response = await apiClient.post<import("@/types/po").ProductDocumentItem>(
+        url,
+        { ...basePayload, changeReason: trimmedReason },
+      );
+      return response.data;
+    } catch (err: unknown) {
+      if (isWhitelistRejection(err, "changeReason")) {
+        const response = await apiClient.post<import("@/types/po").ProductDocumentItem>(
+          url,
+          basePayload,
+        );
+        return response.data;
+      }
+      throw err;
+    }
+  },
+
+  async uploadProductDocumentVersion(
+    poId: string,
+    productId: string,
+    documentId: string,
+    file: File,
+    purpose: string,
+    changeReason?: string,
+  ): Promise<import("@/types/po").ProductDocumentItem> {
+    const presign = await poApi.presignProductDocument(poId, productId, file, purpose);
+    await poApi.uploadToS3(presign.uploadUrl, file);
+    return poApi.confirmProductDocumentVersion(
+      poId,
+      productId,
+      documentId,
+      presign.objectKey,
+      file,
+      purpose,
+      changeReason,
+    );
+  },
+
+  async getProductOperationSteps(
+    poId: string,
+    productId: string,
+  ): Promise<import("@/types/po").ProductOperationStep[]> {
+    const response = await apiClient.get<import("@/types/po").ProductOperationStep[]>(
+      `/purchase-orders/${poId}/products/${productId}/operation-steps`,
+    );
+    return response.data;
+  },
+
+  async saveProductOperationSteps(
+    poId: string,
+    productId: string,
+    input: import("@/types/po").SaveProductOperationStepsInput,
+  ): Promise<import("@/types/po").ProductOperationStep[]> {
+    const response = await apiClient.put<import("@/types/po").ProductOperationStep[]>(
+      `/purchase-orders/${poId}/products/${productId}/operation-steps`,
+      input,
+    );
+    return response.data;
+  },
+
+  async getProductSampleRounds(
+    poId: string,
+    productId: string,
+  ): Promise<import("@/types/po").ProductSampleRound[]> {
+    const response = await apiClient.get<import("@/types/po").ProductSampleRound[]>(
+      `/purchase-orders/${poId}/products/${productId}/sample-rounds`,
+    );
+    return response.data;
+  },
+
+  async createProductSampleRound(
+    poId: string,
+    productId: string,
+    input: import("@/types/po").CreateProductSampleRoundInput,
+  ): Promise<import("@/types/po").ProductSampleRound> {
+    const response = await apiClient.post<import("@/types/po").ProductSampleRound>(
+      `/purchase-orders/${poId}/products/${productId}/sample-rounds`,
+      input,
+    );
+    return response.data;
+  },
+
+  async getProductProductionDoc(
+    poId: string,
+    productId: string,
+  ): Promise<import("@/types/po").ProductProductionDoc> {
+    const response = await apiClient.get<import("@/types/po").ProductProductionDoc>(
+      `/purchase-orders/${poId}/products/${productId}/production-doc`,
+    );
+    return response.data;
+  },
+
+  async updateProductProductionDoc(
+    poId: string,
+    productId: string,
+    data: Record<string, unknown>,
+  ): Promise<import("@/types/po").ProductProductionDoc> {
+    const response = await apiClient.patch<import("@/types/po").ProductProductionDoc>(
+      `/purchase-orders/${poId}/products/${productId}/production-doc`,
+      data,
     );
     return response.data;
   },

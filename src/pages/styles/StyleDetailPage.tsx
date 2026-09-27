@@ -15,10 +15,12 @@ import { UnsavedChangesDialog } from "@/components/features/styles/UnsavedChange
 import { StyleHeader } from "@/components/features/styles/StyleHeader";
 import { GeneralTab } from "@/components/features/styles/GeneralTab";
 import { StyleProductionDocTab } from "@/components/features/production-docs/StyleProductionDocTab";
+import { StyleDocumentsTab } from "@/components/features/styles/StyleDocumentsTab";
+import { StyleSampleRoundsTab } from "@/components/features/styles/StyleSampleRoundsTab";
 import { getApiError, isConflictError } from "@/lib/apiError";
 import { validateImageFile } from "@/lib/validateImageFile";
 import type { StyleOperationStepItem } from "@/api/styleOperationStepsApi";
-import { InfoIcon, DocsIcon, PageIcon } from "@/icons";
+import { InfoIcon, DocsIcon, PageIcon, FolderIcon, TaskIcon } from "@/icons";
 
 export default function StyleDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -29,16 +31,25 @@ export default function StyleDetailPage() {
     location.pathname.endsWith("/operation-steps") ||
     location.pathname.endsWith("/steps");
   const isProductionDocTab = location.pathname.endsWith("/production-doc");
+  const isDocumentsTab = location.pathname.endsWith("/documents");
+  const isSampleRoundsTab = location.pathname.endsWith("/sample-rounds");
 
-  const activeTab: "general" | "steps" | "production_doc" = isStepsTab
-    ? "steps"
-    : isProductionDocTab
-    ? "production_doc"
-    : "general";
+  const activeTab: "general" | "steps" | "production_doc" | "documents" | "sample_rounds" =
+    isStepsTab
+      ? "steps"
+      : isProductionDocTab
+      ? "production_doc"
+      : isDocumentsTab
+      ? "documents"
+      : isSampleRoundsTab
+      ? "sample_rounds"
+      : "general";
 
   const [isProductionDocEditing, setIsProductionDocEditing] = useState(false);
   const [isOperationStepsEditing, setIsOperationStepsEditing] = useState(false);
-  const [pendingTab, setPendingTab] = useState<"general" | "steps" | "production_doc" | null>(null);
+  const [pendingTab, setPendingTab] = useState<
+    "general" | "steps" | "production_doc" | "documents" | "sample_rounds" | null
+  >(null);
   const [pendingNavigation, setPendingNavigation] = useState<string | null>(null);
 
   useEffect(() => {
@@ -77,18 +88,26 @@ export default function StyleDetailPage() {
     };
   }, [isProductionDocEditing, isOperationStepsEditing]);
 
-  const navigateToTab = (tab: "general" | "steps" | "production_doc") => {
+  const navigateToTab = (
+    tab: "general" | "steps" | "production_doc" | "documents" | "sample_rounds",
+  ) => {
     if (!id) return;
     if (tab === "production_doc") {
       navigate(`/styles/${id}/production-doc`);
     } else if (tab === "steps") {
       navigate(`/styles/${id}/operation-steps`);
+    } else if (tab === "documents") {
+      navigate(`/styles/${id}/documents`);
+    } else if (tab === "sample_rounds") {
+      navigate(`/styles/${id}/sample-rounds`);
     } else {
       navigate(`/styles/${id}/detail`);
     }
   };
 
-  const handleTabChange = (tab: "general" | "steps" | "production_doc") => {
+  const handleTabChange = (
+    tab: "general" | "steps" | "production_doc" | "documents" | "sample_rounds",
+  ) => {
     if ((isProductionDocEditing || isOperationStepsEditing) && tab !== activeTab) {
       setPendingTab(tab);
       return;
@@ -124,8 +143,8 @@ export default function StyleDetailPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (style?.baseImageVersionId) setImageUrl(style.baseImageVersionId);
-  }, [style?.baseImageVersionId]);
+    if (style?.baseImageKey) setImageUrl(style.baseImageKey);
+  }, [style?.baseImageKey]);
 
   const handleUploadAndSaveImage = useCallback(
     async (file: File) => {
@@ -136,11 +155,16 @@ export default function StyleDetailPage() {
         return;
       }
       try {
-        const res = await uploadImage.mutateAsync(file);
-        setImageUrl(res.url);
+        const res = await uploadImage.mutateAsync({
+          entityType: "style",
+          entityId: style.id,
+          purpose: "sample_image",
+          file,
+        });
+        setImageUrl(res.previewUrl);
         await update.mutateAsync({
           id: style.id,
-          payload: { baseImageVersionId: res.url },
+          payload: { baseImageKey: res.objectKey },
         });
         showToast("Đã tải và lưu ảnh mẫu Fit thành công.");
       } catch (err) {
@@ -156,7 +180,7 @@ export default function StyleDetailPage() {
       setImageUrl(null);
       await update.mutateAsync({
         id: style.id,
-        payload: { baseImageVersionId: null },
+        payload: { baseImageKey: null },
       });
       showToast("Đã xóa ảnh mẫu Fit.");
     } catch (err) {
@@ -293,13 +317,12 @@ export default function StyleDetailPage() {
   }
 
   return (
-    <div className="space-y-5 pt-2 md:pt-3">
-      <div className="space-y-4">
+    <div className="space-y-3">
+      <div className="space-y-3">
         <StyleHeader
           styleCode={style.styleCode}
           styleName={style.styleName}
           status={style.status}
-          onEditClick={activeTab === "general" ? () => setIsEditModalOpen(true) : undefined}
         />
 
         <div className="border-b border-gray-200 dark:border-gray-800">
@@ -345,6 +368,30 @@ export default function StyleDetailPage() {
               <PageIcon className="w-4 h-4" />
               Tài liệu sản xuất
             </button>
+            <button
+              type="button"
+              onClick={() => handleTabChange("documents")}
+              className={`flex items-center gap-2 border-b-2 py-2.5 px-1 text-sm font-semibold transition-colors cursor-pointer ${
+                activeTab === "documents"
+                  ? "border-brand-500 text-brand-600 dark:text-brand-400"
+                  : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              }`}
+            >
+              <FolderIcon className="w-4 h-4" />
+              Tài liệu đính kèm
+            </button>
+            <button
+              type="button"
+              onClick={() => handleTabChange("sample_rounds")}
+              className={`flex items-center gap-2 border-b-2 py-2.5 px-1 text-sm font-semibold transition-colors cursor-pointer ${
+                activeTab === "sample_rounds"
+                  ? "border-brand-500 text-brand-600 dark:text-brand-400"
+                  : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              }`}
+            >
+              <TaskIcon className="w-4 h-4" />
+              Lần may mẫu
+            </button>
           </nav>
         </div>
       </div>
@@ -362,6 +409,7 @@ export default function StyleDetailPage() {
           onClearImage={clearLocalImage}
           onToggleStatus={() => void handleToggleStatus()}
           isStatusPending={statusUpdate.isPending}
+          onEditClick={() => setIsEditModalOpen(true)}
         />
       ) : activeTab === "steps" ? (
         <StyleOperationStepTable
@@ -376,13 +424,17 @@ export default function StyleDetailPage() {
           styleName={style.styleName}
           onImageChange={(file) => void handleUploadAndSaveImage(file)}
         />
-      ) : (
+      ) : activeTab === "production_doc" ? (
         <StyleProductionDocTab
           styleId={style.id}
           styleName={style.styleName}
-          styleImageUrl={imageUrl || style.baseImageVersionId || undefined}
+          styleImageUrl={imageUrl || style.baseImageKey || undefined}
           onEditingChange={setIsProductionDocEditing}
         />
+      ) : activeTab === "documents" ? (
+        <StyleDocumentsTab styleId={style.id} />
+      ) : (
+        <StyleSampleRoundsTab styleId={style.id} />
       )}
 
       <UnsavedChangesDialog

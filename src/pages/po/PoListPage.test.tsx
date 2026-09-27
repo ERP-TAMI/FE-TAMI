@@ -8,6 +8,7 @@ import * as usePurchaseOrdersModule from "@/hooks/usePurchaseOrders";
 vi.mock("@/hooks/usePurchaseOrders", () => ({
   usePurchaseOrders: vi.fn(),
   useCreatePurchaseOrder: vi.fn(),
+  useDeletePurchaseOrder: vi.fn(),
 }));
 
 describe("PoListPage", () => {
@@ -23,6 +24,11 @@ describe("PoListPage", () => {
       mutateAsync: vi.fn(),
       isPending: false,
     } as unknown as ReturnType<typeof usePurchaseOrdersModule.useCreatePurchaseOrder>);
+
+    vi.mocked(usePurchaseOrdersModule.useDeletePurchaseOrder).mockReturnValue({
+      mutateAsync: vi.fn(),
+      isPending: false,
+    } as unknown as ReturnType<typeof usePurchaseOrdersModule.useDeletePurchaseOrder>);
   });
 
   const renderComponent = () =>
