@@ -962,8 +962,20 @@ describe("PR-11: BOM V2 Final Integration & E2E Regression", () => {
         expect(screen.getByText("Sao chép từ Fit BOM")).toBeTruthy();
       });
 
-      const confirmBtn = screen.getByText("Xác nhận sao chép");
-      fireEvent.click(confirmBtn);
+      // The confirm button stays disabled until the modal's async fetch of
+      // the Fit BOM's closed revisions resolves and auto-selects one
+      // (BomCopyFitModal's useEffect). Clicking a disabled button is a
+      // no-op, so wait for it to become enabled first — otherwise this test
+      // races that fetch and only passes when the microtask timing happens
+      // to line up.
+      await waitFor(() => {
+        expect(
+          (screen.getByText("Xác nhận sao chép") as HTMLButtonElement)
+            .disabled,
+        ).toBe(false);
+      });
+
+      fireEvent.click(screen.getByText("Xác nhận sao chép"));
 
       await waitFor(() => {
         expect(hooks.useCopyFit.mutateAsync).toHaveBeenCalledWith({
