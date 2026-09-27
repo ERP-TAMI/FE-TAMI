@@ -33,11 +33,11 @@ export function ManagementStatCard({
           {icon}
         </span>
       </div>
-      <p className="text-theme-sm font-medium text-gray-500 dark:text-gray-400">{label}</p>
+      <p className="text-theme-sm font-medium text-gray-600 dark:text-gray-300">{label}</p>
       <p className="mt-2 text-3xl font-semibold tracking-tight text-gray-900 dark:text-white">
         {value.toLocaleString("vi-VN")}
       </p>
-      <p className="text-theme-xs mt-2 text-gray-400 dark:text-gray-500">{helper}</p>
+      <p className="text-theme-xs mt-2 text-gray-600 dark:text-gray-300">{helper}</p>
     </article>
   );
 }

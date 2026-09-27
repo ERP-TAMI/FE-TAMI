@@ -32,6 +32,7 @@ describe("ManagementDashboardPage", () => {
 
   afterEach(() => {
     cleanup();
+    vi.unstubAllEnvs();
     vi.useRealTimers();
   });
 
@@ -53,6 +54,16 @@ describe("ManagementDashboardPage", () => {
     });
 
     expect(hooks.useManagementDashboardSummary).toHaveBeenLastCalledWith("2026-08");
+  });
+
+  it("defaults to the current business month in Vietnam even when the browser uses UTC", () => {
+    vi.stubEnv("TZ", "UTC");
+    vi.setSystemTime(new Date("2026-09-30T18:00:00Z"));
+
+    render(<ManagementDashboardPage />);
+
+    expect(hooks.useManagementDashboardSummary).toHaveBeenCalledWith("2026-10");
+    expect(screen.getByLabelText("Tháng báo cáo")).toHaveProperty("value", "2026-10");
   });
 
   it("prevents selecting the unsupported year zero", () => {

@@ -1,13 +1,19 @@
 import { useState } from "react";
-import { Alert, Button } from "@/components/shared";
+import { Alert, Button, Input } from "@/components/shared";
 import PageMeta from "@/components/shared/PageMeta";
 import { ManagementStatCard } from "@/components/features/management-dashboard/ManagementStatCard";
-import { BoxIconLine, CheckCircleIcon, TimeIcon, UserIcon } from "@/icons";
+import { CircleCheck, ClockAlert, Package, UsersRound } from "lucide-react";
 import { useManagementDashboardSummary } from "@/hooks/useManagementDashboard";
 
 function getCurrentMonth(): string {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Ho_Chi_Minh",
+    year: "numeric",
+    month: "2-digit",
+  }).formatToParts(new Date());
+  const year = parts.find((part) => part.type === "year")?.value;
+  const month = parts.find((part) => part.type === "month")?.value;
+  return `${year}-${month}`;
 }
 
 function formatMonth(month: string): string {
@@ -25,28 +31,28 @@ export default function ManagementDashboardPage() {
           label: "Tổng số PO",
           value: data.totalPurchaseOrders,
           helper: `Đã tiếp nhận trong ${formatMonth(data.month).toLowerCase()}`,
-          icon: <BoxIconLine className="h-5 w-5" />,
+          icon: <Package className="h-5 w-5" />,
           tone: "brand" as const,
         },
         {
           label: "PO đã hoàn thành",
           value: data.completedPurchaseOrders,
           helper: `Đã đóng trong nhóm PO ${formatMonth(data.month).toLowerCase()}`,
-          icon: <CheckCircleIcon className="h-5 w-5" />,
+          icon: <CircleCheck className="h-5 w-5" />,
           tone: "success" as const,
         },
         {
           label: "PO trễ hạn",
           value: data.overduePurchaseOrders,
-          helper: "Đang xử lý và có sản phẩm quá hạn",
-          icon: <TimeIcon className="h-5 w-5" />,
+          helper: "Chưa hoàn thành và đã quá hạn PO",
+          icon: <ClockAlert className="h-5 w-5" />,
           tone: "danger" as const,
         },
         {
           label: "Nhân viên đang hoạt động",
           value: data.activeEmployees,
           helper: "Số tài khoản active hiện tại",
-          icon: <UserIcon className="h-5 w-5" />,
+          icon: <UsersRound className="h-5 w-5" />,
           tone: "neutral" as const,
         },
       ]
@@ -75,18 +81,16 @@ export default function ManagementDashboardPage() {
           </p>
         </div>
 
-        <label className="block w-full sm:w-52">
-          <span className="text-theme-sm mb-1.5 block font-medium text-gray-700 dark:text-gray-300">
-            Tháng báo cáo
-          </span>
-          <input
+        <div className="w-full sm:w-52">
+          <Input
+            label="Tháng báo cáo"
             type="month"
             min="0001-01"
             value={month}
             onChange={(event) => setMonth(event.target.value)}
-            className="focus:border-brand-500 focus:ring-brand-500/10 h-11 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-900 transition outline-none focus:ring-3 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+            className="cursor-pointer bg-white focus-visible:ring-3 dark:bg-gray-900 dark:[color-scheme:dark]"
           />
-        </label>
+        </div>
       </div>
 
       {isLoading && (
@@ -115,7 +119,11 @@ export default function ManagementDashboardPage() {
           <Alert variant="error" title="Không thể tải số liệu">
             Đã xảy ra lỗi khi tải dashboard. Vui lòng thử lại.
           </Alert>
-          <Button variant="outline" onClick={() => void refetch()}>
+          <Button
+            variant="outline"
+            className="cursor-pointer focus-visible:ring-3"
+            onClick={() => void refetch()}
+          >
             Thử lại
           </Button>
         </div>
