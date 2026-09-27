@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-type ManagementStatCardTone = "brand" | "success" | "danger" | "neutral";
+type ManagementStatCardTone = "brand" | "success" | "warning" | "danger" | "neutral";
 
 export type ManagementStatCardProps = {
   label: string;
@@ -13,6 +13,7 @@ export type ManagementStatCardProps = {
 const toneClasses: Record<ManagementStatCardTone, string> = {
   brand: "bg-brand-50 text-brand-600 dark:bg-brand-500/15 dark:text-brand-300",
   success: "bg-success-50 text-success-600 dark:bg-success-500/15 dark:text-success-300",
+  warning: "bg-warning-50 text-warning-700 dark:bg-warning-900/20 dark:text-warning-200",
   danger: "bg-error-50 text-error-600 dark:bg-error-500/15 dark:text-error-300",
   neutral: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300",
 };
