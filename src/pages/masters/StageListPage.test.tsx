@@ -140,6 +140,16 @@ describe("StageListPage", () => {
     });
   });
 
+  it("closes the detail view when clicking outside it", () => {
+    renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: stages[0].stageCode }));
+    expect(screen.getByRole("heading", { name: "Chi tiết công đoạn" })).toBeTruthy();
+
+    fireEvent.click(document.querySelector('[data-modal-backdrop="true"]')!);
+    expect(screen.queryByRole("heading", { name: "Chi tiết công đoạn" })).toBeNull();
+  });
+
   it("opens detail and continues into the edit flow", async () => {
     hooks.update.mutateAsync.mockResolvedValue({ ...stages[0], stageName: "Cắt vải chính" });
     renderPage();

@@ -17,6 +17,7 @@ export function DetailModal({ title, fields, onClose, onEdit }: DetailModalProps
       open
       title={title}
       onClose={onClose}
+      closeOnClickOutside
       footer={
         <>
           <Button variant="outline" onClick={onClose}>
