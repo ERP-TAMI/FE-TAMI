@@ -1,4 +1,5 @@
 import { useQuery, useQueries, useMutation, useQueryClient } from "@tanstack/react-query";
+import { managementDashboardKeys } from "@/api/management-dashboard.keys";
 import { poApi, type UploadProgress } from "@/api/po.api";
 import type {
   CreatePoInput,
@@ -58,6 +59,7 @@ export function useCreatePurchaseOrder() {
     mutationFn: (input: CreatePoInput) => poApi.create(input),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: PO_KEYS.lists() });
+      void queryClient.invalidateQueries({ queryKey: managementDashboardKeys.summaries() });
     },
   });
 }
@@ -69,6 +71,7 @@ export function useUpdatePurchaseOrder() {
       poApi.update(id, input),
     onSuccess: (updated) => {
       void queryClient.invalidateQueries({ queryKey: PO_KEYS.lists() });
+      void queryClient.invalidateQueries({ queryKey: managementDashboardKeys.summaries() });
       queryClient.setQueryData(PO_KEYS.detail(updated.id), updated);
     },
   });
@@ -80,6 +83,7 @@ export function useDeletePurchaseOrder() {
     mutationFn: (id: string) => poApi.remove(id),
     onSuccess: (_data, id) => {
       void queryClient.invalidateQueries({ queryKey: PO_KEYS.lists() });
+      void queryClient.invalidateQueries({ queryKey: managementDashboardKeys.summaries() });
       queryClient.removeQueries({ queryKey: PO_KEYS.detail(id) });
     },
   });
@@ -92,6 +96,7 @@ export function useUpdatePoStatus() {
       poApi.updateStatus(id, input),
     onSuccess: (updated) => {
       void queryClient.invalidateQueries({ queryKey: PO_KEYS.lists() });
+      void queryClient.invalidateQueries({ queryKey: managementDashboardKeys.summaries() });
       queryClient.setQueryData(PO_KEYS.detail(updated.id), updated);
     },
   });
