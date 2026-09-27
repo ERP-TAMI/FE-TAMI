@@ -6,6 +6,7 @@ type UnitTableProps = {
   units: Unit[];
   togglingId?: string;
   loading?: boolean;
+  onView: (unit: Unit) => void;
   onEdit: (unit: Unit) => void;
   onToggleStatus: (unit: Unit) => void;
   onDelete: (unit: Unit) => void;
@@ -15,6 +16,7 @@ export function UnitTable({
   units,
   togglingId,
   loading = false,
+  onView,
   onEdit,
   onToggleStatus,
   onDelete,
@@ -27,7 +29,7 @@ export function UnitTable({
       render: (unit) => (
         <button
           type="button"
-          onClick={() => onEdit(unit)}
+          onClick={() => onView(unit)}
           title={unit.name}
           className="hover:text-brand-600 dark:hover:text-brand-400 block max-w-full truncate text-left font-medium text-gray-900 dark:text-white"
         >
@@ -50,9 +52,7 @@ export function UnitTable({
               className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
                 unit.status === "active" ? "bg-success-500" : "bg-gray-300 dark:bg-gray-700"
               } ${isToggling ? "opacity-50" : ""}`}
-              title={
-                unit.status === "active" ? "Đang sử dụng (Bấm để tắt)" : "Đã tắt (Bấm để bật)"
-              }
+              title={unit.status === "active" ? "Đang sử dụng (Bấm để tắt)" : "Đã tắt (Bấm để bật)"}
             >
               <span
                 className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-xs ring-0 transition duration-200 ease-in-out ${

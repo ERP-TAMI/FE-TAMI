@@ -152,6 +152,28 @@ describe("WorkshopListPage", () => {
     });
   });
 
+  it("opens detail and continues into the edit flow", async () => {
+    hooks.update.mutateAsync.mockResolvedValue({ ...workshops[0], name: "Xưởng May 1 (mới)" });
+    renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: workshops[0].workshopCode }));
+    expect(screen.getByRole("heading", { name: "Chi tiết xưởng sản xuất" })).toBeTruthy();
+    const detailDialog = within(screen.getByRole("dialog"));
+    expect(detailDialog.getByText(workshops[0].name)).toBeTruthy();
+    expect(detailDialog.getByText(workshops[0].manager!)).toBeTruthy();
+    fireEvent.click(detailDialog.getByRole("button", { name: "Chỉnh sửa" }));
+    expect(screen.getByRole("heading", { name: "Chỉnh sửa xưởng sản xuất" })).toBeTruthy();
+
+    fireEvent.change(screen.getByLabelText("Tên xưởng"), {
+      target: { value: "Xưởng May 1 (mới)" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Lưu xưởng" }));
+
+    await waitFor(() => {
+      expect(hooks.update.mutateAsync).toHaveBeenCalled();
+    });
+  });
+
   it("confirms before deactivating and activates directly", async () => {
     hooks.updateStatus.mutateAsync.mockResolvedValue({ ...workshops[0], status: "inactive" });
     renderPage();

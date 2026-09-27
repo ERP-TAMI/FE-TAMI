@@ -9,6 +9,7 @@ type StageGroupTableProps = {
   togglingId?: string;
   loading?: boolean;
   isSavingItems?: boolean;
+  onView: (group: StageGroupSummary) => void;
   onEdit: (group: StageGroupSummary) => void;
   onDelete: (group: StageGroupSummary) => void;
   onToggleStatus: (group: StageGroupSummary) => void;
@@ -22,6 +23,7 @@ export function StageGroupTable({
   togglingId,
   loading = false,
   isSavingItems,
+  onView,
   onEdit,
   onDelete,
   onToggleStatus,
@@ -89,12 +91,14 @@ export function StageGroupTable({
       header: "Mã nhóm",
       width: "w-[13%]",
       render: (group) => (
-        <span
+        <button
+          type="button"
+          onClick={() => onView(group)}
           title={group.groupCode}
-          className="block truncate font-semibold text-gray-900 dark:text-white"
+          className="hover:text-brand-600 dark:hover:text-brand-400 block max-w-full truncate text-left font-semibold text-gray-900 dark:text-white"
         >
           {group.groupCode}
-        </span>
+        </button>
       ),
     },
     {
@@ -102,9 +106,14 @@ export function StageGroupTable({
       header: "Tên nhóm",
       width: "w-[17%]",
       render: (group) => (
-        <span title={group.groupName} className="block truncate font-medium">
+        <button
+          type="button"
+          onClick={() => onView(group)}
+          title={group.groupName}
+          className="hover:text-brand-600 dark:hover:text-brand-400 block max-w-full truncate text-left font-medium"
+        >
           {group.groupName}
-        </span>
+        </button>
       ),
     },
     {

@@ -27,6 +27,7 @@ describe("StageTable", () => {
     render(
       <StageTable
         stages={[stage, inactiveStage]}
+        onView={vi.fn()}
         onEdit={vi.fn()}
         onDelete={vi.fn()}
         onToggleStatus={vi.fn()}

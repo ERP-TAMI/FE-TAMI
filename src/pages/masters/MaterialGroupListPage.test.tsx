@@ -136,6 +136,35 @@ describe("MaterialGroupListPage", () => {
     });
   });
 
+  it("opens detail and continues into the edit flow", async () => {
+    hooks.update.mutateAsync.mockResolvedValue({ ...materialGroup, name: "Main fabric" });
+    hooks.useMaterialGroups.mockReturnValue({
+      isLoading: false,
+      isError: false,
+      data: [materialGroup],
+      error: null,
+      refetch: vi.fn(),
+    });
+
+    renderPage();
+    fireEvent.click(screen.getByRole("button", { name: materialGroup.name }));
+    expect(screen.getByRole("heading", { name: "Chi tiết nhóm vật tư" })).toBeTruthy();
+    const detailDialog = within(screen.getByRole("dialog"));
+    expect(detailDialog.getByText(materialGroup.name)).toBeTruthy();
+    fireEvent.click(detailDialog.getByRole("button", { name: "Chỉnh sửa" }));
+    expect(screen.getByRole("heading", { name: "Chỉnh sửa nhóm vật tư" })).toBeTruthy();
+
+    fireEvent.change(screen.getByLabelText("Tên nhóm"), { target: { value: "Main fabric" } });
+    fireEvent.click(screen.getByRole("button", { name: "Lưu nhóm vật tư" }));
+
+    await waitFor(() => {
+      expect(hooks.update.mutateAsync).toHaveBeenCalledWith({
+        id: materialGroup.id,
+        input: { name: "Main fabric" },
+      });
+    });
+  });
+
   it("toggles status immediately without a confirmation dialog", async () => {
     hooks.updateStatus.mutateAsync.mockResolvedValue({
       ...materialGroup,

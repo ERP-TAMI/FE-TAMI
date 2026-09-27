@@ -140,6 +140,36 @@ describe("StageListPage", () => {
     });
   });
 
+  it("opens detail and continues into the edit flow", async () => {
+    hooks.update.mutateAsync.mockResolvedValue({ ...stages[0], stageName: "Cắt vải chính" });
+    renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: stages[0].stageCode }));
+    expect(screen.getByRole("heading", { name: "Chi tiết công đoạn" })).toBeTruthy();
+    const detailDialog = within(screen.getByRole("dialog"));
+    expect(detailDialog.getByText(stages[0].stageName)).toBeTruthy();
+    expect(detailDialog.getByText(stages[0].description ?? "")).toBeTruthy();
+    fireEvent.click(detailDialog.getByRole("button", { name: "Chỉnh sửa" }));
+    expect(screen.getByRole("heading", { name: "Chỉnh sửa công đoạn" })).toBeTruthy();
+
+    fireEvent.change(screen.getByLabelText("Tên công đoạn"), {
+      target: { value: "Cắt vải chính" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Lưu công đoạn" }));
+
+    await waitFor(() => {
+      expect(hooks.update.mutateAsync).toHaveBeenCalledWith({
+        id: stages[0].id,
+        input: {
+          stageCode: stages[0].stageCode,
+          stageName: "Cắt vải chính",
+          description: stages[0].description,
+          ssv: stages[0].ssv,
+        },
+      });
+    });
+  });
+
   it("updates the stage code after the user unlocks it", async () => {
     hooks.update.mutateAsync.mockResolvedValue({
       ...stages[0],

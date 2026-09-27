@@ -3,7 +3,15 @@ import { useBlocker, type BlockerFunction } from "react-router-dom";
 import { StageGroupForm } from "@/components/features/stage-groups/StageGroupForm";
 import { StageGroupTable } from "@/components/features/stage-groups/StageGroupTable";
 import { StageGroupToolbar } from "@/components/features/stage-groups/StageGroupToolbar";
-import { Alert, Button, ConfirmDialog, Modal, Pagination, Toast } from "@/components/shared";
+import {
+  Alert,
+  Button,
+  ConfirmDialog,
+  DetailModal,
+  Modal,
+  Pagination,
+  Toast,
+} from "@/components/shared";
 import {
   useCreateStageGroup,
   useDeleteStageGroup,
@@ -27,6 +35,7 @@ const emptyGroups: StageGroupSummary[] = [];
 
 export default function StageGroupListPage() {
   const [editing, setEditing] = useState<"create" | string>();
+  const [viewing, setViewing] = useState<StageGroupSummary>();
   const [isFormDirty, setIsFormDirty] = useState(false);
   const [isSsvEditing, setIsSsvEditing] = useState(false);
   const [isSsvDirty, setIsSsvDirty] = useState(false);
@@ -173,6 +182,7 @@ export default function StageGroupListPage() {
               <StageGroupTable
                 groups={emptyGroups}
                 loading
+                onView={() => {}}
                 onEdit={() => {}}
                 onDelete={() => {}}
                 onToggleStatus={() => {}}
@@ -199,6 +209,7 @@ export default function StageGroupListPage() {
                 groups={listView.paginatedGroups}
                 isSavingItems={update.isPending}
                 togglingId={updateStatus.isPending ? updateStatus.variables?.id : undefined}
+                onView={setViewing}
                 onEdit={startEdit}
                 onDelete={setDeleting}
                 onToggleStatus={(group) => void toggleStatus(group)}
@@ -221,6 +232,23 @@ export default function StageGroupListPage() {
         </div>
       </section>
 
+      {viewing && (
+        <DetailModal
+          title="Chi tiết nhóm công đoạn"
+          fields={[
+            ["Mã nhóm", viewing.groupCode],
+            ["Tên nhóm", viewing.groupName],
+            ["Mô tả", viewing.description || "—"],
+            ["Số công đoạn", viewing.itemCount],
+            ["Trạng thái", viewing.status === "active" ? "Đang sử dụng" : "Đã tắt"],
+          ]}
+          onClose={() => setViewing(undefined)}
+          onEdit={() => {
+            startEdit(viewing);
+            setViewing(undefined);
+          }}
+        />
+      )}
       {editing === "create" && (
         <StageGroupForm
           mode="create"

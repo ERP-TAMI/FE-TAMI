@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Alert, Button, ConfirmDialog, Pagination, Toast } from "@/components/shared";
+import { Alert, Button, ConfirmDialog, DetailModal, Pagination, Toast } from "@/components/shared";
 import { UnitForm } from "@/components/features/units/UnitForm";
 import { UnitTable } from "@/components/features/units/UnitTable";
 import { UnitToolbar } from "@/components/features/units/UnitToolbar";
@@ -22,6 +22,7 @@ const emptyUnits: Unit[] = [];
 
 export default function UnitListPage() {
   const [editing, setEditing] = useState<Unit | "create" | undefined>();
+  const [viewing, setViewing] = useState<Unit>();
   const [dialog, setDialog] = useState<Dialog>();
   const [isDirty, setIsDirty] = useState(false);
   const { toast, showToast, hideToast } = useToast();
@@ -114,6 +115,7 @@ export default function UnitListPage() {
               <UnitTable
                 units={emptyUnits}
                 loading
+                onView={() => {}}
                 onEdit={() => {}}
                 onToggleStatus={() => {}}
                 onDelete={() => {}}
@@ -140,6 +142,7 @@ export default function UnitListPage() {
               <UnitTable
                 units={listView.paginatedUnits}
                 togglingId={updateStatus.isPending ? updateStatus.variables?.id : undefined}
+                onView={setViewing}
                 onEdit={setEditing}
                 onToggleStatus={(unit) => void toggleStatus(unit)}
                 onDelete={(unit) => setDialog({ type: "delete", unit })}
@@ -157,6 +160,20 @@ export default function UnitListPage() {
         </div>
       </section>
 
+      {viewing && (
+        <DetailModal
+          title="Chi tiết đơn vị tính"
+          fields={[
+            ["Tên đơn vị", viewing.name],
+            ["Trạng thái", viewing.status === "active" ? "Đang sử dụng" : "Đã tắt"],
+          ]}
+          onClose={() => setViewing(undefined)}
+          onEdit={() => {
+            setEditing(viewing);
+            setViewing(undefined);
+          }}
+        />
+      )}
       {editing && (
         <UnitForm
           mode={editing === "create" ? "create" : "edit"}

@@ -3,7 +3,15 @@ import { useBlocker, type BlockerFunction } from "react-router-dom";
 import { SizeChartForm } from "@/components/features/size-charts/SizeChartForm";
 import { SizeChartTable } from "@/components/features/size-charts/SizeChartTable";
 import { SizeChartToolbar } from "@/components/features/size-charts/SizeChartToolbar";
-import { Alert, Button, ConfirmDialog, PageHeader, Pagination, Toast } from "@/components/shared";
+import {
+  Alert,
+  Button,
+  ConfirmDialog,
+  DetailModal,
+  PageHeader,
+  Pagination,
+  Toast,
+} from "@/components/shared";
 import PageMeta from "@/components/shared/PageMeta";
 import { useSizeChartListView } from "@/hooks/useSizeChartListView";
 import {
@@ -27,6 +35,7 @@ const emptySizeCharts: SizeChart[] = [];
 
 export default function SizeChartListPage() {
   const [editing, setEditing] = useState<SizeChart | "create" | undefined>();
+  const [viewing, setViewing] = useState<SizeChart>();
   const [deactivating, setDeactivating] = useState<SizeChart>();
   const [deleting, setDeleting] = useState<SizeChart>();
   const [isFormDirty, setIsFormDirty] = useState(false);
@@ -159,6 +168,7 @@ export default function SizeChartListPage() {
               <SizeChartTable
                 sizeCharts={emptySizeCharts}
                 loading
+                onView={() => {}}
                 onEdit={() => {}}
                 onToggleStatus={() => {}}
                 onDelete={() => {}}
@@ -183,6 +193,7 @@ export default function SizeChartListPage() {
               <SizeChartTable
                 sizeCharts={listView.paginatedSizeCharts}
                 togglingId={updateStatus.isPending ? updateStatus.variables?.id : undefined}
+                onView={setViewing}
                 onEdit={openForm}
                 onToggleStatus={toggleStatus}
                 onDelete={setDeleting}
@@ -200,6 +211,21 @@ export default function SizeChartListPage() {
         </div>
       </section>
 
+      {viewing && (
+        <DetailModal
+          title="Chi tiết bảng Size"
+          fields={[
+            ["Tên bảng Size", viewing.name],
+            ["Danh sách Size", viewing.sizes.join(", ")],
+            ["Trạng thái", viewing.status === "active" ? "Đang sử dụng" : "Đã tắt"],
+          ]}
+          onClose={() => setViewing(undefined)}
+          onEdit={() => {
+            openForm(viewing);
+            setViewing(undefined);
+          }}
+        />
+      )}
       {editing && (
         <SizeChartForm
           mode={editing === "create" ? "create" : "edit"}

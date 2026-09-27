@@ -2,6 +2,8 @@ export { Alert } from "@/components/shared/Alert";
 export { Button } from "@/components/shared/Button";
 export { CodeLockToggle } from "@/components/shared/CodeLockToggle";
 export { ConfirmDialog } from "@/components/shared/ConfirmDialog";
+export { DetailModal } from "@/components/shared/DetailModal";
+export type { DetailField } from "@/components/shared/DetailModal";
 export { Input } from "@/components/shared/Input";
 export { Modal } from "@/components/shared/Modal";
 export { PageHeader } from "@/components/shared/PageHeader";

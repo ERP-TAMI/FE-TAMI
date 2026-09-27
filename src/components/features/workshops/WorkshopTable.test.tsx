@@ -23,6 +23,7 @@ describe("WorkshopTable", () => {
     render(
       <WorkshopTable
         workshops={[workshop]}
+        onView={vi.fn()}
         onEdit={onEdit}
         onDelete={onDelete}
         onToggleStatus={vi.fn()}
@@ -46,6 +47,7 @@ describe("WorkshopTable", () => {
     render(
       <WorkshopTable
         workshops={[workshop]}
+        onView={vi.fn()}
         onEdit={vi.fn()}
         onDelete={vi.fn()}
         onToggleStatus={onToggleStatus}

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useBlocker, type BlockerFunction } from "react-router-dom";
-import { Alert, Button, ConfirmDialog, Pagination, Toast } from "@/components/shared";
+import { Alert, Button, ConfirmDialog, DetailModal, Pagination, Toast } from "@/components/shared";
 import { StageForm } from "@/components/features/stages/StageForm";
 import { StageTable } from "@/components/features/stages/StageTable";
 import { StageToolbar } from "@/components/features/stages/StageToolbar";
@@ -22,6 +22,7 @@ const emptyStages: Stage[] = [];
 
 export default function StageListPage() {
   const [editing, setEditing] = useState<Stage | "create" | undefined>();
+  const [viewing, setViewing] = useState<Stage>();
   const [isFormDirty, setIsFormDirty] = useState(false);
   const [bulkValues, setBulkValues] = useState<Record<string, string> | null>(null);
   const [discardBulkDialogOpen, setDiscardBulkDialogOpen] = useState(false);
@@ -177,6 +178,7 @@ export default function StageListPage() {
               <StageTable
                 stages={emptyStages}
                 loading
+                onView={() => {}}
                 onEdit={() => {}}
                 onDelete={() => {}}
                 onToggleStatus={() => {}}
@@ -204,6 +206,7 @@ export default function StageListPage() {
                 bulkValues={bulkValues ?? undefined}
                 bulkErrors={bulkErrors}
                 togglingId={updateStatus.isPending ? updateStatus.variables?.id : undefined}
+                onView={setViewing}
                 onEdit={setEditing}
                 onDelete={setDeleting}
                 onToggleStatus={(stage) => void toggleStatus(stage)}
@@ -224,6 +227,23 @@ export default function StageListPage() {
         </div>
       </section>
 
+      {viewing && (
+        <DetailModal
+          title="Chi tiết công đoạn"
+          fields={[
+            ["Mã công đoạn", viewing.stageCode],
+            ["Tên công đoạn", viewing.stageName],
+            ["Mô tả", viewing.description || "—"],
+            ["SSV (giây)", viewing.ssv],
+            ["Trạng thái", viewing.status === "active" ? "Đang sử dụng" : "Đã tắt"],
+          ]}
+          onClose={() => setViewing(undefined)}
+          onEdit={() => {
+            setEditing(viewing);
+            setViewing(undefined);
+          }}
+        />
+      )}
       {editing && (
         <StageForm
           mode={editing === "create" ? "create" : "edit"}

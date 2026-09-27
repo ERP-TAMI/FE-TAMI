@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Alert, Button, ConfirmDialog, Pagination, Toast } from "@/components/shared";
+import { Alert, Button, ConfirmDialog, DetailModal, Pagination, Toast } from "@/components/shared";
 import { MaterialGroupForm } from "@/components/features/material-groups/MaterialGroupForm";
 import { MaterialGroupTable } from "@/components/features/material-groups/MaterialGroupTable";
 import { MaterialGroupToolbar } from "@/components/features/material-groups/MaterialGroupToolbar";
@@ -25,6 +25,7 @@ const emptyMaterialGroups: MaterialGroup[] = [];
 
 export default function MaterialGroupListPage() {
   const [editing, setEditing] = useState<MaterialGroup | "create" | undefined>();
+  const [viewing, setViewing] = useState<MaterialGroup>();
   const [dialog, setDialog] = useState<Dialog>();
   const [isDirty, setIsDirty] = useState(false);
   const { toast, showToast, hideToast } = useToast();
@@ -114,6 +115,7 @@ export default function MaterialGroupListPage() {
               <MaterialGroupTable
                 materialGroups={emptyMaterialGroups}
                 loading
+                onView={() => {}}
                 onEdit={() => {}}
                 onToggleStatus={() => {}}
                 onDelete={() => {}}
@@ -140,6 +142,7 @@ export default function MaterialGroupListPage() {
               <MaterialGroupTable
                 materialGroups={listView.paginatedMaterialGroups}
                 togglingId={updateStatus.isPending ? updateStatus.variables?.id : undefined}
+                onView={setViewing}
                 onEdit={setEditing}
                 onToggleStatus={(materialGroup) => void toggleStatus(materialGroup)}
                 onDelete={(materialGroup) => setDialog({ type: "delete", materialGroup })}
@@ -157,6 +160,20 @@ export default function MaterialGroupListPage() {
         </div>
       </section>
 
+      {viewing && (
+        <DetailModal
+          title="Chi tiết nhóm vật tư"
+          fields={[
+            ["Tên nhóm", viewing.name],
+            ["Trạng thái", viewing.status === "active" ? "Đang sử dụng" : "Đã tắt"],
+          ]}
+          onClose={() => setViewing(undefined)}
+          onEdit={() => {
+            setEditing(viewing);
+            setViewing(undefined);
+          }}
+        />
+      )}
       {editing && (
         <MaterialGroupForm
           mode={editing === "create" ? "create" : "edit"}

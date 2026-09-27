@@ -3,7 +3,15 @@ import { useBlocker, type BlockerFunction } from "react-router-dom";
 import { WorkshopForm } from "@/components/features/workshops/WorkshopForm";
 import { WorkshopTable } from "@/components/features/workshops/WorkshopTable";
 import { WorkshopToolbar } from "@/components/features/workshops/WorkshopToolbar";
-import { Alert, Button, ConfirmDialog, PageHeader, Pagination, Toast } from "@/components/shared";
+import {
+  Alert,
+  Button,
+  ConfirmDialog,
+  DetailModal,
+  PageHeader,
+  Pagination,
+  Toast,
+} from "@/components/shared";
 import PageMeta from "@/components/shared/PageMeta";
 import {
   useCreateWorkshop,
@@ -24,9 +32,11 @@ import type {
 } from "@/types/workshop";
 
 const emptyWorkshops: Workshop[] = [];
+const capacityFormatter = new Intl.NumberFormat("vi-VN");
 
 export default function WorkshopListPage() {
   const [editing, setEditing] = useState<Workshop | "create" | undefined>();
+  const [viewing, setViewing] = useState<Workshop>();
   const [deactivating, setDeactivating] = useState<Workshop>();
   const [deleting, setDeleting] = useState<Workshop>();
   const [isFormDirty, setIsFormDirty] = useState(false);
@@ -159,6 +169,7 @@ export default function WorkshopListPage() {
               <WorkshopTable
                 workshops={emptyWorkshops}
                 loading
+                onView={() => {}}
                 onEdit={() => {}}
                 onDelete={() => {}}
                 onToggleStatus={() => {}}
@@ -183,6 +194,7 @@ export default function WorkshopListPage() {
               <WorkshopTable
                 workshops={listView.paginatedWorkshops}
                 togglingId={updateStatus.isPending ? updateStatus.variables?.id : undefined}
+                onView={setViewing}
                 onEdit={openForm}
                 onDelete={(workshop) => setDeleting(workshop)}
                 onToggleStatus={toggleStatus}
@@ -200,6 +212,24 @@ export default function WorkshopListPage() {
         </div>
       </section>
 
+      {viewing && (
+        <DetailModal
+          title="Chi tiết xưởng sản xuất"
+          fields={[
+            ["Mã xưởng", viewing.workshopCode],
+            ["Tên xưởng", viewing.name],
+            ["Quản lý", viewing.manager || "—"],
+            ["Vị trí", viewing.location || "—"],
+            ["Công suất", capacityFormatter.format(viewing.capacity)],
+            ["Trạng thái", viewing.status === "active" ? "Đang sử dụng" : "Đã tắt"],
+          ]}
+          onClose={() => setViewing(undefined)}
+          onEdit={() => {
+            openForm(viewing);
+            setViewing(undefined);
+          }}
+        />
+      )}
       {editing && (
         <WorkshopForm
           mode={editing === "create" ? "create" : "edit"}

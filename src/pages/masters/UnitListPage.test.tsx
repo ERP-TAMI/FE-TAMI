@@ -130,6 +130,35 @@ describe("UnitListPage", () => {
     });
   });
 
+  it("opens detail and continues into the edit flow", async () => {
+    hooks.update.mutateAsync.mockResolvedValue({ ...unit, name: "Mét vải" });
+    hooks.useUnits.mockReturnValue({
+      isLoading: false,
+      isError: false,
+      data: [unit],
+      error: null,
+      refetch: vi.fn(),
+    });
+
+    renderPage();
+    fireEvent.click(screen.getByRole("button", { name: unit.name }));
+    expect(screen.getByRole("heading", { name: "Chi tiết đơn vị tính" })).toBeTruthy();
+    const detailDialog = within(screen.getByRole("dialog"));
+    expect(detailDialog.getByText(unit.name)).toBeTruthy();
+    fireEvent.click(detailDialog.getByRole("button", { name: "Chỉnh sửa" }));
+    expect(screen.getByRole("heading", { name: "Chỉnh sửa đơn vị tính" })).toBeTruthy();
+
+    fireEvent.change(screen.getByLabelText("Tên đơn vị"), { target: { value: "Mét vải" } });
+    fireEvent.click(screen.getByRole("button", { name: "Lưu đơn vị tính" }));
+
+    await waitFor(() => {
+      expect(hooks.update.mutateAsync).toHaveBeenCalledWith({
+        id: unit.id,
+        input: { name: "Mét vải" },
+      });
+    });
+  });
+
   it("deactivates a unit without a confirmation dialog", async () => {
     hooks.updateStatus.mutateAsync.mockResolvedValue({ ...unit, status: "inactive" });
     hooks.useUnits.mockReturnValue({

@@ -142,6 +142,27 @@ describe("SizeChartListPage", () => {
     });
   });
 
+  it("opens detail and continues into the edit flow", async () => {
+    hooks.update.mutateAsync.mockResolvedValue({ ...sizeCharts[0], name: "Áo sơ mi nam (mới)" });
+    renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: sizeCharts[0].name }));
+    expect(screen.getByRole("heading", { name: "Chi tiết bảng Size" })).toBeTruthy();
+    const detailDialog = within(screen.getByRole("dialog"));
+    expect(detailDialog.getByText(sizeCharts[0].sizes.join(", "))).toBeTruthy();
+    fireEvent.click(detailDialog.getByRole("button", { name: "Chỉnh sửa" }));
+    expect(screen.getByRole("heading", { name: "Chỉnh sửa bảng Size" })).toBeTruthy();
+
+    fireEvent.change(screen.getByLabelText("Tên bảng Size"), {
+      target: { value: "Áo sơ mi nam (mới)" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Lưu bảng Size" }));
+
+    await waitFor(() => {
+      expect(hooks.update.mutateAsync).toHaveBeenCalled();
+    });
+  });
+
   it("confirms before deactivating and activates directly", async () => {
     hooks.updateStatus.mutateAsync.mockResolvedValue({ ...sizeCharts[0], status: "inactive" });
     renderPage();

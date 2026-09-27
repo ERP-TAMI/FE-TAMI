@@ -6,6 +6,7 @@ type WorkshopTableProps = {
   workshops: Workshop[];
   togglingId?: string;
   loading?: boolean;
+  onView: (workshop: Workshop) => void;
   onEdit: (workshop: Workshop) => void;
   onDelete: (workshop: Workshop) => void;
   onToggleStatus: (workshop: Workshop) => void;
@@ -17,6 +18,7 @@ export function WorkshopTable({
   workshops,
   togglingId,
   loading = false,
+  onView,
   onEdit,
   onDelete,
   onToggleStatus,
@@ -27,12 +29,14 @@ export function WorkshopTable({
       header: "Mã xưởng",
       width: "w-[11%]",
       render: (workshop) => (
-        <span
+        <button
+          type="button"
+          onClick={() => onView(workshop)}
           title={workshop.workshopCode}
-          className="block truncate font-semibold text-gray-900 dark:text-white"
+          className="hover:text-brand-600 dark:hover:text-brand-400 block max-w-full truncate text-left font-semibold text-gray-900 dark:text-white"
         >
           {workshop.workshopCode}
-        </span>
+        </button>
       ),
     },
     {

@@ -155,6 +155,33 @@ describe("StageGroupListPage", () => {
     });
   });
 
+  it("opens detail and continues into the edit flow", async () => {
+    mocks.update.mutateAsync.mockResolvedValue(detail);
+    renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: summary.groupName }));
+    expect(screen.getByRole("heading", { name: "Chi tiết nhóm công đoạn" })).toBeTruthy();
+    const detailDialog = within(screen.getByRole("dialog"));
+    expect(detailDialog.getByText(summary.groupCode)).toBeTruthy();
+    fireEvent.click(detailDialog.getByRole("button", { name: "Chỉnh sửa" }));
+    expect(mocks.useStageGroup).toHaveBeenLastCalledWith(summary.id);
+
+    fireEvent.change(screen.getByLabelText("Tên nhóm công đoạn"), {
+      target: { value: "Nhóm may chính" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Lưu nhóm công đoạn" }));
+    await waitFor(() => {
+      expect(mocks.update.mutateAsync).toHaveBeenCalledWith({
+        id: summary.id,
+        input: {
+          groupName: "Nhóm may chính",
+          description: null,
+          items: detail.items,
+        },
+      });
+    });
+  });
+
   it("passes an unlocked group code to the update mutation", async () => {
     mocks.update.mutateAsync.mockResolvedValue({ ...detail, groupCode: "NS-MAY-2" });
     renderPage();

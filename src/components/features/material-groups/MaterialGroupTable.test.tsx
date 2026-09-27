@@ -16,6 +16,7 @@ describe("MaterialGroupTable", () => {
     render(
       <MaterialGroupTable
         materialGroups={[]}
+        onView={vi.fn()}
         onEdit={vi.fn()}
         onToggleStatus={vi.fn()}
         onDelete={vi.fn()}
@@ -30,6 +31,7 @@ describe("MaterialGroupTable", () => {
     render(
       <MaterialGroupTable
         materialGroups={[materialGroup]}
+        onView={vi.fn()}
         onEdit={vi.fn()}
         onToggleStatus={onToggleStatus}
         onDelete={vi.fn()}
@@ -37,8 +39,7 @@ describe("MaterialGroupTable", () => {
     );
 
     expect(screen.getByText("Steel")).not.toBeNull();
-    const headers = screen.getByRole("columnheader", { name: "Tên nhóm" }).closest("tr")
-      ?.children;
+    const headers = screen.getByRole("columnheader", { name: "Tên nhóm" }).closest("tr")?.children;
     expect(Array.from(headers ?? []).map((header) => header.className)).toEqual([
       "px-5 py-3.5 font-semibold whitespace-nowrap w-[45%] text-left",
       "px-5 py-3.5 font-semibold whitespace-nowrap w-[25%] text-left",
@@ -46,9 +47,7 @@ describe("MaterialGroupTable", () => {
     ]);
 
     expect(onToggleStatus).not.toHaveBeenCalled();
-    fireEvent.click(
-      screen.getByTitle("Đang sử dụng (Bấm để tắt)"),
-    );
+    fireEvent.click(screen.getByTitle("Đang sử dụng (Bấm để tắt)"));
     expect(onToggleStatus).toHaveBeenCalledWith(materialGroup);
   });
 
@@ -61,6 +60,7 @@ describe("MaterialGroupTable", () => {
     render(
       <MaterialGroupTable
         materialGroups={[longGroup]}
+        onView={vi.fn()}
         onEdit={vi.fn()}
         onToggleStatus={vi.fn()}
         onDelete={vi.fn()}
@@ -76,6 +76,7 @@ describe("MaterialGroupTable", () => {
     render(
       <MaterialGroupTable
         materialGroups={[materialGroup]}
+        onView={vi.fn()}
         onEdit={onEdit}
         onToggleStatus={vi.fn()}
         onDelete={onDelete}
