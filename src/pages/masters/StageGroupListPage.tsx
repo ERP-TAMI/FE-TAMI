@@ -3,16 +3,7 @@ import { useBlocker, type BlockerFunction } from "react-router-dom";
 import { StageGroupForm } from "@/components/features/stage-groups/StageGroupForm";
 import { StageGroupTable } from "@/components/features/stage-groups/StageGroupTable";
 import { StageGroupToolbar } from "@/components/features/stage-groups/StageGroupToolbar";
-import {
-  Alert,
-  Button,
-  ConfirmDialog,
-  Modal,
-  PageHeader,
-  Pagination,
-  Toast,
-} from "@/components/shared";
-import PageMeta from "@/components/shared/PageMeta";
+import { Alert, Button, ConfirmDialog, Modal, Pagination, Toast } from "@/components/shared";
 import {
   useCreateStageGroup,
   useDeleteStageGroup,
@@ -145,35 +136,31 @@ export default function StageGroupListPage() {
 
   return (
     <>
-      <PageMeta title="Nhóm công đoạn | TAMI ERP" description="Quản lý nhóm công đoạn" />
-      <section aria-labelledby="page-title" className="space-y-4">
-        <PageHeader
-          breadcrumb={[
-            { label: "Dashboard", to: "/dashboard" },
-            { label: "Dữ liệu chung" },
-            { label: "Nhóm công đoạn" },
-          ]}
-          title="Nhóm công đoạn"
-          stats={[
-            { label: "nhóm", value: groups.length },
-            {
-              label: "đang sử dụng",
-              value: groups.filter((group) => group.status === "active").length,
-              tone: "success",
-            },
-          ]}
-          action={
-            isSsvEditing
-              ? undefined
-              : {
-                  label: "Tạo nhóm công đoạn",
-                  onClick: () => setEditing("create"),
-                  icon: <PlusIcon className="h-4 w-4" aria-hidden="true" />,
-                }
-          }
-        />
-
+      <section aria-labelledby="stage-groups-tab-title" className="space-y-4">
         <div className="shadow-theme-xs overflow-visible rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 px-4 py-4 sm:px-6 dark:border-gray-800">
+            <div className="flex items-center gap-3">
+              <h2
+                id="stage-groups-tab-title"
+                className="text-sm font-semibold text-gray-700 dark:text-gray-200"
+              >
+                Danh sách nhóm công đoạn
+              </h2>
+              <div className="text-theme-xs flex items-center gap-2 rounded-full border border-gray-200/80 bg-gray-100 px-2.5 py-1 font-medium text-gray-500 dark:border-gray-700/80 dark:bg-gray-800/80 dark:text-gray-400">
+                <span>{groups.length} nhóm</span>
+                <span aria-hidden="true">•</span>
+                <span className="text-success-600 dark:text-success-400">
+                  {groups.filter((group) => group.status === "active").length} đang sử dụng
+                </span>
+              </div>
+            </div>
+            {!isSsvEditing && (
+              <Button onClick={() => setEditing("create")}>
+                <PlusIcon className="h-4 w-4" aria-hidden="true" />
+                Tạo nhóm công đoạn
+              </Button>
+            )}
+          </div>
           <StageGroupToolbar
             search={listView.search}
             status={listView.status}

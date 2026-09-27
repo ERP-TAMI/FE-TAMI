@@ -202,7 +202,6 @@ describe("MaterialGroupListPage", () => {
     renderPage();
 
     expect(screen.queryByLabelText("Tổng quan nhóm vật tư")).toBeNull();
-    expect(screen.queryByRole("heading", { name: "Danh sách nhóm vật tư" })).toBeNull();
 
     fireEvent.change(screen.getByLabelText("Tìm kiếm nhóm vật tư"), {
       target: { value: "Phụ" },

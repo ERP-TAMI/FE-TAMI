@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
-import { Alert, Button, ConfirmDialog, PageHeader, Pagination, Toast } from "@/components/shared";
-import PageMeta from "@/components/shared/PageMeta";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useBlocker, type BlockerFunction } from "react-router-dom";
+import { Alert, Button, ConfirmDialog, Pagination, Toast } from "@/components/shared";
 import { StageForm } from "@/components/features/stages/StageForm";
 import { StageTable } from "@/components/features/stages/StageTable";
 import { StageToolbar } from "@/components/features/stages/StageToolbar";
@@ -54,6 +54,12 @@ export default function StageListPage() {
   );
   const hasBulkErrors = Object.values(bulkErrors).some(Boolean);
   const hasUnsavedChanges = isFormDirty || changedSsvItems.length > 0;
+  const shouldBlockNavigation = useCallback<BlockerFunction>(
+    ({ currentLocation, nextLocation }) =>
+      changedSsvItems.length > 0 && currentLocation.pathname !== nextLocation.pathname,
+    [changedSsvItems.length],
+  );
+  const blocker = useBlocker(shouldBlockNavigation);
 
   useEffect(() => {
     const warnBeforeUnload = (event: BeforeUnloadEvent) => {
@@ -97,6 +103,15 @@ export default function StageListPage() {
     if (changedSsvItems.length > 0) setDiscardBulkDialogOpen(true);
     else setBulkValues(null);
   };
+  const cancelDiscardBulk = () => {
+    setDiscardBulkDialogOpen(false);
+    if (blocker.state === "blocked") blocker.reset();
+  };
+  const confirmDiscardBulk = () => {
+    setDiscardBulkDialogOpen(false);
+    setBulkValues(null);
+    if (blocker.state === "blocked") blocker.proceed();
+  };
   const saveBulkSsv = async () => {
     if (changedSsvItems.length === 0 || hasBulkErrors) return;
     try {
@@ -120,35 +135,31 @@ export default function StageListPage() {
 
   return (
     <>
-      <PageMeta title="Công đoạn | TAMI ERP" description="Quản lý danh mục công đoạn" />
-      <section aria-labelledby="page-title" className="space-y-4">
-        <PageHeader
-          breadcrumb={[
-            { label: "Dashboard", to: "/dashboard" },
-            { label: "Dữ liệu chung" },
-            { label: "Công đoạn" },
-          ]}
-          title="Công đoạn"
-          stats={[
-            { label: "công đoạn", value: stages.length },
-            {
-              label: "đang sử dụng",
-              value: stages.filter((stage) => stage.status === "active").length,
-              tone: "success",
-            },
-          ]}
-          action={
-            bulkValues
-              ? undefined
-              : {
-                  label: "Tạo công đoạn mới",
-                  onClick: () => setEditing("create"),
-                  icon: <PlusIcon className="h-4 w-4" aria-hidden="true" />,
-                }
-          }
-        />
-
+      <section aria-labelledby="stages-tab-title" className="space-y-4">
         <div className="shadow-theme-xs overflow-visible rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 px-4 py-4 sm:px-6 dark:border-gray-800">
+            <div className="flex items-center gap-3">
+              <h2
+                id="stages-tab-title"
+                className="text-sm font-semibold text-gray-700 dark:text-gray-200"
+              >
+                Danh sách công đoạn
+              </h2>
+              <div className="text-theme-xs flex items-center gap-2 rounded-full border border-gray-200/80 bg-gray-100 px-2.5 py-1 font-medium text-gray-500 dark:border-gray-700/80 dark:bg-gray-800/80 dark:text-gray-400">
+                <span>{stages.length} công đoạn</span>
+                <span aria-hidden="true">•</span>
+                <span className="text-success-600 dark:text-success-400">
+                  {stages.filter((stage) => stage.status === "active").length} đang sử dụng
+                </span>
+              </div>
+            </div>
+            {!bulkValues && (
+              <Button onClick={() => setEditing("create")}>
+                <PlusIcon className="h-4 w-4" aria-hidden="true" />
+                Tạo công đoạn mới
+              </Button>
+            )}
+          </div>
           <StageToolbar
             search={listView.search}
             status={listView.status}
@@ -229,17 +240,14 @@ export default function StageListPage() {
         />
       )}
       <ConfirmDialog
-        open={discardBulkDialogOpen}
+        open={discardBulkDialogOpen || blocker.state === "blocked"}
         title="Hủy sửa SSV?"
         description="Các giá trị SSV chưa lưu sẽ bị mất. Bạn có chắc muốn tiếp tục?"
         confirmLabel="Bỏ thay đổi"
         cancelLabel="Tiếp tục chỉnh sửa"
         variant="danger"
-        onClose={() => setDiscardBulkDialogOpen(false)}
-        onConfirm={() => {
-          setDiscardBulkDialogOpen(false);
-          setBulkValues(null);
-        }}
+        onClose={cancelDiscardBulk}
+        onConfirm={confirmDiscardBulk}
       />
       {deleting && (
         <ConfirmDialog

@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
-import { Alert, Button, ConfirmDialog, PageHeader, Pagination, Toast } from "@/components/shared";
-import PageMeta from "@/components/shared/PageMeta";
+import { Alert, Button, ConfirmDialog, Pagination, Toast } from "@/components/shared";
 import { MaterialGroupForm } from "@/components/features/material-groups/MaterialGroupForm";
 import { MaterialGroupTable } from "@/components/features/material-groups/MaterialGroupTable";
 import { MaterialGroupToolbar } from "@/components/features/material-groups/MaterialGroupToolbar";
@@ -85,23 +84,20 @@ export default function MaterialGroupListPage() {
 
   return (
     <>
-      <PageMeta title="Nhóm vật tư | TAMI ERP" description="Quản lý danh mục nhóm vật tư" />
-      <section aria-labelledby="page-title" className="space-y-4">
-        <PageHeader
-          breadcrumb={[
-            { label: "Dashboard", to: "/dashboard" },
-            { label: "Dữ liệu chung" },
-            { label: "Nhóm vật tư" },
-          ]}
-          title="Nhóm vật tư"
-          action={{
-            label: "Tạo nhóm vật tư mới",
-            onClick: () => setEditing("create"),
-            icon: <PlusIcon className="h-4 w-4" aria-hidden="true" />,
-          }}
-        />
-
+      <section aria-labelledby="material-groups-tab-title" className="space-y-4">
         <div className="shadow-theme-xs overflow-visible rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
+          <div className="flex items-center justify-between gap-3 border-b border-gray-200 px-4 py-4 sm:px-6 dark:border-gray-800">
+            <h2
+              id="material-groups-tab-title"
+              className="text-sm font-semibold text-gray-700 dark:text-gray-200"
+            >
+              Danh sách nhóm vật tư
+            </h2>
+            <Button onClick={() => setEditing("create")}>
+              <PlusIcon className="h-4 w-4" aria-hidden="true" />
+              Tạo nhóm vật tư mới
+            </Button>
+          </div>
           <MaterialGroupToolbar
             search={listView.search}
             status={listView.status}

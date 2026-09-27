@@ -17,7 +17,7 @@ test.describe("Units management (real browser, real BE)", () => {
     const renamedName = `${name} (sua)`;
 
     await login(page);
-    await page.goto("/masters/units");
+    await page.goto("/masters/materials/units");
     await expect(page.getByRole("heading", { name: "Đơn vị tính" })).toBeVisible();
 
     // Create — name is the only field.
@@ -51,7 +51,7 @@ test.describe("Units management (real browser, real BE)", () => {
 
   test("validates the required name field", async ({ page }) => {
     await login(page);
-    await page.goto("/masters/units");
+    await page.goto("/masters/materials/units");
 
     await page.getByRole("button", { name: "Tạo đơn vị tính mới" }).click();
     await page.getByRole("button", { name: "Lưu đơn vị tính" }).click();
@@ -65,7 +65,7 @@ test.describe("Units management (real browser, real BE)", () => {
     const name = `E2E Filter Unit ${suffix}`;
 
     await login(page);
-    await page.goto("/masters/units");
+    await page.goto("/masters/materials/units");
 
     await page.getByRole("button", { name: "Tạo đơn vị tính mới" }).click();
     await page.getByLabel("Tên đơn vị").fill(name);

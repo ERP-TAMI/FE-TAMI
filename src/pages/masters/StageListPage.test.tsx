@@ -1,7 +1,16 @@
-import { BrowserRouter } from "react-router-dom";
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { createMemoryRouter, RouterProvider } from "react-router-dom";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import StageListPage from "./StageListPage";
+
+const NativeRequest = globalThis.Request;
+
+class RouterTestRequest extends NativeRequest {
+  constructor(input: RequestInfo | URL, init?: RequestInit) {
+    const { signal: _signal, ...compatibleInit } = init ?? {};
+    super(input, compatibleInit);
+  }
+}
 
 const hooks = vi.hoisted(() => ({
   useStages: vi.fn(),
@@ -40,12 +49,16 @@ const stages = [
   },
 ];
 
-function renderPage() {
-  return render(
-    <BrowserRouter>
-      <StageListPage />
-    </BrowserRouter>,
+function renderPage(initialEntries = ["/masters/stages"]) {
+  vi.stubGlobal("Request", RouterTestRequest);
+  const router = createMemoryRouter(
+    [
+      { path: "/masters/stages", element: <StageListPage /> },
+      { path: "/dashboard", element: <h1>Dashboard target</h1> },
+    ],
+    { initialEntries, initialIndex: initialEntries.length - 1 },
   );
+  return { router, ...render(<RouterProvider router={router} />) };
 }
 
 describe("StageListPage", () => {
@@ -60,11 +73,14 @@ describe("StageListPage", () => {
     });
   });
 
-  afterEach(cleanup);
+  afterEach(() => {
+    cleanup();
+    vi.unstubAllGlobals();
+  });
 
   it("renders loading and retryable error states", () => {
     const refetch = vi.fn();
-    hooks.useStages.mockReturnValueOnce({
+    hooks.useStages.mockReturnValue({
       isLoading: true,
       isError: false,
       data: undefined,
@@ -75,7 +91,7 @@ describe("StageListPage", () => {
     expect(screen.getByLabelText("Đang tải danh sách công đoạn")).toBeTruthy();
     unmount();
 
-    hooks.useStages.mockReturnValueOnce({
+    hooks.useStages.mockReturnValue({
       isLoading: false,
       isError: true,
       data: undefined,
@@ -245,5 +261,33 @@ describe("StageListPage", () => {
     expect(screen.queryByText("GD-11")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Trang sau" }));
     expect(screen.getByText("GD-11")).toBeTruthy();
+  });
+
+  it("blocks SPA navigation away while bulk SSV edits are unsaved", async () => {
+    const { router } = renderPage(["/dashboard", "/masters/stages"]);
+
+    fireEvent.click(screen.getByRole("button", { name: "Sửa SSV" }));
+    fireEvent.change(screen.getByLabelText("SSV cho GD-CAT"), { target: { value: "13.000" } });
+
+    await act(() => router.navigate("/dashboard"));
+    expect(router.state.location.pathname).toBe("/masters/stages");
+    expect(await screen.findByRole("heading", { name: "Hủy sửa SSV?" })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Tiếp tục chỉnh sửa" }));
+    expect(screen.getByDisplayValue("13.000")).toBeTruthy();
+
+    await act(() => router.navigate("/dashboard"));
+    fireEvent.click(await screen.findByRole("button", { name: "Bỏ thay đổi" }));
+    expect(await screen.findByRole("heading", { name: "Dashboard target" })).toBeTruthy();
+  });
+
+  it("allows SPA navigation away when bulk SSV values are unchanged", async () => {
+    const { router } = renderPage(["/dashboard", "/masters/stages"]);
+
+    fireEvent.click(screen.getByRole("button", { name: "Sửa SSV" }));
+    await act(() => router.navigate("/dashboard"));
+
+    expect(router.state.location.pathname).toBe("/dashboard");
+    expect(screen.queryByRole("heading", { name: "Hủy sửa SSV?" })).toBeNull();
   });
 });

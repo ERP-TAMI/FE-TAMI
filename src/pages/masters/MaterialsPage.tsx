@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Alert, Button, ConfirmDialog, PageHeader, Pagination, Toast } from "@/components/shared";
-import PageMeta from "@/components/shared/PageMeta";
+import { Alert, Button, ConfirmDialog, Pagination, Toast } from "@/components/shared";
 import { MaterialDetail } from "@/components/features/materials/MaterialDetail";
 import { MaterialForm } from "@/components/features/materials/MaterialForm";
 import { MaterialTable } from "@/components/features/materials/MaterialTable";
@@ -126,25 +125,17 @@ export default function MaterialsPage() {
 
   return (
     <>
-      <PageMeta
-        title="Vật tư - Phụ liệu | TAMI ERP"
-        description="Quản lý danh mục vật tư và phụ liệu"
-      />
-      <section aria-labelledby="page-title" className="space-y-4">
-        <PageHeader
-          breadcrumb={[
-            { label: "Dashboard", to: "/dashboard" },
-            { label: "Dữ liệu chung" },
-            { label: "Vật tư - Phụ liệu" },
-          ]}
-          title="Vật tư - Phụ liệu"
-          action={{
-            label: "Tạo vật tư mới",
-            onClick: () => setEditing("create"),
-            icon: <PlusIcon className="h-4 w-4" aria-hidden="true" />,
-          }}
-        />
+      <section aria-labelledby="materials-tab-title" className="space-y-4">
         <div className="shadow-theme-xs overflow-visible rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
+          <div className="flex items-center justify-between gap-3 border-b border-gray-200 px-4 py-4 sm:px-6 dark:border-gray-800">
+            <h2 id="materials-tab-title" className="text-sm font-semibold text-gray-700 dark:text-gray-200">
+              Danh sách vật tư
+            </h2>
+            <Button onClick={() => setEditing("create")}>
+              <PlusIcon className="h-4 w-4" aria-hidden="true" />
+              Tạo vật tư mới
+            </Button>
+          </div>
           <MaterialToolbar
             search={filters.search ?? ""}
             materialGroupId={filters.materialGroupId ?? ""}

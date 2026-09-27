@@ -32,11 +32,8 @@ import BomAggregatePage from "@/pages/bom/BomAggregatePage";
 import PoPage from "@/pages/po/PoPage";
 import PoDetailPage from "@/pages/po/PoDetailPage";
 import PoProductDetailPage from "@/pages/po/PoProductDetailPage";
-import MaterialsPage from "@/pages/masters/MaterialsPage";
-import MaterialGroupListPage from "@/pages/masters/MaterialGroupListPage";
-import StageListPage from "@/pages/masters/StageListPage";
-import StageGroupListPage from "@/pages/masters/StageGroupListPage";
-import UnitListPage from "@/pages/masters/UnitListPage";
+import MaterialsHubPage from "@/pages/masters/MaterialsHubPage";
+import StagesHubPage from "@/pages/masters/StagesHubPage";
 import WorkshopListPage from "@/pages/masters/WorkshopListPage";
 import SizeChartListPage from "@/pages/masters/SizeChartListPage";
 import UsersPage from "@/pages/admin/UsersPage";
@@ -122,11 +119,11 @@ export function AppRoutes() {
             <Route path="po/:id/line/:productId" element={<PoProductDetailPage />} />
             <Route path="po/:id/line/:productId/:tab" element={<PoProductDetailPage />} />
             <Route path="masters" element={<Navigate to="/masters/materials" replace />} />
-            <Route path="masters/materials" element={<MaterialsPage />} />
-            <Route path="masters/material-groups" element={<MaterialGroupListPage />} />
-            <Route path="masters/stages" element={<StageListPage />} />
-            <Route path="masters/stage-groups" element={<StageGroupListPage />} />
-            <Route path="masters/units" element={<UnitListPage />} />
+            <Route path="masters/materials" element={<MaterialsHubPage />} />
+            <Route path="masters/materials/groups" element={<MaterialsHubPage />} />
+            <Route path="masters/materials/units" element={<MaterialsHubPage />} />
+            <Route path="masters/stages" element={<StagesHubPage />} />
+            <Route path="masters/stages/groups" element={<StagesHubPage />} />
             <Route path="masters/workshops" element={<WorkshopListPage />} />
             <Route path="masters/size-charts" element={<SizeChartListPage />} />
             <Route path="audit-log" element={<AuditLogPage />} />
