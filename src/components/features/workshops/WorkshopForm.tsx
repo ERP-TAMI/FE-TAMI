@@ -105,6 +105,7 @@ export function WorkshopForm({
         open={!discardDialogOpen}
         title={mode === "create" ? "Tạo xưởng sản xuất" : "Chỉnh sửa xưởng sản xuất"}
         closeLabel="Đóng biểu mẫu"
+        closeOnClickOutside
         onClose={requestClose}
         footer={
           <>

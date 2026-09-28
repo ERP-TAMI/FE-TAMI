@@ -130,6 +130,30 @@ describe("UnitListPage", () => {
     });
   });
 
+  it("warns via native confirm before closing the form on outside click when dirty", () => {
+    hooks.useUnits.mockReturnValue({
+      isLoading: false,
+      isError: false,
+      data: [],
+      error: null,
+      refetch: vi.fn(),
+    });
+
+    renderPage();
+    fireEvent.click(screen.getByRole("button", { name: "Tạo đơn vị tính mới" }));
+    fireEvent.change(screen.getByLabelText("Tên đơn vị"), { target: { value: "Cuộn" } });
+
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(false);
+    fireEvent.click(document.querySelector('[data-modal-backdrop="true"]')!);
+    expect(confirmSpy).toHaveBeenCalledWith("Bạn có muốn hủy các thay đổi chưa lưu không?");
+    expect(screen.getByRole("heading", { name: "Tạo đơn vị tính" })).toBeTruthy();
+
+    confirmSpy.mockReturnValue(true);
+    fireEvent.click(document.querySelector('[data-modal-backdrop="true"]')!);
+    expect(screen.queryByRole("heading", { name: "Tạo đơn vị tính" })).toBeNull();
+    confirmSpy.mockRestore();
+  });
+
   it("opens detail and continues into the edit flow", async () => {
     hooks.update.mutateAsync.mockResolvedValue({ ...unit, name: "Mét vải" });
     hooks.useUnits.mockReturnValue({

@@ -56,6 +56,7 @@ export function UnitForm({
       open
       title={mode === "create" ? "Tạo đơn vị tính" : "Chỉnh sửa đơn vị tính"}
       closeLabel="Đóng biểu mẫu"
+      closeOnClickOutside
       onClose={closeWithWarning}
       footer={
         <>

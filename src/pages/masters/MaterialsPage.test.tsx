@@ -128,6 +128,32 @@ describe("MaterialsPage", () => {
     await waitFor(() => expect(hooks.create.mutateAsync).toHaveBeenCalled());
   });
 
+  it("closes the create form on outside click when nothing is unsaved", () => {
+    renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "Tạo vật tư mới" }));
+    fireEvent.click(document.querySelector('[data-modal-backdrop="true"]')!);
+    expect(screen.queryByRole("heading", { name: "Tạo vật tư" })).toBeNull();
+  });
+
+  it("warns instead of closing on outside click once the form is dirty", () => {
+    renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "Tạo vật tư mới" }));
+    fireEvent.change(screen.getByLabelText("Mã vật tư"), { target: { value: "FAB-002" } });
+    fireEvent.click(document.querySelector('[data-modal-backdrop="true"]')!);
+    expect(screen.getByRole("heading", { name: "Hủy các thay đổi?" })).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "Tạo vật tư" })).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Tiếp tục chỉnh sửa" }));
+    expect(screen.getByDisplayValue("FAB-002")).toBeTruthy();
+
+    fireEvent.click(document.querySelector('[data-modal-backdrop="true"]')!);
+    fireEvent.click(screen.getByRole("button", { name: "Bỏ thay đổi" }));
+    expect(screen.queryByRole("heading", { name: "Tạo vật tư" })).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Hủy các thay đổi?" })).toBeNull();
+  });
+
   it("changes status only after confirmation", async () => {
     hooks.updateStatus.mutateAsync.mockResolvedValue({ ...material, status: "inactive" });
     renderPage();

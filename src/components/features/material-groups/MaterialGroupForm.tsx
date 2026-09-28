@@ -55,6 +55,7 @@ export function MaterialGroupForm({
       open
       title={mode === "create" ? "Tạo nhóm vật tư" : "Chỉnh sửa nhóm vật tư"}
       closeLabel="Đóng biểu mẫu"
+      closeOnClickOutside
       onClose={closeWithWarning}
       footer={
         <>

@@ -140,6 +140,23 @@ describe("StageListPage", () => {
     });
   });
 
+  it("warns before closing the create form on outside click when dirty", () => {
+    renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "Tạo công đoạn mới" }));
+    fireEvent.click(document.querySelector('[data-modal-backdrop="true"]')!);
+    expect(screen.queryByRole("heading", { name: "Tạo công đoạn" })).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Tạo công đoạn mới" }));
+    fireEvent.change(screen.getByLabelText("Mã công đoạn"), { target: { value: "GD-UI" } });
+    fireEvent.click(document.querySelector('[data-modal-backdrop="true"]')!);
+    expect(screen.getByRole("heading", { name: "Hủy các thay đổi?" })).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "Tạo công đoạn" })).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Bỏ thay đổi" }));
+    expect(screen.queryByRole("heading", { name: "Hủy các thay đổi?" })).toBeNull();
+  });
+
   it("closes the detail view when clicking outside it", () => {
     renderPage();
 

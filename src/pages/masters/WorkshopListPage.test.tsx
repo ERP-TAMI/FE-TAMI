@@ -152,6 +152,22 @@ describe("WorkshopListPage", () => {
     });
   });
 
+  it("warns before closing the create form on outside click when dirty", () => {
+    renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "Tạo xưởng sản xuất" }));
+    fireEvent.click(document.querySelector('[data-modal-backdrop="true"]')!);
+    expect(screen.queryByRole("heading", { name: "Tạo xưởng sản xuất" })).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Tạo xưởng sản xuất" }));
+    fireEvent.change(screen.getByLabelText("Tên xưởng"), { target: { value: "Xưởng mới" } });
+    fireEvent.click(document.querySelector('[data-modal-backdrop="true"]')!);
+    expect(screen.getByRole("heading", { name: "Hủy các thay đổi?" })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Bỏ thay đổi" }));
+    expect(screen.queryByRole("heading", { name: "Hủy các thay đổi?" })).toBeNull();
+  });
+
   it("opens detail and continues into the edit flow", async () => {
     hooks.update.mutateAsync.mockResolvedValue({ ...workshops[0], name: "Xưởng May 1 (mới)" });
     renderPage();

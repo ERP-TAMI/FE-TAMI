@@ -110,6 +110,30 @@ describe("MaterialGroupListPage", () => {
     });
   });
 
+  it("warns via native confirm before closing the form on outside click when dirty", () => {
+    hooks.useMaterialGroups.mockReturnValue({
+      isLoading: false,
+      isError: false,
+      data: [],
+      error: null,
+      refetch: vi.fn(),
+    });
+
+    renderPage();
+    fireEvent.click(screen.getByRole("button", { name: "Tạo nhóm vật tư mới" }));
+    fireEvent.change(screen.getByLabelText("Tên nhóm"), { target: { value: "Accessories" } });
+
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(false);
+    fireEvent.click(document.querySelector('[data-modal-backdrop="true"]')!);
+    expect(confirmSpy).toHaveBeenCalledWith("Bạn có muốn hủy các thay đổi chưa lưu không?");
+    expect(screen.getByRole("heading", { name: "Tạo nhóm vật tư" })).toBeTruthy();
+
+    confirmSpy.mockReturnValue(true);
+    fireEvent.click(document.querySelector('[data-modal-backdrop="true"]')!);
+    expect(screen.queryByRole("heading", { name: "Tạo nhóm vật tư" })).toBeNull();
+    confirmSpy.mockRestore();
+  });
+
   it("edits a material group from the list screen", async () => {
     hooks.update.mutateAsync.mockResolvedValue({
       ...materialGroup,

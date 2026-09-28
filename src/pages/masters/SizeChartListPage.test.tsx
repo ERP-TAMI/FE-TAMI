@@ -142,6 +142,22 @@ describe("SizeChartListPage", () => {
     });
   });
 
+  it("warns before closing the create form on outside click when dirty", () => {
+    renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "Tạo bảng Size" }));
+    fireEvent.click(document.querySelector('[data-modal-backdrop="true"]')!);
+    expect(screen.queryByRole("heading", { name: "Tạo bảng Size" })).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Tạo bảng Size" }));
+    fireEvent.change(screen.getByLabelText("Tên bảng Size"), { target: { value: "Áo thun" } });
+    fireEvent.click(document.querySelector('[data-modal-backdrop="true"]')!);
+    expect(screen.getByRole("heading", { name: "Hủy các thay đổi?" })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Bỏ thay đổi" }));
+    expect(screen.queryByRole("heading", { name: "Hủy các thay đổi?" })).toBeNull();
+  });
+
   it("opens detail and continues into the edit flow", async () => {
     hooks.update.mutateAsync.mockResolvedValue({ ...sizeCharts[0], name: "Áo sơ mi nam (mới)" });
     renderPage();

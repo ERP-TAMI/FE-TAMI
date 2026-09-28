@@ -134,6 +134,28 @@ describe("StageGroupListPage", () => {
     });
   });
 
+  it("closes the create form on outside click when nothing is unsaved, warns otherwise", () => {
+    renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "Tạo nhóm công đoạn" }));
+    fireEvent.click(document.querySelector('[data-modal-backdrop="true"]')!);
+    expect(screen.queryByRole("heading", { name: "Tạo nhóm công đoạn" })).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Tạo nhóm công đoạn" }));
+    fireEvent.change(screen.getByLabelText("Tên nhóm công đoạn"), {
+      target: { value: "Nhóm đang nhập" },
+    });
+    fireEvent.click(document.querySelector('[data-modal-backdrop="true"]')!);
+    expect(screen.getByRole("heading", { name: "Hủy các thay đổi?" })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Tiếp tục chỉnh sửa" }));
+    expect(screen.getByDisplayValue("Nhóm đang nhập")).toBeTruthy();
+
+    fireEvent.click(document.querySelector('[data-modal-backdrop="true"]')!);
+    fireEvent.click(screen.getByRole("button", { name: "Bỏ thay đổi" }));
+    expect(screen.queryByRole("heading", { name: "Tạo nhóm công đoạn" })).toBeNull();
+  });
+
   it("loads detail before editing, retains child IDs and omits an unchanged group code", async () => {
     mocks.update.mutateAsync.mockResolvedValue(detail);
     renderPage();
