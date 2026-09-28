@@ -13,3 +13,8 @@ Follow the TAMI ERP master design system and current TailAdmin primitives.
 - Explain that deadline warning counts are evaluated against today's date, even for a historical month.
 - Use existing status badges, shared pagination, and loading/error/empty patterns. Do not add charts or unrelated dashboard indicators.
 - Keep compact TailAdmin spacing, visible focus rings, pointer cursors on controls, semantic warning colors, and readable status text in light/dark themes.
+- The management list has exactly these columns: Mã PO, Khách hàng, Ngày nhận, Deadline xuất hàng, Còn/trễ, Trạng thái. Do not show an assignee.
+- Prefer the API's Vietnam-date `managementStatus` and signed `daysToDeadline`; while the S34-DASH-03/04 PRs are being integrated, accept the parent response and fall back to the same Vietnam-date rule only when these fields are absent.
+- Management status order is cancelled → completed (`closed`/Final) → overdue for a non-final PO with a past deadline → not completed. Show “—” for Còn/trễ on completed and cancelled rows.
+- Use blue for Chưa xong, green for Hoàn thành, red for Trễ hạn, and neutral gray for Đã hủy. Keep each status label visible so color is not the only signal.
+- Keep all six fields available in the responsive mobile card layout as well as the wide table.

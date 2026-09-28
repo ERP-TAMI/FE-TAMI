@@ -45,4 +45,99 @@ describe("managementDashboardApi", () => {
 
     await expect(managementDashboardApi.getSummary("2026-09")).rejects.toThrow();
   });
+
+  it("requests and validates management status and deadline-day fields", async () => {
+    const overview = {
+      month: "2026-09",
+      totalPurchaseOrders: 1,
+      overduePurchaseOrders: 1,
+      upcomingPurchaseOrders: 0,
+      items: [
+        {
+          id: "00000000-0000-4000-8000-000000000001",
+          poCode: "PO-OVERDUE",
+          customerNameSnapshot: "Khách hàng A",
+          receivedDate: "2026-09-01",
+          deadline: "2026-09-25",
+          status: "in_progress",
+          managementStatus: "overdue",
+          daysToDeadline: -2,
+        },
+      ],
+      meta: { total: 1, page: 1, limit: 10, totalPages: 1 },
+    };
+    const signal = new AbortController().signal;
+    vi.mocked(apiClient.get).mockResolvedValue({ data: overview });
+
+    await expect(
+      managementDashboardApi.getPurchaseOrdersOverview("2026-09", 1, 10, signal),
+    ).resolves.toEqual(overview);
+
+    expect(apiClient.get).toHaveBeenCalledWith("/management/dashboard/purchase-orders", {
+      params: { month: "2026-09", page: 1, limit: 10 },
+      signal,
+    });
+  });
+
+  it("accepts the S34-DASH-03 parent response before additive status fields land", async () => {
+    const parentVersionOverview = {
+      month: "2026-09",
+      totalPurchaseOrders: 1,
+      overduePurchaseOrders: 1,
+      upcomingPurchaseOrders: 0,
+      items: [
+        {
+          id: "00000000-0000-4000-8000-000000000001",
+          poCode: "PO-OVERDUE",
+          customerNameSnapshot: "Khách hàng A",
+          receivedDate: "2026-09-01",
+          deadline: "2026-09-25",
+          status: "in_progress",
+        },
+      ],
+      meta: { total: 1, page: 1, limit: 10, totalPages: 1 },
+    };
+    vi.mocked(apiClient.get).mockResolvedValue({ data: parentVersionOverview });
+
+    await expect(
+      managementDashboardApi.getPurchaseOrdersOverview(
+        "2026-09",
+        1,
+        10,
+        new AbortController().signal,
+      ),
+    ).resolves.toEqual(parentVersionOverview);
+  });
+
+  it("rejects unsupported management statuses and fractional deadline-day values", async () => {
+    const item = {
+      id: "00000000-0000-4000-8000-000000000001",
+      poCode: "PO-OVERDUE",
+      customerNameSnapshot: "Khách hàng A",
+      receivedDate: "2026-09-01",
+      deadline: "2026-09-25",
+      status: "in_progress",
+      managementStatus: "past_due",
+      daysToDeadline: -1.5,
+    };
+    vi.mocked(apiClient.get).mockResolvedValue({
+      data: {
+        month: "2026-09",
+        totalPurchaseOrders: 1,
+        overduePurchaseOrders: 1,
+        upcomingPurchaseOrders: 0,
+        items: [item],
+        meta: { total: 1, page: 1, limit: 10, totalPages: 1 },
+      },
+    });
+
+    await expect(
+      managementDashboardApi.getPurchaseOrdersOverview(
+        "2026-09",
+        1,
+        10,
+        new AbortController().signal,
+      ),
+    ).rejects.toThrow();
+  });
 });

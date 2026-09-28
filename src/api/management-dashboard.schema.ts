@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { ManagementPurchaseOrderSummaryStatus } from "@/types/management-dashboard";
 import type { PoStatus } from "@/types/po";
 
 export const managementDashboardMonthSchema = z.string().regex(/^(?!0000)\d{4}-(0[1-9]|1[0-2])$/);
@@ -21,6 +22,13 @@ const poStatusSchema = z.enum([
   "cancelled",
 ]) satisfies z.ZodType<PoStatus>;
 
+const managementPurchaseOrderSummaryStatusSchema = z.enum([
+  "not_completed",
+  "completed",
+  "overdue",
+  "cancelled",
+]) satisfies z.ZodType<ManagementPurchaseOrderSummaryStatus>;
+
 export const managementPurchaseOrdersOverviewSchema = z
   .object({
     month: managementDashboardMonthSchema,
@@ -36,6 +44,8 @@ export const managementPurchaseOrdersOverviewSchema = z
           receivedDate: z.string().date(),
           deadline: z.string().date(),
           status: poStatusSchema,
+          managementStatus: managementPurchaseOrderSummaryStatusSchema.optional(),
+          daysToDeadline: z.number().int().optional(),
         })
         .strict(),
     ),
