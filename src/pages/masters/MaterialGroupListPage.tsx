@@ -91,15 +91,15 @@ export default function MaterialGroupListPage() {
     <>
       <section aria-label="Nhóm vật tư" className="space-y-4">
         <div className="shadow-theme-xs overflow-visible rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
-          <div className="flex items-center justify-end gap-3 border-b border-gray-200 px-4 py-4 sm:px-6 dark:border-gray-800">
-            <Button onClick={() => setEditing("create")}>
-              <PlusIcon className="h-4 w-4" aria-hidden="true" />
-              Tạo nhóm vật tư mới
-            </Button>
-          </div>
           <MaterialGroupToolbar
             search={listView.search}
             status={listView.status}
+            action={
+              <Button onClick={() => setEditing("create")}>
+                <PlusIcon className="h-4 w-4" aria-hidden="true" />
+                Tạo nhóm vật tư mới
+              </Button>
+            }
             onSearchChange={listView.setSearch}
             onStatusChange={listView.setStatus}
           />

@@ -163,15 +163,15 @@ export default function SizeChartListPage() {
         />
 
         <div className="shadow-theme-xs overflow-visible rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
-          <div className="flex items-center justify-end gap-3 border-b border-gray-200 px-4 py-4 sm:px-6 dark:border-gray-800">
-            <Button onClick={() => openForm("create")}>
-              <PlusIcon className="h-4 w-4" aria-hidden="true" />
-              Tạo bảng Size
-            </Button>
-          </div>
           <SizeChartToolbar
             search={filters.search ?? ""}
             status={filters.status ?? ""}
+            action={
+              <Button onClick={() => openForm("create")}>
+                <PlusIcon className="h-4 w-4" aria-hidden="true" />
+                Tạo bảng Size
+              </Button>
+            }
             onSearchChange={(search) => changeFilters({ search })}
             onStatusChange={(status) => changeFilters({ status: status || undefined })}
           />

@@ -158,25 +158,27 @@ export default function StageGroupListPage() {
     <>
       <section aria-label="Nhóm công đoạn" className="space-y-4">
         <div className="shadow-theme-xs overflow-visible rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 px-4 py-4 sm:px-6 dark:border-gray-800">
-            <div className="text-theme-xs flex shrink-0 items-center gap-2 rounded-full border border-gray-200/80 bg-gray-100 px-2.5 py-1 font-medium whitespace-nowrap text-gray-500 dark:border-gray-700/80 dark:bg-gray-800/80 dark:text-gray-400">
-              <span>{groups.length} nhóm</span>
-              <span aria-hidden="true">•</span>
-              <span className="text-success-600 dark:text-success-400">
-                {groups.filter((group) => group.status === "active").length} đang sử dụng
-              </span>
-            </div>
-            {!isSsvEditing && (
-              <Button onClick={() => setEditing("create")}>
-                <PlusIcon className="h-4 w-4" aria-hidden="true" />
-                Tạo nhóm công đoạn
-              </Button>
-            )}
-          </div>
           <StageGroupToolbar
             search={filters.search ?? ""}
             status={filters.status ?? ""}
             disabled={isSsvEditing}
+            stats={
+              <div className="text-theme-xs flex shrink-0 items-center gap-2 rounded-full border border-gray-200/80 bg-gray-100 px-2.5 py-1 font-medium whitespace-nowrap text-gray-500 dark:border-gray-700/80 dark:bg-gray-800/80 dark:text-gray-400">
+                <span>{groups.length} nhóm</span>
+                <span aria-hidden="true">•</span>
+                <span className="text-success-600 dark:text-success-400">
+                  {groups.filter((group) => group.status === "active").length} đang sử dụng
+                </span>
+              </div>
+            }
+            action={
+              !isSsvEditing && (
+                <Button onClick={() => setEditing("create")}>
+                  <PlusIcon className="h-4 w-4" aria-hidden="true" />
+                  Tạo nhóm công đoạn
+                </Button>
+              )
+            }
             onSearchChange={(search) => changeFilters({ search })}
             onStatusChange={(status) => changeFilters({ status: status || undefined })}
           />
