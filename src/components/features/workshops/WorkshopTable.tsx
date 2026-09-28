@@ -44,12 +44,14 @@ export function WorkshopTable({
       header: "Tên xưởng",
       width: "w-[19%]",
       render: (workshop) => (
-        <span
+        <button
+          type="button"
+          onClick={() => onView(workshop)}
           title={workshop.name}
-          className="block truncate font-medium text-gray-900 dark:text-white"
+          className="hover:text-brand-600 dark:hover:text-brand-400 block max-w-full truncate text-left font-medium text-gray-900 dark:text-white"
         >
           {workshop.name}
-        </span>
+        </button>
       ),
     },
     {
