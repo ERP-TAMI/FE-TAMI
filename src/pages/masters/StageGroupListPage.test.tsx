@@ -156,6 +156,20 @@ describe("StageGroupListPage", () => {
     expect(screen.queryByRole("heading", { name: "Tạo nhóm công đoạn" })).toBeNull();
   });
 
+  it("sends search text and status filters to the backend query", () => {
+    renderPage();
+
+    fireEvent.change(screen.getByLabelText("Tìm kiếm nhóm công đoạn"), {
+      target: { value: "may" },
+    });
+    expect(mocks.useStageGroups).toHaveBeenLastCalledWith({ search: "may" });
+
+    fireEvent.change(screen.getByLabelText("Tìm kiếm nhóm công đoạn"), { target: { value: "" } });
+    const filterGroup = screen.getByRole("group", { name: "Lọc theo trạng thái" });
+    fireEvent.click(within(filterGroup).getByRole("button", { name: "Đang sử dụng" }));
+    expect(mocks.useStageGroups).toHaveBeenLastCalledWith({ status: "active" });
+  });
+
   it("loads detail before editing, retains child IDs and omits an unchanged group code", async () => {
     mocks.update.mutateAsync.mockResolvedValue(detail);
     renderPage();

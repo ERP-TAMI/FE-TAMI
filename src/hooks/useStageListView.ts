@@ -1,47 +1,25 @@
 import { useMemo, useState } from "react";
-import type { Stage, StageStatus } from "@/types/stage";
+import type { Stage } from "@/types/stage";
 
 const pageSize = 10;
 
+/** Paginates a stage list already filtered by the backend (search/status go through `useStages(params)`). */
 export function useStageListView(stages: Stage[]) {
-  const [search, setSearch] = useState("");
-  const [status, setStatus] = useState<StageStatus | "">("");
   const [page, setPage] = useState(1);
 
-  const filteredStages = useMemo(() => {
-    const keyword = search.trim().toLocaleLowerCase("vi");
-    return stages.filter((stage) => {
-      const matchesSearch =
-        !keyword ||
-        stage.stageCode.toLocaleLowerCase("vi").includes(keyword) ||
-        stage.stageName.toLocaleLowerCase("vi").includes(keyword);
-      return matchesSearch && (!status || stage.status === status);
-    });
-  }, [search, stages, status]);
-
-  const totalPages = Math.max(1, Math.ceil(filteredStages.length / pageSize));
+  const totalPages = Math.max(1, Math.ceil(stages.length / pageSize));
   const currentPage = Math.min(page, totalPages);
   const paginatedStages = useMemo(() => {
     const startIndex = (currentPage - 1) * pageSize;
-    return filteredStages.slice(startIndex, startIndex + pageSize);
-  }, [currentPage, filteredStages]);
+    return stages.slice(startIndex, startIndex + pageSize);
+  }, [currentPage, stages]);
 
   return {
-    search,
-    status,
     page: currentPage,
     pageSize,
     totalPages,
-    totalItems: filteredStages.length,
+    totalItems: stages.length,
     paginatedStages,
     setPage,
-    setSearch: (value: string) => {
-      setSearch(value);
-      setPage(1);
-    },
-    setStatus: (value: StageStatus | "") => {
-      setStatus(value);
-      setPage(1);
-    },
   };
 }

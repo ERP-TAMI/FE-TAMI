@@ -109,22 +109,20 @@ describe("WorkshopListPage", () => {
     expect(refetch).toHaveBeenCalledOnce();
   });
 
-  it("searches by code, name or manager and filters by status", () => {
+  it("sends search text and status filters to the backend query", () => {
     renderPage();
 
     fireEvent.change(screen.getByLabelText("Tìm kiếm xưởng sản xuất"), {
       target: { value: "trần" },
     });
-    expect(screen.getByText("X-02")).toBeTruthy();
-    expect(screen.queryByText("X-01")).toBeNull();
+    expect(hooks.useWorkshops).toHaveBeenLastCalledWith({ search: "trần" });
 
     fireEvent.change(screen.getByLabelText("Tìm kiếm xưởng sản xuất"), {
       target: { value: "" },
     });
-    const filters = screen.getByRole("group", { name: "Lọc theo trạng thái" });
-    fireEvent.click(within(filters).getByRole("button", { name: "Đang sử dụng" }));
-    expect(screen.getByText("X-01")).toBeTruthy();
-    expect(screen.queryByText("X-02")).toBeNull();
+    const filterGroup = screen.getByRole("group", { name: "Lọc theo trạng thái" });
+    fireEvent.click(within(filterGroup).getByRole("button", { name: "Đang sử dụng" }));
+    expect(hooks.useWorkshops).toHaveBeenLastCalledWith({ status: "active" });
   });
 
   it("creates a workshop from the list screen", async () => {

@@ -28,6 +28,7 @@ import type {
   CreateWorkshopInput,
   UpdateWorkshopInput,
   Workshop,
+  WorkshopQuery,
   WorkshopStatus,
 } from "@/types/workshop";
 
@@ -35,13 +36,14 @@ const emptyWorkshops: Workshop[] = [];
 const capacityFormatter = new Intl.NumberFormat("vi-VN");
 
 export default function WorkshopListPage() {
+  const [filters, setFilters] = useState<WorkshopQuery>({});
   const [editing, setEditing] = useState<Workshop | "create" | undefined>();
   const [viewing, setViewing] = useState<Workshop>();
   const [deactivating, setDeactivating] = useState<Workshop>();
   const [deleting, setDeleting] = useState<Workshop>();
   const [isFormDirty, setIsFormDirty] = useState(false);
   const { toast, showToast, hideToast } = useToast();
-  const list = useWorkshops();
+  const list = useWorkshops(filters);
   const create = useCreateWorkshop();
   const update = useUpdateWorkshop();
   const updateStatus = useUpdateWorkshopStatus();
@@ -64,6 +66,16 @@ export default function WorkshopListPage() {
     window.addEventListener("beforeunload", warnBeforeUnload);
     return () => window.removeEventListener("beforeunload", warnBeforeUnload);
   }, [isFormDirty]);
+
+  const changeFilters = (next: Partial<WorkshopQuery>) => {
+    setFilters((current) => {
+      const merged = { ...current, ...next };
+      return Object.fromEntries(
+        Object.entries(merged).filter(([, value]) => value),
+      ) as WorkshopQuery;
+    });
+    listView.setPage(1);
+  };
 
   const closeForm = () => {
     setEditing(undefined);
@@ -158,10 +170,10 @@ export default function WorkshopListPage() {
 
         <div className="shadow-theme-xs overflow-visible rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
           <WorkshopToolbar
-            search={listView.search}
-            status={listView.status}
-            onSearchChange={listView.setSearch}
-            onStatusChange={listView.setStatus}
+            search={filters.search ?? ""}
+            status={filters.status ?? ""}
+            onSearchChange={(search) => changeFilters({ search })}
+            onStatusChange={(status) => changeFilters({ status: status || undefined })}
           />
 
           {list.isLoading && (

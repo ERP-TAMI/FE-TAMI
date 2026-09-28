@@ -103,20 +103,18 @@ describe("SizeChartListPage", () => {
     expect(refetch).toHaveBeenCalledOnce();
   });
 
-  it("searches by chart name or size and filters by status", () => {
+  it("sends search text and status filters to the backend query instead of filtering client-side", () => {
     renderPage();
 
     fireEvent.change(screen.getByLabelText("Tìm kiếm bảng Size"), {
-      target: { value: "4y" },
+      target: { value: "trẻ em" },
     });
-    expect(screen.getByText("Quần trẻ em")).toBeTruthy();
-    expect(screen.queryByText("Áo sơ mi nam")).toBeNull();
+    expect(hooks.useSizeCharts).toHaveBeenLastCalledWith({ search: "trẻ em" });
 
     fireEvent.change(screen.getByLabelText("Tìm kiếm bảng Size"), { target: { value: "" } });
-    const filters = screen.getByRole("group", { name: "Lọc theo trạng thái" });
-    fireEvent.click(within(filters).getByRole("button", { name: "Đang sử dụng" }));
-    expect(screen.getByText("Áo sơ mi nam")).toBeTruthy();
-    expect(screen.queryByText("Quần trẻ em")).toBeNull();
+    const filterGroup = screen.getByRole("group", { name: "Lọc theo trạng thái" });
+    fireEvent.click(within(filterGroup).getByRole("button", { name: "Đang sử dụng" }));
+    expect(hooks.useSizeCharts).toHaveBeenLastCalledWith({ status: "active" });
   });
 
   it("creates a normalized size chart from the list screen", async () => {

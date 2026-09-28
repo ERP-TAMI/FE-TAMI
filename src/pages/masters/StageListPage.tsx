@@ -16,11 +16,18 @@ import { useStageListView } from "@/hooks/useStageListView";
 import { useToast } from "@/hooks/useToast";
 import { getApiError } from "@/lib/apiError";
 import { PlusIcon } from "@/icons";
-import { STAGE_SSV_PATTERN, type Stage, type StageInput, type StageStatus } from "@/types/stage";
+import {
+  STAGE_SSV_PATTERN,
+  type Stage,
+  type StageInput,
+  type StageListParams,
+  type StageStatus,
+} from "@/types/stage";
 
 const emptyStages: Stage[] = [];
 
 export default function StageListPage() {
+  const [filters, setFilters] = useState<StageListParams>({});
   const [editing, setEditing] = useState<Stage | "create" | undefined>();
   const [viewing, setViewing] = useState<Stage>();
   const [isFormDirty, setIsFormDirty] = useState(false);
@@ -28,7 +35,7 @@ export default function StageListPage() {
   const [discardBulkDialogOpen, setDiscardBulkDialogOpen] = useState(false);
   const [deleting, setDeleting] = useState<Stage>();
   const { toast, showToast, hideToast } = useToast();
-  const list = useStages();
+  const list = useStages(filters);
   const create = useCreateStage();
   const update = useUpdateStage();
   const updateStatus = useUpdateStageStatus();
@@ -72,6 +79,15 @@ export default function StageListPage() {
     return () => window.removeEventListener("beforeunload", warnBeforeUnload);
   }, [hasUnsavedChanges]);
 
+  const changeFilters = (next: Partial<StageListParams>) => {
+    setFilters((current) => {
+      const merged = { ...current, ...next };
+      return Object.fromEntries(
+        Object.entries(merged).filter(([, value]) => value),
+      ) as StageListParams;
+    });
+    listView.setPage(1);
+  };
   const closeForm = () => {
     setEditing(undefined);
     setIsFormDirty(false);
@@ -162,13 +178,13 @@ export default function StageListPage() {
             )}
           </div>
           <StageToolbar
-            search={listView.search}
-            status={listView.status}
+            search={filters.search ?? ""}
+            status={filters.status ?? ""}
             bulkMode={Boolean(bulkValues)}
             canSaveBulk={changedSsvItems.length > 0 && !hasBulkErrors}
             isSavingBulk={updateSsvBulk.isPending}
-            onSearchChange={listView.setSearch}
-            onStatusChange={listView.setStatus}
+            onSearchChange={(search) => changeFilters({ search })}
+            onStatusChange={(status) => changeFilters({ status: status || undefined })}
             onStartBulk={startBulkEdit}
             onSaveBulk={() => void saveBulkSsv()}
             onCancelBulk={cancelBulkEdit}

@@ -27,6 +27,7 @@ import { getApiError } from "@/lib/apiError";
 import type {
   StageGroupInput,
   StageGroupItemInput,
+  StageGroupListParams,
   StageGroupStatus,
   StageGroupSummary,
 } from "@/types/stage-group";
@@ -34,6 +35,7 @@ import type {
 const emptyGroups: StageGroupSummary[] = [];
 
 export default function StageGroupListPage() {
+  const [filters, setFilters] = useState<StageGroupListParams>({});
   const [editing, setEditing] = useState<"create" | string>();
   const [viewing, setViewing] = useState<StageGroupSummary>();
   const [isFormDirty, setIsFormDirty] = useState(false);
@@ -42,7 +44,7 @@ export default function StageGroupListPage() {
   const [discardCloseRequested, setDiscardCloseRequested] = useState(false);
   const [deleting, setDeleting] = useState<StageGroupSummary>();
   const { toast, showToast, hideToast } = useToast();
-  const list = useStageGroups();
+  const list = useStageGroups(filters);
   const detail = useStageGroup(editing && editing !== "create" ? editing : undefined);
   const create = useCreateStageGroup();
   const update = useUpdateStageGroup();
@@ -68,6 +70,15 @@ export default function StageGroupListPage() {
     return () => window.removeEventListener("beforeunload", warnBeforeUnload);
   }, [hasUnsavedChanges]);
 
+  const changeFilters = (next: Partial<StageGroupListParams>) => {
+    setFilters((current) => {
+      const merged = { ...current, ...next };
+      return Object.fromEntries(
+        Object.entries(merged).filter(([, value]) => value),
+      ) as StageGroupListParams;
+    });
+    listView.setPage(1);
+  };
   const closeForm = () => {
     setEditing(undefined);
     setIsFormDirty(false);
@@ -171,11 +182,11 @@ export default function StageGroupListPage() {
             )}
           </div>
           <StageGroupToolbar
-            search={listView.search}
-            status={listView.status}
+            search={filters.search ?? ""}
+            status={filters.status ?? ""}
             disabled={isSsvEditing}
-            onSearchChange={listView.setSearch}
-            onStatusChange={listView.setStatus}
+            onSearchChange={(search) => changeFilters({ search })}
+            onStatusChange={(status) => changeFilters({ status: status || undefined })}
           />
           {list.isLoading && (
             <div aria-busy="true" aria-label="Đang tải danh sách nhóm công đoạn">

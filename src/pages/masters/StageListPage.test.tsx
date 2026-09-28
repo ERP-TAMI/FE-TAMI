@@ -103,20 +103,18 @@ describe("StageListPage", () => {
     expect(refetch).toHaveBeenCalledOnce();
   });
 
-  it("searches by code or name and filters by status", () => {
+  it("sends search text and status filters to the backend query instead of filtering client-side", () => {
     renderPage();
 
     fireEvent.change(screen.getByLabelText("Tìm kiếm công đoạn"), {
       target: { value: "may" },
     });
-    expect(screen.getByText("GD-MAY")).toBeTruthy();
-    expect(screen.queryByText("GD-CAT")).toBeNull();
+    expect(hooks.useStages).toHaveBeenLastCalledWith({ search: "may" });
 
     fireEvent.change(screen.getByLabelText("Tìm kiếm công đoạn"), { target: { value: "" } });
-    const filters = screen.getByRole("group", { name: "Lọc theo trạng thái" });
-    fireEvent.click(within(filters).getByRole("button", { name: "Đang sử dụng" }));
-    expect(screen.getByText("GD-CAT")).toBeTruthy();
-    expect(screen.queryByText("GD-MAY")).toBeNull();
+    const filterGroup = screen.getByRole("group", { name: "Lọc theo trạng thái" });
+    fireEvent.click(within(filterGroup).getByRole("button", { name: "Đang sử dụng" }));
+    expect(hooks.useStages).toHaveBeenLastCalledWith({ status: "active" });
   });
 
   it("creates a stage from the list screen", async () => {

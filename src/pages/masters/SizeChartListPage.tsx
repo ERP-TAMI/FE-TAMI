@@ -27,6 +27,7 @@ import { getApiError } from "@/lib/apiError";
 import type {
   CreateSizeChartInput,
   SizeChart,
+  SizeChartQuery,
   SizeChartStatus,
   UpdateSizeChartInput,
 } from "@/types/size-chart";
@@ -34,13 +35,14 @@ import type {
 const emptySizeCharts: SizeChart[] = [];
 
 export default function SizeChartListPage() {
+  const [filters, setFilters] = useState<SizeChartQuery>({});
   const [editing, setEditing] = useState<SizeChart | "create" | undefined>();
   const [viewing, setViewing] = useState<SizeChart>();
   const [deactivating, setDeactivating] = useState<SizeChart>();
   const [deleting, setDeleting] = useState<SizeChart>();
   const [isFormDirty, setIsFormDirty] = useState(false);
   const { toast, showToast, hideToast } = useToast();
-  const list = useSizeCharts();
+  const list = useSizeCharts(filters);
   const create = useCreateSizeChart();
   const update = useUpdateSizeChart();
   const updateStatus = useUpdateSizeChartStatus();
@@ -63,6 +65,16 @@ export default function SizeChartListPage() {
     window.addEventListener("beforeunload", warnBeforeUnload);
     return () => window.removeEventListener("beforeunload", warnBeforeUnload);
   }, [isFormDirty]);
+
+  const changeFilters = (next: Partial<SizeChartQuery>) => {
+    setFilters((current) => {
+      const merged = { ...current, ...next };
+      return Object.fromEntries(
+        Object.entries(merged).filter(([, value]) => value),
+      ) as SizeChartQuery;
+    });
+    listView.setPage(1);
+  };
 
   const closeForm = () => {
     setEditing(undefined);
@@ -157,10 +169,10 @@ export default function SizeChartListPage() {
 
         <div className="shadow-theme-xs overflow-visible rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
           <SizeChartToolbar
-            search={listView.search}
-            status={listView.status}
-            onSearchChange={listView.setSearch}
-            onStatusChange={listView.setStatus}
+            search={filters.search ?? ""}
+            status={filters.status ?? ""}
+            onSearchChange={(search) => changeFilters({ search })}
+            onStatusChange={(status) => changeFilters({ status: status || undefined })}
           />
 
           {list.isLoading && (
