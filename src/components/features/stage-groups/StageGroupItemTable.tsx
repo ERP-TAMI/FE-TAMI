@@ -96,7 +96,10 @@ export function StageGroupItemTable({
         editingIndex === row.position ? (
           textInput(row, "itemName", "Tên công đoạn con")
         ) : (
-          <span className="block truncate font-semibold text-gray-900 dark:text-white">
+          <span
+            title={row.itemName || undefined}
+            className="block truncate font-semibold text-gray-900 dark:text-white"
+          >
             {row.itemName || "Chưa nhập tên"}
           </span>
         ),
@@ -109,7 +112,10 @@ export function StageGroupItemTable({
         editingIndex === row.position ? (
           textInput(row, "description", "Mô tả công đoạn con")
         ) : (
-          <span className="block truncate text-gray-500 dark:text-gray-400">
+          <span
+            title={row.description || undefined}
+            className="block truncate text-gray-500 dark:text-gray-400"
+          >
             {row.description || "—"}
           </span>
         ),

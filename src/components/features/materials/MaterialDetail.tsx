@@ -23,6 +23,7 @@ export function MaterialDetail({
       open
       title="Chi tiết vật tư"
       onClose={onClose}
+      closeOnClickOutside
       footer={
         <>
           <Button variant="outline" onClick={onClose}>

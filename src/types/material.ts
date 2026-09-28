@@ -18,6 +18,20 @@ export type MaterialFilters = {
   search?: string;
   materialGroupId?: string;
   status?: MaterialStatus;
+  page?: number;
+  limit?: number;
+};
+
+export type PaginationMeta = {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+};
+
+export type MaterialListResponse = {
+  data: Material[];
+  meta: PaginationMeta;
 };
 
 export type MaterialInput = {
@@ -34,4 +48,16 @@ export type Unit = {
   id: string;
   name: string;
   status: MaterialStatus;
+};
+
+export type UnitQuery = {
+  search?: string;
+  status?: MaterialStatus;
+  page?: number;
+  limit?: number;
+};
+
+export type UnitListResponse = {
+  data: Unit[];
+  meta: PaginationMeta;
 };

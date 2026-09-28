@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
-import { Alert, Button, ConfirmDialog, PageHeader, Pagination, Toast } from "@/components/shared";
-import PageMeta from "@/components/shared/PageMeta";
+import { Alert, Button, ConfirmDialog, DetailModal, Pagination, Toast } from "@/components/shared";
 import { MaterialGroupForm } from "@/components/features/material-groups/MaterialGroupForm";
 import { MaterialGroupTable } from "@/components/features/material-groups/MaterialGroupTable";
 import { MaterialGroupToolbar } from "@/components/features/material-groups/MaterialGroupToolbar";
@@ -11,29 +10,46 @@ import {
   useUpdateMaterialGroup,
   useUpdateMaterialGroupStatus,
 } from "@/hooks/useMaterialGroups";
-import { useMaterialGroupListView } from "@/hooks/useMaterialGroupListView";
 import { useToast } from "@/hooks/useToast";
 import { getApiError } from "@/lib/apiError";
 import { PlusIcon } from "@/icons";
-import type { MaterialGroup, MaterialGroupInput, MaterialGroupStatus } from "@/types/material-group";
+import type {
+  MaterialGroup,
+  MaterialGroupInput,
+  MaterialGroupQuery,
+  MaterialGroupStatus,
+} from "@/types/material-group";
 
 type Dialog = { type: "delete"; materialGroup: MaterialGroup } | undefined;
 const emptyMaterialGroups: MaterialGroup[] = [];
+const pageSize = 10;
 
 export default function MaterialGroupListPage() {
+  const [filters, setFilters] = useState<MaterialGroupQuery>({});
+  const [page, setPage] = useState(1);
   const [editing, setEditing] = useState<MaterialGroup | "create" | undefined>();
+  const [viewing, setViewing] = useState<MaterialGroup>();
   const [dialog, setDialog] = useState<Dialog>();
   const [isDirty, setIsDirty] = useState(false);
   const { toast, showToast, hideToast } = useToast();
-  const list = useMaterialGroups();
+  const list = useMaterialGroups({ ...filters, page, limit: pageSize });
   const create = useCreateMaterialGroup();
   const update = useUpdateMaterialGroup();
   const updateStatus = useUpdateMaterialGroupStatus();
   const remove = useDeleteMaterialGroup();
   const mutation = create.isPending || update.isPending || remove.isPending;
   const serverError = create.error ?? update.error;
-  const materialGroups = list.data ?? emptyMaterialGroups;
-  const listView = useMaterialGroupListView(materialGroups);
+  const materialGroups = list.data?.data ?? emptyMaterialGroups;
+
+  const changeFilters = (next: Partial<MaterialGroupQuery>) => {
+    setFilters((current) => {
+      const merged = { ...current, ...next };
+      return Object.fromEntries(
+        Object.entries(merged).filter(([, value]) => value),
+      ) as MaterialGroupQuery;
+    });
+    setPage(1);
+  };
 
   useEffect(() => {
     const warnBeforeUnload = (event: BeforeUnloadEvent) => {
@@ -85,28 +101,19 @@ export default function MaterialGroupListPage() {
 
   return (
     <>
-      <PageMeta title="Nhóm vật tư | TAMI ERP" description="Quản lý danh mục nhóm vật tư" />
-      <section aria-labelledby="page-title" className="space-y-4">
-        <PageHeader
-          breadcrumb={[
-            { label: "Dashboard", to: "/dashboard" },
-            { label: "Dữ liệu chung" },
-            { label: "Nhóm vật tư" },
-          ]}
-          title="Nhóm vật tư"
-          action={{
-            label: "Tạo nhóm vật tư mới",
-            onClick: () => setEditing("create"),
-            icon: <PlusIcon className="h-4 w-4" aria-hidden="true" />,
-          }}
-        />
-
+      <section aria-label="Nhóm vật tư" className="space-y-4">
         <div className="shadow-theme-xs overflow-visible rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
           <MaterialGroupToolbar
-            search={listView.search}
-            status={listView.status}
-            onSearchChange={listView.setSearch}
-            onStatusChange={listView.setStatus}
+            search={filters.search ?? ""}
+            status={filters.status ?? ""}
+            action={
+              <Button onClick={() => setEditing("create")}>
+                <PlusIcon className="h-4 w-4" aria-hidden="true" />
+                Tạo nhóm vật tư mới
+              </Button>
+            }
+            onSearchChange={(search) => changeFilters({ search })}
+            onStatusChange={(status) => changeFilters({ status: status || undefined })}
           />
 
           {list.isLoading && (
@@ -114,6 +121,7 @@ export default function MaterialGroupListPage() {
               <MaterialGroupTable
                 materialGroups={emptyMaterialGroups}
                 loading
+                onView={() => {}}
                 onEdit={() => {}}
                 onToggleStatus={() => {}}
                 onDelete={() => {}}
@@ -138,25 +146,40 @@ export default function MaterialGroupListPage() {
           {list.data && (
             <>
               <MaterialGroupTable
-                materialGroups={listView.paginatedMaterialGroups}
+                materialGroups={materialGroups}
                 togglingId={updateStatus.isPending ? updateStatus.variables?.id : undefined}
+                onView={setViewing}
                 onEdit={setEditing}
                 onToggleStatus={(materialGroup) => void toggleStatus(materialGroup)}
                 onDelete={(materialGroup) => setDialog({ type: "delete", materialGroup })}
               />
               <Pagination
-                page={listView.page}
-                pageSize={listView.pageSize}
-                totalItems={listView.totalItems}
-                totalPages={listView.totalPages}
+                page={page}
+                pageSize={list.data.meta.limit}
+                totalItems={list.data.meta.total}
+                totalPages={list.data.meta.totalPages}
                 itemLabel="nhóm vật tư"
-                onPageChange={listView.setPage}
+                onPageChange={setPage}
               />
             </>
           )}
         </div>
       </section>
 
+      {viewing && (
+        <DetailModal
+          title="Chi tiết nhóm vật tư"
+          fields={[
+            ["Tên nhóm", viewing.name],
+            ["Trạng thái", viewing.status === "active" ? "Đang sử dụng" : "Đã tắt"],
+          ]}
+          onClose={() => setViewing(undefined)}
+          onEdit={() => {
+            setEditing(viewing);
+            setViewing(undefined);
+          }}
+        />
+      )}
       {editing && (
         <MaterialGroupForm
           mode={editing === "create" ? "create" : "edit"}
@@ -178,8 +201,8 @@ export default function MaterialGroupListPage() {
           title="Xóa nhóm vật tư"
           description={
             <>
-              Bạn có chắc muốn xóa "{dialog.materialGroup.name}"? Chỉ có thể xóa khi chưa có vật
-              tư tham chiếu.
+              Bạn có chắc muốn xóa "{dialog.materialGroup.name}"? Chỉ có thể xóa khi chưa có vật tư
+              tham chiếu.
             </>
           }
           confirmLabel="Xóa"

@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
-import { Alert, Button, ConfirmDialog, PageHeader, Pagination, Toast } from "@/components/shared";
-import PageMeta from "@/components/shared/PageMeta";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useBlocker, type BlockerFunction } from "react-router-dom";
+import { Alert, Button, ConfirmDialog, DetailModal, Pagination, Toast } from "@/components/shared";
 import { StageForm } from "@/components/features/stages/StageForm";
 import { StageTable } from "@/components/features/stages/StageTable";
 import { StageToolbar } from "@/components/features/stages/StageToolbar";
@@ -12,29 +12,37 @@ import {
   useUpdateStageSsvBulk,
   useUpdateStageStatus,
 } from "@/hooks/useStages";
-import { useStageListView } from "@/hooks/useStageListView";
 import { useToast } from "@/hooks/useToast";
 import { getApiError } from "@/lib/apiError";
 import { PlusIcon } from "@/icons";
-import { STAGE_SSV_PATTERN, type Stage, type StageInput, type StageStatus } from "@/types/stage";
+import {
+  STAGE_SSV_PATTERN,
+  type Stage,
+  type StageInput,
+  type StageListParams,
+  type StageStatus,
+} from "@/types/stage";
 
 const emptyStages: Stage[] = [];
+const pageSize = 10;
 
 export default function StageListPage() {
+  const [filters, setFilters] = useState<StageListParams>({});
+  const [page, setPage] = useState(1);
   const [editing, setEditing] = useState<Stage | "create" | undefined>();
+  const [viewing, setViewing] = useState<Stage>();
   const [isFormDirty, setIsFormDirty] = useState(false);
   const [bulkValues, setBulkValues] = useState<Record<string, string> | null>(null);
   const [discardBulkDialogOpen, setDiscardBulkDialogOpen] = useState(false);
   const [deleting, setDeleting] = useState<Stage>();
   const { toast, showToast, hideToast } = useToast();
-  const list = useStages();
+  const list = useStages({ ...filters, page, limit: pageSize });
   const create = useCreateStage();
   const update = useUpdateStage();
   const updateStatus = useUpdateStageStatus();
   const updateSsvBulk = useUpdateStageSsvBulk();
   const remove = useDeleteStage();
-  const stages = list.data ?? emptyStages;
-  const listView = useStageListView(stages);
+  const stages = list.data?.data ?? emptyStages;
 
   const changedSsvItems = useMemo(() => {
     if (!bulkValues) return [];
@@ -54,6 +62,12 @@ export default function StageListPage() {
   );
   const hasBulkErrors = Object.values(bulkErrors).some(Boolean);
   const hasUnsavedChanges = isFormDirty || changedSsvItems.length > 0;
+  const shouldBlockNavigation = useCallback<BlockerFunction>(
+    ({ currentLocation, nextLocation }) =>
+      changedSsvItems.length > 0 && currentLocation.pathname !== nextLocation.pathname,
+    [changedSsvItems.length],
+  );
+  const blocker = useBlocker(shouldBlockNavigation);
 
   useEffect(() => {
     const warnBeforeUnload = (event: BeforeUnloadEvent) => {
@@ -65,6 +79,15 @@ export default function StageListPage() {
     return () => window.removeEventListener("beforeunload", warnBeforeUnload);
   }, [hasUnsavedChanges]);
 
+  const changeFilters = (next: Partial<StageListParams>) => {
+    setFilters((current) => {
+      const merged = { ...current, ...next };
+      return Object.fromEntries(
+        Object.entries(merged).filter(([, value]) => value),
+      ) as StageListParams;
+    });
+    setPage(1);
+  };
   const closeForm = () => {
     setEditing(undefined);
     setIsFormDirty(false);
@@ -97,6 +120,15 @@ export default function StageListPage() {
     if (changedSsvItems.length > 0) setDiscardBulkDialogOpen(true);
     else setBulkValues(null);
   };
+  const cancelDiscardBulk = () => {
+    setDiscardBulkDialogOpen(false);
+    if (blocker.state === "blocked") blocker.reset();
+  };
+  const confirmDiscardBulk = () => {
+    setDiscardBulkDialogOpen(false);
+    setBulkValues(null);
+    if (blocker.state === "blocked") blocker.proceed();
+  };
   const saveBulkSsv = async () => {
     if (changedSsvItems.length === 0 || hasBulkErrors) return;
     try {
@@ -120,43 +152,29 @@ export default function StageListPage() {
 
   return (
     <>
-      <PageMeta title="Công đoạn | TAMI ERP" description="Quản lý danh mục công đoạn" />
-      <section aria-labelledby="page-title" className="space-y-4">
-        <PageHeader
-          breadcrumb={[
-            { label: "Dashboard", to: "/dashboard" },
-            { label: "Dữ liệu chung" },
-            { label: "Công đoạn" },
-          ]}
-          title="Công đoạn"
-          stats={[
-            { label: "công đoạn", value: stages.length },
-            {
-              label: "đang sử dụng",
-              value: stages.filter((stage) => stage.status === "active").length,
-              tone: "success",
-            },
-          ]}
-          action={
-            bulkValues
-              ? undefined
-              : {
-                  label: "Tạo công đoạn mới",
-                  onClick: () => setEditing("create"),
-                  icon: <PlusIcon className="h-4 w-4" aria-hidden="true" />,
-                }
-          }
-        />
-
+      <section aria-label="Công đoạn" className="space-y-4">
         <div className="shadow-theme-xs overflow-visible rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
           <StageToolbar
-            search={listView.search}
-            status={listView.status}
+            search={filters.search ?? ""}
+            status={filters.status ?? ""}
             bulkMode={Boolean(bulkValues)}
             canSaveBulk={changedSsvItems.length > 0 && !hasBulkErrors}
             isSavingBulk={updateSsvBulk.isPending}
-            onSearchChange={listView.setSearch}
-            onStatusChange={listView.setStatus}
+            stats={
+              <div className="text-theme-xs flex shrink-0 items-center gap-2 rounded-full border border-gray-200/80 bg-gray-100 px-2.5 py-1 font-medium whitespace-nowrap text-gray-500 dark:border-gray-700/80 dark:bg-gray-800/80 dark:text-gray-400">
+                <span>{list.data?.meta.total ?? 0} công đoạn</span>
+              </div>
+            }
+            action={
+              !bulkValues && (
+                <Button onClick={() => setEditing("create")}>
+                  <PlusIcon className="h-4 w-4" aria-hidden="true" />
+                  Tạo công đoạn mới
+                </Button>
+              )
+            }
+            onSearchChange={(search) => changeFilters({ search })}
+            onStatusChange={(status) => changeFilters({ status: status || undefined })}
             onStartBulk={startBulkEdit}
             onSaveBulk={() => void saveBulkSsv()}
             onCancelBulk={cancelBulkEdit}
@@ -166,6 +184,7 @@ export default function StageListPage() {
               <StageTable
                 stages={emptyStages}
                 loading
+                onView={() => {}}
                 onEdit={() => {}}
                 onDelete={() => {}}
                 onToggleStatus={() => {}}
@@ -188,11 +207,12 @@ export default function StageListPage() {
           {list.data && (
             <>
               <StageTable
-                stages={listView.paginatedStages}
+                stages={stages}
                 bulkMode={Boolean(bulkValues)}
                 bulkValues={bulkValues ?? undefined}
                 bulkErrors={bulkErrors}
                 togglingId={updateStatus.isPending ? updateStatus.variables?.id : undefined}
+                onView={setViewing}
                 onEdit={setEditing}
                 onDelete={setDeleting}
                 onToggleStatus={(stage) => void toggleStatus(stage)}
@@ -200,19 +220,38 @@ export default function StageListPage() {
                   setBulkValues((current) => (current ? { ...current, [id]: value } : current))
                 }
               />
-              <Pagination
-                page={listView.page}
-                pageSize={listView.pageSize}
-                totalItems={listView.totalItems}
-                totalPages={listView.totalPages}
-                itemLabel="công đoạn"
-                onPageChange={listView.setPage}
-              />
+              {!bulkValues && (
+                <Pagination
+                  page={page}
+                  pageSize={list.data.meta.limit}
+                  totalItems={list.data.meta.total}
+                  totalPages={list.data.meta.totalPages}
+                  itemLabel="công đoạn"
+                  onPageChange={setPage}
+                />
+              )}
             </>
           )}
         </div>
       </section>
 
+      {viewing && (
+        <DetailModal
+          title="Chi tiết công đoạn"
+          fields={[
+            ["Mã công đoạn", viewing.stageCode],
+            ["Tên công đoạn", viewing.stageName],
+            ["Mô tả", viewing.description || "—"],
+            ["SSV (giây)", viewing.ssv],
+            ["Trạng thái", viewing.status === "active" ? "Đang sử dụng" : "Đã tắt"],
+          ]}
+          onClose={() => setViewing(undefined)}
+          onEdit={() => {
+            setEditing(viewing);
+            setViewing(undefined);
+          }}
+        />
+      )}
       {editing && (
         <StageForm
           mode={editing === "create" ? "create" : "edit"}
@@ -229,17 +268,14 @@ export default function StageListPage() {
         />
       )}
       <ConfirmDialog
-        open={discardBulkDialogOpen}
+        open={discardBulkDialogOpen || blocker.state === "blocked"}
         title="Hủy sửa SSV?"
         description="Các giá trị SSV chưa lưu sẽ bị mất. Bạn có chắc muốn tiếp tục?"
         confirmLabel="Bỏ thay đổi"
         cancelLabel="Tiếp tục chỉnh sửa"
         variant="danger"
-        onClose={() => setDiscardBulkDialogOpen(false)}
-        onConfirm={() => {
-          setDiscardBulkDialogOpen(false);
-          setBulkValues(null);
-        }}
+        onClose={cancelDiscardBulk}
+        onConfirm={confirmDiscardBulk}
       />
       {deleting && (
         <ConfirmDialog

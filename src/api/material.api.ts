@@ -2,18 +2,19 @@ import apiClient from "@/lib/apiClient";
 import type {
   Material,
   MaterialFilters,
+  MaterialListResponse,
   MaterialInput,
   MaterialStatus,
   MaterialUpdateInput,
 } from "@/types/material";
-import { materialListSchema, materialResponseSchema } from "./material.schema";
+import { materialListResponseSchema, materialResponseSchema } from "./material.schema";
 
 const resource = "/masters/materials";
 
 export const materialApi = {
-  async list(filters: MaterialFilters = {}): Promise<Material[]> {
-    const response = await apiClient.get<Material[]>(resource, { params: filters });
-    return materialListSchema.parse(response.data);
+  async list(filters: MaterialFilters = {}): Promise<MaterialListResponse> {
+    const response = await apiClient.get<MaterialListResponse>(resource, { params: filters });
+    return materialListResponseSchema.parse(response.data);
   },
   async detail(id: string): Promise<Material> {
     const response = await apiClient.get<Material>(`${resource}/${id}`);

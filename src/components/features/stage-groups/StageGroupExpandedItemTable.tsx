@@ -123,7 +123,10 @@ export function StageGroupExpandedItemTable({
             )}
           </div>
         ) : (
-          <span className="block truncate font-semibold text-gray-900 dark:text-white">
+          <span
+            title={item.itemName}
+            className="block truncate font-semibold text-gray-900 dark:text-white"
+          >
             {item.itemName}
           </span>
         ),
@@ -143,7 +146,10 @@ export function StageGroupExpandedItemTable({
             className={inputClass}
           />
         ) : (
-          <span className="block truncate text-gray-500 dark:text-gray-400">
+          <span
+            title={item.description ?? undefined}
+            className="block truncate text-gray-500 dark:text-gray-400"
+          >
             {item.description || "—"}
           </span>
         ),
@@ -268,7 +274,7 @@ export function StageGroupExpandedItemTable({
     <>
       <Table
         embedded
-        tableClassName="min-w-[1050px]"
+        tableClassName="min-w-[900px]"
         columns={columns}
         rows={items}
         getRowKey={(item) => item.id}

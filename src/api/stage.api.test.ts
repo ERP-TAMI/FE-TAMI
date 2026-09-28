@@ -24,9 +24,13 @@ describe("stageApi", () => {
   beforeEach(() => vi.clearAllMocks());
 
   it("lists stages with optional server-side filters", async () => {
-    vi.mocked(apiClient.get).mockResolvedValue({ data: [stage] });
+    vi.mocked(apiClient.get).mockResolvedValue({
+      data: { data: [stage], meta: { total: 1, page: 1, limit: 10, totalPages: 1 } },
+    });
 
-    await expect(stageApi.list({ search: "cắt", status: "active" })).resolves.toEqual([stage]);
+    await expect(stageApi.list({ search: "cắt", status: "active" })).resolves.toMatchObject({
+      data: [stage],
+    });
     expect(apiClient.get).toHaveBeenCalledWith("/masters/stages", {
       params: { search: "cắt", status: "active" },
     });
@@ -57,7 +61,12 @@ describe("stageApi", () => {
   });
 
   it("rejects an invalid response at the API boundary", async () => {
-    vi.mocked(apiClient.get).mockResolvedValue({ data: [{ ...stage, ssv: -1 }] });
+    vi.mocked(apiClient.get).mockResolvedValue({
+      data: {
+        data: [{ ...stage, ssv: -1 }],
+        meta: { total: 1, page: 1, limit: 10, totalPages: 1 },
+      },
+    });
 
     await expect(stageApi.list()).rejects.toThrow();
   });

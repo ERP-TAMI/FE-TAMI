@@ -125,8 +125,10 @@ export function BomAggregateFilters({
   const { data: styleResponse } = useStyles({ limit: 100 });
   const styleList: Style[] = styleResponse?.data || [];
 
-  const { data: materialList = [] } = useMaterials({});
-  const { data: materialGroups = [] } = useMaterialGroups();
+  const { data: materialResponse } = useMaterials({ limit: 100 });
+  const materialList = materialResponse?.data ?? [];
+  const { data: materialGroupResponse } = useMaterialGroups({ limit: 100 });
+  const materialGroups = materialGroupResponse?.data ?? [];
 
   const handleBomSelect = (newBomId: string) => {
     const val = newBomId || undefined;

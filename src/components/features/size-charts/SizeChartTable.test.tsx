@@ -20,6 +20,7 @@ describe("SizeChartTable", () => {
     render(
       <SizeChartTable
         sizeCharts={[sizeChart]}
+        onView={vi.fn()}
         onEdit={onEdit}
         onToggleStatus={vi.fn()}
         onDelete={onDelete}
@@ -45,6 +46,7 @@ describe("SizeChartTable", () => {
     render(
       <SizeChartTable
         sizeCharts={[sizeChart]}
+        onView={vi.fn()}
         onEdit={vi.fn()}
         onToggleStatus={onToggleStatus}
         onDelete={vi.fn()}

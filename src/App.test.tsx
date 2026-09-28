@@ -109,11 +109,12 @@ afterEach(() => {
 beforeEach(() => {
   window.history.pushState({}, "", "/dashboard");
   vi.spyOn(window, "scrollTo").mockImplementation(() => undefined);
-  vi.mocked(materialGroupApi.list).mockResolvedValue([]);
-  vi.mocked(stageApi.list).mockResolvedValue([]);
-  vi.mocked(stageGroupApi.list).mockResolvedValue([]);
-  vi.mocked(workshopApi.list).mockResolvedValue([]);
-  vi.mocked(sizeChartApi.list).mockResolvedValue([]);
+  const emptyMeta = { total: 0, page: 1, limit: 10, totalPages: 1 };
+  vi.mocked(materialGroupApi.list).mockResolvedValue({ data: [], meta: emptyMeta });
+  vi.mocked(stageApi.list).mockResolvedValue({ data: [], meta: emptyMeta });
+  vi.mocked(stageGroupApi.list).mockResolvedValue({ data: [], meta: emptyMeta });
+  vi.mocked(workshopApi.list).mockResolvedValue({ data: [], meta: emptyMeta });
+  vi.mocked(sizeChartApi.list).mockResolvedValue({ data: [], meta: emptyMeta });
   useAuthStore.setState({ status: "unauthenticated", user: null, accessToken: null });
 });
 
@@ -211,7 +212,13 @@ describe("application routes", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Dữ liệu chung" }));
     expect(screen.getByRole("link", { name: "Vật tư" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Công đoạn" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Xưởng sản xuất" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Bảng Size" })).toBeTruthy();
     expect(screen.queryByRole("link", { name: "Materials" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Nhóm vật tư" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Đơn vị tính" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Nhóm công đoạn" })).toBeNull();
   });
 
   it("renders the public login route", () => {
@@ -230,7 +237,7 @@ describe("application routes", () => {
   });
 
   it("redirects an unauthenticated visitor from a protected route to /login", () => {
-    window.history.pushState({}, "", "/masters/material-groups");
+    window.history.pushState({}, "", "/masters/materials/groups");
     renderApp();
 
     expect(screen.getByRole("heading", { name: "Đăng nhập" })).toBeTruthy();
@@ -305,10 +312,33 @@ describe("application routes", () => {
 
   it("renders the material groups management route", () => {
     signIn();
-    window.history.pushState({}, "", "/masters/material-groups");
+    window.history.pushState({}, "", "/masters/materials/groups");
     renderApp();
 
     expect(screen.getByRole("heading", { name: "Nhóm vật tư" })).toBeTruthy();
+  });
+
+  it("renders the units management route", () => {
+    signIn();
+    window.history.pushState({}, "", "/masters/materials/units");
+    renderApp();
+
+    expect(screen.getByRole("heading", { name: "Đơn vị tính" })).toBeTruthy();
+  });
+
+  it("switches between materials tabs without leaving the hub page", async () => {
+    signIn();
+    window.history.pushState({}, "", "/masters/materials");
+    const { router } = renderApp();
+
+    expect(screen.getByRole("heading", { name: "Vật tư - Phụ liệu" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Nhóm vật tư" }));
+    expect(router.state.location.pathname).toBe("/masters/materials/groups");
+    expect(await screen.findByRole("heading", { name: "Nhóm vật tư" })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Đơn vị tính" }));
+    expect(router.state.location.pathname).toBe("/masters/materials/units");
+    expect(await screen.findByRole("heading", { name: "Đơn vị tính" })).toBeTruthy();
   });
 
   it("renders the stages management route", () => {
@@ -321,10 +351,25 @@ describe("application routes", () => {
 
   it("renders the stage groups management route", () => {
     signIn();
-    window.history.pushState({}, "", "/masters/stage-groups");
+    window.history.pushState({}, "", "/masters/stages/groups");
     renderApp();
 
     expect(screen.getByRole("heading", { name: "Nhóm công đoạn" })).toBeTruthy();
+  });
+
+  it("switches between stage tabs without leaving the hub page", async () => {
+    signIn();
+    window.history.pushState({}, "", "/masters/stages");
+    const { router } = renderApp();
+
+    expect(screen.getByRole("heading", { name: "Công đoạn" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Nhóm công đoạn" }));
+    expect(router.state.location.pathname).toBe("/masters/stages/groups");
+    expect(await screen.findByRole("heading", { name: "Nhóm công đoạn" })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Công đoạn" }));
+    expect(router.state.location.pathname).toBe("/masters/stages");
+    expect(await screen.findByRole("heading", { name: "Công đoạn" })).toBeTruthy();
   });
 
   it("renders the workshops management route", () => {
@@ -345,7 +390,7 @@ describe("application routes", () => {
 
   it("blocks sidebar navigation while the stage group form is dirty", async () => {
     signIn();
-    window.history.pushState({}, "", "/masters/stage-groups");
+    window.history.pushState({}, "", "/masters/stages/groups");
     const { router } = renderApp();
 
     fireEvent.click(screen.getByRole("button", { name: "Tạo nhóm công đoạn" }));
@@ -354,7 +399,7 @@ describe("application routes", () => {
     });
     await act(() => router.navigate("/dashboard"));
 
-    expect(router.state.location.pathname).toBe("/masters/stage-groups");
+    expect(router.state.location.pathname).toBe("/masters/stages/groups");
     expect(await screen.findByRole("heading", { name: "Hủy các thay đổi?" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Tiếp tục chỉnh sửa" }));
     expect(screen.getByDisplayValue("Nhóm đang nhập")).toBeTruthy();

@@ -62,26 +62,34 @@ function renderPage() {
 }
 
 describe("MaterialsPage", () => {
+  const emptyMeta = { total: 1, page: 1, limit: 10, totalPages: 1 };
+
   beforeEach(() => {
     vi.clearAllMocks();
     hooks.useMaterials.mockReturnValue({
       isLoading: false,
       isError: false,
-      data: [material],
+      data: { data: [material], meta: emptyMeta },
       error: null,
       refetch: vi.fn(),
     });
-    hooks.useMaterialGroups.mockImplementation((status?: string) => ({
-      data: status === "active" ? [activeGroup] : [activeGroup, inactiveGroup],
+    hooks.useMaterialGroups.mockImplementation((query?: { status?: string }) => ({
+      data: {
+        data: query?.status === "active" ? [activeGroup] : [activeGroup, inactiveGroup],
+        meta: emptyMeta,
+      },
     }));
     hooks.useActiveUnits.mockReturnValue({
-      data: [
-        {
-          id: material.defaultUnitId,
-          name: "Mét",
-          status: "active",
-        },
-      ],
+      data: {
+        data: [
+          {
+            id: material.defaultUnitId,
+            name: "Mét",
+            status: "active",
+          },
+        ],
+        meta: emptyMeta,
+      },
     });
   });
 
@@ -104,6 +112,8 @@ describe("MaterialsPage", () => {
       search: "FAB",
       materialGroupId: inactiveGroup.id,
       status: "active",
+      page: 1,
+      limit: 10,
     });
   });
 
@@ -126,6 +136,32 @@ describe("MaterialsPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Lưu vật tư" }));
 
     await waitFor(() => expect(hooks.create.mutateAsync).toHaveBeenCalled());
+  });
+
+  it("closes the create form on outside click when nothing is unsaved", () => {
+    renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "Tạo vật tư mới" }));
+    fireEvent.click(document.querySelector('[data-modal-backdrop="true"]')!);
+    expect(screen.queryByRole("heading", { name: "Tạo vật tư" })).toBeNull();
+  });
+
+  it("warns instead of closing on outside click once the form is dirty", () => {
+    renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "Tạo vật tư mới" }));
+    fireEvent.change(screen.getByLabelText("Mã vật tư"), { target: { value: "FAB-002" } });
+    fireEvent.click(document.querySelector('[data-modal-backdrop="true"]')!);
+    expect(screen.getByRole("heading", { name: "Hủy các thay đổi?" })).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "Tạo vật tư" })).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Tiếp tục chỉnh sửa" }));
+    expect(screen.getByDisplayValue("FAB-002")).toBeTruthy();
+
+    fireEvent.click(document.querySelector('[data-modal-backdrop="true"]')!);
+    fireEvent.click(screen.getByRole("button", { name: "Bỏ thay đổi" }));
+    expect(screen.queryByRole("heading", { name: "Tạo vật tư" })).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Hủy các thay đổi?" })).toBeNull();
   });
 
   it("changes status only after confirmation", async () => {

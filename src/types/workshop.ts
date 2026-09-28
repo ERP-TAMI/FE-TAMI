@@ -17,6 +17,18 @@ export type Workshop = {
 export type WorkshopQuery = {
   search?: string;
   status?: WorkshopStatus;
+  page?: number;
+  limit?: number;
+};
+
+export type WorkshopListResponse = {
+  data: Workshop[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
 };
 
 export type CreateWorkshopInput = Pick<

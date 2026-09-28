@@ -1,6 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { Alert, Button, ConfirmDialog, PageHeader, Pagination, Toast } from "@/components/shared";
-import PageMeta from "@/components/shared/PageMeta";
+import { useEffect, useState } from "react";
+import { Alert, Button, ConfirmDialog, Pagination, Toast } from "@/components/shared";
 import { MaterialDetail } from "@/components/features/materials/MaterialDetail";
 import { MaterialForm } from "@/components/features/materials/MaterialForm";
 import { MaterialTable } from "@/components/features/materials/MaterialTable";
@@ -31,7 +30,7 @@ type Dialog =
   | undefined;
 
 const emptyMaterials: Material[] = [];
-const pageSize = 5;
+const pageSize = 10;
 
 export default function MaterialsPage() {
   const [filters, setFilters] = useState<MaterialFilters>({});
@@ -41,21 +40,15 @@ export default function MaterialsPage() {
   const [dialog, setDialog] = useState<Dialog>();
   const [isDirty, setIsDirty] = useState(false);
   const { toast, showToast, hideToast } = useToast();
-  const list = useMaterials(filters);
-  const groups = useMaterialGroups();
-  const activeGroups = useMaterialGroups("active");
+  const list = useMaterials({ ...filters, page, limit: pageSize });
+  const groups = useMaterialGroups({ limit: 100 });
+  const activeGroups = useMaterialGroups({ status: "active", limit: 100 });
   const units = useActiveUnits();
   const create = useCreateMaterial();
   const update = useUpdateMaterial();
   const updateStatus = useUpdateMaterialStatus();
   const remove = useDeleteMaterial();
-  const materials = list.data ?? emptyMaterials;
-  const totalPages = Math.max(1, Math.ceil(materials.length / pageSize));
-  const currentPage = Math.min(page, totalPages);
-  const paginatedMaterials = useMemo(() => {
-    const start = (currentPage - 1) * pageSize;
-    return materials.slice(start, start + pageSize);
-  }, [currentPage, materials]);
+  const materials = list.data?.data ?? emptyMaterials;
 
   useEffect(() => {
     const warnBeforeUnload = (event: BeforeUnloadEvent) => {
@@ -126,30 +119,19 @@ export default function MaterialsPage() {
 
   return (
     <>
-      <PageMeta
-        title="Vật tư - Phụ liệu | TAMI ERP"
-        description="Quản lý danh mục vật tư và phụ liệu"
-      />
-      <section aria-labelledby="page-title" className="space-y-4">
-        <PageHeader
-          breadcrumb={[
-            { label: "Dashboard", to: "/dashboard" },
-            { label: "Dữ liệu chung" },
-            { label: "Vật tư - Phụ liệu" },
-          ]}
-          title="Vật tư - Phụ liệu"
-          action={{
-            label: "Tạo vật tư mới",
-            onClick: () => setEditing("create"),
-            icon: <PlusIcon className="h-4 w-4" aria-hidden="true" />,
-          }}
-        />
+      <section aria-label="Vật tư" className="space-y-4">
         <div className="shadow-theme-xs overflow-visible rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
           <MaterialToolbar
             search={filters.search ?? ""}
             materialGroupId={filters.materialGroupId ?? ""}
             status={filters.status ?? ""}
-            materialGroups={groups.data ?? []}
+            materialGroups={groups.data?.data ?? []}
+            action={
+              <Button onClick={() => setEditing("create")}>
+                <PlusIcon className="h-4 w-4" aria-hidden="true" />
+                Tạo vật tư mới
+              </Button>
+            }
             onSearchChange={(search) => changeFilters({ search })}
             onMaterialGroupChange={(materialGroupId) => changeFilters({ materialGroupId })}
             onStatusChange={(status) => changeFilters({ status: status || undefined })}
@@ -184,7 +166,7 @@ export default function MaterialsPage() {
           {list.data && (
             <>
               <MaterialTable
-                materials={paginatedMaterials}
+                materials={materials}
                 togglingId={updateStatus.isPending ? updateStatus.variables?.id : undefined}
                 onView={setViewing}
                 onEdit={setEditing}
@@ -192,10 +174,10 @@ export default function MaterialsPage() {
                 onDelete={(material) => setDialog({ type: "delete", material })}
               />
               <Pagination
-                page={currentPage}
-                pageSize={pageSize}
-                totalItems={materials.length}
-                totalPages={totalPages}
+                page={page}
+                pageSize={list.data.meta.limit}
+                totalItems={list.data.meta.total}
+                totalPages={list.data.meta.totalPages}
                 itemLabel="vật tư"
                 onPageChange={setPage}
               />
@@ -218,8 +200,8 @@ export default function MaterialsPage() {
         <MaterialForm
           mode={editing === "create" ? "create" : "edit"}
           material={editing === "create" ? undefined : editing}
-          materialGroups={activeGroups.data ?? []}
-          units={units.data ?? []}
+          materialGroups={activeGroups.data?.data ?? []}
+          units={units.data?.data ?? []}
           isSubmitting={create.isPending || update.isPending}
           serverError={
             create.error || update.error

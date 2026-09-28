@@ -89,6 +89,7 @@ export function StageForm({
         open={!discardDialogOpen}
         title={mode === "create" ? "Tạo công đoạn" : "Chỉnh sửa công đoạn"}
         closeLabel="Đóng biểu mẫu"
+        closeOnClickOutside
         onClose={requestClose}
         footer={
           <>

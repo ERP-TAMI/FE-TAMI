@@ -7,6 +7,7 @@ import type {
   MaterialInput,
   MaterialStatus,
   MaterialUpdateInput,
+  UnitQuery,
 } from "@/types/material";
 
 export function useMaterials(filters: MaterialFilters) {
@@ -17,11 +18,14 @@ export function useMaterials(filters: MaterialFilters) {
 }
 
 export function useActiveUnits() {
-  return useQuery({ queryKey: unitKeys.list("active"), queryFn: () => unitApi.list("active") });
+  return useQuery({
+    queryKey: unitKeys.list({ status: "active", limit: 100 }),
+    queryFn: () => unitApi.list({ status: "active", limit: 100 }),
+  });
 }
 
-export function useUnits(status?: MaterialStatus) {
-  return useQuery({ queryKey: unitKeys.list(status), queryFn: () => unitApi.list(status) });
+export function useUnits(query: UnitQuery = {}) {
+  return useQuery({ queryKey: unitKeys.list(query), queryFn: () => unitApi.list(query) });
 }
 
 function useInvalidateUnits() {

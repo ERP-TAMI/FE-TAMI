@@ -48,6 +48,7 @@ const detail: StageGroup = {
 function renderTable(overrides: Partial<React.ComponentProps<typeof StageGroupTable>> = {}) {
   const props: React.ComponentProps<typeof StageGroupTable> = {
     groups: [group],
+    onView: vi.fn(),
     onEdit: vi.fn(),
     onDelete: vi.fn(),
     onToggleStatus: vi.fn(),
@@ -75,6 +76,7 @@ describe("StageGroupTable", () => {
     render(
       <StageGroupTable
         groups={[group, inactiveGroup]}
+        onView={vi.fn()}
         onEdit={vi.fn()}
         onDelete={vi.fn()}
         onToggleStatus={vi.fn()}
@@ -96,6 +98,7 @@ describe("StageGroupTable", () => {
     render(
       <StageGroupTable
         groups={[group]}
+        onView={vi.fn()}
         onEdit={vi.fn()}
         onDelete={vi.fn()}
         onToggleStatus={vi.fn()}

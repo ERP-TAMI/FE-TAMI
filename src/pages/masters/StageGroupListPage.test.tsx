@@ -74,13 +74,15 @@ function renderPage(initialEntries = ["/masters/stage-groups"]) {
   return { router, ...render(<RouterProvider router={router} />) };
 }
 
+const meta = { total: 1, page: 1, limit: 10, totalPages: 1 };
+
 describe("StageGroupListPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.useStageGroups.mockReturnValue({
       isLoading: false,
       isError: false,
-      data: [summary],
+      data: { data: [summary], meta },
       error: null,
       refetch: vi.fn(),
     });
@@ -134,11 +136,78 @@ describe("StageGroupListPage", () => {
     });
   });
 
+  it("closes the create form on outside click when nothing is unsaved, warns otherwise", () => {
+    renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "Tạo nhóm công đoạn" }));
+    fireEvent.click(document.querySelector('[data-modal-backdrop="true"]')!);
+    expect(screen.queryByRole("heading", { name: "Tạo nhóm công đoạn" })).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Tạo nhóm công đoạn" }));
+    fireEvent.change(screen.getByLabelText("Tên nhóm công đoạn"), {
+      target: { value: "Nhóm đang nhập" },
+    });
+    fireEvent.click(document.querySelector('[data-modal-backdrop="true"]')!);
+    expect(screen.getByRole("heading", { name: "Hủy các thay đổi?" })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Tiếp tục chỉnh sửa" }));
+    expect(screen.getByDisplayValue("Nhóm đang nhập")).toBeTruthy();
+
+    fireEvent.click(document.querySelector('[data-modal-backdrop="true"]')!);
+    fireEvent.click(screen.getByRole("button", { name: "Bỏ thay đổi" }));
+    expect(screen.queryByRole("heading", { name: "Tạo nhóm công đoạn" })).toBeNull();
+  });
+
+  it("sends search text and status filters to the backend query", () => {
+    renderPage();
+
+    fireEvent.change(screen.getByLabelText("Tìm kiếm nhóm công đoạn"), {
+      target: { value: "may" },
+    });
+    expect(mocks.useStageGroups).toHaveBeenLastCalledWith({ search: "may", page: 1, limit: 10 });
+
+    fireEvent.change(screen.getByLabelText("Tìm kiếm nhóm công đoạn"), { target: { value: "" } });
+    const filterGroup = screen.getByRole("group", { name: "Lọc theo trạng thái" });
+    fireEvent.click(within(filterGroup).getByRole("button", { name: "Đang sử dụng" }));
+    expect(mocks.useStageGroups).toHaveBeenLastCalledWith({
+      status: "active",
+      page: 1,
+      limit: 10,
+    });
+  });
+
   it("loads detail before editing, retains child IDs and omits an unchanged group code", async () => {
     mocks.update.mutateAsync.mockResolvedValue(detail);
     renderPage();
     fireEvent.click(screen.getByRole("button", { name: "Sửa" }));
     expect(mocks.useStageGroup).toHaveBeenLastCalledWith(summary.id);
+    fireEvent.change(screen.getByLabelText("Tên nhóm công đoạn"), {
+      target: { value: "Nhóm may chính" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Lưu nhóm công đoạn" }));
+    await waitFor(() => {
+      expect(mocks.update.mutateAsync).toHaveBeenCalledWith({
+        id: summary.id,
+        input: {
+          groupName: "Nhóm may chính",
+          description: null,
+          items: detail.items,
+        },
+      });
+    });
+  });
+
+  it("opens detail and continues into the edit flow", async () => {
+    mocks.update.mutateAsync.mockResolvedValue(detail);
+    renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: summary.groupName }));
+    expect(screen.getByRole("heading", { name: "Chi tiết nhóm công đoạn" })).toBeTruthy();
+    const detailDialog = within(screen.getByRole("dialog"));
+    expect(detailDialog.getByText(summary.groupCode)).toBeTruthy();
+    fireEvent.click(detailDialog.getByRole("button", { name: "Chỉnh sửa" }));
+    expect(mocks.useStageGroup).toHaveBeenLastCalledWith(summary.id);
+
     fireEvent.change(screen.getByLabelText("Tên nhóm công đoạn"), {
       target: { value: "Nhóm may chính" },
     });

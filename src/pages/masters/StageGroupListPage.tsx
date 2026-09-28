@@ -7,12 +7,11 @@ import {
   Alert,
   Button,
   ConfirmDialog,
+  DetailModal,
   Modal,
-  PageHeader,
   Pagination,
   Toast,
 } from "@/components/shared";
-import PageMeta from "@/components/shared/PageMeta";
 import {
   useCreateStageGroup,
   useDeleteStageGroup,
@@ -21,35 +20,38 @@ import {
   useUpdateStageGroup,
   useUpdateStageGroupStatus,
 } from "@/hooks/useStageGroups";
-import { useStageGroupListView } from "@/hooks/useStageGroupListView";
 import { useToast } from "@/hooks/useToast";
 import { PlusIcon } from "@/icons";
 import { getApiError } from "@/lib/apiError";
 import type {
   StageGroupInput,
   StageGroupItemInput,
+  StageGroupListParams,
   StageGroupStatus,
   StageGroupSummary,
 } from "@/types/stage-group";
 
 const emptyGroups: StageGroupSummary[] = [];
+const pageSize = 10;
 
 export default function StageGroupListPage() {
+  const [filters, setFilters] = useState<StageGroupListParams>({});
+  const [page, setPage] = useState(1);
   const [editing, setEditing] = useState<"create" | string>();
+  const [viewing, setViewing] = useState<StageGroupSummary>();
   const [isFormDirty, setIsFormDirty] = useState(false);
   const [isSsvEditing, setIsSsvEditing] = useState(false);
   const [isSsvDirty, setIsSsvDirty] = useState(false);
   const [discardCloseRequested, setDiscardCloseRequested] = useState(false);
   const [deleting, setDeleting] = useState<StageGroupSummary>();
   const { toast, showToast, hideToast } = useToast();
-  const list = useStageGroups();
+  const list = useStageGroups({ ...filters, page, limit: pageSize });
   const detail = useStageGroup(editing && editing !== "create" ? editing : undefined);
   const create = useCreateStageGroup();
   const update = useUpdateStageGroup();
   const updateStatus = useUpdateStageGroupStatus();
   const remove = useDeleteStageGroup();
-  const groups = list.data ?? emptyGroups;
-  const listView = useStageGroupListView(groups);
+  const groups = list.data?.data ?? emptyGroups;
   const hasUnsavedChanges = isFormDirty || isSsvDirty;
   const shouldBlockNavigation = useCallback<BlockerFunction>(
     ({ currentLocation, nextLocation }) =>
@@ -68,6 +70,15 @@ export default function StageGroupListPage() {
     return () => window.removeEventListener("beforeunload", warnBeforeUnload);
   }, [hasUnsavedChanges]);
 
+  const changeFilters = (next: Partial<StageGroupListParams>) => {
+    setFilters((current) => {
+      const merged = { ...current, ...next };
+      return Object.fromEntries(
+        Object.entries(merged).filter(([, value]) => value),
+      ) as StageGroupListParams;
+    });
+    setPage(1);
+  };
   const closeForm = () => {
     setEditing(undefined);
     setIsFormDirty(false);
@@ -145,47 +156,34 @@ export default function StageGroupListPage() {
 
   return (
     <>
-      <PageMeta title="Nhóm công đoạn | TAMI ERP" description="Quản lý nhóm công đoạn" />
-      <section aria-labelledby="page-title" className="space-y-4">
-        <PageHeader
-          breadcrumb={[
-            { label: "Dashboard", to: "/dashboard" },
-            { label: "Dữ liệu chung" },
-            { label: "Nhóm công đoạn" },
-          ]}
-          title="Nhóm công đoạn"
-          stats={[
-            { label: "nhóm", value: groups.length },
-            {
-              label: "đang sử dụng",
-              value: groups.filter((group) => group.status === "active").length,
-              tone: "success",
-            },
-          ]}
-          action={
-            isSsvEditing
-              ? undefined
-              : {
-                  label: "Tạo nhóm công đoạn",
-                  onClick: () => setEditing("create"),
-                  icon: <PlusIcon className="h-4 w-4" aria-hidden="true" />,
-                }
-          }
-        />
-
+      <section aria-label="Nhóm công đoạn" className="space-y-4">
         <div className="shadow-theme-xs overflow-visible rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
           <StageGroupToolbar
-            search={listView.search}
-            status={listView.status}
+            search={filters.search ?? ""}
+            status={filters.status ?? ""}
             disabled={isSsvEditing}
-            onSearchChange={listView.setSearch}
-            onStatusChange={listView.setStatus}
+            stats={
+              <div className="text-theme-xs flex shrink-0 items-center gap-2 rounded-full border border-gray-200/80 bg-gray-100 px-2.5 py-1 font-medium whitespace-nowrap text-gray-500 dark:border-gray-700/80 dark:bg-gray-800/80 dark:text-gray-400">
+                <span>{list.data?.meta.total ?? 0} nhóm</span>
+              </div>
+            }
+            action={
+              !isSsvEditing && (
+                <Button onClick={() => setEditing("create")}>
+                  <PlusIcon className="h-4 w-4" aria-hidden="true" />
+                  Tạo nhóm công đoạn
+                </Button>
+              )
+            }
+            onSearchChange={(search) => changeFilters({ search })}
+            onStatusChange={(status) => changeFilters({ status: status || undefined })}
           />
           {list.isLoading && (
             <div aria-busy="true" aria-label="Đang tải danh sách nhóm công đoạn">
               <StageGroupTable
                 groups={emptyGroups}
                 loading
+                onView={() => {}}
                 onEdit={() => {}}
                 onDelete={() => {}}
                 onToggleStatus={() => {}}
@@ -209,9 +207,10 @@ export default function StageGroupListPage() {
           {list.data && (
             <>
               <StageGroupTable
-                groups={listView.paginatedGroups}
+                groups={groups}
                 isSavingItems={update.isPending}
                 togglingId={updateStatus.isPending ? updateStatus.variables?.id : undefined}
+                onView={setViewing}
                 onEdit={startEdit}
                 onDelete={setDeleting}
                 onToggleStatus={(group) => void toggleStatus(group)}
@@ -221,12 +220,12 @@ export default function StageGroupListPage() {
               />
               {!isSsvEditing && (
                 <Pagination
-                  page={listView.page}
-                  pageSize={listView.pageSize}
-                  totalItems={listView.totalItems}
-                  totalPages={listView.totalPages}
+                  page={page}
+                  pageSize={list.data.meta.limit}
+                  totalItems={list.data.meta.total}
+                  totalPages={list.data.meta.totalPages}
                   itemLabel="nhóm công đoạn"
-                  onPageChange={listView.setPage}
+                  onPageChange={setPage}
                 />
               )}
             </>
@@ -234,6 +233,23 @@ export default function StageGroupListPage() {
         </div>
       </section>
 
+      {viewing && (
+        <DetailModal
+          title="Chi tiết nhóm công đoạn"
+          fields={[
+            ["Mã nhóm", viewing.groupCode],
+            ["Tên nhóm", viewing.groupName],
+            ["Mô tả", viewing.description || "—"],
+            ["Số công đoạn", viewing.itemCount],
+            ["Trạng thái", viewing.status === "active" ? "Đang sử dụng" : "Đã tắt"],
+          ]}
+          onClose={() => setViewing(undefined)}
+          onEdit={() => {
+            startEdit(viewing);
+            setViewing(undefined);
+          }}
+        />
+      )}
       {editing === "create" && (
         <StageGroupForm
           mode="create"

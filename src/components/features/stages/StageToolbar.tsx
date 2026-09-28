@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Button, Input } from "@/components/shared";
 import type { StageStatus } from "@/types/stage";
 
@@ -7,6 +8,8 @@ type StageToolbarProps = {
   bulkMode: boolean;
   canSaveBulk: boolean;
   isSavingBulk: boolean;
+  stats?: ReactNode;
+  action?: ReactNode;
   onSearchChange: (value: string) => void;
   onStatusChange: (value: StageStatus | "") => void;
   onStartBulk: () => void;
@@ -26,6 +29,8 @@ export function StageToolbar({
   bulkMode,
   canSaveBulk,
   isSavingBulk,
+  stats,
+  action,
   onSearchChange,
   onStatusChange,
   onStartBulk,
@@ -66,6 +71,7 @@ export function StageToolbar({
               </button>
             ))}
           </div>
+          {stats}
         </div>
         <div className="flex items-center gap-2">
           {bulkMode ? (
@@ -78,9 +84,12 @@ export function StageToolbar({
               </Button>
             </>
           ) : (
-            <Button variant="outline" size="sm" onClick={onStartBulk}>
-              Sửa SSV
-            </Button>
+            <>
+              <Button variant="outline" size="sm" onClick={onStartBulk}>
+                Sửa SSV
+              </Button>
+              {action}
+            </>
           )}
         </div>
       </div>

@@ -127,6 +127,7 @@ export function StageGroupForm({
       size="2xl"
       title={mode === "create" ? "Tạo nhóm công đoạn" : "Chỉnh sửa nhóm công đoạn"}
       closeLabel="Đóng biểu mẫu nhóm công đoạn"
+      closeOnClickOutside
       onClose={onClose}
       footer={
         <>

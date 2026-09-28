@@ -59,6 +59,8 @@ function renderPage(initialEntries = ["/masters/size-charts"]) {
   return { router, ...render(<RouterProvider router={router} />) };
 }
 
+const meta = { total: sizeCharts.length, page: 1, limit: 10, totalPages: 1 };
+
 describe("SizeChartListPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -67,7 +69,7 @@ describe("SizeChartListPage", () => {
     hooks.useSizeCharts.mockReturnValue({
       isLoading: false,
       isError: false,
-      data: sizeCharts,
+      data: { data: sizeCharts, meta },
       error: null,
       refetch: vi.fn(),
     });
@@ -103,20 +105,26 @@ describe("SizeChartListPage", () => {
     expect(refetch).toHaveBeenCalledOnce();
   });
 
-  it("searches by chart name or size and filters by status", () => {
+  it("sends search text and status filters to the backend query instead of filtering client-side", () => {
     renderPage();
 
     fireEvent.change(screen.getByLabelText("Tìm kiếm bảng Size"), {
-      target: { value: "4y" },
+      target: { value: "trẻ em" },
     });
-    expect(screen.getByText("Quần trẻ em")).toBeTruthy();
-    expect(screen.queryByText("Áo sơ mi nam")).toBeNull();
+    expect(hooks.useSizeCharts).toHaveBeenLastCalledWith({
+      search: "trẻ em",
+      page: 1,
+      limit: 10,
+    });
 
     fireEvent.change(screen.getByLabelText("Tìm kiếm bảng Size"), { target: { value: "" } });
-    const filters = screen.getByRole("group", { name: "Lọc theo trạng thái" });
-    fireEvent.click(within(filters).getByRole("button", { name: "Đang sử dụng" }));
-    expect(screen.getByText("Áo sơ mi nam")).toBeTruthy();
-    expect(screen.queryByText("Quần trẻ em")).toBeNull();
+    const filterGroup = screen.getByRole("group", { name: "Lọc theo trạng thái" });
+    fireEvent.click(within(filterGroup).getByRole("button", { name: "Đang sử dụng" }));
+    expect(hooks.useSizeCharts).toHaveBeenLastCalledWith({
+      status: "active",
+      page: 1,
+      limit: 10,
+    });
   });
 
   it("creates a normalized size chart from the list screen", async () => {
@@ -139,6 +147,43 @@ describe("SizeChartListPage", () => {
         sizes: ["S", "M", "L"],
       });
       expect(screen.queryByRole("dialog")).toBeNull();
+    });
+  });
+
+  it("warns before closing the create form on outside click when dirty", () => {
+    renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "Tạo bảng Size" }));
+    fireEvent.click(document.querySelector('[data-modal-backdrop="true"]')!);
+    expect(screen.queryByRole("heading", { name: "Tạo bảng Size" })).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Tạo bảng Size" }));
+    fireEvent.change(screen.getByLabelText("Tên bảng Size"), { target: { value: "Áo thun" } });
+    fireEvent.click(document.querySelector('[data-modal-backdrop="true"]')!);
+    expect(screen.getByRole("heading", { name: "Hủy các thay đổi?" })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Bỏ thay đổi" }));
+    expect(screen.queryByRole("heading", { name: "Hủy các thay đổi?" })).toBeNull();
+  });
+
+  it("opens detail and continues into the edit flow", async () => {
+    hooks.update.mutateAsync.mockResolvedValue({ ...sizeCharts[0], name: "Áo sơ mi nam (mới)" });
+    renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: sizeCharts[0].name }));
+    expect(screen.getByRole("heading", { name: "Chi tiết bảng Size" })).toBeTruthy();
+    const detailDialog = within(screen.getByRole("dialog"));
+    expect(detailDialog.getByText(sizeCharts[0].sizes.join(", "))).toBeTruthy();
+    fireEvent.click(detailDialog.getByRole("button", { name: "Chỉnh sửa" }));
+    expect(screen.getByRole("heading", { name: "Chỉnh sửa bảng Size" })).toBeTruthy();
+
+    fireEvent.change(screen.getByLabelText("Tên bảng Size"), {
+      target: { value: "Áo sơ mi nam (mới)" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Lưu bảng Size" }));
+
+    await waitFor(() => {
+      expect(hooks.update.mutateAsync).toHaveBeenCalled();
     });
   });
 

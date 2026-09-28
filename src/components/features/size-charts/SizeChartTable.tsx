@@ -6,6 +6,7 @@ type SizeChartTableProps = {
   sizeCharts: SizeChart[];
   togglingId?: string;
   loading?: boolean;
+  onView: (sizeChart: SizeChart) => void;
   onEdit: (sizeChart: SizeChart) => void;
   onToggleStatus: (sizeChart: SizeChart) => void;
   onDelete: (sizeChart: SizeChart) => void;
@@ -15,6 +16,7 @@ export function SizeChartTable({
   sizeCharts,
   togglingId,
   loading = false,
+  onView,
   onEdit,
   onToggleStatus,
   onDelete,
@@ -25,12 +27,14 @@ export function SizeChartTable({
       header: "Tên bảng Size",
       width: "w-[28%]",
       render: (sizeChart) => (
-        <span
+        <button
+          type="button"
+          onClick={() => onView(sizeChart)}
           title={sizeChart.name}
-          className="block truncate font-semibold text-gray-900 dark:text-white"
+          className="hover:text-brand-600 dark:hover:text-brand-400 block max-w-full truncate text-left font-semibold text-gray-900 dark:text-white"
         >
           {sizeChart.name}
-        </span>
+        </button>
       ),
     },
     {

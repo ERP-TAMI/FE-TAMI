@@ -9,6 +9,7 @@ type StageTableProps = {
   bulkErrors?: Record<string, string | undefined>;
   togglingId?: string;
   loading?: boolean;
+  onView: (stage: Stage) => void;
   onEdit: (stage: Stage) => void;
   onDelete: (stage: Stage) => void;
   onToggleStatus: (stage: Stage) => void;
@@ -22,6 +23,7 @@ export function StageTable({
   bulkErrors = {},
   togglingId,
   loading = false,
+  onView,
   onEdit,
   onDelete,
   onToggleStatus,
@@ -33,12 +35,15 @@ export function StageTable({
       header: "Mã công đoạn",
       width: "w-[18%]",
       render: (stage) => (
-        <span
+        <button
+          type="button"
+          onClick={() => onView(stage)}
+          disabled={bulkMode}
           title={stage.stageCode}
-          className="block truncate font-medium text-gray-900 dark:text-white"
+          className="hover:text-brand-600 dark:hover:text-brand-400 block max-w-full truncate text-left font-medium text-gray-900 disabled:cursor-default disabled:hover:text-gray-900 dark:text-white dark:disabled:hover:text-white"
         >
           {stage.stageCode}
-        </span>
+        </button>
       ),
     },
     {
@@ -46,9 +51,15 @@ export function StageTable({
       header: "Tên công đoạn",
       width: "w-[19%]",
       render: (stage) => (
-        <span title={stage.stageName} className="block truncate font-medium">
+        <button
+          type="button"
+          onClick={() => onView(stage)}
+          disabled={bulkMode}
+          title={stage.stageName}
+          className="hover:text-brand-600 dark:hover:text-brand-400 block max-w-full truncate text-left font-medium disabled:cursor-default disabled:hover:text-inherit"
+        >
           {stage.stageName}
-        </span>
+        </button>
       ),
     },
     {

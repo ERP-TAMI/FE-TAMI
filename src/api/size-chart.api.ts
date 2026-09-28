@@ -2,11 +2,12 @@ import apiClient from "@/lib/apiClient";
 import type {
   CreateSizeChartInput,
   SizeChart,
+  SizeChartListResponse,
   SizeChartQuery,
   SizeChartStatus,
   UpdateSizeChartInput,
 } from "@/types/size-chart";
-import { sizeChartListSchema, sizeChartResponseSchema } from "./size-chart.schema";
+import { sizeChartListResponseSchema, sizeChartResponseSchema } from "./size-chart.schema";
 
 const resource = "/masters/size-charts";
 
@@ -15,16 +16,18 @@ function queryParams(query: SizeChartQuery) {
   const params = {
     ...(search ? { search } : {}),
     ...(query.status ? { status: query.status } : {}),
+    ...(query.page ? { page: query.page } : {}),
+    ...(query.limit ? { limit: query.limit } : {}),
   };
   return Object.keys(params).length > 0 ? params : undefined;
 }
 
 export const sizeChartApi = {
-  async list(query: SizeChartQuery = {}): Promise<SizeChart[]> {
-    const response = await apiClient.get<SizeChart[]>(resource, {
+  async list(query: SizeChartQuery = {}): Promise<SizeChartListResponse> {
+    const response = await apiClient.get<SizeChartListResponse>(resource, {
       params: queryParams(query),
     });
-    return sizeChartListSchema.parse(response.data);
+    return sizeChartListResponseSchema.parse(response.data);
   },
   async detail(id: string): Promise<SizeChart> {
     const response = await apiClient.get<SizeChart>(`${resource}/${id}`);

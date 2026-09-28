@@ -21,10 +21,11 @@ let _rawGroups: StageGroup[] | null = null;
 async function getStageOptions(): Promise<{ options: StageComboboxOption[]; groups: StageGroup[] }> {
   if (_cache && _rawGroups) return { options: _cache, groups: _rawGroups };
   try {
-    const [stages, groups] = await Promise.all([
-      stageApi.list(),
+    const [stagesResponse, groups] = await Promise.all([
+      stageApi.list({ limit: 100 }),
       stageGroupApi.getStageGroups(),
     ]);
+    const stages = stagesResponse.data;
 
     _rawGroups = groups;
     const result: StageComboboxOption[] = [];

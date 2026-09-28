@@ -25,3 +25,13 @@ export const stageGroupResponseSchema = stageGroupSummarySchema.extend({
 });
 
 export const stageGroupListSchema = z.array(stageGroupSummarySchema);
+
+export const stageGroupListResponseSchema = z.object({
+  data: stageGroupListSchema,
+  meta: z.object({
+    total: z.number().int().nonnegative(),
+    page: z.number().int().positive(),
+    limit: z.number().int().positive(),
+    totalPages: z.number().int().positive(),
+  }),
+});

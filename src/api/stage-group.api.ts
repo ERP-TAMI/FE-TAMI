@@ -3,11 +3,11 @@ import type {
   StageGroup as MasterStageGroup,
   StageGroupInput,
   StageGroupListParams,
+  StageGroupListResponse,
   StageGroupStatus,
-  StageGroupSummary,
   StageGroupUpdateInput,
 } from "@/types/stage-group";
-import { stageGroupListSchema, stageGroupResponseSchema } from "./stage-group.schema";
+import { stageGroupListResponseSchema, stageGroupResponseSchema } from "./stage-group.schema";
 
 const resource = "/masters/stage-groups";
 
@@ -29,9 +29,9 @@ export interface StageGroup {
 }
 
 export const stageGroupApi = {
-  async list(params?: StageGroupListParams): Promise<StageGroupSummary[]> {
-    const response = await apiClient.get<StageGroupSummary[]>(resource, { params });
-    return stageGroupListSchema.parse(response.data);
+  async list(params?: StageGroupListParams): Promise<StageGroupListResponse> {
+    const response = await apiClient.get<StageGroupListResponse>(resource, { params });
+    return stageGroupListResponseSchema.parse(response.data);
   },
   async detail(id: string): Promise<MasterStageGroup> {
     const response = await apiClient.get<MasterStageGroup>(`${resource}/${id}`);
@@ -54,8 +54,10 @@ export const stageGroupApi = {
   },
 
   getStageGroups: async (): Promise<StageGroup[]> => {
-    const res = await apiClient.get<Record<string, unknown>[]>(resource);
-    return (res.data || []).map((g: Record<string, unknown>) => ({
+    const res = await apiClient.get<{ data: Record<string, unknown>[] }>(resource, {
+      params: { limit: 100 },
+    });
+    return (res.data.data || []).map((g: Record<string, unknown>) => ({
       id: String(g.id || ""),
       code: String(g.groupCode || g.code || ""),
       name: String(g.groupName || g.name || ""),

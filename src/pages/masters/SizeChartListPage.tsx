@@ -3,9 +3,16 @@ import { useBlocker, type BlockerFunction } from "react-router-dom";
 import { SizeChartForm } from "@/components/features/size-charts/SizeChartForm";
 import { SizeChartTable } from "@/components/features/size-charts/SizeChartTable";
 import { SizeChartToolbar } from "@/components/features/size-charts/SizeChartToolbar";
-import { Alert, Button, ConfirmDialog, PageHeader, Pagination, Toast } from "@/components/shared";
+import {
+  Alert,
+  Button,
+  ConfirmDialog,
+  DetailModal,
+  PageHeader,
+  Pagination,
+  Toast,
+} from "@/components/shared";
 import PageMeta from "@/components/shared/PageMeta";
-import { useSizeChartListView } from "@/hooks/useSizeChartListView";
 import {
   useCreateSizeChart,
   useDeleteSizeChart,
@@ -19,25 +26,29 @@ import { getApiError } from "@/lib/apiError";
 import type {
   CreateSizeChartInput,
   SizeChart,
+  SizeChartQuery,
   SizeChartStatus,
   UpdateSizeChartInput,
 } from "@/types/size-chart";
 
 const emptySizeCharts: SizeChart[] = [];
+const pageSize = 10;
 
 export default function SizeChartListPage() {
+  const [filters, setFilters] = useState<SizeChartQuery>({});
+  const [page, setPage] = useState(1);
   const [editing, setEditing] = useState<SizeChart | "create" | undefined>();
+  const [viewing, setViewing] = useState<SizeChart>();
   const [deactivating, setDeactivating] = useState<SizeChart>();
   const [deleting, setDeleting] = useState<SizeChart>();
   const [isFormDirty, setIsFormDirty] = useState(false);
   const { toast, showToast, hideToast } = useToast();
-  const list = useSizeCharts();
+  const list = useSizeCharts({ ...filters, page, limit: pageSize });
   const create = useCreateSizeChart();
   const update = useUpdateSizeChart();
   const updateStatus = useUpdateSizeChartStatus();
   const remove = useDeleteSizeChart();
-  const sizeCharts = list.data ?? emptySizeCharts;
-  const listView = useSizeChartListView(sizeCharts);
+  const sizeCharts = list.data?.data ?? emptySizeCharts;
   const shouldBlockNavigation = useCallback<BlockerFunction>(
     ({ currentLocation, nextLocation }) =>
       isFormDirty && currentLocation.pathname !== nextLocation.pathname,
@@ -54,6 +65,16 @@ export default function SizeChartListPage() {
     window.addEventListener("beforeunload", warnBeforeUnload);
     return () => window.removeEventListener("beforeunload", warnBeforeUnload);
   }, [isFormDirty]);
+
+  const changeFilters = (next: Partial<SizeChartQuery>) => {
+    setFilters((current) => {
+      const merged = { ...current, ...next };
+      return Object.fromEntries(
+        Object.entries(merged).filter(([, value]) => value),
+      ) as SizeChartQuery;
+    });
+    setPage(1);
+  };
 
   const closeForm = () => {
     setEditing(undefined);
@@ -131,27 +152,21 @@ export default function SizeChartListPage() {
             { label: "Bảng Size" },
           ]}
           title="Bảng Size"
-          stats={[
-            { label: "bảng", value: sizeCharts.length },
-            {
-              label: "đang sử dụng",
-              value: sizeCharts.filter((sizeChart) => sizeChart.status === "active").length,
-              tone: "success",
-            },
-          ]}
-          action={{
-            label: "Tạo bảng Size",
-            onClick: () => openForm("create"),
-            icon: <PlusIcon className="h-4 w-4" aria-hidden="true" />,
-          }}
+          stats={[{ label: "bảng", value: list.data?.meta.total ?? 0 }]}
         />
 
         <div className="shadow-theme-xs overflow-visible rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
           <SizeChartToolbar
-            search={listView.search}
-            status={listView.status}
-            onSearchChange={listView.setSearch}
-            onStatusChange={listView.setStatus}
+            search={filters.search ?? ""}
+            status={filters.status ?? ""}
+            action={
+              <Button onClick={() => openForm("create")}>
+                <PlusIcon className="h-4 w-4" aria-hidden="true" />
+                Tạo bảng Size
+              </Button>
+            }
+            onSearchChange={(search) => changeFilters({ search })}
+            onStatusChange={(status) => changeFilters({ status: status || undefined })}
           />
 
           {list.isLoading && (
@@ -159,6 +174,7 @@ export default function SizeChartListPage() {
               <SizeChartTable
                 sizeCharts={emptySizeCharts}
                 loading
+                onView={() => {}}
                 onEdit={() => {}}
                 onToggleStatus={() => {}}
                 onDelete={() => {}}
@@ -181,25 +197,41 @@ export default function SizeChartListPage() {
           {list.data && (
             <>
               <SizeChartTable
-                sizeCharts={listView.paginatedSizeCharts}
+                sizeCharts={sizeCharts}
                 togglingId={updateStatus.isPending ? updateStatus.variables?.id : undefined}
+                onView={setViewing}
                 onEdit={openForm}
                 onToggleStatus={toggleStatus}
                 onDelete={setDeleting}
               />
               <Pagination
-                page={listView.page}
-                pageSize={listView.pageSize}
-                totalItems={listView.totalItems}
-                totalPages={listView.totalPages}
+                page={page}
+                pageSize={list.data.meta.limit}
+                totalItems={list.data.meta.total}
+                totalPages={list.data.meta.totalPages}
                 itemLabel="bảng Size"
-                onPageChange={listView.setPage}
+                onPageChange={setPage}
               />
             </>
           )}
         </div>
       </section>
 
+      {viewing && (
+        <DetailModal
+          title="Chi tiết bảng Size"
+          fields={[
+            ["Tên bảng Size", viewing.name],
+            ["Danh sách Size", viewing.sizes.join(", ")],
+            ["Trạng thái", viewing.status === "active" ? "Đang sử dụng" : "Đã tắt"],
+          ]}
+          onClose={() => setViewing(undefined)}
+          onEdit={() => {
+            openForm(viewing);
+            setViewing(undefined);
+          }}
+        />
+      )}
       {editing && (
         <SizeChartForm
           mode={editing === "create" ? "create" : "edit"}

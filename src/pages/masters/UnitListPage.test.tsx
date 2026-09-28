@@ -33,6 +33,12 @@ function renderPage() {
   );
 }
 
+const emptyMeta = { total: 0, page: 1, limit: 10, totalPages: 1 };
+
+function metaFor(items: unknown[]) {
+  return { total: items.length, page: 1, limit: 10, totalPages: Math.max(1, Math.ceil(items.length / 10)) };
+}
+
 describe("UnitListPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -75,7 +81,7 @@ describe("UnitListPage", () => {
     hooks.useUnits.mockReturnValue({
       isLoading: false,
       isError: false,
-      data: [],
+      data: { data: [], meta: emptyMeta },
       error: null,
       refetch: vi.fn(),
     });
@@ -90,7 +96,7 @@ describe("UnitListPage", () => {
     hooks.useUnits.mockReturnValue({
       isLoading: false,
       isError: false,
-      data: [],
+      data: { data: [], meta: emptyMeta },
       error: null,
       refetch: vi.fn(),
     });
@@ -112,7 +118,7 @@ describe("UnitListPage", () => {
     hooks.useUnits.mockReturnValue({
       isLoading: false,
       isError: false,
-      data: [unit],
+      data: { data: [unit], meta: metaFor([unit]) },
       error: null,
       refetch: vi.fn(),
     });
@@ -130,12 +136,65 @@ describe("UnitListPage", () => {
     });
   });
 
+  it("warns via native confirm before closing the form on outside click when dirty", () => {
+    hooks.useUnits.mockReturnValue({
+      isLoading: false,
+      isError: false,
+      data: { data: [], meta: emptyMeta },
+      error: null,
+      refetch: vi.fn(),
+    });
+
+    renderPage();
+    fireEvent.click(screen.getByRole("button", { name: "Tạo đơn vị tính mới" }));
+    fireEvent.change(screen.getByLabelText("Tên đơn vị"), { target: { value: "Cuộn" } });
+
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(false);
+    fireEvent.click(document.querySelector('[data-modal-backdrop="true"]')!);
+    expect(confirmSpy).toHaveBeenCalledWith("Bạn có muốn hủy các thay đổi chưa lưu không?");
+    expect(screen.getByRole("heading", { name: "Tạo đơn vị tính" })).toBeTruthy();
+
+    confirmSpy.mockReturnValue(true);
+    fireEvent.click(document.querySelector('[data-modal-backdrop="true"]')!);
+    expect(screen.queryByRole("heading", { name: "Tạo đơn vị tính" })).toBeNull();
+    confirmSpy.mockRestore();
+  });
+
+  it("opens detail and continues into the edit flow", async () => {
+    hooks.update.mutateAsync.mockResolvedValue({ ...unit, name: "Mét vải" });
+    hooks.useUnits.mockReturnValue({
+      isLoading: false,
+      isError: false,
+      data: { data: [unit], meta: metaFor([unit]) },
+      error: null,
+      refetch: vi.fn(),
+    });
+
+    renderPage();
+    fireEvent.click(screen.getByRole("button", { name: unit.name }));
+    expect(screen.getByRole("heading", { name: "Chi tiết đơn vị tính" })).toBeTruthy();
+    const detailDialog = within(screen.getByRole("dialog"));
+    expect(detailDialog.getByText(unit.name)).toBeTruthy();
+    fireEvent.click(detailDialog.getByRole("button", { name: "Chỉnh sửa" }));
+    expect(screen.getByRole("heading", { name: "Chỉnh sửa đơn vị tính" })).toBeTruthy();
+
+    fireEvent.change(screen.getByLabelText("Tên đơn vị"), { target: { value: "Mét vải" } });
+    fireEvent.click(screen.getByRole("button", { name: "Lưu đơn vị tính" }));
+
+    await waitFor(() => {
+      expect(hooks.update.mutateAsync).toHaveBeenCalledWith({
+        id: unit.id,
+        input: { name: "Mét vải" },
+      });
+    });
+  });
+
   it("deactivates a unit without a confirmation dialog", async () => {
     hooks.updateStatus.mutateAsync.mockResolvedValue({ ...unit, status: "inactive" });
     hooks.useUnits.mockReturnValue({
       isLoading: false,
       isError: false,
-      data: [unit],
+      data: { data: [unit], meta: metaFor([unit]) },
       error: null,
       refetch: vi.fn(),
     });
@@ -157,7 +216,7 @@ describe("UnitListPage", () => {
     hooks.useUnits.mockReturnValue({
       isLoading: false,
       isError: false,
-      data: [unit],
+      data: { data: [unit], meta: metaFor([unit]) },
       error: null,
       refetch: vi.fn(),
     });
@@ -177,7 +236,7 @@ describe("UnitListPage", () => {
     hooks.useUnits.mockReturnValue({
       isLoading: false,
       isError: false,
-      data: [],
+      data: { data: [], meta: emptyMeta },
       error: null,
       refetch: vi.fn(),
     });
@@ -190,11 +249,12 @@ describe("UnitListPage", () => {
     expect(hooks.update.reset).toHaveBeenCalled();
   });
 
-  it("searches and filters the unit list", () => {
+  it("sends search text and status filters to the backend query", () => {
+    const units = [unit, { ...unit, id: "second-unit", name: "Cuộn", status: "inactive" as const }];
     hooks.useUnits.mockReturnValue({
       isLoading: false,
       isError: false,
-      data: [unit, { ...unit, id: "second-unit", name: "Cuộn", status: "inactive" as const }],
+      data: { data: units, meta: metaFor(units) },
       error: null,
       refetch: vi.fn(),
     });
@@ -204,13 +264,11 @@ describe("UnitListPage", () => {
     fireEvent.change(screen.getByLabelText("Tìm kiếm đơn vị tính"), {
       target: { value: "Cuộn" },
     });
-    expect(screen.getByText("Cuộn")).toBeTruthy();
-    expect(screen.queryByText("Mét")).toBeNull();
+    expect(hooks.useUnits).toHaveBeenLastCalledWith({ search: "Cuộn", page: 1, limit: 10 });
 
     fireEvent.change(screen.getByLabelText("Tìm kiếm đơn vị tính"), { target: { value: "" } });
     const filterGroup = screen.getByRole("group", { name: "Lọc theo trạng thái" });
     fireEvent.click(within(filterGroup).getByRole("button", { name: "Đã tắt" }));
-    expect(screen.getByText("Cuộn")).toBeTruthy();
-    expect(screen.queryByText("Mét")).toBeNull();
+    expect(hooks.useUnits).toHaveBeenLastCalledWith({ status: "inactive", page: 1, limit: 10 });
   });
 });

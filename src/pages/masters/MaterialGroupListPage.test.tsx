@@ -33,6 +33,12 @@ function renderPage() {
   );
 }
 
+const emptyMeta = { total: 0, page: 1, limit: 10, totalPages: 1 };
+
+function metaFor(items: unknown[], page = 1) {
+  return { total: items.length, page, limit: 10, totalPages: Math.max(1, Math.ceil(items.length / 10)) };
+}
+
 describe("MaterialGroupListPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -75,7 +81,7 @@ describe("MaterialGroupListPage", () => {
     hooks.useMaterialGroups.mockReturnValue({
       isLoading: false,
       isError: false,
-      data: [],
+      data: { data: [], meta: emptyMeta },
       error: null,
       refetch: vi.fn(),
     });
@@ -93,7 +99,7 @@ describe("MaterialGroupListPage", () => {
     hooks.useMaterialGroups.mockReturnValue({
       isLoading: false,
       isError: false,
-      data: [],
+      data: { data: [], meta: emptyMeta },
       error: null,
       refetch: vi.fn(),
     });
@@ -110,6 +116,30 @@ describe("MaterialGroupListPage", () => {
     });
   });
 
+  it("warns via native confirm before closing the form on outside click when dirty", () => {
+    hooks.useMaterialGroups.mockReturnValue({
+      isLoading: false,
+      isError: false,
+      data: { data: [], meta: emptyMeta },
+      error: null,
+      refetch: vi.fn(),
+    });
+
+    renderPage();
+    fireEvent.click(screen.getByRole("button", { name: "Tạo nhóm vật tư mới" }));
+    fireEvent.change(screen.getByLabelText("Tên nhóm"), { target: { value: "Accessories" } });
+
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(false);
+    fireEvent.click(document.querySelector('[data-modal-backdrop="true"]')!);
+    expect(confirmSpy).toHaveBeenCalledWith("Bạn có muốn hủy các thay đổi chưa lưu không?");
+    expect(screen.getByRole("heading", { name: "Tạo nhóm vật tư" })).toBeTruthy();
+
+    confirmSpy.mockReturnValue(true);
+    fireEvent.click(document.querySelector('[data-modal-backdrop="true"]')!);
+    expect(screen.queryByRole("heading", { name: "Tạo nhóm vật tư" })).toBeNull();
+    confirmSpy.mockRestore();
+  });
+
   it("edits a material group from the list screen", async () => {
     hooks.update.mutateAsync.mockResolvedValue({
       ...materialGroup,
@@ -118,13 +148,42 @@ describe("MaterialGroupListPage", () => {
     hooks.useMaterialGroups.mockReturnValue({
       isLoading: false,
       isError: false,
-      data: [materialGroup],
+      data: { data: [materialGroup], meta: metaFor([materialGroup]) },
       error: null,
       refetch: vi.fn(),
     });
 
     renderPage();
     fireEvent.click(screen.getByRole("button", { name: "Sửa" }));
+    fireEvent.change(screen.getByLabelText("Tên nhóm"), { target: { value: "Main fabric" } });
+    fireEvent.click(screen.getByRole("button", { name: "Lưu nhóm vật tư" }));
+
+    await waitFor(() => {
+      expect(hooks.update.mutateAsync).toHaveBeenCalledWith({
+        id: materialGroup.id,
+        input: { name: "Main fabric" },
+      });
+    });
+  });
+
+  it("opens detail and continues into the edit flow", async () => {
+    hooks.update.mutateAsync.mockResolvedValue({ ...materialGroup, name: "Main fabric" });
+    hooks.useMaterialGroups.mockReturnValue({
+      isLoading: false,
+      isError: false,
+      data: { data: [materialGroup], meta: metaFor([materialGroup]) },
+      error: null,
+      refetch: vi.fn(),
+    });
+
+    renderPage();
+    fireEvent.click(screen.getByRole("button", { name: materialGroup.name }));
+    expect(screen.getByRole("heading", { name: "Chi tiết nhóm vật tư" })).toBeTruthy();
+    const detailDialog = within(screen.getByRole("dialog"));
+    expect(detailDialog.getByText(materialGroup.name)).toBeTruthy();
+    fireEvent.click(detailDialog.getByRole("button", { name: "Chỉnh sửa" }));
+    expect(screen.getByRole("heading", { name: "Chỉnh sửa nhóm vật tư" })).toBeTruthy();
+
     fireEvent.change(screen.getByLabelText("Tên nhóm"), { target: { value: "Main fabric" } });
     fireEvent.click(screen.getByRole("button", { name: "Lưu nhóm vật tư" }));
 
@@ -144,7 +203,7 @@ describe("MaterialGroupListPage", () => {
     hooks.useMaterialGroups.mockReturnValue({
       isLoading: false,
       isError: false,
-      data: [materialGroup],
+      data: { data: [materialGroup], meta: metaFor([materialGroup]) },
       error: null,
       refetch: vi.fn(),
     });
@@ -166,7 +225,7 @@ describe("MaterialGroupListPage", () => {
     hooks.useMaterialGroups.mockReturnValue({
       isLoading: false,
       isError: false,
-      data: [materialGroup],
+      data: { data: [materialGroup], meta: metaFor([materialGroup]) },
       error: null,
       refetch: vi.fn(),
     });
@@ -182,49 +241,33 @@ describe("MaterialGroupListPage", () => {
     });
   });
 
-  it("ưu tiên danh sách và tìm kiếm nhóm vật tư theo tên", () => {
+  it("sends search text to the backend query", () => {
     hooks.useMaterialGroups.mockReturnValue({
       isLoading: false,
       isError: false,
-      data: [
-        materialGroup,
-        {
-          ...materialGroup,
-          id: "24b7062b-24d7-411d-8466-f3f2bbdd735e",
-          name: "Phụ liệu",
-          status: "inactive",
-        },
-      ],
+      data: { data: [materialGroup], meta: metaFor([materialGroup]) },
       error: null,
       refetch: vi.fn(),
     });
 
     renderPage();
 
-    expect(screen.queryByLabelText("Tổng quan nhóm vật tư")).toBeNull();
-    expect(screen.queryByRole("heading", { name: "Danh sách nhóm vật tư" })).toBeNull();
-
     fireEvent.change(screen.getByLabelText("Tìm kiếm nhóm vật tư"), {
       target: { value: "Phụ" },
     });
 
-    expect(screen.getByText("Phụ liệu")).toBeTruthy();
-    expect(screen.queryByText("Fabric")).toBeNull();
+    expect(hooks.useMaterialGroups).toHaveBeenLastCalledWith({
+      search: "Phụ",
+      page: 1,
+      limit: 10,
+    });
   });
 
-  it("lọc danh sách theo trạng thái", () => {
+  it("sends the status filter to the backend query", () => {
     hooks.useMaterialGroups.mockReturnValue({
       isLoading: false,
       isError: false,
-      data: [
-        materialGroup,
-        {
-          ...materialGroup,
-          id: "24b7062b-24d7-411d-8466-f3f2bbdd735e",
-          name: "Phụ liệu",
-          status: "inactive",
-        },
-      ],
+      data: { data: [materialGroup], meta: metaFor([materialGroup]) },
       error: null,
       refetch: vi.fn(),
     });
@@ -234,15 +277,14 @@ describe("MaterialGroupListPage", () => {
     const filterGroup = screen.getByRole("group", { name: "Lọc theo trạng thái" });
     fireEvent.click(within(filterGroup).getByRole("button", { name: "Đã tắt" }));
 
-    expect(screen.getByText("Phụ liệu")).toBeTruthy();
-    expect(screen.queryByText("Fabric")).toBeNull();
-
-    fireEvent.click(within(filterGroup).getByRole("button", { name: "Tất cả" }));
-    expect(screen.getByText("Fabric")).toBeTruthy();
-    expect(screen.getByText("Phụ liệu")).toBeTruthy();
+    expect(hooks.useMaterialGroups).toHaveBeenLastCalledWith({
+      status: "inactive",
+      page: 1,
+      limit: 10,
+    });
   });
 
-  it("phân trang danh sách và quay lại trang đầu khi tìm kiếm", () => {
+  it("paginates the list using backend metadata and resets to page 1 when searching", () => {
     const materialGroups = Array.from({ length: 6 }, (_, index) => ({
       ...materialGroup,
       id: `e41a0a7d-28b1-4d78-9c26-b017f5c5f8${index}`,
@@ -251,24 +293,22 @@ describe("MaterialGroupListPage", () => {
     hooks.useMaterialGroups.mockReturnValue({
       isLoading: false,
       isError: false,
-      data: materialGroups,
+      data: { data: materialGroups, meta: { total: 6, page: 1, limit: 10, totalPages: 1 } },
       error: null,
       refetch: vi.fn(),
     });
 
     renderPage();
 
-    expect(screen.getByText("Hiển thị 1–5 trên 6 nhóm vật tư")).toBeTruthy();
-    expect(screen.queryByText("Nhóm vật tư 6")).toBeNull();
-
-    fireEvent.click(screen.getByRole("button", { name: "Trang sau" }));
-    expect(screen.getByText("Nhóm vật tư 6")).toBeTruthy();
-    expect(screen.queryByText("Nhóm vật tư 1")).toBeNull();
+    expect(screen.getByText("Hiển thị 1–6 trên 6 nhóm vật tư")).toBeTruthy();
 
     fireEvent.change(screen.getByLabelText("Tìm kiếm nhóm vật tư"), {
       target: { value: "Nhóm vật tư 1" },
     });
-    expect(screen.getByText("Nhóm vật tư 1")).toBeTruthy();
-    expect(screen.getByText("Hiển thị 1–1 trên 1 nhóm vật tư")).toBeTruthy();
+    expect(hooks.useMaterialGroups).toHaveBeenLastCalledWith({
+      search: "Nhóm vật tư 1",
+      page: 1,
+      limit: 10,
+    });
   });
 });

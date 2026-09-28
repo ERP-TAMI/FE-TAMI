@@ -27,9 +27,13 @@ describe("workshopApi", () => {
   beforeEach(() => vi.clearAllMocks());
 
   it("requests only active workshops for production-plan selectors", async () => {
-    vi.mocked(apiClient.get).mockResolvedValue({ data: [workshop] });
+    vi.mocked(apiClient.get).mockResolvedValue({
+      data: { data: [workshop], meta: { total: 1, page: 1, limit: 10, totalPages: 1 } },
+    });
 
-    await expect(workshopApi.list({ status: "active" })).resolves.toEqual([workshop]);
+    await expect(workshopApi.list({ status: "active" })).resolves.toMatchObject({
+      data: [workshop],
+    });
 
     expect(apiClient.get).toHaveBeenCalledWith("/masters/workshops", {
       params: { status: "active" },
@@ -37,7 +41,9 @@ describe("workshopApi", () => {
   });
 
   it("sends search and status filters and validates the response", async () => {
-    vi.mocked(apiClient.get).mockResolvedValue({ data: [workshop] });
+    vi.mocked(apiClient.get).mockResolvedValue({
+      data: { data: [workshop], meta: { total: 1, page: 1, limit: 10, totalPages: 1 } },
+    });
 
     await workshopApi.list({ search: "may", status: "active" });
 
@@ -49,7 +55,12 @@ describe("workshopApi", () => {
   it.each([-1, 2_147_483_648])(
     "rejects an invalid capacity response at the API boundary",
     async (capacity) => {
-      vi.mocked(apiClient.get).mockResolvedValue({ data: [{ ...workshop, capacity }] });
+      vi.mocked(apiClient.get).mockResolvedValue({
+        data: {
+          data: [{ ...workshop, capacity }],
+          meta: { total: 1, page: 1, limit: 10, totalPages: 1 },
+        },
+      });
 
       await expect(workshopApi.list()).rejects.toThrow();
     },

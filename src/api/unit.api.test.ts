@@ -9,16 +9,21 @@ describe("unitApi", () => {
 
   it("loads only active units for Material selectors", async () => {
     vi.mocked(apiClient.get).mockResolvedValue({
-      data: [
-        {
-          id: "0a989bfe-fb34-489c-b5fe-30f74a1dc09d",
-          name: "Mét",
-          status: "active",
-        },
-      ],
+      data: {
+        data: [
+          {
+            id: "0a989bfe-fb34-489c-b5fe-30f74a1dc09d",
+            name: "Mét",
+            status: "active",
+          },
+        ],
+        meta: { total: 1, page: 1, limit: 10, totalPages: 1 },
+      },
     });
 
-    await expect(unitApi.list("active")).resolves.toHaveLength(1);
+    await expect(unitApi.list({ status: "active" })).resolves.toMatchObject({
+      data: [expect.objectContaining({ name: "Mét" })],
+    });
     expect(apiClient.get).toHaveBeenCalledWith("/masters/units", {
       params: { status: "active" },
     });

@@ -10,3 +10,13 @@ export const sizeChartResponseSchema = z.object({
 });
 
 export const sizeChartListSchema = z.array(sizeChartResponseSchema);
+
+export const sizeChartListResponseSchema = z.object({
+  data: sizeChartListSchema,
+  meta: z.object({
+    total: z.number().int().nonnegative(),
+    page: z.number().int().positive(),
+    limit: z.number().int().positive(),
+    totalPages: z.number().int().positive(),
+  }),
+});

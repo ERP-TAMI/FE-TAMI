@@ -3,7 +3,15 @@ import { useBlocker, type BlockerFunction } from "react-router-dom";
 import { WorkshopForm } from "@/components/features/workshops/WorkshopForm";
 import { WorkshopTable } from "@/components/features/workshops/WorkshopTable";
 import { WorkshopToolbar } from "@/components/features/workshops/WorkshopToolbar";
-import { Alert, Button, ConfirmDialog, PageHeader, Pagination, Toast } from "@/components/shared";
+import {
+  Alert,
+  Button,
+  ConfirmDialog,
+  DetailModal,
+  PageHeader,
+  Pagination,
+  Toast,
+} from "@/components/shared";
 import PageMeta from "@/components/shared/PageMeta";
 import {
   useCreateWorkshop,
@@ -12,7 +20,6 @@ import {
   useUpdateWorkshopStatus,
   useWorkshops,
 } from "@/hooks/useWorkshops";
-import { useWorkshopListView } from "@/hooks/useWorkshopListView";
 import { useToast } from "@/hooks/useToast";
 import { PlusIcon } from "@/icons";
 import { getApiError } from "@/lib/apiError";
@@ -20,24 +27,29 @@ import type {
   CreateWorkshopInput,
   UpdateWorkshopInput,
   Workshop,
+  WorkshopQuery,
   WorkshopStatus,
 } from "@/types/workshop";
 
 const emptyWorkshops: Workshop[] = [];
+const capacityFormatter = new Intl.NumberFormat("vi-VN");
+const pageSize = 10;
 
 export default function WorkshopListPage() {
+  const [filters, setFilters] = useState<WorkshopQuery>({});
+  const [page, setPage] = useState(1);
   const [editing, setEditing] = useState<Workshop | "create" | undefined>();
+  const [viewing, setViewing] = useState<Workshop>();
   const [deactivating, setDeactivating] = useState<Workshop>();
   const [deleting, setDeleting] = useState<Workshop>();
   const [isFormDirty, setIsFormDirty] = useState(false);
   const { toast, showToast, hideToast } = useToast();
-  const list = useWorkshops();
+  const list = useWorkshops({ ...filters, page, limit: pageSize });
   const create = useCreateWorkshop();
   const update = useUpdateWorkshop();
   const updateStatus = useUpdateWorkshopStatus();
   const remove = useDeleteWorkshop();
-  const workshops = list.data ?? emptyWorkshops;
-  const listView = useWorkshopListView(workshops);
+  const workshops = list.data?.data ?? emptyWorkshops;
   const shouldBlockNavigation = useCallback<BlockerFunction>(
     ({ currentLocation, nextLocation }) =>
       isFormDirty && currentLocation.pathname !== nextLocation.pathname,
@@ -54,6 +66,16 @@ export default function WorkshopListPage() {
     window.addEventListener("beforeunload", warnBeforeUnload);
     return () => window.removeEventListener("beforeunload", warnBeforeUnload);
   }, [isFormDirty]);
+
+  const changeFilters = (next: Partial<WorkshopQuery>) => {
+    setFilters((current) => {
+      const merged = { ...current, ...next };
+      return Object.fromEntries(
+        Object.entries(merged).filter(([, value]) => value),
+      ) as WorkshopQuery;
+    });
+    setPage(1);
+  };
 
   const closeForm = () => {
     setEditing(undefined);
@@ -131,27 +153,21 @@ export default function WorkshopListPage() {
             { label: "Xưởng sản xuất" },
           ]}
           title="Xưởng sản xuất"
-          stats={[
-            { label: "xưởng", value: workshops.length },
-            {
-              label: "đang sử dụng",
-              value: workshops.filter((workshop) => workshop.status === "active").length,
-              tone: "success",
-            },
-          ]}
-          action={{
-            label: "Tạo xưởng sản xuất",
-            onClick: () => openForm("create"),
-            icon: <PlusIcon className="h-4 w-4" aria-hidden="true" />,
-          }}
+          stats={[{ label: "xưởng", value: list.data?.meta.total ?? 0 }]}
         />
 
         <div className="shadow-theme-xs overflow-visible rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
           <WorkshopToolbar
-            search={listView.search}
-            status={listView.status}
-            onSearchChange={listView.setSearch}
-            onStatusChange={listView.setStatus}
+            search={filters.search ?? ""}
+            status={filters.status ?? ""}
+            action={
+              <Button onClick={() => openForm("create")}>
+                <PlusIcon className="h-4 w-4" aria-hidden="true" />
+                Tạo xưởng sản xuất
+              </Button>
+            }
+            onSearchChange={(search) => changeFilters({ search })}
+            onStatusChange={(status) => changeFilters({ status: status || undefined })}
           />
 
           {list.isLoading && (
@@ -159,6 +175,7 @@ export default function WorkshopListPage() {
               <WorkshopTable
                 workshops={emptyWorkshops}
                 loading
+                onView={() => {}}
                 onEdit={() => {}}
                 onDelete={() => {}}
                 onToggleStatus={() => {}}
@@ -181,25 +198,44 @@ export default function WorkshopListPage() {
           {list.data && (
             <>
               <WorkshopTable
-                workshops={listView.paginatedWorkshops}
+                workshops={workshops}
                 togglingId={updateStatus.isPending ? updateStatus.variables?.id : undefined}
+                onView={setViewing}
                 onEdit={openForm}
                 onDelete={(workshop) => setDeleting(workshop)}
                 onToggleStatus={toggleStatus}
               />
               <Pagination
-                page={listView.page}
-                pageSize={listView.pageSize}
-                totalItems={listView.totalItems}
-                totalPages={listView.totalPages}
+                page={page}
+                pageSize={list.data.meta.limit}
+                totalItems={list.data.meta.total}
+                totalPages={list.data.meta.totalPages}
                 itemLabel="xưởng"
-                onPageChange={listView.setPage}
+                onPageChange={setPage}
               />
             </>
           )}
         </div>
       </section>
 
+      {viewing && (
+        <DetailModal
+          title="Chi tiết xưởng sản xuất"
+          fields={[
+            ["Mã xưởng", viewing.workshopCode],
+            ["Tên xưởng", viewing.name],
+            ["Quản lý", viewing.manager || "—"],
+            ["Vị trí", viewing.location || "—"],
+            ["Công suất", capacityFormatter.format(viewing.capacity)],
+            ["Trạng thái", viewing.status === "active" ? "Đang sử dụng" : "Đã tắt"],
+          ]}
+          onClose={() => setViewing(undefined)}
+          onEdit={() => {
+            openForm(viewing);
+            setViewing(undefined);
+          }}
+        />
+      )}
       {editing && (
         <WorkshopForm
           mode={editing === "create" ? "create" : "edit"}

@@ -110,6 +110,7 @@ export function SizeChartForm({
         open={!discardDialogOpen}
         title={mode === "create" ? "Tạo bảng Size" : "Chỉnh sửa bảng Size"}
         closeLabel="Đóng biểu mẫu"
+        closeOnClickOutside
         onClose={requestClose}
         footer={
           <>

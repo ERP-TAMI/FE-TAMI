@@ -23,6 +23,7 @@ describe("WorkshopTable", () => {
     render(
       <WorkshopTable
         workshops={[workshop]}
+        onView={vi.fn()}
         onEdit={onEdit}
         onDelete={onDelete}
         onToggleStatus={vi.fn()}
@@ -41,11 +42,32 @@ describe("WorkshopTable", () => {
     expect(onDelete).toHaveBeenCalledWith(workshop);
   });
 
+  it("opens the detail view from either the code or the name", () => {
+    const onView = vi.fn();
+    render(
+      <WorkshopTable
+        workshops={[workshop]}
+        onView={onView}
+        onEdit={vi.fn()}
+        onDelete={vi.fn()}
+        onToggleStatus={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: workshop.workshopCode }));
+    expect(onView).toHaveBeenCalledWith(workshop);
+
+    onView.mockClear();
+    fireEvent.click(screen.getByRole("button", { name: workshop.name }));
+    expect(onView).toHaveBeenCalledWith(workshop);
+  });
+
   it("provides an accessible status action", () => {
     const onToggleStatus = vi.fn();
     render(
       <WorkshopTable
         workshops={[workshop]}
+        onView={vi.fn()}
         onEdit={vi.fn()}
         onDelete={vi.fn()}
         onToggleStatus={onToggleStatus}

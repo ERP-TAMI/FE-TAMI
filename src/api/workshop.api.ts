@@ -3,10 +3,11 @@ import type {
   CreateWorkshopInput,
   UpdateWorkshopInput,
   Workshop,
+  WorkshopListResponse,
   WorkshopQuery,
   WorkshopStatus,
 } from "@/types/workshop";
-import { workshopListSchema, workshopResponseSchema } from "./workshop.schema";
+import { workshopListResponseSchema, workshopResponseSchema } from "./workshop.schema";
 
 const resource = "/masters/workshops";
 
@@ -15,16 +16,18 @@ function queryParams(query: WorkshopQuery) {
   const params = {
     ...(search ? { search } : {}),
     ...(query.status ? { status: query.status } : {}),
+    ...(query.page ? { page: query.page } : {}),
+    ...(query.limit ? { limit: query.limit } : {}),
   };
   return Object.keys(params).length > 0 ? params : undefined;
 }
 
 export const workshopApi = {
-  async list(query: WorkshopQuery = {}): Promise<Workshop[]> {
-    const response = await apiClient.get<Workshop[]>(resource, {
+  async list(query: WorkshopQuery = {}): Promise<WorkshopListResponse> {
+    const response = await apiClient.get<WorkshopListResponse>(resource, {
       params: queryParams(query),
     });
-    return workshopListSchema.parse(response.data);
+    return workshopListResponseSchema.parse(response.data);
   },
   async detail(id: string): Promise<Workshop> {
     const response = await apiClient.get<Workshop>(`${resource}/${id}`);

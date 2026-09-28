@@ -177,6 +177,7 @@ export function MaterialForm({
         open={!discardDialogOpen && !newUnitDraft}
         title={mode === "create" ? "Tạo vật tư" : "Chỉnh sửa vật tư"}
         closeLabel="Đóng biểu mẫu"
+        closeOnClickOutside
         onClose={requestClose}
         footer={
           <>

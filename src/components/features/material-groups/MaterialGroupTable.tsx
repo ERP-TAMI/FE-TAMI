@@ -6,6 +6,7 @@ type MaterialGroupTableProps = {
   materialGroups: MaterialGroup[];
   togglingId?: string;
   loading?: boolean;
+  onView: (materialGroup: MaterialGroup) => void;
   onEdit: (materialGroup: MaterialGroup) => void;
   onToggleStatus: (materialGroup: MaterialGroup) => void;
   onDelete: (materialGroup: MaterialGroup) => void;
@@ -15,6 +16,7 @@ export function MaterialGroupTable({
   materialGroups,
   togglingId,
   loading = false,
+  onView,
   onEdit,
   onToggleStatus,
   onDelete,
@@ -25,12 +27,14 @@ export function MaterialGroupTable({
       header: "Tên nhóm",
       width: "w-[45%]",
       render: (group) => (
-        <span
+        <button
+          type="button"
+          onClick={() => onView(group)}
           title={group.name}
-          className="block max-w-full truncate font-medium text-gray-900 dark:text-white"
+          className="hover:text-brand-600 dark:hover:text-brand-400 block max-w-full truncate text-left font-medium text-gray-900 dark:text-white"
         >
           {group.name}
-        </span>
+        </button>
       ),
     },
     {
@@ -46,9 +50,7 @@ export function MaterialGroupTable({
               onClick={() => onToggleStatus(group)}
               disabled={isToggling}
               className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                group.status === "active"
-                  ? "bg-success-500"
-                  : "bg-gray-300 dark:bg-gray-700"
+                group.status === "active" ? "bg-success-500" : "bg-gray-300 dark:bg-gray-700"
               } ${isToggling ? "opacity-50" : ""}`}
               title={
                 group.status === "active" ? "Đang sử dụng (Bấm để tắt)" : "Đã tắt (Bấm để bật)"

@@ -1,6 +1,6 @@
 import apiClient from "@/lib/apiClient";
-import type { MaterialStatus, Unit } from "@/types/material";
-import { unitListSchema, unitResponseSchema } from "./material.schema";
+import type { MaterialStatus, Unit, UnitListResponse, UnitQuery } from "@/types/material";
+import { unitListResponseSchema, unitResponseSchema } from "./material.schema";
 
 const resource = "/masters/units";
 
@@ -8,12 +8,23 @@ export type UnitInput = {
   name: string;
 };
 
+function queryParams(query: UnitQuery) {
+  const search = query.search?.trim();
+  const params = {
+    ...(search ? { search } : {}),
+    ...(query.status ? { status: query.status } : {}),
+    ...(query.page ? { page: query.page } : {}),
+    ...(query.limit ? { limit: query.limit } : {}),
+  };
+  return Object.keys(params).length > 0 ? params : undefined;
+}
+
 export const unitApi = {
-  async list(status?: MaterialStatus): Promise<Unit[]> {
-    const response = await apiClient.get<Unit[]>(resource, {
-      params: status ? { status } : undefined,
+  async list(query: UnitQuery = {}): Promise<UnitListResponse> {
+    const response = await apiClient.get<UnitListResponse>(resource, {
+      params: queryParams(query),
     });
-    return unitListSchema.parse(response.data);
+    return unitListResponseSchema.parse(response.data);
   },
   async create(input: UnitInput): Promise<Unit> {
     const response = await apiClient.post<Unit>(resource, input);

@@ -65,6 +65,8 @@ function renderPage(initialEntries = ["/masters/workshops"]) {
   return { router, ...render(<RouterProvider router={router} />) };
 }
 
+const meta = { total: workshops.length, page: 1, limit: 10, totalPages: 1 };
+
 describe("WorkshopListPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -73,7 +75,7 @@ describe("WorkshopListPage", () => {
     hooks.useWorkshops.mockReturnValue({
       isLoading: false,
       isError: false,
-      data: workshops,
+      data: { data: workshops, meta },
       error: null,
       refetch: vi.fn(),
     });
@@ -109,22 +111,28 @@ describe("WorkshopListPage", () => {
     expect(refetch).toHaveBeenCalledOnce();
   });
 
-  it("searches by code, name or manager and filters by status", () => {
+  it("sends search text and status filters to the backend query", () => {
     renderPage();
 
     fireEvent.change(screen.getByLabelText("Tìm kiếm xưởng sản xuất"), {
       target: { value: "trần" },
     });
-    expect(screen.getByText("X-02")).toBeTruthy();
-    expect(screen.queryByText("X-01")).toBeNull();
+    expect(hooks.useWorkshops).toHaveBeenLastCalledWith({
+      search: "trần",
+      page: 1,
+      limit: 10,
+    });
 
     fireEvent.change(screen.getByLabelText("Tìm kiếm xưởng sản xuất"), {
       target: { value: "" },
     });
-    const filters = screen.getByRole("group", { name: "Lọc theo trạng thái" });
-    fireEvent.click(within(filters).getByRole("button", { name: "Đang sử dụng" }));
-    expect(screen.getByText("X-01")).toBeTruthy();
-    expect(screen.queryByText("X-02")).toBeNull();
+    const filterGroup = screen.getByRole("group", { name: "Lọc theo trạng thái" });
+    fireEvent.click(within(filterGroup).getByRole("button", { name: "Đang sử dụng" }));
+    expect(hooks.useWorkshops).toHaveBeenLastCalledWith({
+      status: "active",
+      page: 1,
+      limit: 10,
+    });
   });
 
   it("creates a workshop from the list screen", async () => {
@@ -149,6 +157,44 @@ describe("WorkshopListPage", () => {
       });
       expect(router.state.location.pathname).toBe("/masters/workshops");
       expect(screen.queryByRole("dialog")).toBeNull();
+    });
+  });
+
+  it("warns before closing the create form on outside click when dirty", () => {
+    renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "Tạo xưởng sản xuất" }));
+    fireEvent.click(document.querySelector('[data-modal-backdrop="true"]')!);
+    expect(screen.queryByRole("heading", { name: "Tạo xưởng sản xuất" })).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Tạo xưởng sản xuất" }));
+    fireEvent.change(screen.getByLabelText("Tên xưởng"), { target: { value: "Xưởng mới" } });
+    fireEvent.click(document.querySelector('[data-modal-backdrop="true"]')!);
+    expect(screen.getByRole("heading", { name: "Hủy các thay đổi?" })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Bỏ thay đổi" }));
+    expect(screen.queryByRole("heading", { name: "Hủy các thay đổi?" })).toBeNull();
+  });
+
+  it("opens detail and continues into the edit flow", async () => {
+    hooks.update.mutateAsync.mockResolvedValue({ ...workshops[0], name: "Xưởng May 1 (mới)" });
+    renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: workshops[0].workshopCode }));
+    expect(screen.getByRole("heading", { name: "Chi tiết xưởng sản xuất" })).toBeTruthy();
+    const detailDialog = within(screen.getByRole("dialog"));
+    expect(detailDialog.getByText(workshops[0].name)).toBeTruthy();
+    expect(detailDialog.getByText(workshops[0].manager!)).toBeTruthy();
+    fireEvent.click(detailDialog.getByRole("button", { name: "Chỉnh sửa" }));
+    expect(screen.getByRole("heading", { name: "Chỉnh sửa xưởng sản xuất" })).toBeTruthy();
+
+    fireEvent.change(screen.getByLabelText("Tên xưởng"), {
+      target: { value: "Xưởng May 1 (mới)" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Lưu xưởng" }));
+
+    await waitFor(() => {
+      expect(hooks.update.mutateAsync).toHaveBeenCalled();
     });
   });
 

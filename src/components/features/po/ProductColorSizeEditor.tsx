@@ -42,10 +42,7 @@ export function ProductColorSizeEditor({
   showValidationErrors = false,
 }: ProductColorSizeEditorProps) {
   const { data: sizeChartsData } = useActiveSizeCharts();
-  const sizeCharts: SizeChart[] = useMemo(
-    () => (Array.isArray(sizeChartsData) ? sizeChartsData : []),
-    [sizeChartsData],
-  );
+  const sizeCharts: SizeChart[] = useMemo(() => sizeChartsData?.data ?? [], [sizeChartsData]);
 
   const [newSizeNames, setNewSizeNames] = useState<Record<string, string>>({});
   const [addingSizeForColor, setAddingSizeForColor] = useState<string | null>(null);
