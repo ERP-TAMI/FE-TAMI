@@ -8,6 +8,7 @@ export type PaginationProps = {
   totalPages: number;
   itemLabel: string;
   onPageChange: (page: number) => void;
+  disabled?: boolean;
   showSummary?: boolean;
   className?: string;
 };
@@ -35,6 +36,7 @@ export function Pagination({
   totalPages,
   itemLabel,
   onPageChange,
+  disabled = false,
   showSummary = true,
   className,
 }: PaginationProps) {
@@ -59,13 +61,15 @@ export function Pagination({
 
       <nav
         aria-label={`Phân trang ${itemLabel}`}
+        aria-busy={disabled || undefined}
         className="flex items-center justify-between gap-2 sm:justify-end"
       >
         <Button
           variant="outline"
           size="sm"
+          className="cursor-pointer"
           aria-label="Trang trước"
-          disabled={page === 1}
+          disabled={disabled || page === 1}
           onClick={() => onPageChange(page - 1)}
         >
           <AngleLeftIcon className="h-4 w-4" aria-hidden="true" />
@@ -84,8 +88,9 @@ export function Pagination({
                 type="button"
                 aria-label={`Trang ${item}`}
                 aria-current={page === item ? "page" : undefined}
+                disabled={disabled}
                 onClick={() => onPageChange(item)}
-                className={`text-theme-sm focus:ring-brand-500/20 h-9 min-w-9 rounded-lg px-2 font-medium transition focus:ring-3 focus:outline-none ${
+                className={`text-theme-sm focus:ring-brand-500/20 h-9 min-w-9 cursor-pointer rounded-lg px-2 font-medium transition focus:ring-3 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60 ${
                   page === item
                     ? "bg-brand-50 text-brand-600 dark:bg-brand-500/15 dark:text-brand-400"
                     : "text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
@@ -103,8 +108,9 @@ export function Pagination({
         <Button
           variant="outline"
           size="sm"
+          className="cursor-pointer"
           aria-label="Trang sau"
-          disabled={page === totalPages}
+          disabled={disabled || page === totalPages}
           onClick={() => onPageChange(page + 1)}
         >
           <span className="hidden sm:inline">Sau</span>

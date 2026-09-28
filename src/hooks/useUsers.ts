@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { managementDashboardKeys } from "@/api/management-dashboard.keys";
 import { userManagementApi } from "@/api/user-management.api";
 import { userManagementKeys } from "@/api/user-management.keys";
 import type { UserListParams, UserListResponse } from "@/types/user-management";
@@ -25,7 +26,11 @@ export function useCreateUser() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: UserInput) => userManagementApi.create(input),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: userManagementKeys.all }),
+    onSuccess: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: userManagementKeys.all }),
+        queryClient.invalidateQueries({ queryKey: managementDashboardKeys.summaries() }),
+      ]),
   });
 }
 
@@ -34,7 +39,11 @@ export function useUpdateUser() {
   return useMutation({
     mutationFn: ({ id, input }: { id: string; input: UpdateUserInput }) =>
       userManagementApi.update(id, input),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: userManagementKeys.all }),
+    onSuccess: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: userManagementKeys.all }),
+        queryClient.invalidateQueries({ queryKey: managementDashboardKeys.summaries() }),
+      ]),
   });
 }
 
@@ -43,7 +52,11 @@ export function useUpdateUserStatus() {
   return useMutation({
     mutationFn: ({ id, input }: { id: string; input: AccountStatusInput }) =>
       userManagementApi.updateAccountStatus(id, input),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: userManagementKeys.all }),
+    onSuccess: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: userManagementKeys.all }),
+        queryClient.invalidateQueries({ queryKey: managementDashboardKeys.summaries() }),
+      ]),
   });
 }
 
@@ -51,7 +64,11 @@ export function useResetUserPassword() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => userManagementApi.resetPassword(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: userManagementKeys.all }),
+    onSuccess: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: userManagementKeys.all }),
+        queryClient.invalidateQueries({ queryKey: managementDashboardKeys.summaries() }),
+      ]),
   });
 }
 

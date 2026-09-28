@@ -7,6 +7,7 @@ import {
   useBulkSaveStyleOperationSteps,
 } from "@/hooks/useStyleOperationSteps";
 import { useUploadImage } from "@/hooks/useUploadImage";
+import { useUploadStore } from "@/hooks/useUploadStore";
 import { useToast } from "@/hooks/useToast";
 import { Toast } from "@/components/shared";
 import { StyleFormModal } from "@/components/features/styles/StyleFormModal";
@@ -131,6 +132,7 @@ export default function StyleDetailPage() {
   const update = useUpdateStyle();
   const statusUpdate = useUpdateStyle();
   const uploadImage = useUploadImage();
+  const { startUpload, tickUpload, finishUpload } = useUploadStore();
 
   const stepsQuery = useStyleOperationSteps(id);
   const bulkSaveSteps = useBulkSaveStyleOperationSteps(id || "");
@@ -149,11 +151,20 @@ export default function StyleDetailPage() {
   const handleUploadAndSaveImage = useCallback(
     async (file: File) => {
       if (!style) return;
+      // Guard against a second paste/drop/file-select firing while the
+      // first upload is still in flight — without this, two concurrent
+      // presign+save calls race and whichever resolves last silently wins.
+      if (uploadImage.isPending || update.isPending) return;
       const validationError = validateImageFile(file);
       if (validationError) {
         showToast(validationError, "error");
         return;
       }
+      // Tracked in the global upload store (rendered from AppLayout, not
+      // this page) so progress/completion stays visible even if the user
+      // navigates away before the upload settles — local component state
+      // (setImageUrl/showToast below) silently no-ops once unmounted.
+      startUpload(1, style.styleName || "Ảnh mẫu Fit");
       try {
         const res = await uploadImage.mutateAsync({
           entityType: "style",
@@ -169,9 +180,20 @@ export default function StyleDetailPage() {
         showToast("Đã tải và lưu ảnh mẫu Fit thành công.");
       } catch (err) {
         showToast(getApiError(err, "Tải ảnh mẫu thất bại.").message, "error");
+      } finally {
+        tickUpload(file.name);
+        finishUpload();
       }
     },
-    [style, uploadImage, update, showToast],
+    [
+      style,
+      uploadImage,
+      update,
+      showToast,
+      startUpload,
+      tickUpload,
+      finishUpload,
+    ],
   );
 
   const clearLocalImage = useCallback(async () => {
