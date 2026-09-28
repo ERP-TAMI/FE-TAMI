@@ -12,7 +12,7 @@ export function useManagementDashboardSummary(month: string) {
 
 export function useManagementPurchaseOrdersOverview(month: string, page: number, limit: number) {
   return useQuery({
-    queryKey: managementDashboardKeys.purchaseOrders(month, page, limit),
+    queryKey: managementDashboardKeys.purchaseOrdersByPage(month, page, limit),
     queryFn: ({ signal }) =>
       managementDashboardApi.getPurchaseOrdersOverview(month, page, limit, signal),
     enabled: managementDashboardMonthSchema.safeParse(month).success,

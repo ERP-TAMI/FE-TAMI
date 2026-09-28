@@ -60,6 +60,7 @@ export function useCreatePurchaseOrder() {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: PO_KEYS.lists() });
       void queryClient.invalidateQueries({ queryKey: managementDashboardKeys.summaries() });
+      void queryClient.invalidateQueries({ queryKey: managementDashboardKeys.purchaseOrders() });
     },
   });
 }
@@ -72,6 +73,7 @@ export function useUpdatePurchaseOrder() {
     onSuccess: (updated) => {
       void queryClient.invalidateQueries({ queryKey: PO_KEYS.lists() });
       void queryClient.invalidateQueries({ queryKey: managementDashboardKeys.summaries() });
+      void queryClient.invalidateQueries({ queryKey: managementDashboardKeys.purchaseOrders() });
       queryClient.setQueryData(PO_KEYS.detail(updated.id), updated);
     },
   });
@@ -84,6 +86,7 @@ export function useDeletePurchaseOrder() {
     onSuccess: (_data, id) => {
       void queryClient.invalidateQueries({ queryKey: PO_KEYS.lists() });
       void queryClient.invalidateQueries({ queryKey: managementDashboardKeys.summaries() });
+      void queryClient.invalidateQueries({ queryKey: managementDashboardKeys.purchaseOrders() });
       queryClient.removeQueries({ queryKey: PO_KEYS.detail(id) });
     },
   });
@@ -97,6 +100,7 @@ export function useUpdatePoStatus() {
     onSuccess: (updated) => {
       void queryClient.invalidateQueries({ queryKey: PO_KEYS.lists() });
       void queryClient.invalidateQueries({ queryKey: managementDashboardKeys.summaries() });
+      void queryClient.invalidateQueries({ queryKey: managementDashboardKeys.purchaseOrders() });
       queryClient.setQueryData(PO_KEYS.detail(updated.id), updated);
     },
   });

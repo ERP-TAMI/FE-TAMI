@@ -1,4 +1,4 @@
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import ManagementPoOverviewPage from "./ManagementPoOverviewPage";
 
@@ -141,5 +141,140 @@ describe("ManagementPoOverviewPage", () => {
     const row = within(table).getByRole("row", { name: /PO-PARENT-RESPONSE/ });
     expect(within(row).getByText("Trễ hạn")).toBeTruthy();
     expect(within(row).getByText("Trễ 2 ngày")).toBeTruthy();
+  });
+
+  it("resets to page one when the selected month changes from another page", () => {
+    hooks.useManagementPurchaseOrdersOverview.mockImplementation((month: string, page: number) => ({
+      data: {
+        ...overview,
+        totalPurchaseOrders: 21,
+        meta: { total: 21, page, limit: 10, totalPages: 3 },
+        month,
+      },
+      isLoading: false,
+      isFetching: false,
+      isPlaceholderData: false,
+      isError: false,
+      refetch: vi.fn(),
+    }));
+    render(<ManagementPoOverviewPage />);
+    fireEvent.click(screen.getByRole("button", { name: "Trang sau" }));
+    expect(hooks.useManagementPurchaseOrdersOverview).toHaveBeenLastCalledWith("2026-09", 2, 10);
+
+    fireEvent.change(screen.getByLabelText("Tháng xem báo cáo"), {
+      target: { value: "2026-10" },
+    });
+
+    expect(hooks.useManagementPurchaseOrdersOverview).toHaveBeenLastCalledWith("2026-10", 1, 10);
+  });
+
+  it("does not show the previous month's data while the new month is loading", () => {
+    hooks.useManagementPurchaseOrdersOverview.mockImplementation((month: string) =>
+      month === "2026-09"
+        ? {
+            data: overview,
+            isLoading: false,
+            isFetching: false,
+            isPlaceholderData: false,
+            isError: false,
+            refetch: vi.fn(),
+          }
+        : {
+            data: undefined,
+            isLoading: true,
+            isFetching: true,
+            isPlaceholderData: false,
+            isError: false,
+            refetch: vi.fn(),
+          },
+    );
+    render(<ManagementPoOverviewPage />);
+
+    fireEvent.change(screen.getByLabelText("Tháng xem báo cáo"), {
+      target: { value: "2026-10" },
+    });
+
+    expect(screen.getByRole("status", { name: /tháng 10\/2026/i })).toBeTruthy();
+    expect(screen.queryByText("PO-OVERDUE")).toBeNull();
+    expect(screen.queryByText("4", { selector: "p" })).toBeNull();
+  });
+
+  it("loads the selected page from the pagination controls", () => {
+    hooks.useManagementPurchaseOrdersOverview.mockImplementation((month: string, page: number) => ({
+      data: {
+        ...overview,
+        totalPurchaseOrders: 21,
+        meta: { total: 21, page, limit: 10, totalPages: 3 },
+        month,
+      },
+      isLoading: false,
+      isFetching: false,
+      isPlaceholderData: false,
+      isError: false,
+      refetch: vi.fn(),
+    }));
+    render(<ManagementPoOverviewPage />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Trang sau" }));
+
+    expect(hooks.useManagementPurchaseOrdersOverview).toHaveBeenLastCalledWith("2026-09", 2, 10);
+    expect(screen.getByText("Trang 2/3")).toBeTruthy();
+  });
+
+  it("shows an API error with a retry action", () => {
+    const refetch = vi.fn();
+    hooks.useManagementPurchaseOrdersOverview.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      isFetching: false,
+      isPlaceholderData: false,
+      isError: true,
+      refetch,
+    });
+    render(<ManagementPoOverviewPage />);
+
+    expect(screen.getByRole("alert").textContent).toContain("Không tải được tổng quan PO");
+    fireEvent.click(screen.getByRole("button", { name: "Thử lại" }));
+    expect(refetch).toHaveBeenCalledOnce();
+  });
+
+  it("shows a clear empty state when the selected month has no POs", () => {
+    hooks.useManagementPurchaseOrdersOverview.mockReturnValue({
+      data: {
+        ...overview,
+        totalPurchaseOrders: 0,
+        overduePurchaseOrders: 0,
+        upcomingPurchaseOrders: 0,
+        items: [],
+        meta: { total: 0, page: 1, limit: 10, totalPages: 1 },
+      },
+      isLoading: false,
+      isFetching: false,
+      isPlaceholderData: false,
+      isError: false,
+      refetch: vi.fn(),
+    });
+    render(<ManagementPoOverviewPage />);
+
+    expect(screen.getByText("Không có PO giao trong tháng 09/2026")).toBeTruthy();
+    expect(screen.queryByRole("navigation", { name: "Phân trang PO" })).toBeNull();
+  });
+
+  it("ignores a non-empty month value that does not match the month schema", () => {
+    render(<ManagementPoOverviewPage />);
+    const monthInput = screen.getByLabelText("Tháng xem báo cáo");
+    let inputValue = "2026-99";
+    Object.defineProperty(monthInput, "value", {
+      configurable: true,
+      get: () => inputValue,
+      set: (value: string) => {
+        inputValue = value;
+      },
+    });
+
+    fireEvent.change(monthInput);
+
+    expect(inputValue).toBe("2026-09");
+    expect(hooks.useManagementPurchaseOrdersOverview).toHaveBeenLastCalledWith("2026-09", 1, 10);
   });
 });

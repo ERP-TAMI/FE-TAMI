@@ -9,6 +9,7 @@ import {
 } from "@/components/features/management-dashboard/ManagementPoSummaryStatus";
 import PageMeta from "@/components/shared/PageMeta";
 import { useManagementPurchaseOrdersOverview } from "@/hooks/useManagementDashboard";
+import { managementDashboardMonthSchema } from "@/api/management-dashboard.schema";
 import type { ManagementPurchaseOrderItem } from "@/types/management-dashboard";
 import {
   getVietnamBusinessDate,
@@ -131,8 +132,9 @@ export default function ManagementPoOverviewPage() {
             value={month}
             onChange={(event) => {
               const nextMonth = event.currentTarget.value;
-              if (!nextMonth) return;
-              setMonth(nextMonth);
+              const parsedMonth = managementDashboardMonthSchema.safeParse(nextMonth);
+              if (!parsedMonth.success) return;
+              setMonth(parsedMonth.data);
               setPage(1);
             }}
             className="cursor-pointer bg-white focus-visible:ring-3 dark:bg-gray-900 dark:[color-scheme:dark]"

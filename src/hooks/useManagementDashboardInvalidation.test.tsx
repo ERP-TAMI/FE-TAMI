@@ -6,7 +6,10 @@ import { managementDashboardApi } from "@/api/management-dashboard.api";
 import { managementDashboardKeys } from "@/api/management-dashboard.keys";
 import { poApi } from "@/api/po.api";
 import { userManagementApi } from "@/api/user-management.api";
-import { useManagementDashboardSummary } from "./useManagementDashboard";
+import {
+  useManagementDashboardSummary,
+  useManagementPurchaseOrdersOverview,
+} from "./useManagementDashboard";
 import {
   useCreatePurchaseOrder,
   useUpdatePurchaseOrder,
@@ -167,6 +170,62 @@ describe("management dashboard after mutations", () => {
       await waitFor(() => expect(dashboard.result.current.data?.activeEmployees).toBe(3));
       expect(getSummary).toHaveBeenCalledTimes(2);
       dashboard.unmount();
+      mutations.unmount();
+      client.clear();
+      vi.restoreAllMocks();
+    },
+  );
+
+  it.each(cases.slice(0, 4))(
+    "invalidates purchase-order overview pages after %s",
+    async (_label, mutate, mockApi) => {
+      mockApi();
+      const client = new QueryClient({
+        defaultOptions: {
+          queries: { staleTime: 30_000, refetchOnWindowFocus: false, retry: false },
+          mutations: { retry: false },
+        },
+      });
+      const wrapper = ({ children }: PropsWithChildren) => (
+        <QueryClientProvider client={client}>{children}</QueryClientProvider>
+      );
+      const keys = [
+        managementDashboardKeys.purchaseOrdersByPage("2026-09", 1, 10),
+        managementDashboardKeys.purchaseOrdersByPage("2026-10", 2, 10),
+      ];
+      const staleOverview = {
+        month: "2026-09",
+        totalPurchaseOrders: 1,
+        overduePurchaseOrders: 0,
+        upcomingPurchaseOrders: 0,
+        items: [],
+        meta: { total: 1, page: 1, limit: 10, totalPages: 1 },
+      };
+      keys.forEach((key) =>
+        client.setQueryData<typeof staleOverview>(key, staleOverview),
+      );
+      const mutations = renderHook(useMutations, { wrapper });
+
+      await act(() => mutate(mutations.result.current));
+
+      keys.forEach((key) => expect(client.getQueryState(key)?.isInvalidated).toBe(true));
+      const refreshedOverview = {
+        month: "2026-09",
+        totalPurchaseOrders: 2,
+        overduePurchaseOrders: 0,
+        upcomingPurchaseOrders: 0,
+        items: [],
+        meta: { total: 2, page: 1, limit: 10, totalPages: 1 },
+      };
+      const getOverview = vi
+        .spyOn(managementDashboardApi, "getPurchaseOrdersOverview")
+        .mockResolvedValue(refreshedOverview);
+      const overview = renderHook(() => useManagementPurchaseOrdersOverview("2026-09", 1, 10), {
+        wrapper,
+      });
+      await waitFor(() => expect(overview.result.current.data).toEqual(refreshedOverview));
+      expect(getOverview).toHaveBeenCalledWith("2026-09", 1, 10, expect.any(AbortSignal));
+      overview.unmount();
       mutations.unmount();
       client.clear();
       vi.restoreAllMocks();
