@@ -561,6 +561,9 @@ export function useUpdateProductSampleRound() {
       void queryClient.invalidateQueries({
         queryKey: PO_KEYS.productSamples(poId, productId),
       });
+      void queryClient.invalidateQueries({
+        queryKey: PO_KEYS.productDetail(poId, productId),
+      });
     },
   });
 }
@@ -592,6 +595,9 @@ export function useUploadProductSampleImage() {
       void queryClient.invalidateQueries({
         queryKey: PO_KEYS.productSamples(poId, productId),
       });
+      void queryClient.invalidateQueries({
+        queryKey: PO_KEYS.productDetail(poId, productId),
+      });
     },
   });
 }
@@ -613,6 +619,9 @@ export function useRemoveProductSampleImage() {
     onSuccess: (_, { poId, productId }) => {
       void queryClient.invalidateQueries({
         queryKey: PO_KEYS.productSamples(poId, productId),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: PO_KEYS.productDetail(poId, productId),
       });
     },
   });

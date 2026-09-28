@@ -475,4 +475,6 @@ export interface PaginatedPoResponse {
   page: number;
   limit: number;
   totalPages: number;
+  /** Đếm theo trạng thái trên toàn bộ kết quả tìm kiếm (không chỉ trang hiện tại). */
+  statusCounts?: Record<string, number>;
 }

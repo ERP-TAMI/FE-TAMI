@@ -302,38 +302,11 @@ export default function PoProductDetailPage() {
   // Local state for document preview modal
   const [previewDocItem, setPreviewDocItem] = useState<(ProductDocumentItem & { versionId?: string }) | null>(null);
 
-  // Local state cho quản lý ảnh bảng màu sản phẩm (Tab 3: Bảng màu)
-  interface ColorPaletteItem {
-    id: string;
-    url: string;
-    name: string;
-    size: number;
-    uploadedAt: string;
-  }
-  const [paletteImages, setPaletteImages] = useState<ColorPaletteItem[]>([]);
+  // Ảnh bảng màu sản phẩm (Tab 3: Bảng màu) — lưu thật qua kho tài liệu sản
+  // phẩm dùng chung (purpose "color_card"), tái dùng nguyên luồng
+  // presign/confirm đã có sẵn cho PO Chi Tiết/TechPack/Khác thay vì local
+  // state giả (trước đây chỉ tạo blob URL tạm, F5 là mất).
   const [palettePreviewModalUrl, setPalettePreviewModalUrl] = useState<{ url: string; name: string } | null>(null);
-  const paletteFileInputRef = useRef<HTMLInputElement>(null);
-
-  const handleUploadPaletteFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const url = URL.createObjectURL(file);
-    const newImg: ColorPaletteItem = {
-      id: `palette-${Date.now()}`,
-      url,
-      name: file.name,
-      size: file.size,
-      uploadedAt: new Date().toISOString(),
-    };
-    setPaletteImages((prev) => [newImg, ...prev]);
-    showToast(`Đã tải lên ảnh bảng màu "${file.name}" thành công!`);
-    if (paletteFileInputRef.current) paletteFileInputRef.current.value = "";
-  };
-
-  const handleDeletePaletteImage = (id: string) => {
-    setPaletteImages((prev) => prev.filter((img) => img.id !== id));
-    showToast("Đã xóa ảnh bảng màu.");
-  };
 
   // Local state cho xem lịch sử tinh gọn
 
@@ -837,6 +810,8 @@ export default function PoProductDetailPage() {
   const isTechPackPurpose = (purpose?: string | null) =>
     purpose === "tech_pack" || purpose === "techpack";
 
+  const isColorCardPurpose = (purpose?: string | null) => purpose === "color_card";
+
   // Phân nhóm tài liệu đính kèm: PO Chi Tiết, TechPack, Khác
   const poDocuments = (product.documents || []).filter((d) =>
     isPoDetailPurpose(d.purpose),
@@ -844,8 +819,14 @@ export default function PoProductDetailPage() {
   const techPackDocuments = (product.documents || []).filter((d) =>
     isTechPackPurpose(d.purpose),
   );
+  const paletteDocuments = (product.documents || []).filter((d) =>
+    isColorCardPurpose(d.purpose),
+  );
   const otherDocuments = (product.documents || []).filter(
-    (d) => !isPoDetailPurpose(d.purpose) && !isTechPackPurpose(d.purpose),
+    (d) =>
+      !isPoDetailPurpose(d.purpose) &&
+      !isTechPackPurpose(d.purpose) &&
+      !isColorCardPurpose(d.purpose),
   );
 
   return (
@@ -1380,80 +1361,84 @@ export default function PoProductDetailPage() {
             {!isProductLocked && (
               <Button
                 size="sm"
-                onClick={() => paletteFileInputRef.current?.click()}
+                onClick={() => handleOpenUploadDoc("color_card")}
                 className="text-xs font-semibold shrink-0"
               >
                 <PlusIcon className="w-4 h-4 mr-1.5" />
                 Tải ảnh bảng màu lên
               </Button>
             )}
-            <input
-              ref={paletteFileInputRef}
-              type="file"
-              accept="image/*"
-              onChange={handleUploadPaletteFile}
-              className="hidden"
-            />
           </div>
 
           {/* Thư viện hình ảnh bảng màu đã tải lên */}
-          {paletteImages.length > 0 ? (
+          {paletteDocuments.length > 0 ? (
             <div className="space-y-3">
               <h4 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                <span>Hình ảnh bảng màu đã tải lên ({paletteImages.length})</span>
+                <span>Hình ảnh bảng màu đã tải lên ({paletteDocuments.length})</span>
               </h4>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                {paletteImages.map((img) => (
-                  <div
-                    key={img.id}
-                    className="group relative rounded-xl border border-gray-200 bg-white overflow-hidden shadow-xs dark:border-gray-800 dark:bg-gray-900 transition-all hover:shadow-md"
-                  >
-                    <div className="aspect-square bg-gray-50 dark:bg-gray-800 flex items-center justify-center overflow-hidden">
-                      <img
-                        src={img.url}
-                        alt={img.name}
-                        className="w-full h-full object-contain transition-transform duration-200 group-hover:scale-105"
-                      />
-                    </div>
-                    <div className="p-3 border-t border-gray-100 dark:border-gray-800">
-                      <p className="text-xs font-semibold text-gray-800 dark:text-gray-200 truncate" title={img.name}>
-                        {img.name}
-                      </p>
-                      <p className="text-[10px] text-gray-400 mt-0.5">{formatDateTime(img.uploadedAt)}</p>
-
-                      <div className="flex items-center justify-between pt-2 mt-1 border-t border-gray-100 dark:border-gray-800">
-                        <button
-                          type="button"
-                          onClick={() => setPalettePreviewModalUrl({ url: img.url, name: img.name })}
-                          className="inline-flex items-center gap-1 text-[11px] font-semibold text-brand-600 hover:text-brand-700 cursor-pointer"
-                        >
-                          <EyeIcon className="w-3.5 h-3.5" />
-                          <span>Xem</span>
-                        </button>
-
-                        <a
-                          href={img.url}
-                          download={img.name}
-                          className="inline-flex items-center gap-1 text-[11px] font-semibold text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white cursor-pointer"
-                          title="Tải về"
-                        >
-                          <DownloadIcon className="w-3.5 h-3.5" />
-                        </a>
-
-                        {!isProductLocked && (
-                          <button
-                            type="button"
-                            onClick={() => handleDeletePaletteImage(img.id)}
-                            className="text-gray-400 hover:text-red-600 transition-colors cursor-pointer"
-                            title="Xóa ảnh"
-                          >
-                            <TrashBinIcon className="w-3.5 h-3.5" />
-                          </button>
+                {paletteDocuments.map((doc) => {
+                  const imgName = doc.fileName || doc.title;
+                  return (
+                    <div
+                      key={doc.documentId}
+                      className="group relative rounded-xl border border-gray-200 bg-white overflow-hidden shadow-xs dark:border-gray-800 dark:bg-gray-900 transition-all hover:shadow-md"
+                    >
+                      <div className="aspect-square bg-gray-50 dark:bg-gray-800 flex items-center justify-center overflow-hidden">
+                        {doc.fileUrl ? (
+                          <img
+                            src={doc.fileUrl}
+                            alt={imgName}
+                            className="w-full h-full object-contain transition-transform duration-200 group-hover:scale-105"
+                          />
+                        ) : (
+                          <StyleImagePlaceholder className="h-10 w-10 text-gray-300 dark:text-gray-600" />
                         )}
                       </div>
+                      <div className="p-3 border-t border-gray-100 dark:border-gray-800">
+                        <p className="text-xs font-semibold text-gray-800 dark:text-gray-200 truncate" title={imgName}>
+                          {imgName}
+                        </p>
+                        <p className="text-[10px] text-gray-400 mt-0.5">{formatDateTime(doc.linkedAt)}</p>
+
+                        <div className="flex items-center justify-between pt-2 mt-1 border-t border-gray-100 dark:border-gray-800">
+                          <button
+                            type="button"
+                            disabled={!doc.fileUrl}
+                            onClick={() =>
+                              doc.fileUrl &&
+                              setPalettePreviewModalUrl({ url: doc.fileUrl, name: imgName })
+                            }
+                            className="inline-flex items-center gap-1 text-[11px] font-semibold text-brand-600 hover:text-brand-700 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            <EyeIcon className="w-3.5 h-3.5" />
+                            <span>Xem</span>
+                          </button>
+
+                          <a
+                            href={doc.fileUrl || undefined}
+                            download={imgName}
+                            className="inline-flex items-center gap-1 text-[11px] font-semibold text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white cursor-pointer"
+                            title="Tải về"
+                          >
+                            <DownloadIcon className="w-3.5 h-3.5" />
+                          </a>
+
+                          {!isProductLocked && (
+                            <button
+                              type="button"
+                              onClick={() => handleUnlinkDocument(doc.documentId)}
+                              className="text-gray-400 hover:text-red-600 transition-colors cursor-pointer"
+                              title="Xóa ảnh"
+                            >
+                              <TrashBinIcon className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           ) : (
@@ -2185,10 +2170,12 @@ export default function PoProductDetailPage() {
             if (!uploadProductDocMutation.isPending) setIsUploadDocOpen(false);
           }}
           title={
-            docUploadCategory === "po_original"
+            docUploadCategory === "production_doc"
               ? "Tải lên file PO Chi Tiết"
               : docUploadCategory === "tech_pack"
               ? "Tải lên tài liệu TechPack"
+              : docUploadCategory === "color_card"
+              ? "Tải lên ảnh bảng màu"
               : "Tải lên tài liệu phụ trợ khác"
           }
           size="md"
@@ -2201,6 +2188,7 @@ export default function PoProductDetailPage() {
               <input
                 type="file"
                 required
+                accept={docUploadCategory === "color_card" ? "image/*" : undefined}
                 onChange={(e) => {
                   if (e.target.files && e.target.files[0]) {
                     setDocUploadFile(e.target.files[0]);
@@ -2209,7 +2197,9 @@ export default function PoProductDetailPage() {
                 className="w-full text-xs text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-blue-950/60 dark:file:text-blue-300 cursor-pointer"
               />
               <p className="text-[11px] text-gray-400 mt-1">
-                Hỗ trợ các định dạng: Excel (.xlsx, .xls), PDF, Word (.docx), hình ảnh (PNG, JPG, WebP), tối đa 25MB.
+                {docUploadCategory === "color_card"
+                  ? "Hỗ trợ hình ảnh (PNG, JPG, WebP), tối đa 25MB."
+                  : "Hỗ trợ các định dạng: Excel (.xlsx, .xls), PDF, Word (.docx), hình ảnh (PNG, JPG, WebP), tối đa 25MB."}
               </p>
             </div>
 

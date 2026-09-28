@@ -140,11 +140,13 @@ export default function PoListPage() {
   const totalPages = data?.totalPages || 1;
   const isFiltering = search.trim() !== "" || statusFilter !== "all" || dateFrom !== "" || dateTo !== "";
 
-  const draftCount = items.filter((i) => i.status === "draft").length;
-  const inProgressCount = items.filter(
-    (i) => i.status === "in_progress" || i.status === "pending_rd",
-  ).length;
-  const closedCount = items.filter((i) => i.status === "closed").length;
+  // Đếm theo trạng thái trên toàn bộ kết quả tìm kiếm (BE trả statusCounts),
+  // không phải chỉ đếm trong 10 dòng của trang hiện tại (items) — nếu không
+  // các thẻ này sẽ báo sai số khi danh sách PO có nhiều hơn 1 trang.
+  const statusCounts = data?.statusCounts || {};
+  const draftCount = statusCounts["draft"] || 0;
+  const inProgressCount = (statusCounts["in_progress"] || 0) + (statusCounts["pending_rd"] || 0);
+  const closedCount = statusCounts["closed"] || 0;
 
   return (
     <div className="space-y-6">
