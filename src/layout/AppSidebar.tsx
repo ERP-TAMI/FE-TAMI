@@ -32,7 +32,7 @@ const navItems: NavItem[] = [
       { name: "Tổng hợp nhu cầu", path: "/bom/aggregate" },
     ],
   },
-  { name: "Purchase Orders", path: "/po", icon: <ListIcon /> },
+  { name: "Quản lý PO", path: "/po", icon: <ListIcon /> },
   {
     name: "Dữ liệu chung",
     icon: <PageIcon />,
@@ -49,8 +49,16 @@ const navItems: NavItem[] = [
 export default function AppSidebar() {
   const { isExpanded, isMobileOpen, isHovered, setIsHovered } = useSidebar();
   const location = useLocation();
-  const [openGroup, setOpenGroup] = useState<string | null>(null);
+  const [openGroups, setOpenGroups] = useState<Set<string>>(new Set());
   const showLabels = isExpanded || isHovered || isMobileOpen;
+
+  const toggleGroup = (name: string) =>
+    setOpenGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name);
+      else next.add(name);
+      return next;
+    });
 
   const isChildActive = (item: NavItem) =>
     item.children?.some((child) => location.pathname.startsWith(child.path)) ?? false;
@@ -98,12 +106,12 @@ export default function AppSidebar() {
         </p>
         {navItems.map((item) => {
           if (item.children) {
-            const isOpen = openGroup === item.name || isChildActive(item);
+            const isOpen = openGroups.has(item.name) || isChildActive(item);
             return (
               <div key={item.name}>
                 <button
                   type="button"
-                  onClick={() => setOpenGroup((prev) => (prev === item.name ? null : item.name))}
+                  onClick={() => toggleGroup(item.name)}
                   aria-expanded={isOpen}
                   className={`menu-item group w-full ${
                     isChildActive(item) ? "menu-item-active" : "menu-item-inactive"
