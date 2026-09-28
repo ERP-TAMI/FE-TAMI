@@ -71,6 +71,12 @@ vi.mock("@/api/size-chart.api", () => ({
   },
 }));
 
+vi.mock("@/pages/po/PoDetailPage", () => ({
+  default: ({ readOnlyManagement = false }: { readOnlyManagement?: boolean }) => (
+    <div>{readOnlyManagement ? "Shared PO detail in Management read-only mode" : "PO detail"}</div>
+  ),
+}));
+
 // Route-wiring tests don't exercise the real bootstrap/refresh flow (that's
 // covered by apiClient.test.ts) — they just need `status` to reflect
 // whatever the test puts in the auth store, synchronously.
@@ -279,6 +285,27 @@ describe("application routes", () => {
     expect(router.state.location.pathname).toBe("/dashboard");
     fireEvent.click(screen.getByRole("button", { name: "Tài khoản" }));
     expect(screen.queryByRole("link", { name: "Về khu Quản lý" })).toBeNull();
+  });
+
+  it("denies a management PO detail deep link without management access", () => {
+    signIn();
+    useAuthStore.setState({
+      user: { ...useAuthStore.getState().user!, permissions: [] },
+    });
+    window.history.pushState({}, "", "/management/purchase-orders/11111111-1111-4111-8111-111111111111");
+    const { router } = renderApp();
+
+    expect(router.state.location.pathname).toBe("/dashboard");
+    expect(screen.getByRole("heading", { name: "Dashboard" })).toBeTruthy();
+  });
+
+  it("routes an authorized Management PO detail through the shared read-only PO page", () => {
+    signIn();
+    window.history.pushState({}, "", "/management/purchase-orders/11111111-1111-4111-8111-111111111111");
+    renderApp();
+
+    expect(screen.getByText("Shared PO detail in Management read-only mode")).toBeTruthy();
+    expect(screen.getByRole("navigation", { name: "Điều hướng Quản lý" })).toBeTruthy();
   });
 
   it("does not grant management access from the legacy director role name", () => {

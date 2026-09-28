@@ -1,4 +1,5 @@
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import ManagementPoOverviewPage from "./ManagementPoOverviewPage";
 
@@ -60,6 +61,14 @@ const overview = {
   meta: { total: 4, page: 1, limit: 10, totalPages: 1 },
 };
 
+function renderPage(initialEntry = "/management/purchase-orders") {
+  return render(
+    <MemoryRouter initialEntries={[initialEntry]}>
+      <ManagementPoOverviewPage />
+    </MemoryRouter>,
+  );
+}
+
 describe("ManagementPoOverviewPage", () => {
   beforeEach(() => {
     vi.useFakeTimers();
@@ -80,7 +89,7 @@ describe("ManagementPoOverviewPage", () => {
   });
 
   it("shows the six requested columns and no assignee", () => {
-    render(<ManagementPoOverviewPage />);
+    renderPage();
 
     const table = screen.getByRole("table");
     for (const heading of [
@@ -97,7 +106,7 @@ describe("ManagementPoOverviewPage", () => {
   });
 
   it("shows the grouped management status and deadline text for each PO", () => {
-    render(<ManagementPoOverviewPage />);
+    renderPage();
 
     const table = screen.getByRole("table");
     const cases = [
@@ -110,6 +119,19 @@ describe("ManagementPoOverviewPage", () => {
       const row = within(table).getByRole("row", { name: new RegExp(poCode) });
       expect(within(row).getByText(status)).toBeTruthy();
       expect(within(row).getByText(deadlineText)).toBeTruthy();
+    }
+  });
+
+  it("opens each PO from desktop and mobile with the current month and page context", () => {
+    renderPage("/management/purchase-orders?month=2026-10&page=3");
+
+    expect(hooks.useManagementPurchaseOrdersOverview).toHaveBeenLastCalledWith("2026-10", 3, 10);
+    const links = screen.getAllByRole("link", { name: "PO-OVERDUE" });
+    expect(links).toHaveLength(2);
+    for (const link of links) {
+      expect(link.getAttribute("href")).toBe(
+        "/management/purchase-orders/po-overdue?fromMonth=2026-10&fromPage=3",
+      );
     }
   });
 
@@ -135,7 +157,7 @@ describe("ManagementPoOverviewPage", () => {
       refetch: vi.fn(),
     });
 
-    render(<ManagementPoOverviewPage />);
+    renderPage();
 
     const table = screen.getByRole("table");
     const row = within(table).getByRole("row", { name: /PO-PARENT-RESPONSE/ });
@@ -157,7 +179,7 @@ describe("ManagementPoOverviewPage", () => {
       isError: false,
       refetch: vi.fn(),
     }));
-    render(<ManagementPoOverviewPage />);
+    renderPage();
     fireEvent.click(screen.getByRole("button", { name: "Trang sau" }));
     expect(hooks.useManagementPurchaseOrdersOverview).toHaveBeenLastCalledWith("2026-09", 2, 10);
 
@@ -188,7 +210,7 @@ describe("ManagementPoOverviewPage", () => {
             refetch: vi.fn(),
           },
     );
-    render(<ManagementPoOverviewPage />);
+    renderPage();
 
     fireEvent.change(screen.getByLabelText("Tháng xem báo cáo"), {
       target: { value: "2026-10" },
@@ -213,7 +235,7 @@ describe("ManagementPoOverviewPage", () => {
       isError: false,
       refetch: vi.fn(),
     }));
-    render(<ManagementPoOverviewPage />);
+    renderPage();
 
     fireEvent.click(screen.getByRole("button", { name: "Trang sau" }));
 
@@ -231,7 +253,7 @@ describe("ManagementPoOverviewPage", () => {
       isError: true,
       refetch,
     });
-    render(<ManagementPoOverviewPage />);
+    renderPage();
 
     expect(screen.getByRole("alert").textContent).toContain("Không tải được tổng quan PO");
     fireEvent.click(screen.getByRole("button", { name: "Thử lại" }));
@@ -254,14 +276,14 @@ describe("ManagementPoOverviewPage", () => {
       isError: false,
       refetch: vi.fn(),
     });
-    render(<ManagementPoOverviewPage />);
+    renderPage();
 
     expect(screen.getByText("Không có PO giao trong tháng 09/2026")).toBeTruthy();
     expect(screen.queryByRole("navigation", { name: "Phân trang PO" })).toBeNull();
   });
 
   it("ignores a non-empty month value that does not match the month schema", () => {
-    render(<ManagementPoOverviewPage />);
+    renderPage();
     const monthInput = screen.getByLabelText("Tháng xem báo cáo");
     let inputValue = "2026-99";
     Object.defineProperty(monthInput, "value", {

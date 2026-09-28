@@ -75,6 +75,13 @@ export function AppRoutes() {
               <Route index element={<Navigate to="dashboard" replace />} />
               <Route path="dashboard" element={<ManagementDashboardPage />} />
               <Route path="purchase-orders" element={<ManagementPoOverviewPage />} />
+              <Route path="purchase-orders/:id" element={<PoDetailPage readOnlyManagement />} />
+              <Route path="purchase-orders/:id/detail" element={<PoDetailPage readOnlyManagement />} />
+              <Route path="purchase-orders/:id/products" element={<PoDetailPage readOnlyManagement />} />
+              <Route path="purchase-orders/:id/lines" element={<PoDetailPage readOnlyManagement />} />
+              <Route path="purchase-orders/:id/documents" element={<PoDetailPage readOnlyManagement />} />
+              <Route path="purchase-orders/:id/files" element={<PoDetailPage readOnlyManagement />} />
+              <Route path="purchase-orders/:id/history" element={<PoDetailPage readOnlyManagement />} />
               <Route path="profile" element={<ProfilePage />} />
               <Route element={<UserManagementRoute />}>
                 <Route path="users" element={<UsersPage />} />

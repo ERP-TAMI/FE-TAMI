@@ -1,5 +1,6 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { CalendarDays, ClockAlert, Package, Timer } from "lucide-react";
+import { Link, useSearchParams } from "react-router-dom";
 import { Alert, Button, Input, Pagination, Table } from "@/components/shared";
 import type { TableColumn } from "@/components/shared/Table";
 import { ManagementStatCard } from "@/components/features/management-dashboard/ManagementStatCard";
@@ -15,17 +16,13 @@ import {
   getVietnamBusinessDate,
   resolveManagementPoSummary,
 } from "@/components/features/management-dashboard/managementPoOverviewPresentation";
+import {
+  getCurrentManagementPoMonth,
+  getManagementPoDetailPath,
+  getManagementPoOverviewContext,
+} from "@/lib/managementPoNavigation";
 
 const PAGE_SIZE = 10;
-
-function getCurrentMonth(): string {
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone: "Asia/Ho_Chi_Minh",
-    year: "numeric",
-    month: "2-digit",
-  }).formatToParts(new Date());
-  return `${parts.find((part) => part.type === "year")?.value}-${parts.find((part) => part.type === "month")?.value}`;
-}
 
 function formatMonth(month: string): string {
   const [year, monthNumber] = month.split("-");
@@ -41,14 +38,23 @@ function formatDate(date: string): string {
   }).format(new Date(`${date}T00:00:00Z`));
 }
 
-function createColumns(today: string): TableColumn<ManagementPurchaseOrderItem>[] {
+function createColumns(
+  today: string,
+  month: string,
+  page: number,
+): TableColumn<ManagementPurchaseOrderItem>[] {
   return [
     {
       key: "poCode",
       header: "Mã PO",
       width: "w-[16%]",
       render: (item) => (
-        <p className="truncate font-semibold text-gray-900 dark:text-white">{item.poCode}</p>
+        <Link
+          to={getManagementPoDetailPath(item.id, month, page)}
+          className="cursor-pointer truncate font-semibold text-brand-600 transition-colors duration-150 hover:text-brand-700 focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 dark:text-brand-400 dark:hover:text-brand-300"
+        >
+          {item.poCode}
+        </Link>
       ),
     },
     {
@@ -98,11 +104,18 @@ function createColumns(today: string): TableColumn<ManagementPurchaseOrderItem>[
 
 export default function ManagementPoOverviewPage() {
   const today = getVietnamBusinessDate();
-  const columns = useMemo(() => createColumns(today), [today]);
-  const [month, setMonth] = useState(getCurrentMonth);
-  const [page, setPage] = useState(1);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { month, page } = getManagementPoOverviewContext(
+    searchParams,
+    getCurrentManagementPoMonth(),
+  );
+  const columns = useMemo(() => createColumns(today, month, page), [today, month, page]);
   const { data, isLoading, isFetching, isPlaceholderData, isError, refetch } =
     useManagementPurchaseOrdersOverview(month, page, PAGE_SIZE);
+
+  const updateOverviewLocation = (nextMonth: string, nextPage: number) => {
+    setSearchParams({ month: nextMonth, page: String(nextPage) });
+  };
 
   return (
     <section className="space-y-6" aria-labelledby="management-po-overview-title">
@@ -134,8 +147,7 @@ export default function ManagementPoOverviewPage() {
               const nextMonth = event.currentTarget.value;
               const parsedMonth = managementDashboardMonthSchema.safeParse(nextMonth);
               if (!parsedMonth.success) return;
-              setMonth(parsedMonth.data);
-              setPage(1);
+              updateOverviewLocation(parsedMonth.data, 1);
             }}
             className="cursor-pointer bg-white focus-visible:ring-3 dark:bg-gray-900 dark:[color-scheme:dark]"
           />
@@ -248,7 +260,12 @@ export default function ManagementPoOverviewPage() {
                           <div className="flex flex-wrap items-start justify-between gap-3">
                             <div className="min-w-0">
                               <h3 className="truncate font-semibold text-gray-900 dark:text-white">
-                                {item.poCode}
+                                <Link
+                                  to={getManagementPoDetailPath(item.id, month, page)}
+                                  className="cursor-pointer text-brand-600 transition-colors duration-150 hover:text-brand-700 focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 dark:text-brand-400 dark:hover:text-brand-300"
+                                >
+                                  {item.poCode}
+                                </Link>
                               </h3>
                               <p className="mt-1 truncate text-sm text-gray-500 dark:text-gray-400">
                                 {item.customerNameSnapshot}
@@ -304,7 +321,7 @@ export default function ManagementPoOverviewPage() {
                     totalPages={data.meta.totalPages}
                     itemLabel="PO"
                     disabled={isPlaceholderData}
-                    onPageChange={setPage}
+                    onPageChange={(nextPage) => updateOverviewLocation(month, nextPage)}
                   />
                 </>
               )}
