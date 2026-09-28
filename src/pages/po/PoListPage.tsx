@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { PageHeader, Toast, Button, Pagination, ConfirmDialog } from "@/components/shared";
 import { PoStatusBadge } from "@/components/features/po/PoStatusBadge";
@@ -12,6 +12,7 @@ import {
 import { poApi } from "@/api/po.api";
 import { useToast } from "@/hooks/useToast";
 import { getApiError } from "@/lib/apiError";
+import { getDeadlineInfo, deadlinePillClasses } from "@/lib/poDeadline";
 import { TrashBinIcon } from "@/icons";
 import type { CreatePoInput, PoStatus, AttachedDocItem } from "@/types/po";
 
@@ -27,6 +28,7 @@ export default function PoListPage() {
   const { toast, showToast, hideToast } = useToast();
 
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<PoStatus | "all">("all");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
@@ -35,8 +37,16 @@ export default function PoListPage() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(null);
 
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setDebouncedSearch(search.trim());
+      setPage(1);
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [search]);
+
   const queryParams = {
-    search: search.trim() || undefined,
+    search: debouncedSearch || undefined,
     status: statusFilter === "all" ? undefined : statusFilter,
     dateFrom: dateFrom || undefined,
     dateTo: dateTo || undefined,
@@ -118,6 +128,7 @@ export default function PoListPage() {
 
   const handleClearFilters = () => {
     setSearch("");
+    setDebouncedSearch("");
     setStatusFilter("all");
     setDateFrom("");
     setDateTo("");
@@ -149,44 +160,39 @@ export default function PoListPage() {
       <PageHeader
         breadcrumb={[
           { label: "Dashboard", to: "/dashboard" },
-          { label: "Quản lý Purchase Orders" },
+          { label: "Quản lý PO" },
         ]}
-        title="Quản lý Purchase Orders"
-        stats={[{ label: "đơn hàng", value: total }]}
-        action={{
-          label: "+ Tạo PO mới",
-          onClick: () => setIsCreateOpen(true),
-        }}
+        title="Quản lý PO"
       />
 
       {/* 4 Stat Overview Cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-xs dark:border-gray-800 dark:bg-gray-900">
-          <span className="text-theme-xs font-medium text-gray-500 dark:text-gray-400">
+          <span className="text-theme-xs font-semibold text-brand-600 dark:text-brand-400">
             Tổng đơn hàng PO
           </span>
           <div className="mt-1 flex items-baseline justify-between">
             <span className="text-2xl font-bold text-gray-900 dark:text-white">
               {total}
             </span>
-            <span className="text-theme-xs text-gray-400">tất cả</span>
+            <span className="text-theme-xs font-medium text-gray-400">tất cả</span>
           </div>
         </div>
 
         <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-xs dark:border-gray-800 dark:bg-gray-900">
-          <span className="text-theme-xs font-medium text-gray-500 dark:text-gray-400">
+          <span className="text-theme-xs font-semibold text-gray-600 dark:text-gray-300">
             Nháp
           </span>
           <div className="mt-1 flex items-baseline justify-between">
             <span className="text-2xl font-bold text-gray-900 dark:text-white">
               {draftCount}
             </span>
-            <span className="text-theme-xs text-gray-400">đơn hàng</span>
+            <span className="text-theme-xs font-medium text-gray-400">đơn hàng</span>
           </div>
         </div>
 
         <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-xs dark:border-gray-800 dark:bg-gray-900">
-          <span className="text-theme-xs font-medium text-blue-600 dark:text-blue-400">
+          <span className="text-theme-xs font-semibold text-blue-600 dark:text-blue-400">
             Đang xử lý
           </span>
           <div className="mt-1 flex items-baseline justify-between">
@@ -198,7 +204,7 @@ export default function PoListPage() {
         </div>
 
         <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-xs dark:border-gray-800 dark:bg-gray-900">
-          <span className="text-theme-xs font-medium text-success-600 dark:text-success-400">
+          <span className="text-theme-xs font-semibold text-success-600 dark:text-success-400">
             Khóa
           </span>
           <div className="mt-1 flex items-baseline justify-between">
@@ -214,10 +220,10 @@ export default function PoListPage() {
       <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-xs dark:border-gray-800 dark:bg-gray-900">
         <div className="flex flex-wrap items-center gap-3">
           {/* Search Box */}
-          <div className="min-w-64 flex-1">
+          <div className="w-72">
             <input
               type="text"
-              placeholder="Tìm kiếm theo mã PO, mã PO KH, tên khách hàng..."
+              placeholder="Tìm theo mã PO, tên KH..."
               value={search}
               onChange={(e) => {
                 setSearch(e.target.value);
@@ -270,6 +276,10 @@ export default function PoListPage() {
               Xóa lọc
             </Button>
           )}
+
+          <Button className="ml-auto" onClick={() => setIsCreateOpen(true)}>
+            + Tạo PO mới
+          </Button>
         </div>
       </div>
 
@@ -310,7 +320,7 @@ export default function PoListPage() {
                 <th className="px-5 py-3.5">Ngày nhận</th>
                 <th className="px-5 py-3.5">Hạn hoàn thành</th>
                 <th className="px-5 py-3.5">Trạng thái</th>
-                <th className="px-5 py-3.5 text-right">Thao tác</th>
+                <th className="w-12 px-3 py-3.5"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
@@ -328,23 +338,33 @@ export default function PoListPage() {
                       {po.poCode}
                     </button>
                   </td>
-                  <td className="px-5 py-4 font-mono text-theme-xs text-gray-500 dark:text-gray-400">
-                    {po.customerPoCode || "—"}
+                  <td className="px-5 py-4 font-mono text-gray-700 dark:text-gray-300">
+                    {po.customerPoCode ? (
+                      <button
+                        type="button"
+                        onClick={() => navigate(`/po/${po.id}`)}
+                        className="hover:text-brand-600 hover:underline dark:hover:text-brand-400"
+                      >
+                        {po.customerPoCode}
+                      </button>
+                    ) : (
+                      "—"
+                    )}
                   </td>
                   <td className="px-5 py-4 font-medium text-gray-900 dark:text-white">
                     {po.customerNameSnapshot}
                   </td>
-                  <td className="px-5 py-4 text-center">
-                    <span className="inline-flex items-center justify-center rounded-full bg-gray-100 px-2.5 py-0.5 font-mono text-theme-xs font-semibold text-gray-700 dark:bg-gray-800 dark:text-gray-300">
-                      {po.productsCount ?? 0}
-                    </span>
+                  <td className="px-5 py-4 text-center font-mono font-semibold text-gray-700 dark:text-gray-300">
+                    {po.productsCount ?? 0}
                   </td>
-                  <td className="px-5 py-4 text-theme-xs text-gray-500 dark:text-gray-400">
+                  <td className="px-5 py-4 text-gray-700 dark:text-gray-300">
                     {formatDate(po.receivedDate)}
                   </td>
-                  <td className="px-5 py-4 text-theme-xs font-medium text-gray-700 dark:text-gray-300">
+                  <td className="px-5 py-4 font-medium text-gray-700 dark:text-gray-300">
                     {po.deadline ? (
-                      <span className="inline-flex items-center rounded-md bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
+                      <span
+                        className={`inline-flex items-center rounded-md px-2.5 py-1 text-sm font-medium ${deadlinePillClasses[getDeadlineInfo(po.deadline, po.status).tone]}`}
+                      >
                         {formatDate(po.deadline)}
                       </span>
                     ) : (
@@ -354,26 +374,20 @@ export default function PoListPage() {
                   <td className="px-5 py-4">
                     <PoStatusBadge status={po.status} />
                   </td>
-                  <td className="px-5 py-4">
-                    <div className="flex items-center justify-end gap-2">
-                      {po.status === "draft" && (
-                        <button
-                          type="button"
-                          onClick={() => setDeleteTarget({ id: po.id, poCode: po.poCode })}
-                          title="Xóa PO"
-                          className="inline-flex items-center justify-center rounded-lg border border-gray-200 p-2 text-red-600 hover:bg-red-50 dark:border-gray-700 dark:text-red-400 dark:hover:bg-red-950/30 cursor-pointer"
-                        >
-                          <TrashBinIcon className="w-4 h-4" />
-                        </button>
-                      )}
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => navigate(`/po/${po.id}`)}
+                  <td className="px-3 py-4 text-right">
+                    {po.status === "draft" && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDeleteTarget({ id: po.id, poCode: po.poCode });
+                        }}
+                        title="Xóa PO"
+                        className="inline-flex items-center justify-center rounded-lg border border-gray-200 p-2 text-red-600 hover:bg-red-50 dark:border-gray-700 dark:text-red-400 dark:hover:bg-red-950/30 cursor-pointer"
                       >
-                        Xem chi tiết →
-                      </Button>
-                    </div>
+                        <TrashBinIcon className="w-4 h-4" />
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}

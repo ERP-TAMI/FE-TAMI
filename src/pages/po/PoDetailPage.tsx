@@ -25,6 +25,7 @@ import {
 } from "@/hooks/usePurchaseOrders";
 import { useToast } from "@/hooks/useToast";
 import { getApiError } from "@/lib/apiError";
+import { getDeadlineInfo, deadlineValueClasses, deadlineHintClasses } from "@/lib/poDeadline";
 import type { UploadProgress } from "@/api/po.api";
 import { TrashBinIcon, EyeIcon, CalenderIcon } from "@/icons";
 import type {
@@ -57,60 +58,13 @@ function formatDateTime(dateStr: string | null | undefined): string {
   })}`;
 }
 
-/** Số ngày còn lại tính từ đó Hạn hoàn thành được coi là "sắp tới hạn". */
-const DEADLINE_SOON_DAYS = 7;
+const PRODUCT_LAYOUT_STORAGE_KEY = "po.productLayout";
 
 /** Số tài liệu PO tải mỗi trang. BE chặn trên ở 100. */
 const PO_DOCS_PAGE_SIZE = 20;
 
 /** Số sản phẩm tải mỗi trang. BE chặn trên ở 100. */
 const PO_PRODUCTS_PAGE_SIZE = 20;
-
-type DeadlineTone = "overdue" | "soon" | "normal";
-
-const deadlineValueClasses: Record<DeadlineTone, string> = {
-  overdue: "text-error-600 dark:text-error-400",
-  soon: "text-warning-600 dark:text-warning-400",
-  normal: "text-gray-800 dark:text-gray-200",
-};
-
-const deadlineHintClasses: Record<DeadlineTone, string> = {
-  overdue:
-    "border-error-200 bg-error-50 text-error-700 dark:border-error-900/40 dark:bg-error-950/40 dark:text-error-300",
-  soon: "border-warning-200 bg-warning-50 text-warning-700 dark:border-warning-900/40 dark:bg-warning-950/40 dark:text-warning-300",
-  normal: "",
-};
-
-/**
- * Trạng thái hạn hoàn thành. PO đã khóa hoặc đã hủy thì không cảnh báo nữa
- * vì đơn đã kết thúc, tô đỏ chỉ gây nhiễu.
- */
-function getDeadlineInfo(
-  deadline: string | null | undefined,
-  status: PoStatus | undefined,
-): { tone: DeadlineTone; hint: string | null } {
-  if (!deadline || status === "closed" || status === "cancelled") {
-    return { tone: "normal", hint: null };
-  }
-
-  const due = new Date(deadline);
-  if (isNaN(due.getTime())) return { tone: "normal", hint: null };
-
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  due.setHours(0, 0, 0, 0);
-
-  const diffDays = Math.round((due.getTime() - today.getTime()) / 86_400_000);
-
-  if (diffDays < 0) {
-    return { tone: "overdue", hint: `Quá hạn ${Math.abs(diffDays)} ngày` };
-  }
-  if (diffDays === 0) return { tone: "soon", hint: "Đến hạn hôm nay" };
-  if (diffDays <= DEADLINE_SOON_DAYS) {
-    return { tone: "soon", hint: `Còn ${diffDays} ngày` };
-  }
-  return { tone: "normal", hint: null };
-}
 
 export default function PoDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -226,8 +180,17 @@ export default function PoDetailPage() {
     setSplitRatio(50); // Double-click reset về 50/50
   }, []);
 
-  // Chế độ hiển thị danh sách sản phẩm trong ô Sản phẩm: "grid" (thẻ) hoặc "table" (bảng)
-  const [productLayout, setProductLayout] = useState<"grid" | "table">("grid");
+  // Chế độ hiển thị danh sách sản phẩm trong ô Sản phẩm: "grid" (thẻ) hoặc "table" (bảng).
+  // Nhớ lựa chọn gần nhất của người dùng qua localStorage, để lần sau mở lại
+  // không bị reset về mặc định "grid".
+  const [productLayout, setProductLayoutState] = useState<"grid" | "table">(() => {
+    const saved = localStorage.getItem(PRODUCT_LAYOUT_STORAGE_KEY);
+    return saved === "table" ? "table" : "grid";
+  });
+  const setProductLayout = (layout: "grid" | "table") => {
+    setProductLayoutState(layout);
+    localStorage.setItem(PRODUCT_LAYOUT_STORAGE_KEY, layout);
+  };
   const [draggedDocId, setDraggedDocId] = useState<string | null>(null);
   const [showInlineSplitForm, setShowInlineSplitForm] = useState(false);
   const [quickFormDocIds, setQuickFormDocIds] = useState<string[]>([]);
@@ -562,6 +525,7 @@ export default function PoDetailPage() {
             {(po.status === "in_progress" || po.status === "pending_rd") && (
               <>
                 <Button
+                  variant="danger"
                   size="xs"
                   onClick={() => handleStatusButtonClick("closed")}
                   disabled={updateStatusMutation.isPending}
@@ -676,17 +640,12 @@ export default function PoDetailPage() {
                     />
                   </svg>
                 </div>
-                <div>
-                  <h3 className="text-theme-sm font-bold text-gray-900 dark:text-white uppercase tracking-wide">
-                    Thông tin PO
-                  </h3>
-                  <p className="text-theme-xs text-gray-500 dark:text-gray-400">
-                    Chi tiết định danh và thông tin khách hàng của đơn hàng
-                  </p>
-                </div>
+                <h3 className="text-theme-sm font-bold text-gray-900 dark:text-white uppercase tracking-wide">
+                  Thông tin PO
+                </h3>
               </div>
               {!isEditing && !isLocked && (
-                <Button variant="secondary" size="sm" onClick={startEdit}>
+                <Button variant="outline" size="sm" onClick={startEdit}>
                   Chỉnh sửa
                 </Button>
               )}
@@ -1351,14 +1310,25 @@ export default function PoDetailPage() {
                         {lines.map((line) => (
                           <tr
                             key={line.id}
-                            onClick={() => navigate(`/po/${id}/products/${line.id}`)}
-                            className="transition-colors hover:bg-brand-50/50 dark:hover:bg-gray-800/60 cursor-pointer group"
+                            className="transition-colors hover:bg-brand-50/50 dark:hover:bg-gray-800/60 group"
                           >
-                            <td className="px-3 py-3 font-mono font-bold text-base text-brand-600 group-hover:text-brand-700 dark:text-brand-400">
-                              {line.productCode || line.styleCode}
+                            <td className="px-3 py-3">
+                              <button
+                                type="button"
+                                onClick={() => navigate(`/po/${id}/products/${line.id}`)}
+                                className="font-mono font-bold text-base text-brand-600 hover:underline group-hover:text-brand-700 dark:text-brand-400 cursor-pointer"
+                              >
+                                {line.productCode || line.styleCode}
+                              </button>
                             </td>
                             <td className="px-3 py-3 text-xs text-gray-500 dark:text-gray-400 truncate max-w-[120px]" title={line.productName}>
-                              {line.productName}
+                              <button
+                                type="button"
+                                onClick={() => navigate(`/po/${id}/products/${line.id}`)}
+                                className="hover:text-brand-600 hover:underline dark:hover:text-brand-400 cursor-pointer"
+                              >
+                                {line.productName}
+                              </button>
                             </td>
                             <td className="px-2.5 py-3 text-right font-mono font-bold text-xs text-gray-800 dark:text-gray-200">
                               {line.totalQuantity ? line.totalQuantity.toLocaleString() : "—"}
@@ -1572,7 +1542,6 @@ export default function PoDetailPage() {
                         <th className="px-5 py-3.5">Mã SP</th>
                         <th className="px-5 py-3.5">Tên SP</th>
                         <th className="px-5 py-3.5 text-right">Số lượng (pcs)</th>
-                        <th className="px-5 py-3.5">Mẫu Fit nguồn</th>
                         <th className="px-5 py-3.5">Danh mục</th>
                         <th className="px-5 py-3.5">Hạn giao</th>
                         <th className="px-5 py-3.5 text-right">Trạng thái</th>
@@ -1583,14 +1552,25 @@ export default function PoDetailPage() {
                       {lines.map((line) => (
                         <tr
                           key={line.id}
-                          onClick={() => navigate(`/po/${id}/products/${line.id}`)}
-                          className="transition-colors hover:bg-brand-50/50 dark:hover:bg-gray-800/60 cursor-pointer group"
+                          className="transition-colors hover:bg-brand-50/50 dark:hover:bg-gray-800/60 group"
                         >
-                          <td className="px-5 py-4 font-mono font-bold text-base text-brand-600 group-hover:text-brand-700 dark:text-brand-400">
-                            {line.productCode || line.styleCode}
+                          <td className="px-5 py-4">
+                            <button
+                              type="button"
+                              onClick={() => navigate(`/po/${id}/products/${line.id}`)}
+                              className="font-mono font-bold text-base text-brand-600 hover:underline group-hover:text-brand-700 dark:text-brand-400 cursor-pointer"
+                            >
+                              {line.productCode || line.styleCode}
+                            </button>
                           </td>
                           <td className="px-5 py-4 font-medium text-gray-900 dark:text-white">
-                            {line.productName}
+                            <button
+                              type="button"
+                              onClick={() => navigate(`/po/${id}/products/${line.id}`)}
+                              className="hover:text-brand-600 hover:underline dark:hover:text-brand-400 cursor-pointer"
+                            >
+                              {line.productName}
+                            </button>
                           </td>
                           <td className="px-5 py-4 text-right">
                             <span className="font-mono font-bold text-sm text-brand-600 dark:text-brand-400 block">
@@ -1600,15 +1580,6 @@ export default function PoDetailPage() {
                               <div className="flex items-center justify-end gap-1 mt-0.5">
                                 <span className="text-[10px] text-gray-400 font-normal">({line.colors.length} màu)</span>
                               </div>
-                            )}
-                          </td>
-                          <td className="px-5 py-4 text-xs">
-                            {line.sourceStyle ? (
-                              <span className="inline-flex items-center rounded-md bg-brand-50 px-2 py-0.5 font-semibold text-brand-700 dark:bg-brand-950/50 dark:text-brand-300 border border-brand-100 dark:border-brand-900">
-                                {line.sourceStyle.styleCode}
-                              </span>
-                            ) : (
-                              <span className="text-gray-400 italic">Thủ công</span>
                             )}
                           </td>
                           <td className="px-5 py-4 text-xs text-gray-500 dark:text-gray-400">

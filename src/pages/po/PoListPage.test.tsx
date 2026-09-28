@@ -50,7 +50,7 @@ describe("PoListPage", () => {
 
     renderComponent();
 
-    expect(screen.getByRole("heading", { name: "Quản lý Purchase Orders" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Quản lý PO" })).toBeTruthy();
     expect(screen.getAllByText("+ Tạo PO mới")[0]).toBeTruthy();
   });
 

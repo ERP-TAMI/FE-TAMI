@@ -8,7 +8,6 @@ import {
   useUpdatePoProduct,
   useUpdateProductStatus,
   useSaveProductOperationSteps,
-  useCreateProductSampleRound,
   useUnlinkProductDocument,
   useLinkProductDocument,
   useUploadProductDocument,
@@ -18,22 +17,19 @@ import { useUploadImage } from "@/hooks/useUploadImage";
 import { uploadsApi } from "@/api/uploads.api";
 import { useToast } from "@/hooks/useToast";
 import { getApiError } from "@/lib/apiError";
+import { getDeadlineInfo, deadlineValueClasses } from "@/lib/poDeadline";
 import { validateImageFile } from "@/lib/validateImageFile";
 import { resolveImageUrl } from "@/lib/imageUtils";
 import {
-  InfoIcon,
-  DocsIcon,
-  PageIcon,
   PlusIcon,
-  FileIcon,
   EyeIcon,
   LockIcon,
   UnlockIcon,
   AlertHexaIcon,
   TableIcon,
-  GridIcon,
   DownloadIcon,
   TrashBinIcon,
+  PencilIcon,
 } from "@/icons";
 import { StyleImagePlaceholder } from "@/components/features/styles/StyleImagePlaceholder";
 import { StyleOperationStepTable } from "@/components/features/styles/StyleOperationStepTable";
@@ -44,7 +40,8 @@ import { ProductColorSizeEditor } from "@/components/features/po/ProductColorSiz
 import { ProductVersionedFileGroup } from "@/components/features/po/ProductVersionedFileGroup";
 import { PoSplitDocumentPreview } from "@/components/features/po/PoSplitDocumentPreview";
 import { PoProductBomTab } from "@/components/features/po/PoProductBomTab";
-import { FileSpreadsheet } from "lucide-react";
+import { PoProductSampleRoundsTab } from "@/components/features/po/PoProductSampleRoundsTab";
+import { ArrowLeft } from "lucide-react";
 import type {
   ProductColorItem,
   ProductDocumentItem,
@@ -58,23 +55,6 @@ function formatDate(dateStr: string | null | undefined): string {
   const d = new Date(dateStr);
   if (isNaN(d.getTime())) return dateStr;
   return d.toLocaleDateString("vi-VN");
-}
-
-// Trạng thái đợt may mẫu là free-text (xem select trong modal "Thêm đợt may
-// mẫu"), nhưng vẫn tô màu theo ngữ nghĩa cho nhất quán với các badge trạng
-// thái khác trong app thay vì luôn dùng một màu xanh dương cố định.
-function getSampleRoundBadgeClass(status: string): string {
-  const s = status.trim().toLowerCase();
-  if (s.includes("đạt")) {
-    return "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300";
-  }
-  if (s.includes("hủy") || s.includes("huỷ")) {
-    return "bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300";
-  }
-  if (s.includes("chỉnh sửa") || s.includes("sua")) {
-    return "bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300";
-  }
-  return "bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300";
 }
 
 function formatDateTime(dateStr: string | null | undefined): string {
@@ -251,7 +231,6 @@ export default function PoProductDetailPage() {
   const updateProductMutation = useUpdatePoProduct();
   const updateStatusMutation = useUpdateProductStatus();
   const saveStepsMutation = useSaveProductOperationSteps();
-  const createSampleMutation = useCreateProductSampleRound();
   const unlinkDocMutation = useUnlinkProductDocument();
   const linkDocMutation = useLinkProductDocument();
   const uploadProductDocMutation = useUploadProductDocument();
@@ -281,8 +260,20 @@ export default function PoProductDetailPage() {
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Local state for PO document picker modal
+  // Local state for PO document picker modal.
+  // linkDocFilter khóa danh sách theo đúng mục đã bấm "Gán từ kho PO" —
+  // trước đây cả 3 nút (PO Chi Tiết/TechPack/Khác) đều mở chung 1 danh sách
+  // không lọc, nên chọn nhầm 1 file "Khác" từ nút của mục "PO Chi Tiết" thì
+  // file lại tự nằm dưới "Khác" (đúng theo purpose gốc) — gây cảm giác bug UI.
   const [isLinkPoDocOpen, setIsLinkPoDocOpen] = useState(false);
+  const [linkDocFilter, setLinkDocFilter] = useState<"po_detail" | "tech_pack" | "other" | null>(
+    null,
+  );
+
+  const openLinkPoDocModal = (filter: "po_detail" | "tech_pack" | "other" | null) => {
+    setLinkDocFilter(filter);
+    setIsLinkPoDocOpen(true);
+  };
 
   // Kho tài liệu của PO chỉ cần khi mở modal gán tài liệu vào sản phẩm.
   const { data: poDocumentsPage } = usePoDocuments(
@@ -310,11 +301,6 @@ export default function PoProductDetailPage() {
 
   // Local state for document preview modal
   const [previewDocItem, setPreviewDocItem] = useState<(ProductDocumentItem & { versionId?: string }) | null>(null);
-
-  // Local state for sample round modal
-  const [isAddSampleOpen, setIsAddSampleOpen] = useState(false);
-  const [sampleFeedback, setSampleFeedback] = useState("");
-  const [sampleStatus, setSampleStatus] = useState("working");
 
   // Local state cho quản lý ảnh bảng màu sản phẩm (Tab 3: Bảng màu)
   interface ColorPaletteItem {
@@ -694,27 +680,6 @@ export default function PoProductDetailPage() {
   };
 
 
-  const handleAddSampleRound = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!poId || !productId) return;
-    try {
-      await createSampleMutation.mutateAsync({
-        poId,
-        productId,
-        input: {
-          feedback: sampleFeedback.trim() || undefined,
-          status: sampleStatus,
-        },
-      });
-      showToast("Đã thêm đợt may mẫu mới thành công.");
-      setIsAddSampleOpen(false);
-      setSampleFeedback("");
-    } catch (err: unknown) {
-      const apiErr = getApiError(err, "Thêm đợt may mẫu thất bại.");
-      showToast(apiErr.message, "error");
-    }
-  };
-
   const handleUnlinkDocument = async (documentId: string) => {
     if (!poId || !productId) return;
     try {
@@ -884,40 +849,49 @@ export default function PoProductDetailPage() {
   );
 
   return (
-    <div className="space-y-3 pt-1">
-      {/* ─── 1. BREADCRUMB PHÂN CẤP TINH GỌN ────────────────────────────────────── */}
-      <nav className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-        <Link to="/dashboard" className="hover:text-gray-900 dark:hover:text-white transition-colors">
-          Dashboard
-        </Link>
-        <span className="text-gray-300 dark:text-gray-600">/</span>
-        <Link to="/po" className="hover:text-gray-900 dark:hover:text-white transition-colors">
-          Đơn hàng PO
-        </Link>
-        <span className="text-gray-300 dark:text-gray-600">/</span>
+    <div className="space-y-3">
+      {/* ─── 1. HÀNG TRÊN: "← Danh sách SP" bên trái, breadcrumb bên phải ──────── */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <Link
           to={`/po/${poId}/products`}
-          className="font-mono hover:text-gray-900 dark:hover:text-white transition-colors"
+          className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl border border-gray-200/80 bg-white px-3 text-xs font-semibold text-gray-600 shadow-2xs transition-colors hover:bg-gray-50 hover:text-gray-900 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white"
         >
-          {po?.poCode || "PO"}
+          <ArrowLeft className="h-4 w-4 shrink-0" />
+          Danh sách sản phẩm
         </Link>
-        <span className="text-gray-300 dark:text-gray-600">/</span>
-        <span className="font-mono font-semibold text-gray-800 dark:text-gray-200 truncate max-w-[200px] sm:max-w-none">
-          {product.productCode}
-        </span>
-      </nav>
+        <nav className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+          <Link to="/dashboard" className="hover:text-gray-900 dark:hover:text-white transition-colors">
+            Dashboard
+          </Link>
+          <span className="text-gray-300 dark:text-gray-600">/</span>
+          <Link to="/po" className="hover:text-gray-900 dark:hover:text-white transition-colors">
+            Đơn hàng PO
+          </Link>
+          <span className="text-gray-300 dark:text-gray-600">/</span>
+          <Link
+            to={`/po/${poId}/products`}
+            className="font-mono hover:text-gray-900 dark:hover:text-white transition-colors"
+          >
+            {po?.poCode || "PO"}
+          </Link>
+          <span className="text-gray-300 dark:text-gray-600">/</span>
+          <span className="font-mono font-semibold text-gray-800 dark:text-gray-200 truncate max-w-[200px] sm:max-w-none">
+            {product.productCode}
+          </span>
+        </nav>
+      </div>
 
       {/* ─── 2. UNIFIED PRODUCT HEADER CARD (BỐ CỤC CHUẨN GỌN GÀNG, SANG TRỌNG) ──── */}
-      <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-xs dark:border-gray-800 dark:bg-gray-900 space-y-4">
+      <div className="-mt-1 rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-xs dark:border-gray-800 dark:bg-gray-900 space-y-3">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           {/* Cột trái: Mã sản phẩm TO và ĐẦU TIÊN (Focus), Tên SP phụ trợ & Trạng thái */}
           <div className="space-y-1.5">
             <div className="flex flex-wrap items-center gap-3">
-              <h1 className="text-lg sm:text-xl font-bold font-mono tracking-tight text-gray-900 dark:text-white">
+              <h1 className="text-base sm:text-lg font-bold font-mono tracking-tight text-gray-900 dark:text-white">
                 {product.productCode}
               </h1>
               {product.productName && (
-                <span className="text-base sm:text-lg font-medium text-gray-600 dark:text-gray-300">
+                <span className="text-sm sm:text-base font-medium text-gray-600 dark:text-gray-300">
                   {product.productName}
                 </span>
               )}
@@ -927,12 +901,6 @@ export default function PoProductDetailPage() {
 
           {/* Cột phải: Nhóm nút hành động */}
           <div className="flex flex-wrap items-center gap-2 shrink-0">
-            <Link
-              to={`/po/${poId}/products`}
-              className="inline-flex items-center justify-center rounded-xl border border-gray-300 bg-white px-3.5 py-2 text-xs font-semibold text-gray-700 shadow-xs hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700 transition-colors"
-            >
-              ← Danh sách SP
-            </Link>
             {!isProductLocked ? (
               <Button
                 size="sm"
@@ -956,12 +924,14 @@ export default function PoProductDetailPage() {
               </Button>
             )}
             <Button
-              variant="outline"
+              variant="secondary"
               size="sm"
               onClick={handleOpenEditModal}
               disabled={isProductLocked}
+              className="flex items-center gap-1.5"
             >
-              Chỉnh sửa
+              <PencilIcon className="w-3.5 h-3.5 shrink-0" />
+              <span>Chỉnh sửa</span>
             </Button>
           </div>
         </div>
@@ -990,18 +960,17 @@ export default function PoProductDetailPage() {
       </div>
 
       {/* ─── 3. THANH TABS GẠCH CHÂN RIÊNG BIỆT ──────────────────── */}
-      <div className="flex flex-wrap items-center justify-between border-b border-gray-200 dark:border-gray-800 pt-2 gap-2">
-          <nav className="flex min-w-0 flex-wrap items-center gap-x-6 gap-y-2" aria-label="Tabs">
+      <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-800 pt-2 gap-2">
+          <nav className="flex min-w-0 flex-nowrap items-center gap-x-6 overflow-x-auto" aria-label="Tabs">
             <button
               type="button"
               onClick={() => handleTabChange("general")}
-              className={`flex items-center gap-2 border-b-2 py-2.5 px-1 text-sm font-semibold transition-colors cursor-pointer whitespace-nowrap ${
+              className={`border-b-2 py-2.5 px-1 text-sm font-semibold transition-colors cursor-pointer whitespace-nowrap ${
                 activeTab === "general"
                   ? "border-brand-500 text-brand-600 dark:text-brand-400"
                   : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
               }`}
             >
-              <InfoIcon className="w-4 h-4" />
               Thông tin sản phẩm
             </button>
 
@@ -1009,119 +978,87 @@ export default function PoProductDetailPage() {
             <button
               type="button"
               onClick={() => handleTabChange("sizes")}
-              className={`flex items-center gap-2 border-b-2 py-2.5 px-1 text-sm font-semibold transition-colors cursor-pointer whitespace-nowrap ${
+              className={`border-b-2 py-2.5 px-1 text-sm font-semibold transition-colors cursor-pointer whitespace-nowrap ${
                 activeTab === "sizes"
                   ? "border-brand-500 text-brand-600 dark:text-brand-400"
                   : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
               }`}
             >
-              <TableIcon className="w-4 h-4" />
               Bảng size
-              {uniqueSizes.length > 0 && (
-                <span className="ml-1.5 rounded-full bg-brand-50 dark:bg-brand-950/60 px-2 py-0.5 text-xs text-brand-600 dark:text-brand-400">
-                  {uniqueSizes.length} size
-                </span>
-              )}
             </button>
 
             {/* TAB 3: BẢNG MÀU (ẢNH BẢNG MÀU) */}
             <button
               type="button"
               onClick={() => handleTabChange("colors")}
-              className={`flex items-center gap-2 border-b-2 py-2.5 px-1 text-sm font-semibold transition-colors cursor-pointer whitespace-nowrap ${
+              className={`border-b-2 py-2.5 px-1 text-sm font-semibold transition-colors cursor-pointer whitespace-nowrap ${
                 activeTab === "colors"
                   ? "border-brand-500 text-brand-600 dark:text-brand-400"
                   : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
               }`}
             >
-              <GridIcon className="w-4 h-4" />
               Bảng màu
-              {(product.colors?.length || 0) > 0 && (
-                <span className="ml-1.5 rounded-full bg-brand-50 dark:bg-brand-950/60 px-2 py-0.5 text-xs text-brand-600 dark:text-brand-400">
-                  {product.colors?.length}
-                </span>
-              )}
             </button>
 
             <button
               type="button"
               onClick={() => handleTabChange("steps")}
-              className={`flex items-center gap-2 border-b-2 py-2.5 px-1 text-sm font-semibold transition-colors cursor-pointer whitespace-nowrap ${
+              className={`border-b-2 py-2.5 px-1 text-sm font-semibold transition-colors cursor-pointer whitespace-nowrap ${
                 activeTab === "steps"
                   ? "border-brand-500 text-brand-600 dark:text-brand-400"
                   : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
               }`}
             >
-              <DocsIcon className="w-4 h-4" />
-              Quy trình công đoạn &amp; KIM
-              {mappedSteps.length > 0 && (
-                <span className="ml-1.5 rounded-full bg-brand-50 dark:bg-brand-950/60 px-2 py-0.5 text-xs text-brand-600 dark:text-brand-400">
-                  {mappedSteps.length}
-                </span>
-              )}
+              Quy trình công đoạn
             </button>
 
             {/* TAB NGUYÊN PHỤ LIỆU (BOM) */}
             <button
               type="button"
               onClick={() => handleTabChange("bom")}
-              className={`flex items-center gap-2 border-b-2 py-2.5 px-1 text-sm font-semibold transition-colors cursor-pointer whitespace-nowrap ${
+              className={`border-b-2 py-2.5 px-1 text-sm font-semibold transition-colors cursor-pointer whitespace-nowrap ${
                 activeTab === "bom"
                   ? "border-brand-500 text-brand-600 dark:text-brand-400"
                   : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
               }`}
             >
-              <FileSpreadsheet className="w-4 h-4" />
-              Nguyên phụ liệu (BOM)
+              Nguyên phụ liệu
             </button>
 
             <button
               type="button"
               onClick={() => handleTabChange("production_doc")}
-              className={`flex items-center gap-2 border-b-2 py-2.5 px-1 text-sm font-semibold transition-colors cursor-pointer whitespace-nowrap ${
+              className={`border-b-2 py-2.5 px-1 text-sm font-semibold transition-colors cursor-pointer whitespace-nowrap ${
                 activeTab === "production_doc"
                   ? "border-brand-500 text-brand-600 dark:text-brand-400"
                   : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
               }`}
             >
-              <PageIcon className="w-4 h-4" />
               Tài liệu sản xuất
             </button>
 
             <button
               type="button"
               onClick={() => handleTabChange("samples")}
-              className={`flex items-center gap-2 border-b-2 py-2.5 px-1 text-sm font-semibold transition-colors cursor-pointer whitespace-nowrap ${
+              className={`border-b-2 py-2.5 px-1 text-sm font-semibold transition-colors cursor-pointer whitespace-nowrap ${
                 activeTab === "samples"
                   ? "border-brand-500 text-brand-600 dark:text-brand-400"
                   : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
               }`}
             >
-              <EyeIcon className="w-4 h-4" />
               Đợt may mẫu
-              {(product.sampleRounds?.length || 0) > 0 && (
-                <span className="ml-1.5 rounded-full bg-gray-100 dark:bg-gray-800 px-2 py-0.5 text-xs text-gray-600 dark:text-gray-400">
-                  {product.sampleRounds?.length}
-                </span>
-              )}
             </button>
 
             <button
               type="button"
               onClick={() => handleTabChange("documents")}
-              className={`flex items-center gap-2 border-b-2 py-2.5 px-1 text-sm font-semibold transition-colors cursor-pointer whitespace-nowrap ${
+              className={`border-b-2 py-2.5 px-1 text-sm font-semibold transition-colors cursor-pointer whitespace-nowrap ${
                 activeTab === "documents"
                   ? "border-brand-500 text-brand-600 dark:text-brand-400"
                   : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
               }`}
             >
-              <FileIcon className="w-4 h-4" />
               Tài liệu đính kèm
-              {(product.documents?.length || 0) > 0 && (
-                <span className="ml-1.5 rounded-full bg-gray-100 dark:bg-gray-800 px-2 py-0.5 text-xs text-gray-600 dark:text-gray-400">
-                  {product.documents?.length}
-                </span>
-              )}
             </button>
 
           </nav>
@@ -1196,95 +1133,113 @@ export default function PoProductDetailPage() {
             />
           </div>
 
-          {/* Cột phải (8 cols / ~67%): Chi tiết thông số sản phẩm */}
+          {/* Cột phải (8 cols / ~67%): Chi tiết thông số sản phẩm — 1 card thống
+              nhất, các phần ngăn cách bằng đường kẻ thay vì nhiều khối xám
+              rời rạc, để nhìn có hệ thống hơn. */}
           <div className="lg:col-span-8 space-y-4">
-            <dl className="grid grid-cols-2 gap-x-4 gap-y-4 rounded-xl border border-gray-100 bg-gray-50/60 p-5 text-base dark:border-gray-800/80 dark:bg-gray-800/20">
-              <div>
-                <dt className="text-sm text-gray-500 dark:text-gray-400">Dòng sản phẩm</dt>
-                <dd className="font-semibold text-gray-800 dark:text-gray-200">
-                  {product.category || "—"}
-                </dd>
-              </div>
-
-              <div>
-                <dt className="text-sm text-gray-500 dark:text-gray-400">Hạn giao</dt>
-                <dd className="font-semibold text-gray-800 dark:text-gray-200">
-                  {formatDate(product.deadline)}
-                </dd>
-              </div>
-
-              <div>
-                <dt className="text-sm text-gray-500 dark:text-gray-400">Trạng thái</dt>
-                <dd
-                  className="mt-0.5"
-                  title={
-                    !isProductLocked
-                      ? "Đang trong quá trình xử lý dữ liệu — dùng nút \"Khóa sản phẩm\" ở trên để khoá"
-                      : "Đã khóa sau khi xử lý xong, chế độ chỉ đọc"
-                  }
-                >
-                  <ProductStatusBadge status={product.status} />
-                </dd>
-              </div>
-
-              {product.sourceStyle && (
+            <div className="divide-y divide-gray-100 rounded-2xl border border-gray-200 bg-white dark:divide-gray-800 dark:border-gray-800 dark:bg-gray-900">
+              <dl className="grid grid-cols-2 gap-x-4 gap-y-4 p-5 sm:grid-cols-3">
                 <div>
-                  <dt className="text-sm text-gray-500 dark:text-gray-400">Mẫu Fit nguồn</dt>
-                  <dd>
-                    <Link
-                      to={`/styles/${product.sourceStyle.id}/detail`}
-                      target="_blank"
-                      className="font-mono text-sm font-semibold text-blue-600 dark:text-blue-300 hover:underline"
-                    >
-                      {product.sourceStyle.styleCode} ↗
-                    </Link>
+                  <dt className="text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">
+                    Dòng sản phẩm
+                  </dt>
+                  <dd className="mt-1 text-sm font-semibold text-gray-900 dark:text-white">
+                    {product.category || "—"}
                   </dd>
                 </div>
-              )}
 
-              {product.sourceStyle && product.importedAt && (
                 <div>
-                  <dt className="text-sm text-gray-500 dark:text-gray-400">Ngày import từ Fit</dt>
+                  <dt className="text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">
+                    Hạn giao
+                  </dt>
                   <dd
-                    className="font-semibold text-gray-800 dark:text-gray-200"
+                    className={`mt-1 text-sm font-semibold ${deadlineValueClasses[getDeadlineInfo(product.deadline, isProductLocked ? "closed" : undefined).tone]}`}
+                  >
+                    {formatDate(product.deadline)}
+                  </dd>
+                </div>
+
+                <div>
+                  <dt className="text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">
+                    Trạng thái
+                  </dt>
+                  <dd
+                    className="mt-1.5"
                     title={
-                      product.importedBy
-                        ? `Người import: ${product.importedBy}`
-                        : undefined
+                      !isProductLocked
+                        ? "Đang trong quá trình xử lý dữ liệu — dùng nút \"Khóa sản phẩm\" ở trên để khoá"
+                        : "Đã khóa sau khi xử lý xong, chế độ chỉ đọc"
                     }
                   >
-                    {formatDate(product.importedAt)}
+                    <ProductStatusBadge status={product.status} />
                   </dd>
                 </div>
+
+                {product.sourceStyle && (
+                  <div>
+                    <dt className="text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">
+                      Mẫu Fit nguồn
+                    </dt>
+                    <dd className="mt-1">
+                      <Link
+                        to={`/styles/${product.sourceStyle.id}/detail`}
+                        target="_blank"
+                        className="font-mono text-sm font-semibold text-blue-600 dark:text-blue-300 hover:underline"
+                      >
+                        {product.sourceStyle.styleCode} ↗
+                      </Link>
+                    </dd>
+                  </div>
+                )}
+
+                {product.sourceStyle && product.importedAt && (
+                  <div>
+                    <dt className="text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">
+                      Ngày import từ Fit
+                    </dt>
+                    <dd
+                      className="mt-1 text-sm font-semibold text-gray-900 dark:text-white"
+                      title={
+                        product.importedBy
+                          ? `Người import: ${product.importedBy}`
+                          : undefined
+                      }
+                    >
+                      {formatDate(product.importedAt)}
+                    </dd>
+                  </div>
+                )}
+              </dl>
+
+              {/* Liên kết nhanh sang Tab 2: Bảng size */}
+              <div className="flex items-center justify-between gap-3 px-5 py-4">
+                <div className="min-w-0">
+                  <span className="text-sm font-semibold text-gray-900 dark:text-white">Màu sắc &amp; Kích cỡ</span>
+                  <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">
+                    {product.colors?.length || 0} màu · {uniqueSizes.length} size · {(product.totalQuantity || 0).toLocaleString()} pcs
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleTabChange("sizes")}
+                  className="shrink-0 text-sm font-semibold text-brand-600 hover:underline cursor-pointer"
+                >
+                  Xem Bảng size →
+                </button>
+              </div>
+
+              {/* Chất liệu & đặc điểm */}
+              {product.materialNote && (
+                <div className="px-5 py-4">
+                  <dt className="text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500 mb-1.5">
+                    Ghi chú chất liệu
+                  </dt>
+                  <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed">
+                    {product.materialNote}
+                  </p>
+                </div>
               )}
-            </dl>
-
-            {/* Thẻ liên kết nhanh sang Tab 2: Bảng size */}
-            <div className="flex items-center justify-between gap-3 rounded-xl border border-gray-100 bg-gray-50/60 px-5 py-4 text-base dark:border-gray-800/80 dark:bg-gray-800/20">
-              <div className="min-w-0">
-                <span className="font-semibold text-gray-800 dark:text-gray-200">Màu sắc &amp; Kích cỡ</span>
-                <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">
-                  {product.colors?.length || 0} màu · {uniqueSizes.length} size · {(product.totalQuantity || 0).toLocaleString()} pcs
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={() => handleTabChange("sizes")}
-                className="shrink-0 text-sm font-semibold text-brand-600 hover:underline cursor-pointer"
-              >
-                Xem Bảng size →
-              </button>
             </div>
-
-            {/* Khối chất liệu & đặc điểm */}
-            {product.materialNote && (
-              <div className="rounded-xl border border-gray-100 bg-gray-50/60 p-5 text-base dark:border-gray-800/80 dark:bg-gray-800/20">
-                <dt className="text-sm text-gray-500 dark:text-gray-400 mb-1">Ghi chú chất liệu</dt>
-                <p className="text-gray-800 dark:text-gray-200 whitespace-pre-wrap leading-relaxed">
-                  {product.materialNote}
-                </p>
-              </div>
-            )}
 
             {/* Metadata Footer */}
             <div className="text-xs text-gray-400 dark:text-gray-500 flex flex-wrap gap-3">
@@ -1302,18 +1257,10 @@ export default function PoProductDetailPage() {
       {activeTab === "sizes" && (
         <div className="space-y-5 pt-3">
           {/* Header Bảng size */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white dark:bg-gray-900 p-5 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-xs">
-            <div>
-              <h3 className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                <span>Bảng phân bổ Size &amp; Phối màu sản phẩm</span>
-                <span className="rounded-full bg-brand-50 px-2.5 py-0.5 text-xs font-bold text-brand-600 border border-brand-200 dark:bg-brand-950/40 dark:text-brand-300">
-                  {(product.colors || []).length} màu • {uniqueSizes.length} size
-                </span>
-              </h3>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                Ma trận phân bổ chi tiết sản lượng theo từng màu sắc và kích cỡ của sản phẩm
-              </p>
-            </div>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <h3 className="text-base font-bold text-gray-900 dark:text-white">
+              Bảng phân bổ Size &amp; Phối màu sản phẩm
+            </h3>
 
             {!isProductLocked && (
               <Button
@@ -1325,34 +1272,6 @@ export default function PoProductDetailPage() {
                 Chỉnh sửa màu &amp; size
               </Button>
             )}
-          </div>
-
-          {/* 3 Thẻ thống kê KPI nhanh */}
-          {/* Thống kê nhanh: một dải gọn thay cho 3 thẻ lớn — số liệu ở đây là
-              phần phụ, bảng ma trận bên dưới mới là nội dung chính. */}
-          <div className="flex flex-wrap items-center gap-x-8 gap-y-2 rounded-xl border border-gray-200 bg-gray-50/60 px-4 py-2.5 dark:border-gray-800 dark:bg-gray-800/40">
-            <div className="flex items-baseline gap-1.5">
-              <span className="text-theme-xs text-gray-500 dark:text-gray-400">Tổng sản lượng</span>
-              <span className="font-mono text-theme-sm font-bold text-brand-600 dark:text-brand-400">
-                {(product.totalQuantity || 0).toLocaleString()}
-              </span>
-              <span className="text-theme-xs text-gray-400">pcs</span>
-            </div>
-            <div className="flex items-baseline gap-1.5">
-              <span className="text-theme-xs text-gray-500 dark:text-gray-400">Phối màu</span>
-              <span className="font-mono text-theme-sm font-bold text-gray-900 dark:text-white">
-                {(product.colors || []).length}
-              </span>
-            </div>
-            <div className="flex min-w-0 items-baseline gap-1.5">
-              <span className="shrink-0 text-theme-xs text-gray-500 dark:text-gray-400">Kích cỡ</span>
-              <span
-                className="truncate font-mono text-theme-sm font-bold text-gray-900 dark:text-white"
-                title={uniqueSizes.join(", ")}
-              >
-                {uniqueSizes.length > 0 ? uniqueSizes.join(" • ") : "Chưa có"}
-              </span>
-            </div>
           </div>
 
           {/* Ma trận bảng Size + Màu */}
@@ -1427,7 +1346,7 @@ export default function PoProductDetailPage() {
                   </tbody>
                   <tfoot className="border-t-2 border-gray-200 bg-gray-50/90 font-semibold dark:border-gray-700 dark:bg-gray-800/80">
                     <tr>
-                      <td colSpan={3} className="px-5 py-3.5 text-gray-900 dark:text-white uppercase text-[11px] tracking-wider">
+                      <td colSpan={2} className="px-5 py-3.5 text-gray-900 dark:text-white uppercase text-[11px] tracking-wider">
                         Tổng cộng theo Size
                       </td>
                       {uniqueSizes.map((size) => (
@@ -1453,18 +1372,10 @@ export default function PoProductDetailPage() {
       {activeTab === "colors" && (
         <div className="space-y-5 pt-3">
           {/* Header Bảng màu */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white dark:bg-gray-900 p-5 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-xs">
-            <div>
-              <h3 className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                <span>Bảng màu sản phẩm (Color Palette &amp; Swatches)</span>
-                <span className="rounded-full bg-brand-50 px-2.5 py-0.5 text-xs font-bold text-brand-600 border border-brand-200 dark:bg-brand-950/40 dark:text-brand-300">
-                  {paletteImages.length} ảnh bảng màu
-                </span>
-              </h3>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                Khu vực lưu trữ, tải lên và cập nhật hình ảnh bảng màu, lab-dips và mẫu vải cho sản phẩm
-              </p>
-            </div>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <h3 className="text-base font-bold text-gray-900 dark:text-white">
+              Bảng màu sản phẩm
+            </h3>
 
             {!isProductLocked && (
               <Button
@@ -1484,20 +1395,6 @@ export default function PoProductDetailPage() {
               className="hidden"
             />
           </div>
-
-          {/* Khu vực upload ảnh nhanh (Dropzone) */}
-          {!isProductLocked && (
-            <div
-              onClick={() => paletteFileInputRef.current?.click()}
-              className="cursor-pointer rounded-2xl border-2 border-dashed border-gray-300 bg-white p-8 text-center hover:border-brand-400 hover:bg-gray-50/50 dark:border-gray-700 dark:bg-gray-900 dark:hover:border-brand-500 transition-all group"
-            >
-              <GridIcon className="w-10 h-10 mx-auto text-gray-400 group-hover:text-brand-600 transition-colors mb-2" />
-              <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">
-                Nhấp hoặc kéo thả hình ảnh bảng màu vào đây để tải lên
-              </p>
-              <p className="text-xs text-gray-400 mt-1">Hỗ trợ PNG, JPG, WEBP dung lượng tối đa 15MB</p>
-            </div>
-          )}
 
           {/* Thư viện hình ảnh bảng màu đã tải lên */}
           {paletteImages.length > 0 ? (
@@ -1562,33 +1459,6 @@ export default function PoProductDetailPage() {
           ) : (
             <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center dark:border-gray-800 dark:bg-gray-900">
               <p className="text-xs text-gray-400 italic">Chưa có ảnh bảng màu nào được tải lên.</p>
-            </div>
-          )}
-
-          {/* Danh sách các phối màu đã khai báo của sản phẩm */}
-          {(product.colors || []).length > 0 && (
-            <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-xs dark:border-gray-800 dark:bg-gray-900 space-y-3">
-              <h4 className="text-sm font-bold text-gray-900 dark:text-white">
-                Các phối màu hiện có của sản phẩm ({product.colors?.length})
-              </h4>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {product.colors?.map((c, i) => {
-                  const qty = (c.sizes || []).reduce((sum, s) => sum + (Number(s.quantity) || 0), 0);
-                  return (
-                    <div
-                      key={c.id || i}
-                      className="flex items-center gap-3 p-3 rounded-xl border border-gray-100 bg-gray-50/60 dark:border-gray-800 dark:bg-gray-800/40"
-                    >
-                      <div className="min-w-0 flex-1">
-                        <p className="text-xs font-bold text-gray-900 dark:text-white truncate">{c.colorName}</p>
-                      </div>
-                      <span className="text-xs font-mono font-semibold text-brand-600 dark:text-brand-400 shrink-0">
-                        {qty.toLocaleString()} pcs
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
             </div>
           )}
 
@@ -1657,92 +1527,10 @@ export default function PoProductDetailPage() {
       )}
 
       {/* ========================================================================= */}
-      {/* TAB 4: ĐỢT MAY MẪU (SAMPLES)                                              */}
+      {/* TAB 4: ĐỢT MAY MẪU (SAMPLES) — dùng chung UI với "Lần may mẫu" bên Mẫu Fit */}
       {/* ========================================================================= */}
-      {activeTab === "samples" && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-base font-bold text-gray-900 dark:text-white">
-                Danh sách các đợt may mẫu của sản phẩm
-              </h3>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                Theo dõi quá trình may mẫu, feedback từ khách hàng và ảnh chụp mẫu
-              </p>
-            </div>
-            <Button size="sm" onClick={() => setIsAddSampleOpen(true)}>
-              <PlusIcon className="w-4 h-4 mr-1" />
-              Thêm đợt may mẫu
-            </Button>
-          </div>
-
-          <div className="grid grid-cols-1 gap-4">
-            {!product.sampleRounds || product.sampleRounds.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-gray-200 p-8 text-center text-xs text-gray-400 dark:border-gray-800">
-                Sản phẩm này chưa có đợt may mẫu nào. Bấm "Thêm đợt may mẫu" để tạo mới.
-              </div>
-            ) : (
-              product.sampleRounds.map((round) => (
-                <div
-                  key={round.id}
-                  className="rounded-2xl border border-gray-200 bg-white p-5 shadow-xs dark:border-gray-800 dark:bg-gray-900 space-y-3"
-                >
-                  <div className="flex items-center justify-between border-b border-gray-100 pb-3 dark:border-gray-800">
-                    <div className="flex items-center gap-3">
-                      <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-brand-50 text-sm font-bold text-brand-600 dark:bg-brand-950 dark:text-brand-400 font-mono">
-                        #{round.roundNo}
-                      </span>
-                      <div>
-                        <h4 className="font-bold text-sm text-gray-900 dark:text-white">
-                          Đợt may mẫu {round.roundNo}
-                        </h4>
-                        <span className="text-[11px] text-gray-400">
-                          Ngày tạo: {formatDate(round.createdAt)}
-                        </span>
-                      </div>
-                    </div>
-                    <span
-                      className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${getSampleRoundBadgeClass(round.status)}`}
-                    >
-                      {round.status}
-                    </span>
-                  </div>
-
-                  <div>
-                    <span className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">
-                      Ý kiến phản hồi (Feedback):
-                    </span>
-                    <p className="text-sm text-gray-800 dark:text-gray-200 bg-gray-50 p-3 rounded-xl dark:bg-gray-800/40">
-                      {round.feedback || "Chưa có phản hồi cho đợt mẫu này."}
-                    </p>
-                  </div>
-
-                  {round.images && round.images.length > 0 && (
-                    <div>
-                      <span className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2">
-                        Ảnh chụp kiểm mẫu ({round.images.length} ảnh):
-                      </span>
-                      <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-2.5">
-                        {round.images.map((img) => (
-                          <div
-                            key={img.id}
-                            className="aspect-square rounded-xl overflow-hidden border border-gray-200 bg-gray-50 dark:border-gray-700"
-                          >
-                            <img
-                              src={img.documentVersionId || img.fileUrl}
-                              alt="Ảnh mẫu"
-                              className="w-full h-full object-cover"
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ))
-            )}
-          </div>
-        </div>
+      {activeTab === "samples" && poId && productId && (
+        <PoProductSampleRoundsTab poId={poId} productId={productId} />
       )}
 
       {/* ========================================================================= */}
@@ -1752,17 +1540,14 @@ export default function PoProductDetailPage() {
         <div className="space-y-4">
           {/* Header tổng quan */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <h3 className="flex items-center gap-2 text-theme-base font-bold text-gray-900 dark:text-white">
-              <span>Tài liệu đính kèm</span>
-              <span className="rounded-full border border-gray-200 bg-gray-100 px-2 py-0.5 text-theme-xs font-semibold text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
-                {(product.documents || []).length} file
-              </span>
+            <h3 className="text-theme-base font-bold text-gray-900 dark:text-white">
+              Tài liệu đính kèm
             </h3>
 
             {!isProductLocked && (
               <Button
                 size="sm"
-                onClick={() => setIsLinkPoDocOpen(true)}
+                onClick={() => openLinkPoDocModal(null)}
                 className="shrink-0"
               >
                 <PlusIcon className="w-4 h-4 mr-1" />
@@ -1783,7 +1568,7 @@ export default function PoProductDetailPage() {
 
           {/* ── MỤC 1: PO CHI TIẾT ── */}
           <div className="rounded-2xl border border-gray-200 bg-white p-4 sm:p-5 shadow-xs dark:border-gray-800 dark:bg-gray-900 space-y-3.5">
-            <div className="flex items-center justify-between pb-2 border-b border-gray-100 dark:border-gray-800">
+            <div className="flex flex-wrap items-start justify-between gap-3 pb-2 border-b border-gray-100 dark:border-gray-800">
               <div className="flex items-center gap-2.5">
                 <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-50 text-brand-600 font-bold text-xs border border-brand-200/80 dark:bg-brand-950/60 dark:text-brand-400 dark:border-brand-900/60">
                   1
@@ -1807,7 +1592,7 @@ export default function PoProductDetailPage() {
                     size="sm"
                     variant="outline"
                     className="h-8 text-xs font-medium text-gray-700 border-gray-200 bg-white hover:bg-gray-50 hover:text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
-                    onClick={() => setIsLinkPoDocOpen(true)}
+                    onClick={() => openLinkPoDocModal("po_detail")}
                   >
                     <PlusIcon className="w-3.5 h-3.5 mr-1" />
                     Gán từ kho PO
@@ -1847,7 +1632,7 @@ export default function PoProductDetailPage() {
 
           {/* ── MỤC 2: TECHPACK ── */}
           <div className="rounded-2xl border border-gray-200 bg-white p-4 sm:p-5 shadow-xs dark:border-gray-800 dark:bg-gray-900 space-y-3.5">
-            <div className="flex items-center justify-between pb-2 border-b border-gray-100 dark:border-gray-800">
+            <div className="flex flex-wrap items-start justify-between gap-3 pb-2 border-b border-gray-100 dark:border-gray-800">
               <div className="flex items-center gap-2.5">
                 <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-50 text-brand-600 font-bold text-xs border border-brand-200/80 dark:bg-brand-950/60 dark:text-brand-400 dark:border-brand-900/60">
                   2
@@ -1871,7 +1656,7 @@ export default function PoProductDetailPage() {
                     size="sm"
                     variant="outline"
                     className="h-8 text-xs font-medium text-gray-700 border-gray-200 bg-white hover:bg-gray-50 hover:text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
-                    onClick={() => setIsLinkPoDocOpen(true)}
+                    onClick={() => openLinkPoDocModal("tech_pack")}
                   >
                     <PlusIcon className="w-3.5 h-3.5 mr-1" />
                     Gán từ kho PO
@@ -1911,7 +1696,7 @@ export default function PoProductDetailPage() {
 
           {/* ── MỤC 3: KHÁC ── */}
           <div className="rounded-2xl border border-gray-200 bg-white p-4 sm:p-5 shadow-xs dark:border-gray-800 dark:bg-gray-900 space-y-3.5">
-            <div className="flex items-center justify-between pb-2 border-b border-gray-100 dark:border-gray-800">
+            <div className="flex flex-wrap items-start justify-between gap-3 pb-2 border-b border-gray-100 dark:border-gray-800">
               <div className="flex items-center gap-2.5">
                 <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-50 text-brand-600 font-bold text-xs border border-brand-200/80 dark:bg-brand-950/60 dark:text-brand-400 dark:border-brand-900/60">
                   3
@@ -1935,7 +1720,7 @@ export default function PoProductDetailPage() {
                     size="sm"
                     variant="outline"
                     className="h-8 text-xs font-medium text-gray-700 border-gray-200 bg-white hover:bg-gray-50 hover:text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
-                    onClick={() => setIsLinkPoDocOpen(true)}
+                    onClick={() => openLinkPoDocModal("other")}
                   >
                     <PlusIcon className="w-3.5 h-3.5 mr-1" />
                     Gán từ kho PO
@@ -2155,22 +1940,52 @@ export default function PoProductDetailPage() {
       {isLinkPoDocOpen && (
         <Modal
           open={isLinkPoDocOpen}
-          onClose={() => setIsLinkPoDocOpen(false)}
-          title="Chọn tài liệu từ kho PO để gán vào sản phẩm"
+          onClose={() => {
+            setIsLinkPoDocOpen(false);
+            setLinkDocFilter(null);
+          }}
+          title={
+            linkDocFilter === "po_detail"
+              ? "Gán tài liệu từ kho PO — mục PO Chi Tiết"
+              : linkDocFilter === "tech_pack"
+              ? "Gán tài liệu từ kho PO — mục TechPack"
+              : linkDocFilter === "other"
+              ? "Gán tài liệu từ kho PO — mục Khác"
+              : "Chọn tài liệu từ kho PO để gán vào sản phẩm"
+          }
           size="lg"
         >
           <div className="space-y-4">
             <p className="text-xs text-gray-500">
-              Chọn tài liệu từ kho PO để gán vào sản phẩm. Tài liệu sẽ tự động nằm đúng mục theo phân loại gốc bên ngoài (<strong>PO Chi Tiết</strong>, <strong>TechPack</strong> hoặc <strong>Khác</strong>).
+              {linkDocFilter ? (
+                <>Chỉ hiện tài liệu đã phân loại đúng mục này ở kho PO — để mục nào ra file đúng mục đó, không lẫn qua "Khác".</>
+              ) : (
+                <>Chọn tài liệu từ kho PO để gán vào sản phẩm. Tài liệu sẽ tự động nằm đúng mục theo phân loại gốc bên ngoài (<strong>PO Chi Tiết</strong>, <strong>TechPack</strong> hoặc <strong>Khác</strong>).</>
+              )}
             </p>
 
-            {poStoreDocuments.length === 0 ? (
-              <p className="text-xs text-gray-400 italic">
-                Đơn hàng PO này chưa có tài liệu nào trong kho tài liệu chung.
-              </p>
-            ) : (
+            {(() => {
+              const visibleDocs = poStoreDocuments.filter((d) => {
+                if (linkDocFilter === "po_detail") return isPoDetailPurpose(d.purpose);
+                if (linkDocFilter === "tech_pack") return isTechPackPurpose(d.purpose);
+                if (linkDocFilter === "other")
+                  return !isPoDetailPurpose(d.purpose) && !isTechPackPurpose(d.purpose);
+                return true;
+              });
+
+              if (visibleDocs.length === 0) {
+                return (
+                  <p className="text-xs text-gray-400 italic">
+                    {linkDocFilter
+                      ? "Kho PO chưa có tài liệu nào thuộc đúng mục này."
+                      : "Đơn hàng PO này chưa có tài liệu nào trong kho tài liệu chung."}
+                  </p>
+                );
+              }
+
+              return (
               <div className="max-h-80 overflow-y-auto space-y-2">
-                {poStoreDocuments.map((d) => {
+                {visibleDocs.map((d) => {
                   const alreadyLinked = product.documents?.some((doc) => doc.documentId === d.documentId);
                   const isPo = isPoDetailPurpose(d.purpose);
                   const isTp = isTechPackPurpose(d.purpose);
@@ -2218,60 +2033,21 @@ export default function PoProductDetailPage() {
                   );
                 })}
               </div>
-            )}
+              );
+            })()}
             <div className="flex justify-end pt-3 border-t">
-              <Button variant="outline" size="sm" onClick={() => setIsLinkPoDocOpen(false)}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setIsLinkPoDocOpen(false);
+                  setLinkDocFilter(null);
+                }}
+              >
                 Đóng
               </Button>
             </div>
           </div>
-        </Modal>
-      )}
-
-      {/* ─── MODAL THÊM ĐỢT MAY MẪU ─────────────────────────────────────────────── */}
-      {isAddSampleOpen && (
-        <Modal
-          open={isAddSampleOpen}
-          onClose={() => setIsAddSampleOpen(false)}
-          title="Thêm đợt may mẫu mới"
-          size="md"
-        >
-          <form onSubmit={handleAddSampleRound} className="space-y-4">
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                Trạng thái đợt mẫu
-              </label>
-              <select
-                value={sampleStatus}
-                onChange={(e) => setSampleStatus(e.target.value)}
-                className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs text-gray-900 outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-              >
-                <option value="working">Đang làm</option>
-                <option value="approved">Đạt</option>
-                <option value="needs_revision">Chưa đạt</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                Ý kiến đóng góp / Feedback kiểm mẫu
-              </label>
-              <textarea
-                rows={3}
-                value={sampleFeedback}
-                onChange={(e) => setSampleFeedback(e.target.value)}
-                className="w-full rounded-xl border border-gray-200 p-3 text-xs text-gray-900 outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                placeholder="Nhập nhận xét về form dáng, đường may..."
-              />
-            </div>
-            <div className="flex justify-end gap-2 pt-3 border-t">
-              <Button variant="outline" size="sm" onClick={() => setIsAddSampleOpen(false)}>
-                Hủy
-              </Button>
-              <Button size="sm" type="submit" disabled={createSampleMutation.isPending}>
-                {createSampleMutation.isPending ? "Đang lưu..." : "Xác nhận tạo"}
-              </Button>
-            </div>
-          </form>
         </Modal>
       )}
 

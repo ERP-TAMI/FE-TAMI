@@ -541,6 +541,79 @@ export const poApi = {
     return response.data;
   },
 
+  async updateProductSampleRound(
+    poId: string,
+    productId: string,
+    roundId: string,
+    input: import("@/types/po").UpdateProductSampleRoundInput,
+  ): Promise<import("@/types/po").ProductSampleRound> {
+    const response = await apiClient.patch<import("@/types/po").ProductSampleRound>(
+      `/purchase-orders/${poId}/products/${productId}/sample-rounds/${roundId}`,
+      input,
+    );
+    return response.data;
+  },
+
+  async presignProductSampleImage(
+    poId: string,
+    productId: string,
+    roundId: string,
+    file: File,
+  ): Promise<import("@/types/po").PresignProductSampleImageResponse> {
+    const response = await apiClient.post<import("@/types/po").PresignProductSampleImageResponse>(
+      `/purchase-orders/${poId}/products/${productId}/sample-rounds/${roundId}/images/presign`,
+      { fileName: file.name, mimeType: file.type, sizeBytes: file.size },
+    );
+    return response.data;
+  },
+
+  async uploadProductSampleImageToS3(uploadUrl: string, file: File): Promise<void> {
+    const res = await fetch(uploadUrl, {
+      method: "PUT",
+      headers: { "Content-Type": file.type },
+      body: file,
+    });
+    if (!res.ok) {
+      throw new Error(`Tải ảnh lên thất bại (HTTP ${res.status}).`);
+    }
+  },
+
+  async confirmProductSampleImage(
+    poId: string,
+    productId: string,
+    roundId: string,
+    payload: { objectKey: string; fileName: string; mimeType: string; sizeBytes: number },
+  ): Promise<import("@/types/po").ProductSampleImage> {
+    const response = await apiClient.post<import("@/types/po").ProductSampleImage>(
+      `/purchase-orders/${poId}/products/${productId}/sample-rounds/${roundId}/images/confirm`,
+      payload,
+    );
+    return response.data;
+  },
+
+  async removeProductSampleImage(
+    poId: string,
+    productId: string,
+    roundId: string,
+    imageId: string,
+  ): Promise<void> {
+    await apiClient.delete(
+      `/purchase-orders/${poId}/products/${productId}/sample-rounds/${roundId}/images/${imageId}`,
+    );
+  },
+
+  async getProductSampleImageDownloadUrl(
+    poId: string,
+    productId: string,
+    roundId: string,
+    imageId: string,
+  ): Promise<{ url: string; expiresIn: number }> {
+    const response = await apiClient.get<{ url: string; expiresIn: number }>(
+      `/purchase-orders/${poId}/products/${productId}/sample-rounds/${roundId}/images/${imageId}/download-url`,
+    );
+    return response.data;
+  },
+
   async getProductProductionDoc(
     poId: string,
     productId: string,

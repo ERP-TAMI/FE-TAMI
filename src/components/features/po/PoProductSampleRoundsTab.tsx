@@ -17,23 +17,20 @@ import {
   CloseIcon,
   ChevronLeftIcon,
 } from "@/icons";
-import { styleSampleRoundsApi } from "@/api/style-sample-rounds.api";
+import { poApi } from "@/api/po.api";
 import { useToast } from "@/hooks/useToast";
 import { useUploadStore } from "@/hooks/useUploadStore";
 import { getApiError } from "@/lib/apiError";
 import { validateImageFile } from "@/lib/validateImageFile";
 import {
-  useCreateStyleSampleRound,
-  useRemoveStyleSampleImage,
-  useStyleSampleRounds,
-  useUpdateStyleSampleRound,
-  useUploadStyleSampleImage,
-} from "@/hooks/useStyleSampleRounds";
-import type {
-  SampleStatus,
-  StyleSampleImageItem,
-  StyleSampleRoundItem,
-} from "@/types/style-sample-round";
+  useCreateProductSampleRound,
+  useProductSampleRounds,
+  useRemoveProductSampleImage,
+  useUpdateProductSampleRound,
+  useUploadProductSampleImage,
+} from "@/hooks/usePurchaseOrders";
+import type { ProductSampleImage, ProductSampleRound } from "@/types/po";
+import type { SampleStatus } from "@/types/style-sample-round";
 
 function formatDate(dateStr: string | null | undefined): string {
   if (!dateStr) return "—";
@@ -63,21 +60,22 @@ interface UploadErrorItem {
 }
 
 interface Props {
-  styleId: string;
+  poId: string;
+  productId: string;
 }
 
-export function StyleSampleRoundsTab({ styleId }: Props) {
+export function PoProductSampleRoundsTab({ poId, productId }: Props) {
   const { toast, showToast, hideToast } = useToast();
-  const roundsQuery = useStyleSampleRounds(styleId);
+  const roundsQuery = useProductSampleRounds(poId, productId);
   const rounds = roundsQuery.data ?? [];
-  const createMutation = useCreateStyleSampleRound(styleId);
-  const updateMutation = useUpdateStyleSampleRound(styleId);
-  const uploadMutation = useUploadStyleSampleImage(styleId);
-  const removeImageMutation = useRemoveStyleSampleImage(styleId);
+  const createMutation = useCreateProductSampleRound();
+  const updateMutation = useUpdateProductSampleRound();
+  const uploadMutation = useUploadProductSampleImage();
+  const removeImageMutation = useRemoveProductSampleImage();
   const { startUpload, tickUpload, finishUpload } = useUploadStore();
 
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [editingRound, setEditingRound] = useState<StyleSampleRoundItem | null>(null);
+  const [editingRound, setEditingRound] = useState<ProductSampleRound | null>(null);
   const [formState, setFormState] = useState<RoundFormState>(emptyFormState());
   const [dragOverRoundId, setDragOverRoundId] = useState<string | null>(null);
   const [uploadErrorsByRound, setUploadErrorsByRound] = useState<
@@ -85,11 +83,11 @@ export function StyleSampleRoundsTab({ styleId }: Props) {
   >({});
   const [pendingRemoveImage, setPendingRemoveImage] = useState<{
     roundId: string;
-    image: StyleSampleImageItem;
+    image: ProductSampleImage;
   } | null>(null);
   const [viewingImage, setViewingImage] = useState<{
     roundId: string;
-    image: StyleSampleImageItem;
+    image: ProductSampleImage;
   } | null>(null);
   const [statusUpdatingRoundId, setStatusUpdatingRoundId] = useState<string | null>(null);
 
@@ -139,16 +137,16 @@ export function StyleSampleRoundsTab({ styleId }: Props) {
     setIsFormOpen(true);
   };
 
-  const openEditForm = (round: StyleSampleRoundItem) => {
+  const openEditForm = (round: ProductSampleRound) => {
     setEditingRound(round);
     setIsFormOpen(true);
   };
 
-  const handleStatusChange = async (round: StyleSampleRoundItem, status: SampleStatus) => {
+  const handleStatusChange = async (round: ProductSampleRound, status: SampleStatus) => {
     if (status === round.status) return;
     setStatusUpdatingRoundId(round.id);
     try {
-      await updateMutation.mutateAsync({ roundId: round.id, input: { status } });
+      await updateMutation.mutateAsync({ poId, productId, roundId: round.id, input: { status } });
       showToast("Đã cập nhật trạng thái.");
     } catch (err) {
       showToast(getApiError(err, "Cập nhật trạng thái thất bại.").message, "error");
@@ -165,19 +163,24 @@ export function StyleSampleRoundsTab({ styleId }: Props) {
     };
     try {
       if (editingRound) {
-        await updateMutation.mutateAsync({ roundId: editingRound.id, input });
-        showToast("Đã cập nhật lần may mẫu.");
+        await updateMutation.mutateAsync({
+          poId,
+          productId,
+          roundId: editingRound.id,
+          input,
+        });
+        showToast("Đã cập nhật đợt may mẫu.");
       } else {
-        await createMutation.mutateAsync(input);
-        showToast("Đã thêm lần may mẫu mới.");
+        await createMutation.mutateAsync({ poId, productId, input });
+        showToast("Đã thêm đợt may mẫu mới.");
       }
       setIsFormOpen(false);
     } catch (err) {
-      showToast(getApiError(err, "Lưu lần may mẫu thất bại.").message, "error");
+      showToast(getApiError(err, "Lưu đợt may mẫu thất bại.").message, "error");
     }
   };
 
-  const handleFiles = (round: StyleSampleRoundItem, fileList: FileList | File[]) => {
+  const handleFiles = (round: ProductSampleRound, fileList: FileList | File[]) => {
     const files = Array.from(fileList);
     if (files.length === 0) return;
 
@@ -199,12 +202,12 @@ export function StyleSampleRoundsTab({ styleId }: Props) {
     });
     if (validFiles.length === 0) return;
 
-    startUpload(validFiles.length, `Lần ${round.roundNo} - mẫu Fit`);
+    startUpload(validFiles.length, `Đợt ${round.roundNo} - mẫu PO`);
 
     (async () => {
       for (const file of validFiles) {
         try {
-          await uploadMutation.mutateAsync({ roundId: round.id, file });
+          await uploadMutation.mutateAsync({ poId, productId, roundId: round.id, file });
         } catch (err) {
           const tempId = `${file.name}_${file.size}_${Date.now()}_${Math.random()}`;
           setUploadErrorsByRound((prev) => ({
@@ -237,10 +240,12 @@ export function StyleSampleRoundsTab({ styleId }: Props) {
     if (!pendingRemoveImage) return;
     try {
       await removeImageMutation.mutateAsync({
+        poId,
+        productId,
         roundId: pendingRemoveImage.roundId,
         imageId: pendingRemoveImage.image.id,
       });
-      showToast("Đã xoá ảnh khỏi lần may mẫu.");
+      showToast("Đã xoá ảnh khỏi đợt may mẫu.");
     } catch (err) {
       showToast(getApiError(err, "Xoá ảnh thất bại.").message, "error");
     } finally {
@@ -248,11 +253,16 @@ export function StyleSampleRoundsTab({ styleId }: Props) {
     }
   };
 
-  const handleDownloadImage = async (roundId: string, image: StyleSampleImageItem) => {
+  const handleDownloadImage = async (roundId: string, image: ProductSampleImage) => {
     // No noopener/noreferrer: those make window.open() return null, so we couldn't navigate it later.
     const popup = window.open("", "_blank");
     try {
-      const { url } = await styleSampleRoundsApi.getImageDownloadUrl(styleId, roundId, image.id);
+      const { url } = await poApi.getProductSampleImageDownloadUrl(
+        poId,
+        productId,
+        roundId,
+        image.id,
+      );
       if (popup) popup.location.href = url;
     } catch (err) {
       popup?.close();
@@ -266,25 +276,25 @@ export function StyleSampleRoundsTab({ styleId }: Props) {
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <h3 className="text-theme-base font-bold text-gray-900 dark:text-white">
-          Lần may mẫu ({rounds.length})
+          Đợt may mẫu ({rounds.length})
         </h3>
         <Button size="sm" onClick={openCreateForm}>
           <PlusIcon className="h-4 w-4" />
-          Thêm lần may mẫu
+          Thêm đợt may mẫu
         </Button>
       </div>
 
       {roundsQuery.isLoading ? (
         <div className="rounded-2xl border border-gray-200 bg-white p-10 text-center text-theme-sm text-gray-500 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400">
-          Đang tải danh sách lần may mẫu...
+          Đang tải danh sách đợt may mẫu...
         </div>
       ) : rounds.length === 0 ? (
         <div className="rounded-2xl border border-gray-200 bg-white p-12 text-center dark:border-gray-800 dark:bg-gray-900">
           <p className="text-theme-base font-semibold text-gray-900 dark:text-white">
-            Chưa có lần may mẫu nào.
+            Chưa có đợt may mẫu nào.
           </p>
           <p className="mt-1 text-theme-xs text-gray-500 dark:text-gray-400">
-            Bấm "Thêm lần may mẫu" để ghi nhận lần may mẫu đầu tiên cho mẫu Fit này.
+            Bấm "Thêm đợt may mẫu" để ghi nhận đợt may mẫu đầu tiên cho sản phẩm này.
           </p>
         </div>
       ) : (
@@ -318,7 +328,7 @@ export function StyleSampleRoundsTab({ styleId }: Props) {
                     </span>
                     <div className="space-y-2.5">
                       <h4 className="text-theme-base font-bold leading-none text-gray-900 dark:text-white">
-                        Lần {round.roundNo}
+                        Đợt may mẫu {round.roundNo}
                       </h4>
                       <div className="flex flex-wrap items-center gap-2">
                         <SampleStatusPicker
@@ -439,7 +449,9 @@ export function StyleSampleRoundsTab({ styleId }: Props) {
       <Modal
         open={isFormOpen}
         onClose={() => setIsFormOpen(false)}
-        title={editingRound ? `Sửa lần may mẫu ${editingRound.roundNo}` : "Thêm lần may mẫu mới"}
+        title={
+          editingRound ? `Sửa đợt may mẫu ${editingRound.roundNo}` : "Thêm đợt may mẫu mới"
+        }
         size="md"
         footer={
           <div className="flex justify-end gap-2.5">
@@ -447,7 +459,7 @@ export function StyleSampleRoundsTab({ styleId }: Props) {
               Huỷ
             </Button>
             <Button onClick={() => void handleSubmitForm()} loading={isSubmitting}>
-              {editingRound ? "Lưu thay đổi" : "Tạo lần may mẫu"}
+              {editingRound ? "Lưu thay đổi" : "Tạo đợt may mẫu"}
             </Button>
           </div>
         }
@@ -510,13 +522,13 @@ export function StyleSampleRoundsTab({ styleId }: Props) {
 
           <div>
             <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">
-              Ghi chú
+              Ý kiến phản hồi (Feedback)
             </label>
             <textarea
               rows={3}
               value={formState.feedback}
               onChange={(e) => setFormState((s) => ({ ...s, feedback: e.target.value }))}
-              placeholder="Nhận xét về lần may mẫu này..."
+              placeholder="Nhận xét về form dáng, đường may..."
               className="w-full rounded-lg border border-gray-300 p-3 text-sm text-gray-900 transition-colors focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
             />
           </div>
@@ -529,7 +541,7 @@ export function StyleSampleRoundsTab({ styleId }: Props) {
         description={
           <>
             Bạn có chắc muốn xoá ảnh <strong>{pendingRemoveImage?.image.fileName}</strong> khỏi
-            lần may mẫu này?
+            đợt may mẫu này?
           </>
         }
         confirmLabel="Xoá ảnh"
