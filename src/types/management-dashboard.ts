@@ -1,5 +1,11 @@
 import type { PoStatus } from "./po";
 
+export type ManagementPurchaseOrderSummaryStatus =
+  | "not_completed"
+  | "completed"
+  | "overdue"
+  | "cancelled";
+
 export type ManagementDashboardSummary = {
   month: string;
   totalPurchaseOrders: number;
@@ -15,6 +21,8 @@ export type ManagementPurchaseOrderItem = {
   receivedDate: string;
   deadline: string;
   status: PoStatus;
+  managementStatus?: ManagementPurchaseOrderSummaryStatus;
+  daysToDeadline?: number;
 };
 
 export type ManagementPurchaseOrdersOverview = {

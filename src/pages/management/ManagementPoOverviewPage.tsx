@@ -1,12 +1,19 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { CalendarDays, ClockAlert, Package, Timer } from "lucide-react";
 import { Alert, Button, Input, Pagination, Table } from "@/components/shared";
 import type { TableColumn } from "@/components/shared/Table";
 import { ManagementStatCard } from "@/components/features/management-dashboard/ManagementStatCard";
-import { PoStatusBadge } from "@/components/features/po/PoStatusBadge";
+import {
+  ManagementPoDeadlineLabel,
+  ManagementPoSummaryStatusBadge,
+} from "@/components/features/management-dashboard/ManagementPoSummaryStatus";
 import PageMeta from "@/components/shared/PageMeta";
 import { useManagementPurchaseOrdersOverview } from "@/hooks/useManagementDashboard";
 import type { ManagementPurchaseOrderItem } from "@/types/management-dashboard";
+import {
+  getVietnamBusinessDate,
+  resolveManagementPoSummary,
+} from "@/components/features/management-dashboard/managementPoOverviewPresentation";
 
 const PAGE_SIZE = 10;
 
@@ -33,41 +40,64 @@ function formatDate(date: string): string {
   }).format(new Date(`${date}T00:00:00Z`));
 }
 
-const columns: TableColumn<ManagementPurchaseOrderItem>[] = [
-  {
-    key: "poCode",
-    header: "Mã PO / Khách hàng",
-    width: "w-[38%]",
-    render: (item) => (
-      <div className="min-w-0">
+function createColumns(today: string): TableColumn<ManagementPurchaseOrderItem>[] {
+  return [
+    {
+      key: "poCode",
+      header: "Mã PO",
+      width: "w-[16%]",
+      render: (item) => (
         <p className="truncate font-semibold text-gray-900 dark:text-white">{item.poCode}</p>
-        <p className="text-theme-xs mt-1 truncate text-gray-500 dark:text-gray-400">
-          {item.customerNameSnapshot}
-        </p>
-      </div>
-    ),
-  },
-  {
-    key: "receivedDate",
-    header: "Ngày nhận",
-    width: "w-[18%]",
-    render: (item) => formatDate(item.receivedDate),
-  },
-  {
-    key: "deadline",
-    header: "Deadline",
-    width: "w-[20%]",
-    render: (item) => formatDate(item.deadline),
-  },
-  {
-    key: "status",
-    header: "Trạng thái",
-    width: "w-[24%]",
-    render: (item) => <PoStatusBadge status={item.status} />,
-  },
-];
+      ),
+    },
+    {
+      key: "customerNameSnapshot",
+      header: "Khách hàng",
+      width: "w-[19%]",
+      render: (item) => <p className="truncate">{item.customerNameSnapshot}</p>,
+    },
+    {
+      key: "receivedDate",
+      header: "Ngày nhận",
+      width: "w-[14%]",
+      render: (item) => formatDate(item.receivedDate),
+    },
+    {
+      key: "deadline",
+      header: "Deadline xuất hàng",
+      width: "w-[18%]",
+      render: (item) => formatDate(item.deadline),
+    },
+    {
+      key: "daysToDeadline",
+      header: "Còn/trễ",
+      width: "w-[16%]",
+      render: (item) => {
+        const summary = resolveManagementPoSummary(item, today);
+        return (
+          <ManagementPoDeadlineLabel
+            status={summary.managementStatus}
+            daysToDeadline={summary.daysToDeadline}
+          />
+        );
+      },
+    },
+    {
+      key: "managementStatus",
+      header: "Trạng thái",
+      width: "w-[17%]",
+      render: (item) => (
+        <ManagementPoSummaryStatusBadge
+          status={resolveManagementPoSummary(item, today).managementStatus}
+        />
+      ),
+    },
+  ];
+}
 
 export default function ManagementPoOverviewPage() {
+  const today = getVietnamBusinessDate();
+  const columns = useMemo(() => createColumns(today), [today]);
   const [month, setMonth] = useState(getCurrentMonth);
   const [page, setPage] = useState(1);
   const { data, isLoading, isFetching, isPlaceholderData, isError, refetch } =
@@ -209,39 +239,53 @@ export default function ManagementPoOverviewPage() {
               ) : (
                 <>
                   <div className="divide-y divide-gray-100 xl:hidden dark:divide-gray-800">
-                    {data.items.map((item) => (
-                      <article key={item.id} className="space-y-3 px-5 py-4">
-                        <div className="flex flex-wrap items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <h3 className="truncate font-semibold text-gray-900 dark:text-white">
-                              {item.poCode}
-                            </h3>
-                            <p className="mt-1 truncate text-sm text-gray-500 dark:text-gray-400">
-                              {item.customerNameSnapshot}
-                            </p>
+                    {data.items.map((item) => {
+                      const summary = resolveManagementPoSummary(item, today);
+                      return (
+                        <article key={item.id} className="space-y-3 px-5 py-4">
+                          <div className="flex flex-wrap items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <h3 className="truncate font-semibold text-gray-900 dark:text-white">
+                                {item.poCode}
+                              </h3>
+                              <p className="mt-1 truncate text-sm text-gray-500 dark:text-gray-400">
+                                {item.customerNameSnapshot}
+                              </p>
+                            </div>
+                            <ManagementPoSummaryStatusBadge status={summary.managementStatus} />
                           </div>
-                          <PoStatusBadge status={item.status} />
-                        </div>
-                        <dl className="grid grid-cols-2 gap-3 text-sm">
-                          <div>
-                            <dt className="text-theme-xs text-gray-500 dark:text-gray-400">
-                              Ngày nhận
-                            </dt>
-                            <dd className="mt-1 font-medium text-gray-800 dark:text-gray-200">
-                              {formatDate(item.receivedDate)}
-                            </dd>
-                          </div>
-                          <div>
-                            <dt className="text-theme-xs text-gray-500 dark:text-gray-400">
-                              Deadline
-                            </dt>
-                            <dd className="mt-1 font-medium text-gray-800 dark:text-gray-200">
-                              {formatDate(item.deadline)}
-                            </dd>
-                          </div>
-                        </dl>
-                      </article>
-                    ))}
+                          <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-3">
+                            <div>
+                              <dt className="text-theme-xs text-gray-500 dark:text-gray-400">
+                                Ngày nhận
+                              </dt>
+                              <dd className="mt-1 font-medium text-gray-800 dark:text-gray-200">
+                                {formatDate(item.receivedDate)}
+                              </dd>
+                            </div>
+                            <div>
+                              <dt className="text-theme-xs text-gray-500 dark:text-gray-400">
+                                Deadline
+                              </dt>
+                              <dd className="mt-1 font-medium text-gray-800 dark:text-gray-200">
+                                {formatDate(item.deadline)}
+                              </dd>
+                            </div>
+                            <div>
+                              <dt className="text-theme-xs text-gray-500 dark:text-gray-400">
+                                Còn/trễ
+                              </dt>
+                              <dd className="mt-1 text-sm">
+                                <ManagementPoDeadlineLabel
+                                  status={summary.managementStatus}
+                                  daysToDeadline={summary.daysToDeadline}
+                                />
+                              </dd>
+                            </div>
+                          </dl>
+                        </article>
+                      );
+                    })}
                   </div>
                   <div className="hidden xl:block">
                     <Table
