@@ -20,7 +20,6 @@ import {
   useUpdateWorkshopStatus,
   useWorkshops,
 } from "@/hooks/useWorkshops";
-import { useWorkshopListView } from "@/hooks/useWorkshopListView";
 import { useToast } from "@/hooks/useToast";
 import { PlusIcon } from "@/icons";
 import { getApiError } from "@/lib/apiError";
@@ -34,22 +33,23 @@ import type {
 
 const emptyWorkshops: Workshop[] = [];
 const capacityFormatter = new Intl.NumberFormat("vi-VN");
+const pageSize = 10;
 
 export default function WorkshopListPage() {
   const [filters, setFilters] = useState<WorkshopQuery>({});
+  const [page, setPage] = useState(1);
   const [editing, setEditing] = useState<Workshop | "create" | undefined>();
   const [viewing, setViewing] = useState<Workshop>();
   const [deactivating, setDeactivating] = useState<Workshop>();
   const [deleting, setDeleting] = useState<Workshop>();
   const [isFormDirty, setIsFormDirty] = useState(false);
   const { toast, showToast, hideToast } = useToast();
-  const list = useWorkshops(filters);
+  const list = useWorkshops({ ...filters, page, limit: pageSize });
   const create = useCreateWorkshop();
   const update = useUpdateWorkshop();
   const updateStatus = useUpdateWorkshopStatus();
   const remove = useDeleteWorkshop();
-  const workshops = list.data ?? emptyWorkshops;
-  const listView = useWorkshopListView(workshops);
+  const workshops = list.data?.data ?? emptyWorkshops;
   const shouldBlockNavigation = useCallback<BlockerFunction>(
     ({ currentLocation, nextLocation }) =>
       isFormDirty && currentLocation.pathname !== nextLocation.pathname,
@@ -74,7 +74,7 @@ export default function WorkshopListPage() {
         Object.entries(merged).filter(([, value]) => value),
       ) as WorkshopQuery;
     });
-    listView.setPage(1);
+    setPage(1);
   };
 
   const closeForm = () => {
@@ -153,14 +153,7 @@ export default function WorkshopListPage() {
             { label: "Xưởng sản xuất" },
           ]}
           title="Xưởng sản xuất"
-          stats={[
-            { label: "xưởng", value: workshops.length },
-            {
-              label: "đang sử dụng",
-              value: workshops.filter((workshop) => workshop.status === "active").length,
-              tone: "success",
-            },
-          ]}
+          stats={[{ label: "xưởng", value: list.data?.meta.total ?? 0 }]}
         />
 
         <div className="shadow-theme-xs overflow-visible rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
@@ -205,7 +198,7 @@ export default function WorkshopListPage() {
           {list.data && (
             <>
               <WorkshopTable
-                workshops={listView.paginatedWorkshops}
+                workshops={workshops}
                 togglingId={updateStatus.isPending ? updateStatus.variables?.id : undefined}
                 onView={setViewing}
                 onEdit={openForm}
@@ -213,12 +206,12 @@ export default function WorkshopListPage() {
                 onToggleStatus={toggleStatus}
               />
               <Pagination
-                page={listView.page}
-                pageSize={listView.pageSize}
-                totalItems={listView.totalItems}
-                totalPages={listView.totalPages}
+                page={page}
+                pageSize={list.data.meta.limit}
+                totalItems={list.data.meta.total}
+                totalPages={list.data.meta.totalPages}
                 itemLabel="xưởng"
-                onPageChange={listView.setPage}
+                onPageChange={setPage}
               />
             </>
           )}

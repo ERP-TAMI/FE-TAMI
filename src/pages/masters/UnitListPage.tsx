@@ -10,31 +10,40 @@ import {
   useUpdateUnit,
   useUpdateUnitStatus,
 } from "@/hooks/useMaterials";
-import { useUnitListView } from "@/hooks/useUnitListView";
 import { useToast } from "@/hooks/useToast";
 import { getApiError } from "@/lib/apiError";
 import { PlusIcon } from "@/icons";
 import type { UnitInput } from "@/api/unit.api";
-import type { MaterialStatus, Unit } from "@/types/material";
+import type { MaterialStatus, Unit, UnitQuery } from "@/types/material";
 
 type Dialog = { type: "delete"; unit: Unit } | undefined;
 const emptyUnits: Unit[] = [];
+const pageSize = 10;
 
 export default function UnitListPage() {
+  const [filters, setFilters] = useState<UnitQuery>({});
+  const [page, setPage] = useState(1);
   const [editing, setEditing] = useState<Unit | "create" | undefined>();
   const [viewing, setViewing] = useState<Unit>();
   const [dialog, setDialog] = useState<Dialog>();
   const [isDirty, setIsDirty] = useState(false);
   const { toast, showToast, hideToast } = useToast();
-  const list = useUnits();
+  const list = useUnits({ ...filters, page, limit: pageSize });
   const create = useCreateUnit();
   const update = useUpdateUnit();
   const updateStatus = useUpdateUnitStatus();
   const remove = useDeleteUnit();
   const mutation = create.isPending || update.isPending || remove.isPending;
   const serverError = create.error ?? update.error;
-  const units = list.data ?? emptyUnits;
-  const listView = useUnitListView(units);
+  const units = list.data?.data ?? emptyUnits;
+
+  const changeFilters = (next: Partial<UnitQuery>) => {
+    setFilters((current) => {
+      const merged = { ...current, ...next };
+      return Object.fromEntries(Object.entries(merged).filter(([, value]) => value)) as UnitQuery;
+    });
+    setPage(1);
+  };
 
   useEffect(() => {
     const warnBeforeUnload = (event: BeforeUnloadEvent) => {
@@ -92,16 +101,16 @@ export default function UnitListPage() {
       <section aria-label="Đơn vị tính" className="space-y-4">
         <div className="shadow-theme-xs overflow-visible rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
           <UnitToolbar
-            search={listView.search}
-            status={listView.status}
+            search={filters.search ?? ""}
+            status={filters.status ?? ""}
             action={
               <Button onClick={() => setEditing("create")}>
                 <PlusIcon className="h-4 w-4" aria-hidden="true" />
                 Tạo đơn vị tính mới
               </Button>
             }
-            onSearchChange={listView.setSearch}
-            onStatusChange={listView.setStatus}
+            onSearchChange={(search) => changeFilters({ search })}
+            onStatusChange={(status) => changeFilters({ status: status || undefined })}
           />
 
           {list.isLoading && (
@@ -134,7 +143,7 @@ export default function UnitListPage() {
           {list.data && (
             <>
               <UnitTable
-                units={listView.paginatedUnits}
+                units={units}
                 togglingId={updateStatus.isPending ? updateStatus.variables?.id : undefined}
                 onView={setViewing}
                 onEdit={setEditing}
@@ -142,12 +151,12 @@ export default function UnitListPage() {
                 onDelete={(unit) => setDialog({ type: "delete", unit })}
               />
               <Pagination
-                page={listView.page}
-                pageSize={listView.pageSize}
-                totalItems={listView.totalItems}
-                totalPages={listView.totalPages}
+                page={page}
+                pageSize={list.data.meta.limit}
+                totalItems={list.data.meta.total}
+                totalPages={list.data.meta.totalPages}
                 itemLabel="đơn vị tính"
-                onPageChange={listView.setPage}
+                onPageChange={setPage}
               />
             </>
           )}

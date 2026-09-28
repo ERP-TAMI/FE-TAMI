@@ -33,6 +33,12 @@ function renderPage() {
   );
 }
 
+const emptyMeta = { total: 0, page: 1, limit: 10, totalPages: 1 };
+
+function metaFor(items: unknown[]) {
+  return { total: items.length, page: 1, limit: 10, totalPages: Math.max(1, Math.ceil(items.length / 10)) };
+}
+
 describe("UnitListPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -75,7 +81,7 @@ describe("UnitListPage", () => {
     hooks.useUnits.mockReturnValue({
       isLoading: false,
       isError: false,
-      data: [],
+      data: { data: [], meta: emptyMeta },
       error: null,
       refetch: vi.fn(),
     });
@@ -90,7 +96,7 @@ describe("UnitListPage", () => {
     hooks.useUnits.mockReturnValue({
       isLoading: false,
       isError: false,
-      data: [],
+      data: { data: [], meta: emptyMeta },
       error: null,
       refetch: vi.fn(),
     });
@@ -112,7 +118,7 @@ describe("UnitListPage", () => {
     hooks.useUnits.mockReturnValue({
       isLoading: false,
       isError: false,
-      data: [unit],
+      data: { data: [unit], meta: metaFor([unit]) },
       error: null,
       refetch: vi.fn(),
     });
@@ -134,7 +140,7 @@ describe("UnitListPage", () => {
     hooks.useUnits.mockReturnValue({
       isLoading: false,
       isError: false,
-      data: [],
+      data: { data: [], meta: emptyMeta },
       error: null,
       refetch: vi.fn(),
     });
@@ -159,7 +165,7 @@ describe("UnitListPage", () => {
     hooks.useUnits.mockReturnValue({
       isLoading: false,
       isError: false,
-      data: [unit],
+      data: { data: [unit], meta: metaFor([unit]) },
       error: null,
       refetch: vi.fn(),
     });
@@ -188,7 +194,7 @@ describe("UnitListPage", () => {
     hooks.useUnits.mockReturnValue({
       isLoading: false,
       isError: false,
-      data: [unit],
+      data: { data: [unit], meta: metaFor([unit]) },
       error: null,
       refetch: vi.fn(),
     });
@@ -210,7 +216,7 @@ describe("UnitListPage", () => {
     hooks.useUnits.mockReturnValue({
       isLoading: false,
       isError: false,
-      data: [unit],
+      data: { data: [unit], meta: metaFor([unit]) },
       error: null,
       refetch: vi.fn(),
     });
@@ -230,7 +236,7 @@ describe("UnitListPage", () => {
     hooks.useUnits.mockReturnValue({
       isLoading: false,
       isError: false,
-      data: [],
+      data: { data: [], meta: emptyMeta },
       error: null,
       refetch: vi.fn(),
     });
@@ -243,11 +249,12 @@ describe("UnitListPage", () => {
     expect(hooks.update.reset).toHaveBeenCalled();
   });
 
-  it("searches and filters the unit list", () => {
+  it("sends search text and status filters to the backend query", () => {
+    const units = [unit, { ...unit, id: "second-unit", name: "Cuộn", status: "inactive" as const }];
     hooks.useUnits.mockReturnValue({
       isLoading: false,
       isError: false,
-      data: [unit, { ...unit, id: "second-unit", name: "Cuộn", status: "inactive" as const }],
+      data: { data: units, meta: metaFor(units) },
       error: null,
       refetch: vi.fn(),
     });
@@ -257,13 +264,11 @@ describe("UnitListPage", () => {
     fireEvent.change(screen.getByLabelText("Tìm kiếm đơn vị tính"), {
       target: { value: "Cuộn" },
     });
-    expect(screen.getByText("Cuộn")).toBeTruthy();
-    expect(screen.queryByText("Mét")).toBeNull();
+    expect(hooks.useUnits).toHaveBeenLastCalledWith({ search: "Cuộn", page: 1, limit: 10 });
 
     fireEvent.change(screen.getByLabelText("Tìm kiếm đơn vị tính"), { target: { value: "" } });
     const filterGroup = screen.getByRole("group", { name: "Lọc theo trạng thái" });
     fireEvent.click(within(filterGroup).getByRole("button", { name: "Đã tắt" }));
-    expect(screen.getByText("Cuộn")).toBeTruthy();
-    expect(screen.queryByText("Mét")).toBeNull();
+    expect(hooks.useUnits).toHaveBeenLastCalledWith({ status: "inactive", page: 1, limit: 10 });
   });
 });

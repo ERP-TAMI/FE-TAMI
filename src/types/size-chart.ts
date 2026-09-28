@@ -12,6 +12,18 @@ export type SizeChart = {
 export type SizeChartQuery = {
   search?: string;
   status?: SizeChartStatus;
+  page?: number;
+  limit?: number;
+};
+
+export type SizeChartListResponse = {
+  data: SizeChart[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
 };
 
 export type CreateSizeChartInput = Pick<SizeChart, "name" | "sizes">;

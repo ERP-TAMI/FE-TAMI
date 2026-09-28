@@ -26,9 +26,13 @@ describe("stageGroupApi", () => {
   beforeEach(() => vi.clearAllMocks());
 
   it("lists stage groups using the dedicated endpoint", async () => {
-    vi.mocked(apiClient.get).mockResolvedValue({ data: [group] });
+    vi.mocked(apiClient.get).mockResolvedValue({
+      data: { data: [group], meta: { total: 1, page: 1, limit: 10, totalPages: 1 } },
+    });
 
-    await expect(stageGroupApi.list({ status: "active" })).resolves.toEqual([group]);
+    await expect(stageGroupApi.list({ status: "active" })).resolves.toMatchObject({
+      data: [group],
+    });
     expect(apiClient.get).toHaveBeenCalledWith("/masters/stage-groups", {
       params: { status: "active" },
     });

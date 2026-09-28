@@ -59,6 +59,8 @@ function renderPage(initialEntries = ["/masters/size-charts"]) {
   return { router, ...render(<RouterProvider router={router} />) };
 }
 
+const meta = { total: sizeCharts.length, page: 1, limit: 10, totalPages: 1 };
+
 describe("SizeChartListPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -67,7 +69,7 @@ describe("SizeChartListPage", () => {
     hooks.useSizeCharts.mockReturnValue({
       isLoading: false,
       isError: false,
-      data: sizeCharts,
+      data: { data: sizeCharts, meta },
       error: null,
       refetch: vi.fn(),
     });
@@ -109,12 +111,20 @@ describe("SizeChartListPage", () => {
     fireEvent.change(screen.getByLabelText("Tìm kiếm bảng Size"), {
       target: { value: "trẻ em" },
     });
-    expect(hooks.useSizeCharts).toHaveBeenLastCalledWith({ search: "trẻ em" });
+    expect(hooks.useSizeCharts).toHaveBeenLastCalledWith({
+      search: "trẻ em",
+      page: 1,
+      limit: 10,
+    });
 
     fireEvent.change(screen.getByLabelText("Tìm kiếm bảng Size"), { target: { value: "" } });
     const filterGroup = screen.getByRole("group", { name: "Lọc theo trạng thái" });
     fireEvent.click(within(filterGroup).getByRole("button", { name: "Đang sử dụng" }));
-    expect(hooks.useSizeCharts).toHaveBeenLastCalledWith({ status: "active" });
+    expect(hooks.useSizeCharts).toHaveBeenLastCalledWith({
+      status: "active",
+      page: 1,
+      limit: 10,
+    });
   });
 
   it("creates a normalized size chart from the list screen", async () => {

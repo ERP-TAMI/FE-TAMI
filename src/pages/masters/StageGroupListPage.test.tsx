@@ -74,13 +74,15 @@ function renderPage(initialEntries = ["/masters/stage-groups"]) {
   return { router, ...render(<RouterProvider router={router} />) };
 }
 
+const meta = { total: 1, page: 1, limit: 10, totalPages: 1 };
+
 describe("StageGroupListPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.useStageGroups.mockReturnValue({
       isLoading: false,
       isError: false,
-      data: [summary],
+      data: { data: [summary], meta },
       error: null,
       refetch: vi.fn(),
     });
@@ -162,12 +164,16 @@ describe("StageGroupListPage", () => {
     fireEvent.change(screen.getByLabelText("Tìm kiếm nhóm công đoạn"), {
       target: { value: "may" },
     });
-    expect(mocks.useStageGroups).toHaveBeenLastCalledWith({ search: "may" });
+    expect(mocks.useStageGroups).toHaveBeenLastCalledWith({ search: "may", page: 1, limit: 10 });
 
     fireEvent.change(screen.getByLabelText("Tìm kiếm nhóm công đoạn"), { target: { value: "" } });
     const filterGroup = screen.getByRole("group", { name: "Lọc theo trạng thái" });
     fireEvent.click(within(filterGroup).getByRole("button", { name: "Đang sử dụng" }));
-    expect(mocks.useStageGroups).toHaveBeenLastCalledWith({ status: "active" });
+    expect(mocks.useStageGroups).toHaveBeenLastCalledWith({
+      status: "active",
+      page: 1,
+      limit: 10,
+    });
   });
 
   it("loads detail before editing, retains child IDs and omits an unchanged group code", async () => {

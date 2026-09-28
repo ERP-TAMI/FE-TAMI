@@ -20,7 +20,6 @@ import {
   useUpdateStageGroup,
   useUpdateStageGroupStatus,
 } from "@/hooks/useStageGroups";
-import { useStageGroupListView } from "@/hooks/useStageGroupListView";
 import { useToast } from "@/hooks/useToast";
 import { PlusIcon } from "@/icons";
 import { getApiError } from "@/lib/apiError";
@@ -33,9 +32,11 @@ import type {
 } from "@/types/stage-group";
 
 const emptyGroups: StageGroupSummary[] = [];
+const pageSize = 10;
 
 export default function StageGroupListPage() {
   const [filters, setFilters] = useState<StageGroupListParams>({});
+  const [page, setPage] = useState(1);
   const [editing, setEditing] = useState<"create" | string>();
   const [viewing, setViewing] = useState<StageGroupSummary>();
   const [isFormDirty, setIsFormDirty] = useState(false);
@@ -44,14 +45,13 @@ export default function StageGroupListPage() {
   const [discardCloseRequested, setDiscardCloseRequested] = useState(false);
   const [deleting, setDeleting] = useState<StageGroupSummary>();
   const { toast, showToast, hideToast } = useToast();
-  const list = useStageGroups(filters);
+  const list = useStageGroups({ ...filters, page, limit: pageSize });
   const detail = useStageGroup(editing && editing !== "create" ? editing : undefined);
   const create = useCreateStageGroup();
   const update = useUpdateStageGroup();
   const updateStatus = useUpdateStageGroupStatus();
   const remove = useDeleteStageGroup();
-  const groups = list.data ?? emptyGroups;
-  const listView = useStageGroupListView(groups);
+  const groups = list.data?.data ?? emptyGroups;
   const hasUnsavedChanges = isFormDirty || isSsvDirty;
   const shouldBlockNavigation = useCallback<BlockerFunction>(
     ({ currentLocation, nextLocation }) =>
@@ -77,7 +77,7 @@ export default function StageGroupListPage() {
         Object.entries(merged).filter(([, value]) => value),
       ) as StageGroupListParams;
     });
-    listView.setPage(1);
+    setPage(1);
   };
   const closeForm = () => {
     setEditing(undefined);
@@ -164,11 +164,7 @@ export default function StageGroupListPage() {
             disabled={isSsvEditing}
             stats={
               <div className="text-theme-xs flex shrink-0 items-center gap-2 rounded-full border border-gray-200/80 bg-gray-100 px-2.5 py-1 font-medium whitespace-nowrap text-gray-500 dark:border-gray-700/80 dark:bg-gray-800/80 dark:text-gray-400">
-                <span>{groups.length} nhóm</span>
-                <span aria-hidden="true">•</span>
-                <span className="text-success-600 dark:text-success-400">
-                  {groups.filter((group) => group.status === "active").length} đang sử dụng
-                </span>
+                <span>{list.data?.meta.total ?? 0} nhóm</span>
               </div>
             }
             action={
@@ -211,7 +207,7 @@ export default function StageGroupListPage() {
           {list.data && (
             <>
               <StageGroupTable
-                groups={listView.paginatedGroups}
+                groups={groups}
                 isSavingItems={update.isPending}
                 togglingId={updateStatus.isPending ? updateStatus.variables?.id : undefined}
                 onView={setViewing}
@@ -224,12 +220,12 @@ export default function StageGroupListPage() {
               />
               {!isSsvEditing && (
                 <Pagination
-                  page={listView.page}
-                  pageSize={listView.pageSize}
-                  totalItems={listView.totalItems}
-                  totalPages={listView.totalPages}
+                  page={page}
+                  pageSize={list.data.meta.limit}
+                  totalItems={list.data.meta.total}
+                  totalPages={list.data.meta.totalPages}
                   itemLabel="nhóm công đoạn"
-                  onPageChange={listView.setPage}
+                  onPageChange={setPage}
                 />
               )}
             </>

@@ -13,7 +13,6 @@ import {
   Toast,
 } from "@/components/shared";
 import PageMeta from "@/components/shared/PageMeta";
-import { useSizeChartListView } from "@/hooks/useSizeChartListView";
 import {
   useCreateSizeChart,
   useDeleteSizeChart,
@@ -33,22 +32,23 @@ import type {
 } from "@/types/size-chart";
 
 const emptySizeCharts: SizeChart[] = [];
+const pageSize = 10;
 
 export default function SizeChartListPage() {
   const [filters, setFilters] = useState<SizeChartQuery>({});
+  const [page, setPage] = useState(1);
   const [editing, setEditing] = useState<SizeChart | "create" | undefined>();
   const [viewing, setViewing] = useState<SizeChart>();
   const [deactivating, setDeactivating] = useState<SizeChart>();
   const [deleting, setDeleting] = useState<SizeChart>();
   const [isFormDirty, setIsFormDirty] = useState(false);
   const { toast, showToast, hideToast } = useToast();
-  const list = useSizeCharts(filters);
+  const list = useSizeCharts({ ...filters, page, limit: pageSize });
   const create = useCreateSizeChart();
   const update = useUpdateSizeChart();
   const updateStatus = useUpdateSizeChartStatus();
   const remove = useDeleteSizeChart();
-  const sizeCharts = list.data ?? emptySizeCharts;
-  const listView = useSizeChartListView(sizeCharts);
+  const sizeCharts = list.data?.data ?? emptySizeCharts;
   const shouldBlockNavigation = useCallback<BlockerFunction>(
     ({ currentLocation, nextLocation }) =>
       isFormDirty && currentLocation.pathname !== nextLocation.pathname,
@@ -73,7 +73,7 @@ export default function SizeChartListPage() {
         Object.entries(merged).filter(([, value]) => value),
       ) as SizeChartQuery;
     });
-    listView.setPage(1);
+    setPage(1);
   };
 
   const closeForm = () => {
@@ -152,14 +152,7 @@ export default function SizeChartListPage() {
             { label: "Bảng Size" },
           ]}
           title="Bảng Size"
-          stats={[
-            { label: "bảng", value: sizeCharts.length },
-            {
-              label: "đang sử dụng",
-              value: sizeCharts.filter((sizeChart) => sizeChart.status === "active").length,
-              tone: "success",
-            },
-          ]}
+          stats={[{ label: "bảng", value: list.data?.meta.total ?? 0 }]}
         />
 
         <div className="shadow-theme-xs overflow-visible rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
@@ -204,7 +197,7 @@ export default function SizeChartListPage() {
           {list.data && (
             <>
               <SizeChartTable
-                sizeCharts={listView.paginatedSizeCharts}
+                sizeCharts={sizeCharts}
                 togglingId={updateStatus.isPending ? updateStatus.variables?.id : undefined}
                 onView={setViewing}
                 onEdit={openForm}
@@ -212,12 +205,12 @@ export default function SizeChartListPage() {
                 onDelete={setDeleting}
               />
               <Pagination
-                page={listView.page}
-                pageSize={listView.pageSize}
-                totalItems={listView.totalItems}
-                totalPages={listView.totalPages}
+                page={page}
+                pageSize={list.data.meta.limit}
+                totalItems={list.data.meta.total}
+                totalPages={list.data.meta.totalPages}
                 itemLabel="bảng Size"
-                onPageChange={listView.setPage}
+                onPageChange={setPage}
               />
             </>
           )}

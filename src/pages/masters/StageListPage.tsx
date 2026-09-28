@@ -12,7 +12,6 @@ import {
   useUpdateStageSsvBulk,
   useUpdateStageStatus,
 } from "@/hooks/useStages";
-import { useStageListView } from "@/hooks/useStageListView";
 import { useToast } from "@/hooks/useToast";
 import { getApiError } from "@/lib/apiError";
 import { PlusIcon } from "@/icons";
@@ -25,9 +24,11 @@ import {
 } from "@/types/stage";
 
 const emptyStages: Stage[] = [];
+const pageSize = 10;
 
 export default function StageListPage() {
   const [filters, setFilters] = useState<StageListParams>({});
+  const [page, setPage] = useState(1);
   const [editing, setEditing] = useState<Stage | "create" | undefined>();
   const [viewing, setViewing] = useState<Stage>();
   const [isFormDirty, setIsFormDirty] = useState(false);
@@ -35,14 +36,13 @@ export default function StageListPage() {
   const [discardBulkDialogOpen, setDiscardBulkDialogOpen] = useState(false);
   const [deleting, setDeleting] = useState<Stage>();
   const { toast, showToast, hideToast } = useToast();
-  const list = useStages(filters);
+  const list = useStages({ ...filters, page, limit: pageSize });
   const create = useCreateStage();
   const update = useUpdateStage();
   const updateStatus = useUpdateStageStatus();
   const updateSsvBulk = useUpdateStageSsvBulk();
   const remove = useDeleteStage();
-  const stages = list.data ?? emptyStages;
-  const listView = useStageListView(stages);
+  const stages = list.data?.data ?? emptyStages;
 
   const changedSsvItems = useMemo(() => {
     if (!bulkValues) return [];
@@ -86,7 +86,7 @@ export default function StageListPage() {
         Object.entries(merged).filter(([, value]) => value),
       ) as StageListParams;
     });
-    listView.setPage(1);
+    setPage(1);
   };
   const closeForm = () => {
     setEditing(undefined);
@@ -162,11 +162,7 @@ export default function StageListPage() {
             isSavingBulk={updateSsvBulk.isPending}
             stats={
               <div className="text-theme-xs flex shrink-0 items-center gap-2 rounded-full border border-gray-200/80 bg-gray-100 px-2.5 py-1 font-medium whitespace-nowrap text-gray-500 dark:border-gray-700/80 dark:bg-gray-800/80 dark:text-gray-400">
-                <span>{stages.length} công đoạn</span>
-                <span aria-hidden="true">•</span>
-                <span className="text-success-600 dark:text-success-400">
-                  {stages.filter((stage) => stage.status === "active").length} đang sử dụng
-                </span>
+                <span>{list.data?.meta.total ?? 0} công đoạn</span>
               </div>
             }
             action={
@@ -211,7 +207,7 @@ export default function StageListPage() {
           {list.data && (
             <>
               <StageTable
-                stages={listView.paginatedStages}
+                stages={stages}
                 bulkMode={Boolean(bulkValues)}
                 bulkValues={bulkValues ?? undefined}
                 bulkErrors={bulkErrors}
@@ -224,14 +220,16 @@ export default function StageListPage() {
                   setBulkValues((current) => (current ? { ...current, [id]: value } : current))
                 }
               />
-              <Pagination
-                page={listView.page}
-                pageSize={listView.pageSize}
-                totalItems={listView.totalItems}
-                totalPages={listView.totalPages}
-                itemLabel="công đoạn"
-                onPageChange={listView.setPage}
-              />
+              {!bulkValues && (
+                <Pagination
+                  page={page}
+                  pageSize={list.data.meta.limit}
+                  totalItems={list.data.meta.total}
+                  totalPages={list.data.meta.totalPages}
+                  itemLabel="công đoạn"
+                  onPageChange={setPage}
+                />
+              )}
             </>
           )}
         </div>

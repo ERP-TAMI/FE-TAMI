@@ -14,3 +14,13 @@ export const workshopResponseSchema = z.object({
 });
 
 export const workshopListSchema = z.array(workshopResponseSchema);
+
+export const workshopListResponseSchema = z.object({
+  data: workshopListSchema,
+  meta: z.object({
+    total: z.number().int().nonnegative(),
+    page: z.number().int().positive(),
+    limit: z.number().int().positive(),
+    totalPages: z.number().int().positive(),
+  }),
+});

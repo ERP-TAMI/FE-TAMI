@@ -1,15 +1,32 @@
 import apiClient from "@/lib/apiClient";
-import type { MaterialGroup, MaterialGroupInput, MaterialGroupStatus } from "@/types/material-group";
-import { materialGroupListSchema, materialGroupResponseSchema } from "./material-group.schema";
+import type {
+  MaterialGroup,
+  MaterialGroupInput,
+  MaterialGroupListResponse,
+  MaterialGroupQuery,
+  MaterialGroupStatus,
+} from "@/types/material-group";
+import { materialGroupListResponseSchema, materialGroupResponseSchema } from "./material-group.schema";
 
 const resource = "/masters/material-groups";
 
+function queryParams(query: MaterialGroupQuery) {
+  const search = query.search?.trim();
+  const params = {
+    ...(search ? { search } : {}),
+    ...(query.status ? { status: query.status } : {}),
+    ...(query.page ? { page: query.page } : {}),
+    ...(query.limit ? { limit: query.limit } : {}),
+  };
+  return Object.keys(params).length > 0 ? params : undefined;
+}
+
 export const materialGroupApi = {
-  async list(status?: MaterialGroupStatus): Promise<MaterialGroup[]> {
-    const response = await apiClient.get<MaterialGroup[]>(resource, {
-      params: status ? { status } : undefined,
+  async list(query: MaterialGroupQuery = {}): Promise<MaterialGroupListResponse> {
+    const response = await apiClient.get<MaterialGroupListResponse>(resource, {
+      params: queryParams(query),
     });
-    return materialGroupListSchema.parse(response.data);
+    return materialGroupListResponseSchema.parse(response.data);
   },
   async create(input: MaterialGroupInput): Promise<MaterialGroup> {
     const response = await apiClient.post<MaterialGroup>(resource, input);

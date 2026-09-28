@@ -3,18 +3,19 @@ import type {
   Stage,
   StageInput,
   StageListParams,
+  StageListResponse,
   StageSsvBulkInput,
   StageStatus,
   StageUpdateInput,
 } from "@/types/stage";
-import { stageListSchema, stageResponseSchema } from "./stage.schema";
+import { stageListResponseSchema, stageListSchema, stageResponseSchema } from "./stage.schema";
 
 const resource = "/masters/stages";
 
 export const stageApi = {
-  async list(params?: StageListParams): Promise<Stage[]> {
-    const response = await apiClient.get<Stage[]>(resource, { params });
-    return stageListSchema.parse(response.data);
+  async list(params?: StageListParams): Promise<StageListResponse> {
+    const response = await apiClient.get<StageListResponse>(resource, { params });
+    return stageListResponseSchema.parse(response.data);
   },
   async detail(id: string): Promise<Stage> {
     const response = await apiClient.get<Stage>(`${resource}/${id}`);

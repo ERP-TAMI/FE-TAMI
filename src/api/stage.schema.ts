@@ -10,3 +10,13 @@ export const stageResponseSchema = z.object({
 });
 
 export const stageListSchema = z.array(stageResponseSchema);
+
+export const stageListResponseSchema = z.object({
+  data: stageListSchema,
+  meta: z.object({
+    total: z.number().int().nonnegative(),
+    page: z.number().int().positive(),
+    limit: z.number().int().positive(),
+    totalPages: z.number().int().positive(),
+  }),
+});

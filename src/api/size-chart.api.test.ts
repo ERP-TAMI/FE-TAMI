@@ -24,9 +24,13 @@ describe("sizeChartApi", () => {
   beforeEach(() => vi.clearAllMocks());
 
   it("requests only active size charts for new business data selectors", async () => {
-    vi.mocked(apiClient.get).mockResolvedValue({ data: [sizeChart] });
+    vi.mocked(apiClient.get).mockResolvedValue({
+      data: { data: [sizeChart], meta: { total: 1, page: 1, limit: 10, totalPages: 1 } },
+    });
 
-    await expect(sizeChartApi.list({ status: "active" })).resolves.toEqual([sizeChart]);
+    await expect(sizeChartApi.list({ status: "active" })).resolves.toMatchObject({
+      data: [sizeChart],
+    });
 
     expect(apiClient.get).toHaveBeenCalledWith("/masters/size-charts", {
       params: { status: "active" },
@@ -34,7 +38,9 @@ describe("sizeChartApi", () => {
   });
 
   it("trims search and validates the complete list response", async () => {
-    vi.mocked(apiClient.get).mockResolvedValue({ data: [sizeChart] });
+    vi.mocked(apiClient.get).mockResolvedValue({
+      data: { data: [sizeChart], meta: { total: 1, page: 1, limit: 10, totalPages: 1 } },
+    });
 
     await sizeChartApi.list({ search: "  sơ mi  ", status: "inactive" });
 

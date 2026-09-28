@@ -65,6 +65,8 @@ function renderPage(initialEntries = ["/masters/workshops"]) {
   return { router, ...render(<RouterProvider router={router} />) };
 }
 
+const meta = { total: workshops.length, page: 1, limit: 10, totalPages: 1 };
+
 describe("WorkshopListPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -73,7 +75,7 @@ describe("WorkshopListPage", () => {
     hooks.useWorkshops.mockReturnValue({
       isLoading: false,
       isError: false,
-      data: workshops,
+      data: { data: workshops, meta },
       error: null,
       refetch: vi.fn(),
     });
@@ -115,14 +117,22 @@ describe("WorkshopListPage", () => {
     fireEvent.change(screen.getByLabelText("Tìm kiếm xưởng sản xuất"), {
       target: { value: "trần" },
     });
-    expect(hooks.useWorkshops).toHaveBeenLastCalledWith({ search: "trần" });
+    expect(hooks.useWorkshops).toHaveBeenLastCalledWith({
+      search: "trần",
+      page: 1,
+      limit: 10,
+    });
 
     fireEvent.change(screen.getByLabelText("Tìm kiếm xưởng sản xuất"), {
       target: { value: "" },
     });
     const filterGroup = screen.getByRole("group", { name: "Lọc theo trạng thái" });
     fireEvent.click(within(filterGroup).getByRole("button", { name: "Đang sử dụng" }));
-    expect(hooks.useWorkshops).toHaveBeenLastCalledWith({ status: "active" });
+    expect(hooks.useWorkshops).toHaveBeenLastCalledWith({
+      status: "active",
+      page: 1,
+      limit: 10,
+    });
   });
 
   it("creates a workshop from the list screen", async () => {

@@ -1,12 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { materialGroupApi } from "@/api/material-group.api";
 import { materialGroupKeys } from "@/api/material-group.keys";
-import type { MaterialGroupInput, MaterialGroupStatus } from "@/types/material-group";
+import type { MaterialGroupInput, MaterialGroupQuery, MaterialGroupStatus } from "@/types/material-group";
 
-export function useMaterialGroups(status?: MaterialGroupStatus) {
+export function useMaterialGroups(query: MaterialGroupQuery = {}) {
   return useQuery({
-    queryKey: materialGroupKeys.list(status),
-    queryFn: () => materialGroupApi.list(status),
+    queryKey: materialGroupKeys.list(query),
+    queryFn: () => materialGroupApi.list(query),
   });
 }
 

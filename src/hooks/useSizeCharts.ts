@@ -16,7 +16,7 @@ export function useSizeCharts(query: SizeChartQuery = {}) {
 }
 
 export function useActiveSizeCharts() {
-  return useSizeCharts({ status: "active" });
+  return useSizeCharts({ status: "active", limit: 100 });
 }
 
 export function useSizeChart(id: string) {

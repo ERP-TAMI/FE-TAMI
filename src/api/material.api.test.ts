@@ -24,7 +24,9 @@ describe("materialApi", () => {
   beforeEach(() => vi.clearAllMocks());
 
   it("passes search, group, and status filters to the backend", async () => {
-    vi.mocked(apiClient.get).mockResolvedValue({ data: [material] });
+    vi.mocked(apiClient.get).mockResolvedValue({
+      data: { data: [material], meta: { total: 1, page: 1, limit: 10, totalPages: 1 } },
+    });
 
     await expect(
       materialApi.list({
@@ -32,7 +34,7 @@ describe("materialApi", () => {
         materialGroupId: "c8404d89-315f-49e9-bf81-b05f0f410c4a",
         status: "active",
       }),
-    ).resolves.toEqual([material]);
+    ).resolves.toMatchObject({ data: [material] });
 
     expect(apiClient.get).toHaveBeenCalledWith("/masters/materials", {
       params: {

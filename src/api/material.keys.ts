@@ -1,4 +1,4 @@
-import type { MaterialFilters } from "@/types/material";
+import type { MaterialFilters, UnitQuery } from "@/types/material";
 
 export const materialKeys = {
   all: ["materials"] as const,
@@ -9,5 +9,6 @@ export const materialKeys = {
 
 export const unitKeys = {
   all: ["units"] as const,
-  list: (status?: "active" | "inactive") => [...unitKeys.all, "list", { status }] as const,
+  lists: () => [...unitKeys.all, "list"] as const,
+  list: (query: UnitQuery = {}) => [...unitKeys.lists(), query] as const,
 };

@@ -109,11 +109,12 @@ afterEach(() => {
 beforeEach(() => {
   window.history.pushState({}, "", "/dashboard");
   vi.spyOn(window, "scrollTo").mockImplementation(() => undefined);
-  vi.mocked(materialGroupApi.list).mockResolvedValue([]);
-  vi.mocked(stageApi.list).mockResolvedValue([]);
-  vi.mocked(stageGroupApi.list).mockResolvedValue([]);
-  vi.mocked(workshopApi.list).mockResolvedValue([]);
-  vi.mocked(sizeChartApi.list).mockResolvedValue([]);
+  const emptyMeta = { total: 0, page: 1, limit: 10, totalPages: 1 };
+  vi.mocked(materialGroupApi.list).mockResolvedValue({ data: [], meta: emptyMeta });
+  vi.mocked(stageApi.list).mockResolvedValue({ data: [], meta: emptyMeta });
+  vi.mocked(stageGroupApi.list).mockResolvedValue({ data: [], meta: emptyMeta });
+  vi.mocked(workshopApi.list).mockResolvedValue({ data: [], meta: emptyMeta });
+  vi.mocked(sizeChartApi.list).mockResolvedValue({ data: [], meta: emptyMeta });
   useAuthStore.setState({ status: "unauthenticated", user: null, accessToken: null });
 });
 

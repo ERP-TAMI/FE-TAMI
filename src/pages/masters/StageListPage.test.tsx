@@ -61,13 +61,15 @@ function renderPage(initialEntries = ["/masters/stages"]) {
   return { router, ...render(<RouterProvider router={router} />) };
 }
 
+const meta = { total: stages.length, page: 1, limit: 10, totalPages: 1 };
+
 describe("StageListPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     hooks.useStages.mockReturnValue({
       isLoading: false,
       isError: false,
-      data: stages,
+      data: { data: stages, meta },
       error: null,
       refetch: vi.fn(),
     });
@@ -109,12 +111,12 @@ describe("StageListPage", () => {
     fireEvent.change(screen.getByLabelText("Tìm kiếm công đoạn"), {
       target: { value: "may" },
     });
-    expect(hooks.useStages).toHaveBeenLastCalledWith({ search: "may" });
+    expect(hooks.useStages).toHaveBeenLastCalledWith({ search: "may", page: 1, limit: 10 });
 
     fireEvent.change(screen.getByLabelText("Tìm kiếm công đoạn"), { target: { value: "" } });
     const filterGroup = screen.getByRole("group", { name: "Lọc theo trạng thái" });
     fireEvent.click(within(filterGroup).getByRole("button", { name: "Đang sử dụng" }));
-    expect(hooks.useStages).toHaveBeenLastCalledWith({ status: "active" });
+    expect(hooks.useStages).toHaveBeenLastCalledWith({ status: "active", page: 1, limit: 10 });
   });
 
   it("creates a stage from the list screen", async () => {
@@ -298,24 +300,26 @@ describe("StageListPage", () => {
     expect(screen.getByRole("button", { name: "Sửa SSV" })).toBeTruthy();
   });
 
-  it("paginates the stage list", () => {
+  it("paginates the stage list using backend metadata", () => {
     hooks.useStages.mockReturnValue({
       isLoading: false,
       isError: false,
-      data: Array.from({ length: 11 }, (_, index) => ({
-        ...stages[0],
-        id: `64bfc097-69d1-43f5-af97-cb0e7428f7${String(index).padStart(2, "0")}`,
-        stageCode: `GD-${String(index + 1).padStart(2, "0")}`,
-      })),
+      data: {
+        data: Array.from({ length: 10 }, (_, index) => ({
+          ...stages[0],
+          id: `64bfc097-69d1-43f5-af97-cb0e7428f7${String(index).padStart(2, "0")}`,
+          stageCode: `GD-${String(index + 1).padStart(2, "0")}`,
+        })),
+        meta: { total: 11, page: 1, limit: 10, totalPages: 2 },
+      },
       error: null,
       refetch: vi.fn(),
     });
     renderPage();
 
     expect(screen.getByText("Hiển thị 1–10 trên 11 công đoạn")).toBeTruthy();
-    expect(screen.queryByText("GD-11")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Trang sau" }));
-    expect(screen.getByText("GD-11")).toBeTruthy();
+    expect(hooks.useStages).toHaveBeenLastCalledWith({ page: 2, limit: 10 });
   });
 
   it("blocks SPA navigation away while bulk SSV edits are unsaved", async () => {

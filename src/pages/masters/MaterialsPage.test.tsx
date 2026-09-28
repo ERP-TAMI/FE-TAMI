@@ -62,26 +62,34 @@ function renderPage() {
 }
 
 describe("MaterialsPage", () => {
+  const emptyMeta = { total: 1, page: 1, limit: 10, totalPages: 1 };
+
   beforeEach(() => {
     vi.clearAllMocks();
     hooks.useMaterials.mockReturnValue({
       isLoading: false,
       isError: false,
-      data: [material],
+      data: { data: [material], meta: emptyMeta },
       error: null,
       refetch: vi.fn(),
     });
-    hooks.useMaterialGroups.mockImplementation((status?: string) => ({
-      data: status === "active" ? [activeGroup] : [activeGroup, inactiveGroup],
+    hooks.useMaterialGroups.mockImplementation((query?: { status?: string }) => ({
+      data: {
+        data: query?.status === "active" ? [activeGroup] : [activeGroup, inactiveGroup],
+        meta: emptyMeta,
+      },
     }));
     hooks.useActiveUnits.mockReturnValue({
-      data: [
-        {
-          id: material.defaultUnitId,
-          name: "Mét",
-          status: "active",
-        },
-      ],
+      data: {
+        data: [
+          {
+            id: material.defaultUnitId,
+            name: "Mét",
+            status: "active",
+          },
+        ],
+        meta: emptyMeta,
+      },
     });
   });
 
@@ -104,6 +112,8 @@ describe("MaterialsPage", () => {
       search: "FAB",
       materialGroupId: inactiveGroup.id,
       status: "active",
+      page: 1,
+      limit: 10,
     });
   });
 

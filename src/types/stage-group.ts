@@ -32,4 +32,19 @@ export type StageGroupInput = Pick<StageGroup, "groupName" | "description"> & {
 };
 
 export type StageGroupUpdateInput = Partial<StageGroupInput>;
-export type StageGroupListParams = { search?: string; status?: StageGroupStatus };
+export type StageGroupListParams = {
+  search?: string;
+  status?: StageGroupStatus;
+  page?: number;
+  limit?: number;
+};
+
+export type StageGroupListResponse = {
+  data: StageGroupSummary[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+};
