@@ -177,7 +177,7 @@ export default function BomDetailPage() {
 
   if (isLoadingBom) {
     return (
-      <div className="flex flex-col gap-6 p-4 sm:p-6 lg:p-8" data-testid="bom-detail-skeleton">
+      <div className="flex flex-col gap-6" data-testid="bom-detail-skeleton">
         <div className="flex flex-col gap-2">
           <div className="h-4 w-48 animate-pulse rounded bg-gray-200 dark:bg-gray-800" />
           <div className="h-8 w-80 animate-pulse rounded-lg bg-gray-200 dark:bg-gray-800" />
@@ -575,7 +575,7 @@ export default function BomDetailPage() {
     <div className="relative min-h-screen w-full">
       {/* Main content: shrinks and yields room when drawer is open */}
       <div
-        className={`flex min-w-0 flex-col gap-6 p-4 transition-all duration-300 sm:p-6 lg:p-8 ${
+        className={`flex min-w-0 flex-col gap-6 transition-all duration-300 ${
           isLineModalOpen ? "lg:mr-[480px]" : ""
         }`}
       >

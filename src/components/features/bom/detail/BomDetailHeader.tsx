@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { PageHeader } from "@/components/shared/PageHeader";
 import {
   ArrowLeft,
   Plus,
@@ -115,23 +116,15 @@ export function BomDetailHeader({
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Breadcrumbs */}
-      <nav className="flex items-center gap-2 text-theme-xs text-gray-500 dark:text-gray-400">
-        <Link
-          to="/bom"
-          className="transition-colors hover:text-gray-700 dark:hover:text-gray-200"
-        >
-          Quản lý NPL
-        </Link>
-        <span>&gt;</span>
-        <span className="text-gray-600 dark:text-gray-400">
-          {bom.type === "fit" ? "Fit BOM" : "PO BOM"}
-        </span>
-        <span>&gt;</span>
-        <span className="font-semibold text-gray-800 dark:text-gray-200">
-          {displayCode}
-        </span>
-      </nav>
+      <PageHeader
+        breadcrumb={[
+          { label: "Dashboard", to: "/dashboard" },
+          { label: "Quản lý Nguyên phụ liệu", to: "/bom" },
+          { label: bom.type === "fit" ? "Fit BOM" : "PO BOM" },
+          { label: displayCode },
+        ]}
+        title="Chi tiết bảng NPL"
+      />
 
       {/* Discontinued Banner if Discontinued */}
       {isDiscontinued && (

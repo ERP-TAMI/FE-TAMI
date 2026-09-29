@@ -470,6 +470,19 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       expect(screen.getByText("Áo sơ mi Oxford")).toBeTruthy();
     });
 
+    it("renders the breadcrumb on the shared PageHeader (Dashboard > Quản lý Nguyên phụ liệu > Fit BOM)", () => {
+      render(
+        <BrowserRouter>
+          <BomDetailPage />
+        </BrowserRouter>,
+      );
+      expect(screen.getByRole("link", { name: "Dashboard" })).toBeTruthy();
+      expect(
+        screen.getByRole("link", { name: "Quản lý Nguyên phụ liệu" }),
+      ).toBeTruthy();
+      expect(screen.getByText("Fit BOM")).toBeTruthy();
+    });
+
     it("5. renders PO BOM with PO and Product information", () => {
       hooks.useBom.mockReturnValue({ data: mockPoBom, isLoading: false });
       render(
