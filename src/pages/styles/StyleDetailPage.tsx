@@ -88,7 +88,7 @@ export default function StyleDetailPage() {
   const uploadImage = useUploadImage();
   const { startUpload, tickUpload, finishUpload } = useUploadStore();
 
-  const stepsQuery = useStyleOperationSteps(id);
+  const stepsQuery = useStyleOperationSteps(id, { enabled: activeTab === "steps" });
   const bulkSaveSteps = useBulkSaveStyleOperationSteps(id || "");
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
