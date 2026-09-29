@@ -72,6 +72,7 @@ describe("LoginPage", () => {
         roleCode: "SA",
         roleName: "Quản trị hệ thống",
         permissions: ["management.area.access"],
+        purchaseOrderMode: "READ_ONLY",
       },
     });
 
@@ -101,6 +102,7 @@ describe("LoginPage", () => {
         roleCode: "IT",
         roleName: "Công nghệ thông tin",
         permissions: ["system.users.manage"],
+        purchaseOrderMode: "READ_ONLY",
       },
     });
 

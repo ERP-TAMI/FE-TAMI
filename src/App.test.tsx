@@ -77,6 +77,20 @@ vi.mock("@/pages/po/PoDetailPage", () => ({
   ),
 }));
 
+vi.mock("@/pages/po/PoProductDetailPage", () => ({
+  default: ({
+    readOnlyManagement = false,
+    managementContext = false,
+  }: {
+    readOnlyManagement?: boolean;
+    managementContext?: boolean;
+  }) => (
+    <div>
+      Shared PO product detail · readOnly={String(readOnlyManagement)} · management={String(managementContext)}
+    </div>
+  ),
+}));
+
 // Route-wiring tests don't exercise the real bootstrap/refresh flow (that's
 // covered by apiClient.test.ts) — they just need `status` to reflect
 // whatever the test puts in the auth store, synchronously.
@@ -135,7 +149,11 @@ function signIn() {
       phone: null,
       roleCode: "SA",
       roleName: "Quản trị hệ thống",
-      permissions: ["management.area.access", "system.users.manage"],
+      permissions: [
+        "management.area.access",
+        "system.users.manage",
+      ],
+      purchaseOrderMode: "READ_ONLY",
     },
   });
 }
@@ -152,6 +170,7 @@ function signInAsIt(permissions = ["system.users.manage"]) {
       roleCode: "IT",
       roleName: "Công nghệ thông tin",
       permissions,
+      purchaseOrderMode: "READ_ONLY",
     },
   });
 }
@@ -306,6 +325,99 @@ describe("application routes", () => {
 
     expect(screen.getByText("Shared PO detail in Management read-only mode")).toBeTruthy();
     expect(screen.getByRole("navigation", { name: "Điều hướng Quản lý" })).toBeTruthy();
+  });
+
+  it("redirects a management-only account away from editable PO routes", () => {
+    signIn();
+    useAuthStore.setState({
+      user: { ...useAuthStore.getState().user!, permissions: ["management.area.access"] },
+    });
+    window.history.pushState({}, "", "/po/11111111-1111-4111-8111-111111111111");
+    const { router } = renderApp();
+
+    expect(router.state.location.pathname).toBe("/management/dashboard");
+    expect(screen.getByRole("heading", { name: "Dashboard quản lý" })).toBeTruthy();
+  });
+
+  it("redirects an SA in read-only mode away from editable PO routes", () => {
+    signIn();
+    window.history.pushState({}, "", "/po/11111111-1111-4111-8111-111111111111");
+    const { router } = renderApp();
+
+    expect(router.state.location.pathname).toBe("/management/dashboard");
+  });
+
+  it("lets an SA in read-only mode inspect product details inside Management", () => {
+    signIn();
+    window.history.pushState(
+      {},
+      "",
+      "/management/purchase-orders/11111111-1111-4111-8111-111111111111/products/22222222-2222-4222-8222-222222222222/steps",
+    );
+    renderApp();
+
+    expect(
+      screen.getByText(
+        "Shared PO product detail · readOnly=true · management=true",
+      ),
+    ).toBeTruthy();
+    expect(screen.getByRole("navigation", { name: "Điều hướng Quản lý" })).toBeTruthy();
+  });
+
+  it("keeps product detail editable in Management when the SA has full PO access", () => {
+    signIn();
+    useAuthStore.setState({
+      user: { ...useAuthStore.getState().user!, purchaseOrderMode: "FULL_ACCESS" },
+    });
+    window.history.pushState(
+      {},
+      "",
+      "/management/purchase-orders/11111111-1111-4111-8111-111111111111/products/22222222-2222-4222-8222-222222222222",
+    );
+    renderApp();
+
+    expect(
+      screen.getByText(
+        "Shared PO product detail · readOnly=false · management=true",
+      ),
+    ).toBeTruthy();
+  });
+
+  it("keeps regular PO routes available to an SA in full-access mode", () => {
+    signIn();
+    useAuthStore.setState({
+      user: { ...useAuthStore.getState().user!, purchaseOrderMode: "FULL_ACCESS" },
+    });
+    window.history.pushState({}, "", "/po/11111111-1111-4111-8111-111111111111");
+    renderApp();
+
+    expect(screen.getByText("PO detail")).toBeTruthy();
+  });
+
+  it("opens Management PO detail with editing enabled only in full-access mode", () => {
+    signIn();
+    useAuthStore.setState({
+      user: { ...useAuthStore.getState().user!, purchaseOrderMode: "FULL_ACCESS" },
+    });
+    window.history.pushState({}, "", "/management/purchase-orders/11111111-1111-4111-8111-111111111111");
+    renderApp();
+
+    expect(screen.getByText("PO detail")).toBeTruthy();
+  });
+
+  it("redirects non-SA management accounts away from editable PO routes", () => {
+    signIn();
+    useAuthStore.setState({
+      user: {
+        ...useAuthStore.getState().user!,
+        roleCode: "TPKH",
+        permissions: ["management.area.access"],
+      },
+    });
+    window.history.pushState({}, "", "/po/11111111-1111-4111-8111-111111111111");
+    const { router } = renderApp();
+
+    expect(router.state.location.pathname).toBe("/management/dashboard");
   });
 
   it("does not grant management access from the legacy director role name", () => {

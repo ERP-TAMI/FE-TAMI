@@ -25,6 +25,7 @@ const user = {
   roleCode: "SA",
   roleName: "Quản trị hệ thống",
   permissions: [],
+  purchaseOrderMode: "READ_ONLY" as const,
 };
 
 describe("useAuthBootstrap", () => {

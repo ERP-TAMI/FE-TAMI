@@ -211,11 +211,11 @@ export function PoDocumentsSection({
             <p className="mt-3 text-theme-base font-semibold text-gray-900 dark:text-white">
               Chưa có tài liệu nào được đính kèm.
             </p>
-            <p className="mt-1 text-theme-xs text-gray-500 dark:text-gray-400">
-              {!isLocked
-                ? "Sử dụng khung tải lên ở trên để đính kèm tệp tài liệu vào đơn hàng PO này."
-                : "Đơn hàng đã khóa, không có tài liệu đính kèm."}
-            </p>
+            {!isLocked && (
+              <p className="mt-1 text-theme-xs text-gray-500 dark:text-gray-400">
+                Sử dụng khung tải lên ở trên để đính kèm tệp tài liệu vào đơn hàng PO này.
+              </p>
+            )}
           </div>
         ) : filteredDocuments.length === 0 ? (
           <div className="p-10 text-center">
@@ -225,9 +225,11 @@ export function PoDocumentsSection({
             <p className="mt-3 text-theme-base font-semibold text-gray-900 dark:text-white">
               Chưa có tài liệu nào thuộc danh mục {getDocumentCategoryInfo(activeCategoryTab).label}.
             </p>
-            <p className="mt-1 text-theme-xs text-gray-500 dark:text-gray-400">
-              Bạn có thể sử dụng khung tải lên ở trên để đính kèm thêm tài liệu cho danh mục này.
-            </p>
+            {!isLocked && (
+              <p className="mt-1 text-theme-xs text-gray-500 dark:text-gray-400">
+                Bạn có thể sử dụng khung tải lên ở trên để đính kèm thêm tài liệu cho danh mục này.
+              </p>
+            )}
             <button
               type="button"
               onClick={() => setActiveCategoryTab("all")}

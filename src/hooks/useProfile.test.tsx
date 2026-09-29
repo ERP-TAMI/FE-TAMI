@@ -18,6 +18,7 @@ const user: AuthUser = {
   roleCode: "IT",
   roleName: "Công nghệ thông tin",
   permissions: [],
+  purchaseOrderMode: "READ_ONLY",
 };
 
 function setup() {

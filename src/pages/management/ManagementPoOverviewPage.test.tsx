@@ -88,6 +88,40 @@ describe("ManagementPoOverviewPage", () => {
     vi.useRealTimers();
   });
 
+  it("keeps the native month picker visible and clickable", () => {
+    renderPage();
+
+    const monthInput = screen.getByLabelText("Tháng xem báo cáo");
+    expect(monthInput.getAttribute("type")).toBe("month");
+    expect(monthInput.className).toContain("cursor-pointer");
+    expect(monthInput.className).not.toContain("opacity-0");
+  });
+
+  it("truncates long PO codes without letting them overlap adjacent table content", () => {
+    const longPoCode = "S34D03-08-CLOSED-OVERDUE";
+    hooks.useManagementPurchaseOrdersOverview.mockReturnValue({
+      data: {
+        ...overview,
+        items: [{ ...overview.items[0], poCode: longPoCode }],
+      },
+      isLoading: false,
+      isFetching: false,
+      isPlaceholderData: false,
+      isError: false,
+      refetch: vi.fn(),
+    });
+
+    renderPage();
+
+    const codeLinks = screen.getAllByRole("link", { name: longPoCode });
+    expect(codeLinks).toHaveLength(2);
+    for (const link of codeLinks) {
+      expect(link.getAttribute("title")).toBe(longPoCode);
+      expect(link.className).toContain("block");
+      expect(link.className).toContain("truncate");
+    }
+  });
+
   it("shows the six requested columns and no assignee", () => {
     renderPage();
 

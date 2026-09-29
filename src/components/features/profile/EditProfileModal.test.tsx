@@ -11,6 +11,7 @@ const user: AuthUser = {
   roleCode: "IT",
   roleName: "Công nghệ thông tin",
   permissions: ["dashboard.view"],
+  purchaseOrderMode: "READ_ONLY",
 };
 
 afterEach(cleanup);

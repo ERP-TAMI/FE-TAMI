@@ -67,7 +67,12 @@ function renderDetail(
       <Routes>
         <Route
           path="/management/purchase-orders/:id/*"
-          element={<PoDetailPage readOnlyManagement={readOnlyManagement} />}
+          element={
+            <PoDetailPage
+              readOnlyManagement={readOnlyManagement}
+              managementContext
+            />
+          }
         />
         <Route path="/po/:id/*" element={<PoDetailPage readOnlyManagement={readOnlyManagement} />} />
       </Routes>
@@ -115,6 +120,46 @@ describe("PoDetailPage Management read-only mode", () => {
 
     expect(screen.getByRole("button", { name: "Khóa PO" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Hủy PO" })).toBeTruthy();
+  });
+
+  it("keeps full-access PO details inside the Management navigation context", () => {
+    renderDetail(
+      false,
+      "/management/purchase-orders/po-42?fromMonth=2026-09&fromPage=2",
+    );
+
+    expect(screen.getByRole("button", { name: "Hủy PO" })).toBeTruthy();
+    expect(screen.queryByText("Đang xem ở khu Quản lý · chỉ đọc")).toBeNull();
+    const breadcrumb = screen.getByRole("navigation", {
+      name: "Điều hướng phân cấp",
+    });
+    expect(
+      within(breadcrumb)
+        .getByRole("link", { name: "Tổng quan PO" })
+        .getAttribute("href"),
+    ).toBe("/management/purchase-orders?month=2026-09&page=2");
+  });
+
+  it("opens a product detail in Management while preserving overview return context", () => {
+    hooks.usePoProducts.mockReturnValue({
+      data: {
+        items: [
+          {
+            id: "product-88",
+            productCode: "SP-88",
+            productName: "Áo mẫu",
+            totalQuantity: 120,
+            colors: [],
+          },
+        ],
+      },
+      isLoading: false,
+    });
+    renderDetail(true, "/management/purchase-orders/po-42/products?fromMonth=2026-09&fromPage=2");
+
+    expect(screen.getByRole("link", { name: "SP-88" }).getAttribute("href")).toBe(
+      "/management/purchase-orders/po-42/products/product-88?fromMonth=2026-09&fromPage=2",
+    );
   });
 
   it("allows viewing attached files but hides file download in Management mode", () => {

@@ -245,8 +245,15 @@ export default function BomDetailPage() {
 
   const displayOrderCost = isHistorical ? null : bom.currentOrderCost;
 
+  const isReadOnlyPoBom =
+    bom.type === "po" &&
+    user?.roleCode === "SA" &&
+    user.purchaseOrderMode === "READ_ONLY";
+
   const isRdEntryMode =
-    currentStatus === "wait_rd" && canEditTechnicalLines(user, currentStatus, isHistorical);
+    !isReadOnlyPoBom &&
+    currentStatus === "wait_rd" &&
+    canEditTechnicalLines(user, currentStatus, isHistorical);
 
   const handleSaveAllAccountingCosts = async (
     updates: { lineId: string; unitCost: number | null }[],
@@ -572,6 +579,7 @@ export default function BomDetailPage() {
         {/* 1. Header & Quick Actions */}
         <BomDetailHeader
           bom={bom}
+          readOnly={isReadOnlyPoBom}
           revisions={revisions}
           selectedRevisionId={selectedRevisionParam || bom.currentRevision?.id}
           isHistorical={isHistorical}
@@ -681,6 +689,7 @@ export default function BomDetailPage() {
             ) : (
               <BomLinesTable
                 lines={displayLines}
+                readOnly={isReadOnlyPoBom}
                 currentStatus={currentStatus}
                 isHistorical={isHistorical}
                 costPerUnit={displayCostPerUnit}
@@ -723,7 +732,7 @@ export default function BomDetailPage() {
 
       {/* 6. Modals */}
       <BomHeaderEditModal
-        isOpen={isEditHeaderOpen}
+        isOpen={isEditHeaderOpen && !isReadOnlyPoBom}
         bom={bom}
         isHistorical={isHistorical}
         onClose={() => setIsEditHeaderOpen(false)}
@@ -731,7 +740,7 @@ export default function BomDetailPage() {
       />
 
       <BomAddMaterialDrawer
-        isOpen={isLineModalOpen}
+        isOpen={isLineModalOpen && !isReadOnlyPoBom}
         onClose={() => setIsLineModalOpen(false)}
         initialLine={editingLine}
         existingLines={displayLines}
@@ -743,7 +752,7 @@ export default function BomDetailPage() {
       />
 
       <BomLineDeleteDialog
-        isOpen={Boolean(deletingLine)}
+        isOpen={Boolean(deletingLine) && !isReadOnlyPoBom}
         line={deletingLine}
         isSubmitting={deleteLineMutation.isPending}
         onClose={() => setDeletingLine(null)}
@@ -751,42 +760,42 @@ export default function BomDetailPage() {
       />
 
       <BomForwardModal
-        isOpen={isForwardModalOpen}
+        isOpen={isForwardModalOpen && !isReadOnlyPoBom}
         currentStatus={currentStatus}
         onClose={() => setIsForwardModalOpen(false)}
         onSubmit={handleForward}
       />
 
       <BomRejectModal
-        isOpen={isRejectModalOpen}
+        isOpen={isRejectModalOpen && !isReadOnlyPoBom}
         currentStatus={currentStatus}
         onClose={() => setIsRejectModalOpen(false)}
         onSubmit={handleReject}
       />
 
       <BomApproveModal
-        isOpen={isApproveModalOpen}
+        isOpen={isApproveModalOpen && !isReadOnlyPoBom}
         bomCode={bom.bomCode}
         onClose={() => setIsApproveModalOpen(false)}
         onSubmit={handleApprove}
       />
 
       <BomDiscontinueModal
-        isOpen={isDiscontinueModalOpen}
+        isOpen={isDiscontinueModalOpen && !isReadOnlyPoBom}
         bomCode={bom.bomCode}
         onClose={() => setIsDiscontinueModalOpen(false)}
         onSubmit={handleDiscontinue}
       />
 
       <BomCreateRevisionModal
-        isOpen={isCreateRevModalOpen}
+        isOpen={isCreateRevModalOpen && !isReadOnlyPoBom}
         currentRevNo={bom.currentRevision?.revisionNo || 1}
         onClose={() => setIsCreateRevModalOpen(false)}
         onSubmit={handleCreateRevision}
       />
 
       <BomCopyFitModal
-        isOpen={isCopyFitModalOpen}
+        isOpen={isCopyFitModalOpen && !isReadOnlyPoBom}
         styleId={
           bom.style?.id ??
           bom.product?.sourceStyleId ??

@@ -65,6 +65,7 @@ describe("UsersPage", () => {
         roleCode: "SA",
         roleName: "Admin",
         permissions: ["system.users.manage"],
+        purchaseOrderMode: "READ_ONLY",
       },
     });
   });
@@ -293,6 +294,7 @@ describe("UsersPage", () => {
         roleCode: "IT",
         roleName: "IT",
         permissions: ["system.users.manage"],
+        purchaseOrderMode: "READ_ONLY",
       },
     });
 

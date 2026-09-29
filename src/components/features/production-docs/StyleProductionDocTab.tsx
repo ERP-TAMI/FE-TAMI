@@ -43,6 +43,7 @@ interface Props {
   productId?: string;
   styleName: string;
   styleImageUrl?: string | null;
+  readOnly?: boolean;
   onEditingChange?: (isEditing: boolean) => void;
 }
 
@@ -304,6 +305,7 @@ export function StyleProductionDocTab({
   productId,
   styleName,
   styleImageUrl,
+  readOnly = false,
   onEditingChange,
 }: Props) {
   const isProductMode = Boolean(poId && productId);
@@ -329,7 +331,8 @@ export function StyleProductionDocTab({
   const uploadImage = useUploadImage();
   const { toast, showToast, hideToast } = useToast();
 
-  const [isEditing, setIsEditing] = useState(false);
+  const [isEditingState, setIsEditing] = useState(false);
+  const isEditing = !readOnly && isEditingState;
 
   useEffect(() => {
     onEditingChange?.(isEditing);
@@ -414,6 +417,7 @@ export function StyleProductionDocTab({
   }, [isEditing, sec2Accessories, sec3Notes, sec4Feedback, sections]);
 
   const startCreate = () => {
+    if (readOnly) return;
     setDocName(`Tài liệu sản xuất - ${styleName}`);
     setSec1Image("");
     setSec1ImageCleared(false);
@@ -450,6 +454,7 @@ export function StyleProductionDocTab({
   };
 
   const handleSave = async () => {
+    if (readOnly) return;
     const firstInvalidSection = sections.findIndex((section) => !section.title?.trim());
     if (firstInvalidSection >= 0) {
       const field = `section-title-${firstInvalidSection}`;
@@ -613,7 +618,7 @@ export function StyleProductionDocTab({
   };
 
   const handleStatusChange = async (newStatus: ProductionDocStatus) => {
-    if (!doc) return;
+    if (!doc || readOnly) return;
     try {
       if (isProductMode) {
         await updateProductDoc.mutateAsync({
@@ -635,7 +640,7 @@ export function StyleProductionDocTab({
   };
 
   const handleResync = async () => {
-    if (!doc || !styleId) return;
+    if (!doc || !styleId || readOnly) return;
     try {
       await resyncDoc.mutateAsync({
         styleId,
@@ -655,7 +660,7 @@ export function StyleProductionDocTab({
     excludeSections?: string[],
     confirmOverwrite = false,
   ) => {
-    if (!doc || !targetStyleId || !styleId) return;
+    if (!doc || !targetStyleId || !styleId || readOnly) return;
     try {
       await copyDoc.mutateAsync({
         styleId,
@@ -682,7 +687,7 @@ export function StyleProductionDocTab({
   };
 
   const handleExportExcel = async () => {
-    if (!styleId) return;
+    if (!styleId || readOnly) return;
     try {
       await exportExcel.mutateAsync({ styleId, styleCode: styleName });
       showToast("Đã xuất file Excel tài liệu sản xuất thành công.");
@@ -723,16 +728,17 @@ export function StyleProductionDocTab({
           Chưa có tài liệu sản xuất tiếng Việt
         </h3>
         <p className="mx-auto mt-1.5 max-w-lg text-sm leading-relaxed text-gray-500 dark:text-gray-400">
-          Khởi tạo tài liệu sản xuất cho mẫu "{styleName}" để quản lý quy cách may, bảng size và
-          danh sách phụ liệu.
+          {readOnly
+            ? `Sản phẩm "${styleName}" chưa có tài liệu sản xuất.`
+            : `Khởi tạo tài liệu sản xuất cho mẫu "${styleName}" để quản lý quy cách may, bảng size và danh sách phụ liệu.`}
         </p>
-        <button
+        {!readOnly && <button
           type="button"
           onClick={startCreate}
           className="mt-5 inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-xs transition-colors hover:bg-blue-700"
         >
           Khởi tạo tài liệu sản xuất
-        </button>
+        </button>}
       </div>
     );
   }
@@ -741,6 +747,7 @@ export function StyleProductionDocTab({
     <div className="space-y-7 pt-1">
       {/* Workspace Header Toolbar */}
       <DocumentToolbar
+        readOnly={readOnly}
         status={doc ? doc.status : "draft"}
         updatedAt={doc?.updatedAt}
         copiedFromStyleId={doc?.copiedFromStyleId}

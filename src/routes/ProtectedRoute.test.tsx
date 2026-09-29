@@ -51,6 +51,7 @@ describe("ProtectedRoute", () => {
         roleCode: "SA",
         roleName: "Quản trị hệ thống",
         permissions: [],
+        purchaseOrderMode: "READ_ONLY",
       },
       accessToken: "token",
     });

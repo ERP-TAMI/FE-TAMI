@@ -19,6 +19,7 @@ function renderMenu(area: "management" | "employee" | "it") {
       roleCode: "IT",
       roleName: "Công nghệ thông tin",
       permissions: [],
+      purchaseOrderMode: "READ_ONLY",
     },
   });
   render(
