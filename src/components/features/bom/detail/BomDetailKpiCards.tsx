@@ -26,11 +26,28 @@ export function BomDetailKpiCards({ bom }: BomDetailKpiCardsProps) {
         bom.style?.styleCode ||
         bom.bomCode;
 
+  // A PO BOM's own product name must win over the Fit style it may have been
+  // copied from — showing the source style's name here misidentifies which
+  // product this BOM actually belongs to.
   const productName =
-    bom.style?.styleName ||
-    bom.product?.productName ||
-    bom.purchaseOrderProduct?.productName ||
-    bom.productNameSnapshot;
+    bom.type === "fit"
+      ? bom.style?.styleName
+      : bom.product?.productName ||
+        bom.purchaseOrderProduct?.productName ||
+        bom.productNameSnapshot ||
+        bom.style?.styleName;
+
+  // colorNameSnapshot is only set on BOMs created before/without the live PO
+  // product colors — fall back to those (same precedence BomTable's list row
+  // already uses) instead of just going straight to "—".
+  const productColors = bom.product?.colors?.length
+    ? bom.product.colors.join(", ")
+    : bom.colorNameSnapshot;
+
+  // bom.deadline is the BOM's own override; most BOMs never set one and rely
+  // on the PO product's (or the PO's) deadline instead.
+  const effectiveDeadline =
+    bom.deadline || bom.product?.deadline || bom.purchaseOrder?.deadline;
 
   return (
     <div className="flex flex-col md:flex-row items-stretch md:items-center rounded-2xl border border-gray-200/80 bg-white p-4 shadow-xs dark:border-gray-800 dark:bg-gray-900 divide-y md:divide-y-0 md:divide-x divide-gray-100 dark:divide-gray-800">
@@ -49,9 +66,9 @@ export function BomDetailKpiCards({ bom }: BomDetailKpiCardsProps) {
                 {bom.purchaseOrder.poCode}
               </span>
             )}
-            {bom.colorNameSnapshot && (
+            {productColors && (
               <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-300">
-                Màu: {bom.colorNameSnapshot}
+                Màu: {productColors}
               </span>
             )}
           </div>
@@ -123,7 +140,7 @@ export function BomDetailKpiCards({ bom }: BomDetailKpiCardsProps) {
         </span>
         <div className="flex items-center gap-2 text-base font-bold text-gray-900 dark:text-white">
           <Calendar className="h-4 w-4 text-gray-400" />
-          <span>{bom.deadline ? formatDate(bom.deadline) : "—"}</span>
+          <span>{effectiveDeadline ? formatDate(effectiveDeadline) : "—"}</span>
         </div>
       </div>
 

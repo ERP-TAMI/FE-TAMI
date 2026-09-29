@@ -107,10 +107,8 @@ export function BomDetailHeader({
         bom.style?.styleCode ||
         bom.bomCode;
 
-  const displayTitle =
-    bom.type === "fit"
-      ? `Mẫu Fit: ${displayCode}`
-      : `PO BOM: ${displayCode}`;
+  const typeLabel = bom.type === "fit" ? "Định mức Mẫu Fit" : "Định mức Sản phẩm PO";
+  const displayTitle = `${typeLabel}: ${displayCode}`;
 
   return (
     <div className="flex flex-col gap-4">
@@ -118,7 +116,7 @@ export function BomDetailHeader({
         breadcrumb={[
           { label: "Dashboard", to: "/dashboard" },
           { label: "Quản lý Nguyên phụ liệu", to: "/bom" },
-          { label: bom.type === "fit" ? "Fit BOM" : "PO BOM" },
+          { label: typeLabel },
           { label: displayCode },
         ]}
       />
@@ -178,13 +176,6 @@ export function BomDetailHeader({
         <div className="flex flex-wrap items-center gap-3">
           <h1 className="text-xl font-bold tracking-tight text-gray-900 dark:text-white sm:text-2xl">
             {displayTitle}
-            {bom.type !== "fit" && (
-              <span className="sr-only">
-                {`PO BOM: ${bom.purchaseOrder?.poCode || bom.bomCode} - ${
-                  bom.product?.productName || bom.style?.styleName || "Sản phẩm"
-                }`}
-              </span>
-            )}
           </h1>
 
           <div className="flex items-center gap-2">

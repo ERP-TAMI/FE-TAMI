@@ -470,7 +470,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       expect(screen.getByText("Áo sơ mi Oxford")).toBeTruthy();
     });
 
-    it("renders the breadcrumb on the shared PageHeader (Dashboard > Quản lý Nguyên phụ liệu > Fit BOM)", () => {
+    it("renders the breadcrumb on the shared PageHeader (Dashboard > Quản lý Nguyên phụ liệu > Định mức Mẫu Fit)", () => {
       render(
         <BrowserRouter>
           <BomDetailPage />
@@ -480,7 +480,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       expect(
         screen.getByRole("link", { name: "Quản lý Nguyên phụ liệu" }),
       ).toBeTruthy();
-      expect(screen.getByText("Fit BOM")).toBeTruthy();
+      expect(screen.getByText("Định mức Mẫu Fit")).toBeTruthy();
     });
 
     it("5. renders PO BOM with PO and Product information", () => {
@@ -490,7 +490,8 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
           <BomDetailPage />
         </BrowserRouter>,
       );
-      expect(screen.getByText(/PO BOM: PO-2026-001 - Váy Maxi Họa Tiết/i)).toBeTruthy();
+      expect(screen.getByText(/Định mức Sản phẩm PO:/i)).toBeTruthy();
+      expect(screen.getByText("Váy Maxi Họa Tiết")).toBeTruthy();
       expect(screen.getAllByText("PO-2026-001").length).toBeGreaterThan(0);
     });
 
@@ -502,6 +503,29 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
         </BrowserRouter>,
       );
       expect(screen.getByText(/Màu: Đỏ/i)).toBeTruthy();
+    });
+
+    it("falls back to the live PO product's colors and deadline when the BOM's own snapshot fields are null", () => {
+      hooks.useBom.mockReturnValue({
+        data: {
+          ...mockPoBom,
+          colorNameSnapshot: null,
+          deadline: null,
+          product: {
+            ...mockPoBom.product!,
+            colors: ["Ivory", "Black"],
+            deadline: "2026-04-25",
+          },
+        },
+        isLoading: false,
+      });
+      render(
+        <BrowserRouter>
+          <BomDetailPage />
+        </BrowserRouter>,
+      );
+      expect(screen.getByText(/Màu: Ivory, Black/i)).toBeTruthy();
+      expect(screen.getByText(/25\/0?4\/2026/)).toBeTruthy();
     });
 
     it("7. renders Current Order Quantity with proper formatting", () => {
@@ -1577,6 +1601,21 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
         </BrowserRouter>,
       );
       expect(screen.getByText("Tạo phiên bản mới")).toBeTruthy();
+    });
+
+    it("shows a compact completed summary instead of the full 5-step stepper once closed", () => {
+      const closedBom = { ...mockFitBom, status: "closed" as const };
+      hooks.useBom.mockReturnValue({ data: closedBom, isLoading: false });
+      render(
+        <BrowserRouter>
+          <BomDetailPage />
+        </BrowserRouter>,
+      );
+      expect(
+        screen.getByText("Đã hoàn tất toàn bộ quy trình (Khởi tạo → Phê duyệt)"),
+      ).toBeTruthy();
+      expect(screen.queryByText("Khởi tạo")).toBeNull();
+      expect(screen.queryByText("Phê duyệt")).toBeNull();
     });
 
     it("71. Create Revision modal requires changeReason and calls POST /boms/:id/revisions", async () => {
