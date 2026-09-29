@@ -30,6 +30,7 @@ import { useAuthStore } from "@/store/authStore";
 
 interface BomLinesTableProps {
   lines: BomLineItem[];
+  readOnly?: boolean;
   currentStatus?: string;
   isHistorical?: boolean;
   costPerUnit?: number | null;
@@ -49,6 +50,7 @@ interface BomLinesTableProps {
 
 export function BomLinesTable({
   lines,
+  readOnly = false,
   currentStatus = "wait_nvkh",
   isHistorical = false,
   costPerUnit,
@@ -68,10 +70,10 @@ export function BomLinesTable({
   const user = useAuthStore((state) => state.user);
 
   const canViewCost = canViewBomCost(user);
-  const allowAdd = canAddBomLine(user, currentStatus, isHistorical);
-  const allowEdit = canEditBomLines(user, currentStatus, isHistorical);
-  const allowDelete = canDeleteBomLine(user, currentStatus, isHistorical);
-  const allowReorder = canReorderBomLines(user, currentStatus, isHistorical);
+  const allowAdd = !readOnly && canAddBomLine(user, currentStatus, isHistorical);
+  const allowEdit = !readOnly && canEditBomLines(user, currentStatus, isHistorical);
+  const allowDelete = !readOnly && canDeleteBomLine(user, currentStatus, isHistorical);
+  const allowReorder = !readOnly && canReorderBomLines(user, currentStatus, isHistorical);
   const hasActions = allowEdit || allowDelete;
 
   const [search, setSearch] = useState("");
@@ -84,8 +86,8 @@ export function BomLinesTable({
   const [editNote, setEditNote] = useState("");
   const [isSavingInlineEdit, setIsSavingInlineEdit] = useState(false);
 
-  const isAccounting = canEditUnitCost(user, currentStatus, isHistorical);
-  const isTechnical = canEditTechnicalLines(user, currentStatus, isHistorical);
+  const isAccounting = !readOnly && canEditUnitCost(user, currentStatus, isHistorical);
+  const isTechnical = !readOnly && canEditTechnicalLines(user, currentStatus, isHistorical);
 
   // Local state for accounting price entries to allow quick, smooth inline editing
   const [localCosts, setLocalCosts] = useState<Record<string, string>>({});
@@ -157,7 +159,7 @@ export function BomLinesTable({
   }, [hasUnsavedCosts, onDirtyStateChange]);
 
   const handleSaveAllCosts = async () => {
-    if (dirtyLineIds.length === 0) return;
+    if (readOnly || !isAccounting || dirtyLineIds.length === 0) return;
     setIsSavingCosts(true);
     try {
       const updates = dirtyLineIds.map((lineId) => {
@@ -225,6 +227,7 @@ export function BomLinesTable({
   };
 
   const saveInlineEdit = async (line: BomLineItem) => {
+    if (readOnly || (!isAccounting && !isTechnical)) return;
     setIsSavingInlineEdit(true);
     try {
       if (onUpdateLineInline) {
@@ -316,7 +319,7 @@ export function BomLinesTable({
   // Reorder helpers — always operate on the FULL lines list so every
   // orderIndex is re-assigned contiguously in a single request.
   const handleMoveUp = (idx: number) => {
-    if (idx === 0 || isFiltered) return;
+    if (!allowReorder || idx === 0 || isFiltered) return;
     const newLines = [...lines];
     const temp = newLines[idx];
     newLines[idx] = newLines[idx - 1];
@@ -325,7 +328,7 @@ export function BomLinesTable({
   };
 
   const handleMoveDown = (idx: number) => {
-    if (idx === lines.length - 1 || isFiltered) return;
+    if (!allowReorder || idx === lines.length - 1 || isFiltered) return;
     const newLines = [...lines];
     const temp = newLines[idx];
     newLines[idx] = newLines[idx + 1];

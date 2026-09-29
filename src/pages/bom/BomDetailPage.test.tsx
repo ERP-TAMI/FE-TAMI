@@ -30,7 +30,11 @@ const hooks = vi.hoisted(() => ({
   copyFit: { isPending: false, mutateAsync: vi.fn() },
   discontinueBom: { isPending: false, mutateAsync: vi.fn() },
   mockNavigate: vi.fn(),
-  mockUser: { roleCode: "TPKH", fullName: "Trưởng phòng KH" },
+  mockUser: { roleCode: "TPKH", fullName: "Trưởng phòng KH" } as {
+    roleCode: string;
+    fullName: string;
+    purchaseOrderMode?: "READ_ONLY" | "FULL_ACCESS";
+  },
   mockToast: {
     toast: null as { message: string; variant: "success" | "error" } | null,
     showToast: vi.fn(),
@@ -523,6 +527,60 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
         </BrowserRouter>,
       );
       expect(screen.getAllByText("$150,000.0000").length).toBeGreaterThan(0);
+    });
+
+    it("hides PO BOM write actions for SA in READ_ONLY mode on direct detail", () => {
+      hooks.mockUser = {
+        roleCode: "SA",
+        fullName: "Giám đốc điều hành",
+        purchaseOrderMode: "READ_ONLY",
+      };
+      hooks.useBom.mockReturnValue({ data: mockPoBom, isLoading: false });
+
+      render(
+        <BrowserRouter>
+          <BomDetailPage />
+        </BrowserRouter>,
+      );
+
+      expect(screen.queryByText("Sửa Header")).toBeNull();
+      expect(screen.queryByRole("button", { name: "Thao tác khác" })).toBeNull();
+    });
+
+    it("hides PO BOM approval for SA in READ_ONLY mode", () => {
+      hooks.mockUser = {
+        roleCode: "SA",
+        fullName: "Giám đốc điều hành",
+        purchaseOrderMode: "READ_ONLY",
+      };
+      hooks.useBom.mockReturnValue({
+        data: { ...mockPoBom, status: "wait_sa_approve" },
+        isLoading: false,
+      });
+
+      render(
+        <BrowserRouter>
+          <BomDetailPage />
+        </BrowserRouter>,
+      );
+
+      expect(screen.queryByText("Phê duyệt BOM")).toBeNull();
+    });
+
+    it("preserves SA Fit BOM permissions while PO mode is READ_ONLY", () => {
+      hooks.mockUser = {
+        roleCode: "SA",
+        fullName: "Giám đốc điều hành",
+        purchaseOrderMode: "READ_ONLY",
+      };
+
+      render(
+        <BrowserRouter>
+          <BomDetailPage />
+        </BrowserRouter>,
+      );
+
+      expect(screen.getByText("Sửa Header")).toBeTruthy();
     });
 
     it("11. masks Cost Per Unit and Order Cost for NVKH role", () => {

@@ -53,6 +53,7 @@ export interface StyleOperationStepTableProps {
   steps?: StyleOperationStepItem[];
   cmBaseDays?: number;
   canEdit?: boolean;
+  canExport?: boolean;
   onEditingChange?: (isEditing: boolean) => void;
   onSave?: (steps: Partial<StyleOperationStepItem>[], baseDays?: number) => Promise<void>;
   imageUrl?: string | null;
@@ -66,6 +67,7 @@ export function StyleOperationStepTable({
   steps = [],
   cmBaseDays = 30,
   canEdit = true,
+  canExport = true,
   onEditingChange,
   onSave,
   imageUrl,
@@ -92,11 +94,13 @@ export function StyleOperationStepTable({
   const [copyDialogOpen, setCopyDialogOpen] = useState(false);
   const [deletingRowIndex, setDeletingRowIndex] = useState<number | null>(null);
   const [zoomOpen, setZoomOpen] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
+  const [isEditingState, setIsEditing] = useState(false);
+  const isEditing = canEdit && isEditingState;
   const [pendingDiscardOpen, setPendingDiscardOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!canEdit || !onImageChange) return;
     const file = e.target.files?.[0];
     if (file && onImageChange) {
       onImageChange(file);
@@ -104,6 +108,7 @@ export function StyleOperationStepTable({
   };
 
   const handlePasteImage = useCallback(async () => {
+    if (!canEdit || !onImageChange) return;
     try {
       const items = await navigator.clipboard.read();
       for (const item of items) {
@@ -119,10 +124,11 @@ export function StyleOperationStepTable({
     } catch (err) {
       console.warn("Clipboard read failed:", err);
     }
-  }, [onImageChange]);
+  }, [canEdit, onImageChange]);
 
   const handlePasteEvent = useCallback(
     (e: React.ClipboardEvent) => {
+      if (!canEdit || !onImageChange) return;
       const items = e.clipboardData?.items;
       if (!items) return;
       for (let i = 0; i < items.length; i++) {
@@ -136,7 +142,7 @@ export function StyleOperationStepTable({
         }
       }
     },
-    [onImageChange],
+    [canEdit, onImageChange],
   );
 
   const pickerGroupRowId = useRef<string | null>(null);
@@ -179,7 +185,7 @@ export function StyleOperationStepTable({
 
   const triggerSave = useCallback(
     async (rowsToSave?: Partial<StyleOperationStepItem>[], daysToSave?: number) => {
-      if (!onSave) return false;
+      if (!canEdit || !onSave) return false;
       const targetRows = rowsToSave || (rowsRef.current.length > 0 ? rowsRef.current : rows);
       const targetDays = daysToSave ?? baseDays;
       const invalidRowIndex = targetRows.findIndex(
@@ -226,7 +232,7 @@ export function StyleOperationStepTable({
         setIsSaving(false);
       }
     },
-    [onSave, baseDays, commonNote, rows, showToast],
+    [canEdit, onSave, baseDays, commonNote, rows, showToast],
   );
 
   const rowKeys = steps.map((r) => r.id).join(",");
@@ -533,6 +539,7 @@ export function StyleOperationStepTable({
   }
 
   function handleEditStart() {
+    if (!canEdit) return;
     setRows(steps);
     rowsRef.current = steps;
     setIsDirty(false);
@@ -742,7 +749,7 @@ export function StyleOperationStepTable({
                     </button>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2">
+                  {onImageChange && <div className="grid grid-cols-2 gap-2">
                     <Button
                       variant="outline"
                       size="sm"
@@ -759,25 +766,25 @@ export function StyleOperationStepTable({
                     >
                       Dán ảnh
                     </Button>
-                  </div>
+                  </div>}
                 </div>
               ) : (
                 <div
                   tabIndex={0}
-                  onPaste={handlePasteEvent}
-                  onClick={() => fileInputRef.current?.click()}
-                  className="border-2 border-dashed border-gray-200 dark:border-gray-800 rounded-xl aspect-square flex flex-col items-center justify-center p-4 text-center bg-gray-50/50 dark:bg-gray-800/40 cursor-pointer hover:bg-gray-100/60 dark:hover:bg-gray-800 transition-colors"
-                  title="Có thể dán ảnh trực tiếp bằng Ctrl+V"
+                  onPaste={onImageChange ? handlePasteEvent : undefined}
+                  onClick={onImageChange ? () => fileInputRef.current?.click() : undefined}
+                  className={`border-2 border-dashed border-gray-200 dark:border-gray-800 rounded-xl aspect-square flex flex-col items-center justify-center p-4 text-center bg-gray-50/50 dark:bg-gray-800/40 transition-colors ${onImageChange ? "cursor-pointer hover:bg-gray-100/60 dark:hover:bg-gray-800" : ""}`}
+                  title={onImageChange ? "Có thể dán ảnh trực tiếp bằng Ctrl+V" : undefined}
                 >
                   <StyleImagePlaceholder className="w-12 h-12 mb-2 text-gray-300 dark:text-gray-600 opacity-60" />
                   <p className="text-xs font-bold text-gray-700 dark:text-gray-200">
                     Chưa có ảnh mô tả
                   </p>
-                  <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-1 max-w-[180px]">
+                  {onImageChange && <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-1 max-w-[180px]">
                     Ảnh kỹ thuật, phác thảo thiết kế rập của Style
-                  </p>
+                  </p>}
 
-                  <div
+                  {onImageChange && <div
                     className="mt-4 grid w-full grid-cols-2 gap-2"
                     onClick={(e) => e.stopPropagation()}
                   >
@@ -797,17 +804,17 @@ export function StyleOperationStepTable({
                     >
                       Dán ảnh
                     </Button>
-                  </div>
+                  </div>}
                 </div>
               )}
 
-              <input
+              {onImageChange && <input
                 ref={fileInputRef}
                 type="file"
                 accept="image/*"
                 className="hidden"
                 onChange={handleFileSelect}
-              />
+              />}
             </div>
           </div>
         </div>
@@ -839,7 +846,7 @@ export function StyleOperationStepTable({
             <div className="flex items-center gap-2">
               {!isEditing && (
                 <>
-                  <Button
+                  {canExport && <Button
                     variant="outline"
                     size="sm"
                     onClick={handleExportExcel}
@@ -847,15 +854,15 @@ export function StyleOperationStepTable({
                   >
                     <DownloadIcon className="w-4 h-4" />
                     Xuất Excel
-                  </Button>
-                  <Button
+                  </Button>}
+                  {canEdit && <Button
                     variant="outline"
                     size="sm"
                     onClick={() => setCopyDialogOpen(true)}
                   >
                     <CopyIcon className="w-4 h-4" />
                     Sao chép công đoạn
-                  </Button>
+                  </Button>}
                   {showEditButton && (
                     <Button variant="primary" size="sm" onClick={handleEditStart}>
                       <PencilIcon className="w-4 h-4" />

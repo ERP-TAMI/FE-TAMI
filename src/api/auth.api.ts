@@ -1,5 +1,5 @@
 import apiClient from "@/lib/apiClient";
-import type { AuthUser } from "@/store/authStore";
+import type { AuthUser, PurchaseOrderMode } from "@/store/authStore";
 import {
   authResponseSchema,
   authUserSchema,
@@ -36,6 +36,10 @@ export const authApi = {
   },
   async updateProfile(input: UpdateProfileInput): Promise<AuthUser> {
     const response = await apiClient.patch("/auth/me", input);
+    return authUserSchema.parse(response.data);
+  },
+  async updatePurchaseOrderMode(mode: PurchaseOrderMode): Promise<AuthUser> {
+    const response = await apiClient.patch("/auth/me/purchase-order-mode", { mode });
     return authUserSchema.parse(response.data);
   },
   async changePassword(input: ChangePasswordInput): Promise<void> {

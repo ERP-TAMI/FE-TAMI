@@ -6,6 +6,7 @@ import {
   Modal,
   SampleStatusPicker,
   SAMPLE_STATUS_OPTIONS,
+  sampleStatusLabel,
   Toast,
 } from "@/components/shared";
 import {
@@ -62,9 +63,10 @@ interface UploadErrorItem {
 interface Props {
   poId: string;
   productId: string;
+  readOnly?: boolean;
 }
 
-export function PoProductSampleRoundsTab({ poId, productId }: Props) {
+export function PoProductSampleRoundsTab({ poId, productId, readOnly = false }: Props) {
   const { toast, showToast, hideToast } = useToast();
   const roundsQuery = useProductSampleRounds(poId, productId);
   const rounds = roundsQuery.data ?? [];
@@ -133,17 +135,19 @@ export function PoProductSampleRoundsTab({ poId, productId }: Props) {
   }, [isFormOpen, editingRound]);
 
   const openCreateForm = () => {
+    if (readOnly) return;
     setEditingRound(null);
     setIsFormOpen(true);
   };
 
   const openEditForm = (round: ProductSampleRound) => {
+    if (readOnly) return;
     setEditingRound(round);
     setIsFormOpen(true);
   };
 
   const handleStatusChange = async (round: ProductSampleRound, status: SampleStatus) => {
-    if (status === round.status) return;
+    if (readOnly || status === round.status) return;
     setStatusUpdatingRoundId(round.id);
     try {
       await updateMutation.mutateAsync({ poId, productId, roundId: round.id, input: { status } });
@@ -156,6 +160,7 @@ export function PoProductSampleRoundsTab({ poId, productId }: Props) {
   };
 
   const handleSubmitForm = async () => {
+    if (readOnly) return;
     const input = {
       sampleDate: formState.sampleDate || undefined,
       feedback: formState.feedback.trim() || undefined,
@@ -181,6 +186,7 @@ export function PoProductSampleRoundsTab({ poId, productId }: Props) {
   };
 
   const handleFiles = (round: ProductSampleRound, fileList: FileList | File[]) => {
+    if (readOnly) return;
     const files = Array.from(fileList);
     if (files.length === 0) return;
 
@@ -230,6 +236,7 @@ export function PoProductSampleRoundsTab({ poId, productId }: Props) {
   };
 
   const dismissUploadError = (roundId: string, tempId: string) => {
+    if (readOnly) return;
     setUploadErrorsByRound((prev) => ({
       ...prev,
       [roundId]: (prev[roundId] || []).filter((item) => item.tempId !== tempId),
@@ -237,7 +244,7 @@ export function PoProductSampleRoundsTab({ poId, productId }: Props) {
   };
 
   const handleConfirmRemoveImage = async () => {
-    if (!pendingRemoveImage) return;
+    if (readOnly || !pendingRemoveImage) return;
     try {
       await removeImageMutation.mutateAsync({
         poId,
@@ -254,6 +261,7 @@ export function PoProductSampleRoundsTab({ poId, productId }: Props) {
   };
 
   const handleDownloadImage = async (roundId: string, image: ProductSampleImage) => {
+    if (readOnly) return;
     // No noopener/noreferrer: those make window.open() return null, so we couldn't navigate it later.
     const popup = window.open("", "_blank");
     try {
@@ -278,10 +286,12 @@ export function PoProductSampleRoundsTab({ poId, productId }: Props) {
         <h3 className="text-theme-base font-bold text-gray-900 dark:text-white">
           Đợt may mẫu ({rounds.length})
         </h3>
-        <Button size="sm" onClick={openCreateForm}>
-          <PlusIcon className="h-4 w-4" />
-          Thêm đợt may mẫu
-        </Button>
+        {!readOnly && (
+          <Button size="sm" onClick={openCreateForm}>
+            <PlusIcon className="h-4 w-4" />
+            Thêm đợt may mẫu
+          </Button>
+        )}
       </div>
 
       {roundsQuery.isLoading ? (
@@ -293,9 +303,9 @@ export function PoProductSampleRoundsTab({ poId, productId }: Props) {
           <p className="text-theme-base font-semibold text-gray-900 dark:text-white">
             Chưa có đợt may mẫu nào.
           </p>
-          <p className="mt-1 text-theme-xs text-gray-500 dark:text-gray-400">
+          {!readOnly && <p className="mt-1 text-theme-xs text-gray-500 dark:text-gray-400">
             Bấm "Thêm đợt may mẫu" để ghi nhận đợt may mẫu đầu tiên cho sản phẩm này.
-          </p>
+          </p>}
         </div>
       ) : (
         <div className="space-y-4">
@@ -310,15 +320,17 @@ export function PoProductSampleRoundsTab({ poId, productId }: Props) {
                     ? "border-brand-400 bg-brand-50/40 dark:border-brand-700"
                     : "border-gray-200 bg-white dark:border-gray-800"
                 }`}
-                onDragOver={(e) => {
+                onDragOver={readOnly ? undefined : (e) => {
                   e.preventDefault();
                   setDragOverRoundId(round.id);
                 }}
-                onDragLeave={() => setDragOverRoundId(null)}
+                onDragLeave={readOnly ? undefined : () => setDragOverRoundId(null)}
                 onDrop={(e) => {
                   e.preventDefault();
                   setDragOverRoundId(null);
-                  if (e.dataTransfer.files?.length) handleFiles(round, e.dataTransfer.files);
+                  if (!readOnly && e.dataTransfer.files?.length) {
+                    handleFiles(round, e.dataTransfer.files);
+                  }
                 }}
               >
                 <div className="flex flex-wrap items-start justify-between gap-4 border-b border-gray-100 p-5 dark:border-gray-800">
@@ -331,11 +343,17 @@ export function PoProductSampleRoundsTab({ poId, productId }: Props) {
                         Đợt may mẫu {round.roundNo}
                       </h4>
                       <div className="flex flex-wrap items-center gap-2">
-                        <SampleStatusPicker
-                          status={round.status}
-                          isSaving={statusUpdatingRoundId === round.id}
-                          onChange={(status) => void handleStatusChange(round, status)}
-                        />
+                        {readOnly ? (
+                          <span className="inline-flex h-7 items-center rounded-lg border border-gray-200 bg-gray-50 px-2.5 text-theme-xs font-medium text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
+                            {sampleStatusLabel(round.status)}
+                          </span>
+                        ) : (
+                          <SampleStatusPicker
+                            status={round.status}
+                            isSaving={statusUpdatingRoundId === round.id}
+                            onChange={(status) => void handleStatusChange(round, status)}
+                          />
+                        )}
                         <span className="flex h-7 items-center gap-1.5 text-theme-sm font-medium leading-none text-gray-500 dark:text-gray-400">
                           <CalenderIcon className="h-4 w-4" />
                           {formatDate(round.sampleDate)}
@@ -343,10 +361,12 @@ export function PoProductSampleRoundsTab({ poId, productId }: Props) {
                       </div>
                     </div>
                   </div>
-                  <Button variant="primary" size="sm" onClick={() => openEditForm(round)}>
-                    <PencilIcon className="h-3.5 w-3.5" />
-                    Sửa
-                  </Button>
+                  {!readOnly && (
+                    <Button variant="primary" size="sm" onClick={() => openEditForm(round)}>
+                      <PencilIcon className="h-3.5 w-3.5" />
+                      Sửa
+                    </Button>
+                  )}
                 </div>
 
                 {round.feedback && (
@@ -356,7 +376,7 @@ export function PoProductSampleRoundsTab({ poId, productId }: Props) {
                 )}
 
                 <div className="p-5">
-                  {roundErrors.length > 0 && (
+                  {!readOnly && roundErrors.length > 0 && (
                     <div className="mb-3 space-y-2">
                       {roundErrors.map((item) => (
                         <div
@@ -396,7 +416,7 @@ export function PoProductSampleRoundsTab({ poId, productId }: Props) {
                             className="h-full w-full object-cover"
                           />
                         </button>
-                        <div className="absolute right-1.5 top-1.5 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                        {!readOnly && <div className="absolute right-1.5 top-1.5 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
                           <button
                             type="button"
                             onClick={() => void handleDownloadImage(round.id, image)}
@@ -413,19 +433,19 @@ export function PoProductSampleRoundsTab({ poId, productId }: Props) {
                           >
                             <TrashBinIcon className="h-4 w-4" />
                           </button>
-                        </div>
+                        </div>}
                       </div>
                     ))}
 
-                    <button
+                    {!readOnly && <button
                       type="button"
                       onClick={() => fileInputRefs.current[round.id]?.click()}
                       className="flex aspect-[4/3] flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed border-gray-300 text-gray-400 transition-colors hover:border-brand-400 hover:text-brand-500 dark:border-gray-700 dark:hover:border-brand-700"
                     >
                       <PlusIcon className="h-6 w-6" />
                       <span className="text-theme-xs">Thêm ảnh</span>
-                    </button>
-                    <input
+                    </button>}
+                    {!readOnly && <input
                       ref={(el) => {
                         fileInputRefs.current[round.id] = el;
                       }}
@@ -437,7 +457,7 @@ export function PoProductSampleRoundsTab({ poId, productId }: Props) {
                         e.target.value = "";
                       }}
                       className="hidden"
-                    />
+                    />}
                   </div>
                 </div>
               </div>
@@ -446,7 +466,7 @@ export function PoProductSampleRoundsTab({ poId, productId }: Props) {
         </div>
       )}
 
-      <Modal
+      {!readOnly && <Modal
         open={isFormOpen}
         onClose={() => setIsFormOpen(false)}
         title={
@@ -533,9 +553,9 @@ export function PoProductSampleRoundsTab({ poId, productId }: Props) {
             />
           </div>
         </div>
-      </Modal>
+      </Modal>}
 
-      <ConfirmDialog
+      {!readOnly && <ConfirmDialog
         open={pendingRemoveImage !== null}
         title="Xoá ảnh"
         description={
@@ -549,7 +569,7 @@ export function PoProductSampleRoundsTab({ poId, productId }: Props) {
         isSubmitting={removeImageMutation.isPending}
         onConfirm={() => void handleConfirmRemoveImage()}
         onClose={() => setPendingRemoveImage(null)}
-      />
+      />}
 
       {viewingImage &&
         createPortal(
@@ -580,14 +600,16 @@ export function PoProductSampleRoundsTab({ poId, productId }: Props) {
                 </span>
               )}
 
-              <button
-                type="button"
-                onClick={() => void handleDownloadImage(viewingImage.roundId, viewingImage.image)}
-                className="flex h-10 items-center gap-2 rounded-full px-4 text-sm font-semibold text-white transition-colors hover:bg-white/10"
-              >
-                <DownloadIcon className="h-4 w-4" />
-                Tải xuống
-              </button>
+              {!readOnly && (
+                <button
+                  type="button"
+                  onClick={() => void handleDownloadImage(viewingImage.roundId, viewingImage.image)}
+                  className="flex h-10 items-center gap-2 rounded-full px-4 text-sm font-semibold text-white transition-colors hover:bg-white/10"
+                >
+                  <DownloadIcon className="h-4 w-4" />
+                  Tải xuống
+                </button>
+              )}
             </div>
 
             {/* Vùng ảnh + mũi tên điều hướng */}

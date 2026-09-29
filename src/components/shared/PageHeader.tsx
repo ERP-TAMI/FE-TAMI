@@ -74,7 +74,10 @@ export function PageHeader({ breadcrumb, title, stats, action }: PageHeaderProps
                     {item.label}
                   </span>
                 ) : item.to ? (
-                  <Link to={item.to} className="hover:text-gray-700 dark:hover:text-gray-200">
+                  <Link
+                    to={item.to}
+                    className="cursor-pointer transition-colors duration-150 hover:text-gray-700 focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 dark:hover:text-gray-200"
+                  >
                     {item.label}
                   </Link>
                 ) : (

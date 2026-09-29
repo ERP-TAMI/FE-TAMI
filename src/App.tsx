@@ -16,7 +16,8 @@ import { ManagementRoute } from "@/routes/ManagementRoute";
 import { ItRoute } from "@/routes/ItRoute";
 import { UserManagementRoute } from "@/routes/UserManagementRoute";
 import { UserManagementAlias } from "@/routes/UserManagementAlias";
-import { getLandingPath } from "@/lib/areaAccess";
+import { PurchaseOrderModuleRoute } from "@/routes/PurchaseOrderModuleRoute";
+import { canManagePurchaseOrders, getLandingPath } from "@/lib/areaAccess";
 import { useAuthStore } from "@/store/authStore";
 import { ScrollToTop } from "@/components/shared/ScrollToTop";
 import { ProtectedRoute } from "@/routes/ProtectedRoute";
@@ -45,6 +46,30 @@ import ForbiddenPage from "@/pages/ForbiddenPage";
 import NotFoundPage from "@/pages/NotFoundPage";
 
 const AUTH_GUARD_ENABLED = true;
+
+function ManagementPoDetailRoute() {
+  const user = useAuthStore((state) => state.user);
+  const canEdit = canManagePurchaseOrders(user);
+  return (
+    <PoDetailPage
+      key={`management-po-${canEdit ? "full-access" : "read-only"}`}
+      managementContext
+      readOnlyManagement={!canEdit}
+    />
+  );
+}
+
+function ManagementPoProductDetailRoute() {
+  const user = useAuthStore((state) => state.user);
+  const canEdit = canManagePurchaseOrders(user);
+  return (
+    <PoProductDetailPage
+      key={`management-po-product-${canEdit ? "full-access" : "read-only"}`}
+      managementContext
+      readOnlyManagement={!canEdit}
+    />
+  );
+}
 
 export function AppRoutes() {
   const status = useAuthBootstrap();
@@ -75,6 +100,21 @@ export function AppRoutes() {
               <Route index element={<Navigate to="dashboard" replace />} />
               <Route path="dashboard" element={<ManagementDashboardPage />} />
               <Route path="purchase-orders" element={<ManagementPoOverviewPage />} />
+              <Route path="purchase-orders/:id" element={<ManagementPoDetailRoute />} />
+              <Route path="purchase-orders/:id/detail" element={<ManagementPoDetailRoute />} />
+              <Route path="purchase-orders/:id/products" element={<ManagementPoDetailRoute />} />
+              <Route
+                path="purchase-orders/:id/products/:productId"
+                element={<ManagementPoProductDetailRoute />}
+              />
+              <Route
+                path="purchase-orders/:id/products/:productId/:tab"
+                element={<ManagementPoProductDetailRoute />}
+              />
+              <Route path="purchase-orders/:id/lines" element={<ManagementPoDetailRoute />} />
+              <Route path="purchase-orders/:id/documents" element={<ManagementPoDetailRoute />} />
+              <Route path="purchase-orders/:id/files" element={<ManagementPoDetailRoute />} />
+              <Route path="purchase-orders/:id/history" element={<ManagementPoDetailRoute />} />
               <Route path="profile" element={<ProfilePage />} />
               <Route element={<UserManagementRoute />}>
                 <Route path="users" element={<UsersPage />} />
@@ -106,18 +146,20 @@ export function AppRoutes() {
             <Route path="bom" element={<BomPage />} />
             <Route path="bom/aggregate" element={<BomAggregatePage />} />
             <Route path="bom/:id" element={<BomDetailPage />} />
-            <Route path="po" element={<PoPage />} />
-            <Route path="po/:id" element={<PoDetailPage />} />
-            <Route path="po/:id/detail" element={<PoDetailPage />} />
-            <Route path="po/:id/products" element={<PoDetailPage />} />
-            <Route path="po/:id/lines" element={<PoDetailPage />} />
-            <Route path="po/:id/documents" element={<PoDetailPage />} />
-            <Route path="po/:id/files" element={<PoDetailPage />} />
-            <Route path="po/:id/history" element={<PoDetailPage />} />
-            <Route path="po/:id/products/:productId" element={<PoProductDetailPage />} />
-            <Route path="po/:id/products/:productId/:tab" element={<PoProductDetailPage />} />
-            <Route path="po/:id/line/:productId" element={<PoProductDetailPage />} />
-            <Route path="po/:id/line/:productId/:tab" element={<PoProductDetailPage />} />
+            <Route element={<PurchaseOrderModuleRoute />}>
+              <Route path="po" element={<PoPage />} />
+              <Route path="po/:id" element={<PoDetailPage />} />
+              <Route path="po/:id/detail" element={<PoDetailPage />} />
+              <Route path="po/:id/products" element={<PoDetailPage />} />
+              <Route path="po/:id/lines" element={<PoDetailPage />} />
+              <Route path="po/:id/documents" element={<PoDetailPage />} />
+              <Route path="po/:id/files" element={<PoDetailPage />} />
+              <Route path="po/:id/history" element={<PoDetailPage />} />
+              <Route path="po/:id/products/:productId" element={<PoProductDetailPage />} />
+              <Route path="po/:id/products/:productId/:tab" element={<PoProductDetailPage />} />
+              <Route path="po/:id/line/:productId" element={<PoProductDetailPage />} />
+              <Route path="po/:id/line/:productId/:tab" element={<PoProductDetailPage />} />
+            </Route>
             <Route path="masters" element={<Navigate to="/masters/materials" replace />} />
             <Route path="masters/materials" element={<MaterialsHubPage />} />
             <Route path="masters/materials/groups" element={<MaterialsHubPage />} />

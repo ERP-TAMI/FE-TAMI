@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+export const purchaseOrderModeSchema = z.enum(["READ_ONLY", "FULL_ACCESS"]);
+
 export const authUserSchema = z.object({
   id: z.string().uuid(),
   email: z.string().email(),
@@ -8,6 +10,7 @@ export const authUserSchema = z.object({
   roleCode: z.string(),
   roleName: z.string(),
   permissions: z.array(z.string()),
+  purchaseOrderMode: purchaseOrderModeSchema,
 });
 
 export const authResponseSchema = z.object({
