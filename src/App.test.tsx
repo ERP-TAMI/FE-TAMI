@@ -246,6 +246,43 @@ describe("application routes", () => {
     expect(screen.queryByRole("link", { name: "Nhóm công đoạn" })).toBeNull();
   });
 
+  it("hides the dead 'Quản lý PO' sidebar link for a read-only SA (route redirects there anyway)", () => {
+    signIn(); // default SA, purchaseOrderMode: READ_ONLY
+    renderApp();
+
+    expect(screen.queryByRole("link", { name: "Quản lý PO" })).toBeNull();
+  });
+
+  it("shows 'Quản lý PO' again once the SA switches to full PO access", () => {
+    signIn();
+    useAuthStore.setState({
+      user: { ...useAuthStore.getState().user!, purchaseOrderMode: "FULL_ACCESS" },
+    });
+    renderApp();
+
+    expect(screen.getByRole("link", { name: "Quản lý PO" })).toBeTruthy();
+  });
+
+  it("shows 'Quản lý PO' for a non-management employee regardless of PO mode", () => {
+    useAuthStore.setState({
+      status: "authenticated",
+      accessToken: "nvkh-access-token",
+      user: {
+        id: "33333333-3333-4333-8333-333333333333",
+        email: "nvkh@tami.test",
+        fullName: "Nhân viên Kế hoạch",
+        phone: null,
+        roleCode: "NVKH",
+        roleName: "Nhân viên Kế hoạch",
+        permissions: [],
+        purchaseOrderMode: "READ_ONLY",
+      },
+    });
+    renderApp();
+
+    expect(screen.getByRole("link", { name: "Quản lý PO" })).toBeTruthy();
+  });
+
   it("renders the public login route", () => {
     window.history.pushState({}, "", "/login");
     renderApp();
