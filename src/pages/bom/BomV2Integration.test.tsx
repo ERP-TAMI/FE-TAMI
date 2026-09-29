@@ -987,11 +987,9 @@ describe("PR-11: BOM V2 Final Integration & E2E Regression", () => {
       // BOM lines exist: lines.length > 0
       renderWithRouter(<BomDetailPage />, { initialEntries: ["/bom/bom-v2-test-id"] });
 
-      // 'Thao tác khác' only exists if copy fit or discontinue is available
-      // When lines exist and status is wait_nvkh, only discontinue is available
-      const moreBtn = screen.getByLabelText("Thao tác khác");
-      fireEvent.click(moreBtn);
-
+      // When lines exist and status is wait_nvkh, only discontinue is
+      // available, rendered directly (not behind a dropdown).
+      expect(screen.getByText("Ngừng sử dụng (Discontinue)")).toBeTruthy();
       expect(screen.queryByText("Nhập từ Fit BOM")).toBeNull();
     });
   });
@@ -1002,9 +1000,6 @@ describe("PR-11: BOM V2 Final Integration & E2E Regression", () => {
   describe("FLOW G: Discontinue BOM", () => {
     it("24. discontinues BOM with mandatory reason and locks all mutations", async () => {
       renderWithRouter(<BomDetailPage />, { initialEntries: ["/bom/bom-v2-test-id"] });
-
-      const moreBtn = screen.getByLabelText("Thao tác khác");
-      fireEvent.click(moreBtn);
 
       const discontinueOption = screen.getByText("Ngừng sử dụng (Discontinue)");
       fireEvent.click(discontinueOption);

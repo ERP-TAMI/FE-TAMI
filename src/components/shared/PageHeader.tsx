@@ -23,7 +23,10 @@ type PageHeaderAction = {
 
 export type PageHeaderProps = {
   breadcrumb: BreadcrumbItem[];
-  title: string;
+  /** Omit when a more specific title already renders just below this header
+   * (e.g. BomDetailHeader's own name+badges row) — showing both reads as a
+   * duplicated title. */
+  title?: string;
   description?: string;
   stats?: PageHeaderStat[];
   action?: PageHeaderAction;
@@ -48,23 +51,25 @@ export function PageHeader({
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex flex-col gap-1">
-        <div className="flex flex-wrap items-center gap-3">
-          <h1 id="page-title" className="text-xl font-semibold text-gray-900 dark:text-white">
-            {title}
-          </h1>
-          {stats && stats.length > 0 && (
-            <div className="text-theme-xs flex items-center gap-2 rounded-full border border-gray-200/80 bg-gray-100 px-2.5 py-1 font-medium text-gray-500 dark:border-gray-700/80 dark:bg-gray-800/80 dark:text-gray-400">
-              {stats.map((stat, index) => (
-                <span key={stat.label} className="flex items-center gap-2">
-                  {index > 0 && <span aria-hidden="true">•</span>}
-                  <span className={statToneClasses[stat.tone ?? "neutral"]}>
-                    {stat.value} {stat.label}
+        {title && (
+          <div className="flex flex-wrap items-center gap-3">
+            <h1 id="page-title" className="text-xl font-semibold text-gray-900 dark:text-white">
+              {title}
+            </h1>
+            {stats && stats.length > 0 && (
+              <div className="text-theme-xs flex items-center gap-2 rounded-full border border-gray-200/80 bg-gray-100 px-2.5 py-1 font-medium text-gray-500 dark:border-gray-700/80 dark:bg-gray-800/80 dark:text-gray-400">
+                {stats.map((stat, index) => (
+                  <span key={stat.label} className="flex items-center gap-2">
+                    {index > 0 && <span aria-hidden="true">•</span>}
+                    <span className={statToneClasses[stat.tone ?? "neutral"]}>
+                      {stat.value} {stat.label}
+                    </span>
                   </span>
-                </span>
-              ))}
-            </div>
-          )}
-        </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
         {description && (
           <p className="text-theme-xs text-gray-500 dark:text-gray-400">{description}</p>
         )}

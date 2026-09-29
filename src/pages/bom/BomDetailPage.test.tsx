@@ -1449,9 +1449,6 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
           <BomDetailPage />
         </BrowserRouter>,
       );
-      const moreBtn = screen.getByLabelText("Thao tác khác");
-      fireEvent.click(moreBtn);
-
       const discAction = screen.getByText(/Ngừng sử dụng \(Discontinue\)/i);
       fireEvent.click(discAction);
 
@@ -1477,8 +1474,6 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
           <BomDetailPage />
         </BrowserRouter>,
       );
-      const moreBtn = screen.getByLabelText("Thao tác khác");
-      fireEvent.click(moreBtn);
       expect(screen.getByText(/Ngừng sử dụng \(Discontinue\)/i)).toBeTruthy();
     });
 
@@ -1509,7 +1504,6 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
           <BomDetailPage />
         </BrowserRouter>,
       );
-      fireEvent.click(screen.getByLabelText("Thao tác khác"));
       fireEvent.click(screen.getByText(/Ngừng sử dụng \(Discontinue\)/i));
 
       const submitBtn = screen.getByText("Xác nhận ngừng sử dụng");
@@ -1685,7 +1679,6 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
           <BomDetailPage />
         </BrowserRouter>,
       );
-      fireEvent.click(screen.getByLabelText("Thao tác khác"));
       expect(screen.getByText("Nhập từ Fit BOM")).toBeTruthy();
     });
 
@@ -1739,7 +1732,6 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
           <BomDetailPage />
         </BrowserRouter>,
       );
-      fireEvent.click(screen.getByLabelText("Thao tác khác"));
       fireEvent.click(screen.getByText("Nhập từ Fit BOM"));
 
       expect(screen.getByText("Sao chép từ Fit BOM")).toBeTruthy();
