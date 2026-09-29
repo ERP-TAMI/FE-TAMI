@@ -918,10 +918,10 @@ describe("PR-11: BOM V2 Final Integration & E2E Regression", () => {
       // Switch to Revisions tab
       fireEvent.click(screen.getByRole("button", { name: /Lịch sử/i }));
 
-      const diffBtn = screen.getByText("So sánh Diff");
+      const diffBtn = screen.getByText("So sánh");
       fireEvent.click(diffBtn);
 
-      expect(screen.getByText("So sánh biến động định mức (Revision Diff)")).toBeTruthy();
+      expect(screen.getByText("So sánh biến động định mức")).toBeTruthy();
       expect(screen.getByText("Keo dựng vải")).toBeTruthy();
     });
 
@@ -989,7 +989,7 @@ describe("PR-11: BOM V2 Final Integration & E2E Regression", () => {
 
       // When lines exist and status is wait_nvkh, only discontinue is
       // available, rendered directly (not behind a dropdown).
-      expect(screen.getByText("Ngừng sử dụng (Discontinue)")).toBeTruthy();
+      expect(screen.getByText("Ngừng sử dụng")).toBeTruthy();
       expect(screen.queryByText("Nhập từ Fit BOM")).toBeNull();
     });
   });
@@ -1001,10 +1001,10 @@ describe("PR-11: BOM V2 Final Integration & E2E Regression", () => {
     it("24. discontinues BOM with mandatory reason and locks all mutations", async () => {
       renderWithRouter(<BomDetailPage />, { initialEntries: ["/bom/bom-v2-test-id"] });
 
-      const discontinueOption = screen.getByText("Ngừng sử dụng (Discontinue)");
+      const discontinueOption = screen.getByText("Ngừng sử dụng");
       fireEvent.click(discontinueOption);
 
-      expect(screen.getByText(/Ngừng sử dụng BOM/i)).toBeTruthy();
+      expect(screen.getByText(/Ngừng sử dụng NPL/i)).toBeTruthy();
 
       const reasonInput = screen.getByPlaceholderText(/Nhập lý do ngừng sử dụng/i);
       fireEvent.change(reasonInput, { target: { value: "Khách hàng hủy đơn hàng" } });

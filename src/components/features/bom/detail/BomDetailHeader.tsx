@@ -130,7 +130,7 @@ export function BomDetailHeader({
           <div className="flex flex-col">
             <div className="flex items-center gap-2">
               <span className="font-bold text-rose-900 dark:text-rose-200">
-                Định mức này đã bị Ngừng sử dụng (Discontinued)
+                Định mức này đã bị Ngừng sử dụng
               </span>
               <span className="rounded-full bg-rose-200/70 px-2 py-0.5 text-[11px] font-bold text-rose-800 dark:bg-rose-900 dark:text-rose-300">
                 ĐÃ KHÓA
@@ -260,7 +260,7 @@ export function BomDetailHeader({
                     className="flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2 text-left text-theme-xs font-medium text-rose-600 transition-colors hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/30"
                   >
                     <Ban className="h-4 w-4 text-rose-600" />
-                    <span>Ngừng sử dụng (Discontinue)</span>
+                    <span>Ngừng sử dụng</span>
                   </button>
                 </div>
               )}
@@ -281,7 +281,7 @@ export function BomDetailHeader({
               className="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50/80 px-3 py-2 text-theme-xs font-semibold text-rose-600 shadow-2xs transition-colors hover:bg-rose-100 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-400 dark:hover:bg-rose-950/60"
             >
               <Ban className="h-3.5 w-3.5" />
-              <span>Ngừng sử dụng (Discontinue)</span>
+              <span>Ngừng sử dụng</span>
             </button>
           ) : null}
 

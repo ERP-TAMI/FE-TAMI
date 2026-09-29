@@ -1509,10 +1509,10 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
           <BomDetailPage />
         </BrowserRouter>,
       );
-      const discAction = screen.getByText(/Ngừng sử dụng \(Discontinue\)/i);
+      const discAction = screen.getByText("Ngừng sử dụng");
       fireEvent.click(discAction);
 
-      expect(screen.getByText("Ngừng sử dụng BOM")).toBeTruthy();
+      expect(screen.getByText("Ngừng sử dụng NPL")).toBeTruthy();
 
       const reasonInput = screen.getByPlaceholderText(/Nhập lý do ngừng sử dụng/i);
       fireEvent.change(reasonInput, { target: { value: "Hủy mã hàng theo đề xuất" } });
@@ -1534,7 +1534,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
           <BomDetailPage />
         </BrowserRouter>,
       );
-      expect(screen.getByText(/Ngừng sử dụng \(Discontinue\)/i)).toBeTruthy();
+      expect(screen.getByText("Ngừng sử dụng")).toBeTruthy();
     });
 
     it("64. NVKH cannot discontinue (action hidden)", () => {
@@ -1564,7 +1564,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
           <BomDetailPage />
         </BrowserRouter>,
       );
-      fireEvent.click(screen.getByText(/Ngừng sử dụng \(Discontinue\)/i));
+      fireEvent.click(screen.getByText("Ngừng sử dụng"));
 
       const submitBtn = screen.getByText("Xác nhận ngừng sử dụng");
       expect((submitBtn as HTMLButtonElement).disabled).toBe(true);
@@ -1686,8 +1686,8 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       );
       fireEvent.click(screen.getByText(/Lịch sử phiên bản/i));
 
-      expect(screen.getByText("Lịch sử các phiên bản định mức (Revisions)")).toBeTruthy();
-      expect(screen.getByText("So sánh Diff")).toBeTruthy();
+      expect(screen.getByText("Lịch sử các phiên bản định mức")).toBeTruthy();
+      expect(screen.getByText("So sánh")).toBeTruthy();
     });
 
     it("73. History Tab renders workflow audit trail timeline", () => {
@@ -1709,9 +1709,9 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
         </BrowserRouter>,
       );
       fireEvent.click(screen.getByText(/Lịch sử phiên bản/i));
-      fireEvent.click(screen.getByText("So sánh Diff"));
+      fireEvent.click(screen.getByText("So sánh"));
 
-      expect(screen.getByText("So sánh biến động định mức (Revision Diff)")).toBeTruthy();
+      expect(screen.getByText("So sánh biến động định mức")).toBeTruthy();
       expect(screen.getByText("THÊM MỚI")).toBeTruthy();
       expect(screen.getByText("Vải Lót Oxford")).toBeTruthy();
       expect(screen.getByText("THAY ĐỔI")).toBeTruthy();
@@ -1725,7 +1725,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
         </BrowserRouter>,
       );
       fireEvent.click(screen.getByText(/Lịch sử phiên bản/i));
-      fireEvent.click(screen.getByText("So sánh Diff"));
+      fireEvent.click(screen.getByText("So sánh"));
 
       expect(screen.queryByText(/35\.000/i)).toBeNull();
     });

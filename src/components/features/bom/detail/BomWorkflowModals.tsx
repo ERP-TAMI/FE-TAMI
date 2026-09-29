@@ -426,10 +426,10 @@ export function BomDiscontinueModal({
           </div>
           <div>
             <h3 className="text-base font-bold text-gray-900 dark:text-white">
-              Ngừng sử dụng BOM
+              Ngừng sử dụng NPL
             </h3>
             <p className="text-theme-xs text-gray-500 dark:text-gray-400">
-              Mã BOM: {bomCode}
+              Mã NPL: {bomCode}
             </p>
           </div>
         </div>

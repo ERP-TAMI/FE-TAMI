@@ -48,10 +48,10 @@ export function BomRevisionDiffModal({
           </div>
           <div>
             <h3 className="text-base font-bold text-gray-900 dark:text-white">
-              So sánh biến động định mức (Revision Diff)
+              So sánh biến động định mức
             </h3>
             <p className="text-theme-xs text-gray-500 dark:text-gray-400">
-              Phiên bản Rev {targetRevNo} {baseRevNo ? `so với Rev ${baseRevNo}` : "so với phiên bản trước"}
+              Phiên bản {targetRevNo} {baseRevNo ? `so với phiên bản ${baseRevNo}` : "so với phiên bản trước"}
             </p>
           </div>
         </div>
@@ -79,7 +79,7 @@ export function BomRevisionDiffModal({
               <option value="">Phiên bản nguồn gốc (Mặc định)</option>
               {otherRevisions.map((r) => (
                 <option key={r.id} value={r.id}>
-                  Rev {r.revisionNo} ({r.status})
+                  Phiên bản {r.revisionNo} ({r.status})
                 </option>
               ))}
             </select>

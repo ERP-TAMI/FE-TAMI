@@ -79,7 +79,7 @@ export function BomWorkflowStepper({
       <div className="flex items-center gap-3 rounded-2xl border border-rose-200 bg-rose-50/70 p-4 text-theme-sm text-rose-800 dark:border-rose-900/40 dark:bg-rose-950/20 dark:text-rose-300">
         <AlertTriangle className="h-5 w-5 shrink-0 text-rose-600 dark:text-rose-400" />
         <div>
-          <span className="font-bold">NPL đã ngừng sử dụng (Discontinued): </span>
+          <span className="font-bold">NPL đã ngừng sử dụng: </span>
           <span className="text-rose-700 dark:text-rose-400">
             Phiên bản này đã bị dừng và bị khóa toàn bộ các thao tác chỉnh sửa.
           </span>

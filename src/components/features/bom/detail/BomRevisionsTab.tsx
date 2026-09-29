@@ -42,11 +42,8 @@ export function BomRevisionsTab({
       <div className="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-xs dark:border-gray-800 dark:bg-gray-900">
         <div className="border-b border-gray-100 p-4 dark:border-gray-800">
           <h3 className="text-base font-bold text-gray-900 dark:text-white">
-            Lịch sử các phiên bản định mức (Revisions)
+            Lịch sử các phiên bản định mức
           </h3>
-          <p className="text-theme-xs text-gray-500 dark:text-gray-400">
-            Theo dõi tiến trình phát triển và các lần hiệu chỉnh định mức vật tư
-          </p>
         </div>
 
         <div className="overflow-x-auto">
@@ -76,7 +73,7 @@ export function BomRevisionsTab({
                     <td className="py-3.5 pl-4 pr-2">
                       <div className="flex items-center gap-2">
                         <span className="font-mono text-sm font-bold text-gray-900 dark:text-white">
-                          Rev {rev.revisionNo}
+                          Phiên bản {rev.revisionNo}
                         </span>
                         {isCurrent && (
                           <span className="inline-flex items-center rounded-full bg-brand-100 px-2 py-0.5 text-[10px] font-semibold text-brand-700 dark:bg-brand-950 dark:text-brand-300">
@@ -120,10 +117,10 @@ export function BomRevisionsTab({
                           type="button"
                           onClick={() => onOpenDiff(rev.id)}
                           className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-theme-xs font-medium text-gray-700 shadow-2xs hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
-                          title="So sánh Diff với phiên bản khác"
+                          title="So sánh với phiên bản khác"
                         >
                           <GitCompare className="h-3.5 w-3.5 text-brand-600 dark:text-brand-400" />
-                          <span>So sánh Diff</span>
+                          <span>So sánh</span>
                         </button>
                       </div>
                     </td>
