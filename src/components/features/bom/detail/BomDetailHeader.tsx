@@ -113,10 +113,10 @@ export function BomDetailHeader({
   return (
     <div className="flex flex-col gap-4">
       <PageHeader
+        back={{ to: "/bom", label: "Danh sách NPL" }}
         breadcrumb={[
           { label: "Dashboard", to: "/dashboard" },
           { label: "Quản lý Nguyên phụ liệu", to: "/bom" },
-          { label: typeLabel },
           { label: displayCode },
         ]}
       />

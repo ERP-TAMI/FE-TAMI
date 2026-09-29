@@ -1,10 +1,16 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/shared/Button";
 
 type BreadcrumbItem = {
   label: string;
   to?: string;
+};
+
+type PageHeaderBack = {
+  to: string;
+  label: string;
 };
 
 type PageHeaderStatTone = "neutral" | "success" | "warning" | "danger";
@@ -31,6 +37,9 @@ export type PageHeaderProps = {
   stats?: PageHeaderStat[];
   action?: PageHeaderAction;
   actions?: ReactNode;
+  /** A labeled "← back to list" link, rendered on the left in place of the
+   * title (for detail pages that don't pass one). */
+  back?: PageHeaderBack;
 };
 
 const statToneClasses: Record<PageHeaderStatTone, string> = {
@@ -47,10 +56,20 @@ export function PageHeader({
   stats,
   action,
   actions,
+  back,
 }: PageHeaderProps) {
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex flex-col gap-1">
+        {back && (
+          <Link
+            to={back.to}
+            className="inline-flex h-9 w-fit shrink-0 items-center gap-1.5 rounded-xl border border-gray-200/80 bg-white px-3 text-xs font-semibold text-gray-600 shadow-2xs transition-colors hover:bg-gray-50 hover:text-gray-900 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white"
+          >
+            <ArrowLeft className="h-4 w-4 shrink-0" />
+            {back.label}
+          </Link>
+        )}
         {title && (
           <div className="flex flex-wrap items-center gap-3">
             <h1 id="page-title" className="text-xl font-semibold text-gray-900 dark:text-white">

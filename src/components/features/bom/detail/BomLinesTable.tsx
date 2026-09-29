@@ -13,6 +13,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Save,
+  Download,
 } from "lucide-react";
 import type { BomLineItem, CreateBomLinePayload, UpdateBomLinePayload } from "@/types/bom";
 import {
@@ -30,6 +31,7 @@ import { useAuthStore } from "@/store/authStore";
 
 interface BomLinesTableProps {
   lines: BomLineItem[];
+  bomCode: string;
   readOnly?: boolean;
   currentStatus?: string;
   isHistorical?: boolean;
@@ -48,8 +50,52 @@ interface BomLinesTableProps {
   isEditingInModal?: boolean;
 }
 
+function exportLinesToCsv(lines: BomLineItem[], bomCode: string, canViewCost: boolean) {
+  const headers = [
+    "#",
+    "Nhóm",
+    "Mã",
+    "Nguyên liệu",
+    "ĐVT",
+    "Định mức",
+    ...(canViewCost ? ["Đơn giá ($)", "Thành tiền ($)"] : []),
+    "Ghi chú",
+  ];
+  const rows = lines.map((line, idx) => [
+    idx + 1,
+    line.materialGroupSnapshot || "",
+    line.materialCodeSnapshot || line.material?.materialCode || "",
+    line.materialNameSnapshot,
+    line.unitSnapshot,
+    formatYield(line.consumption),
+    ...(canViewCost
+      ? [
+          line.unitCost != null ? formatUSD(line.unitCost) : "",
+          line.lineCost != null ? formatUSD(line.lineCost) : "",
+        ]
+      : []),
+    line.note || "",
+  ]);
+
+  const csvContent =
+    "﻿" +
+    [headers, ...rows]
+      .map((row) => row.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(","))
+      .join("\n");
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.setAttribute("href", url);
+  link.setAttribute("download", `NPL_${bomCode}_${Date.now()}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
 export function BomLinesTable({
   lines,
+  bomCode,
   readOnly = false,
   currentStatus = "wait_nvkh",
   isHistorical = false,
@@ -384,17 +430,30 @@ export function BomLinesTable({
           )}
         </div>
 
-        {/* Action Button: + Thêm vật tư (Only if user is allowed to add lines) */}
-        {allowAdd && (
-          <button
-            type="button"
-            onClick={onAddLine}
-            className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-brand-600 px-4 py-2 text-theme-sm font-semibold text-white shadow-xs transition-colors hover:bg-brand-700 active:scale-[0.98]"
-          >
-            <Plus className="h-4 w-4" />
-            <span>Thêm vật tư</span>
-          </button>
-        )}
+        <div className="flex shrink-0 items-center gap-2.5">
+          {lines.length > 0 && (
+            <button
+              type="button"
+              onClick={() => exportLinesToCsv(lines, bomCode, canViewCost)}
+              className="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-blue-200/80 bg-white px-3.5 py-2 text-theme-sm font-semibold text-blue-600 shadow-2xs transition-colors hover:bg-blue-50 dark:border-blue-800 dark:bg-gray-900 dark:text-blue-400"
+            >
+              <Download className="h-4 w-4" />
+              <span>Xuất Excel</span>
+            </button>
+          )}
+
+          {/* Action Button: + Thêm vật tư (Only if user is allowed to add lines) */}
+          {allowAdd && (
+            <button
+              type="button"
+              onClick={onAddLine}
+              className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-brand-600 px-4 py-2 text-theme-sm font-semibold text-white shadow-xs transition-colors hover:bg-brand-700 active:scale-[0.98]"
+            >
+              <Plus className="h-4 w-4" />
+              <span>Thêm vật tư</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* 2. Table Container */}

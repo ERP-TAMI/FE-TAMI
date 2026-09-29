@@ -241,6 +241,7 @@ export function PoProductBomTab({
       {/* Embedded Inline BOM Lines Table */}
       <BomLinesTable
         lines={bom.lines || []}
+        bomCode={bom.bomCode}
         readOnly={readOnly}
         currentStatus={currentStatus}
         isHistorical={false}

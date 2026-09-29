@@ -470,7 +470,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       expect(screen.getByText("Áo sơ mi Oxford")).toBeTruthy();
     });
 
-    it("renders the breadcrumb on the shared PageHeader (Dashboard > Quản lý Nguyên phụ liệu > NPL Fit)", () => {
+    it("renders the breadcrumb and back link on the shared PageHeader (Dashboard > Quản lý Nguyên phụ liệu > code)", () => {
       render(
         <BrowserRouter>
           <BomDetailPage />
@@ -480,7 +480,9 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       expect(
         screen.getByRole("link", { name: "Quản lý Nguyên phụ liệu" }),
       ).toBeTruthy();
-      expect(screen.getByText("NPL Fit")).toBeTruthy();
+      expect(
+        screen.getByRole("link", { name: /Danh sách NPL/ }),
+      ).toHaveProperty("href", expect.stringContaining("/bom"));
     });
 
     it("5. renders PO BOM with PO and Product information", () => {
@@ -820,6 +822,40 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       expect(screen.getAllByText("Mét").length).toBeGreaterThan(0);
       expect(screen.getByText("Cúc áo nhựa 4 lỗ")).toBeTruthy();
       expect(screen.getAllByText("Phụ liệu may").length).toBeGreaterThan(0);
+    });
+
+    it("exports the materials list to CSV when 'Xuất Excel' is clicked", () => {
+      const createObjectURL = vi.fn().mockReturnValue("blob:mock-url");
+      const revokeObjectURL = vi.fn();
+      vi.stubGlobal("URL", { ...URL, createObjectURL, revokeObjectURL });
+
+      render(
+        <BrowserRouter>
+          <BomDetailPage />
+        </BrowserRouter>,
+      );
+
+      fireEvent.click(screen.getByRole("button", { name: /Xuất Excel/ }));
+
+      expect(createObjectURL).toHaveBeenCalledTimes(1);
+      const blob = createObjectURL.mock.calls[0][0] as Blob;
+      expect(blob.type).toContain("text/csv");
+      expect(revokeObjectURL).toHaveBeenCalledWith("blob:mock-url");
+
+      vi.unstubAllGlobals();
+    });
+
+    it("does not show 'Xuất Excel' when there are no materials", () => {
+      hooks.useBom.mockReturnValue({
+        data: { ...mockFitBom, lines: [] },
+        isLoading: false,
+      });
+      render(
+        <BrowserRouter>
+          <BomDetailPage />
+        </BrowserRouter>,
+      );
+      expect(screen.queryByRole("button", { name: /Xuất Excel/ })).toBeNull();
     });
 
     it("24. does not crash when optional snapshots are missing", () => {

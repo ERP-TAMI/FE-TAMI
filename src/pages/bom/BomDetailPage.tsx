@@ -692,6 +692,7 @@ export default function BomDetailPage() {
             ) : (
               <BomLinesTable
                 lines={displayLines}
+                bomCode={bom.bomCode}
                 readOnly={isReadOnlyPoBom}
                 currentStatus={currentStatus}
                 isHistorical={isHistorical}
