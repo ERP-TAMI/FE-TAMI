@@ -6,10 +6,13 @@ import { useBomAggregate, useBoms } from "@/hooks/useBoms";
 import type { AggregateBreakdownType } from "@/types/bom";
 
 import { BomAggregateFilters } from "@/components/features/bom/aggregate/BomAggregateFilters";
+import { BomAggregatePeriodFilter } from "@/components/features/bom/aggregate/BomAggregatePeriodFilter";
 import { BomAggregateTable } from "@/components/features/bom/aggregate/BomAggregateTable";
 import { BomAggregateSizeMatrixTable } from "@/components/features/bom/aggregate/BomAggregateSizeMatrixTable";
 import { sortSizes } from "@/lib/bomAggregateUtils";
 import { BomAggregateEmptyState } from "@/components/features/bom/aggregate/BomAggregateEmptyState";
+import { getCurrentMonthString } from "@/lib/bomAccess";
+import type { PeriodMode } from "@/components/features/bom/BomStatsCards";
 
 type TabMode = "material" | "color_size";
 export type BomAggregateViewMode = "tong_hop" | "size" | "chi_tiet";
@@ -18,9 +21,27 @@ export default function BomAggregatePage() {
   const [searchParams, setSearchParams] = useSearchParams();
 
   // URL Query Parameters mapping
+  const currentMonth = getCurrentMonthString();
+  const currentYear = String(new Date().getFullYear());
+  const requestedPeriodMode = searchParams.get("periodMode");
+  const periodMode: PeriodMode =
+    requestedPeriodMode === "year" || requestedPeriodMode === "dateRange"
+      ? requestedPeriodMode
+      : "month";
+  const month = searchParams.get("month") || currentMonth;
+  const year = searchParams.get("year") || currentYear;
+  const startDate = searchParams.get("startDate") || "";
+  const endDate = searchParams.get("endDate") || "";
   const purchaseOrderId = searchParams.get("purchaseOrderId") || undefined;
   const bomId = searchParams.get("bomId") || undefined;
-  const purchaseOrderProductId = searchParams.get("purchaseOrderProductId") || undefined;
+  const purchaseOrderProductIds = (
+    searchParams.get("purchaseOrderProductIds") ||
+    searchParams.get("purchaseOrderProductId") ||
+    ""
+  )
+    .split(",")
+    .map((id) => id.trim())
+    .filter(Boolean);
   const styleId = searchParams.get("styleId") || undefined;
   const materialId = searchParams.get("materialId") || undefined;
   const search = searchParams.get("search") || "";
@@ -83,21 +104,22 @@ export default function BomAggregatePage() {
 
   // URL state update helper
   const updateQueryParams = useCallback(
-    (newParams: Record<string, string | number | undefined | null>) => {
+    (newParams: Record<string, string | number | readonly string[] | undefined | null>) => {
       setSearchParams(
         (prev) => {
           const next = new URLSearchParams(prev);
           Object.entries(newParams).forEach(([key, value]) => {
+            const serializedValue = Array.isArray(value) ? value.join(",") : value;
             if (
-              value === undefined ||
-              value === null ||
-              value === "" ||
-              value === "all" ||
-              value === "none"
+              serializedValue === undefined ||
+              serializedValue === null ||
+              serializedValue === "" ||
+              serializedValue === "all" ||
+              serializedValue === "none"
             ) {
               next.delete(key);
             } else {
-              next.set(key, String(value));
+              next.set(key, String(serializedValue));
             }
           });
           return next;
@@ -131,6 +153,7 @@ export default function BomAggregatePage() {
       purchaseOrderId: poId,
       bomId: undefined,
       purchaseOrderProductId: undefined,
+      purchaseOrderProductIds: undefined,
       page: 1,
     });
   };
@@ -139,14 +162,70 @@ export default function BomAggregatePage() {
     updateQueryParams({
       bomId: bId,
       purchaseOrderProductId: undefined,
+      purchaseOrderProductIds: undefined,
       page: 1,
     });
   };
 
-  const handleProductChange = (prodId?: string) => {
+  const handleProductChange = (productIds: string[]) => {
     updateQueryParams({
-      purchaseOrderProductId: prodId,
+      purchaseOrderProductId: undefined,
+      purchaseOrderProductIds: productIds,
       bomId: undefined,
+      page: 1,
+    });
+  };
+
+  const handleMonthChange = (newMonth: string) => {
+    if (!newMonth) return;
+    updateQueryParams({
+      periodMode: undefined,
+      month: newMonth,
+      year: undefined,
+      startDate: undefined,
+      endDate: undefined,
+      page: 1,
+    });
+  };
+
+  const handlePeriodModeChange = (newMode: PeriodMode) => {
+    updateQueryParams({
+      periodMode: newMode === "month" ? undefined : newMode,
+      month: newMode === "month" ? month : undefined,
+      year: newMode === "year" ? year : undefined,
+      startDate: newMode === "dateRange" ? startDate : undefined,
+      endDate: newMode === "dateRange" ? endDate : undefined,
+      page: 1,
+    });
+  };
+
+  const handleYearChange = (newYear: string) => {
+    updateQueryParams({
+      periodMode: "year",
+      month: undefined,
+      year: newYear || undefined,
+      startDate: undefined,
+      endDate: undefined,
+      page: 1,
+    });
+  };
+
+  const handleStartDateChange = (newDate: string) => {
+    updateQueryParams({
+      periodMode: "dateRange",
+      month: undefined,
+      year: undefined,
+      startDate: newDate || undefined,
+      page: 1,
+    });
+  };
+
+  const handleEndDateChange = (newDate: string) => {
+    updateQueryParams({
+      periodMode: "dateRange",
+      month: undefined,
+      year: undefined,
+      endDate: newDate || undefined,
       page: 1,
     });
   };
@@ -229,7 +308,9 @@ export default function BomAggregatePage() {
   const isFiltering = Boolean(
     purchaseOrderId ||
       bomId ||
-      purchaseOrderProductId ||
+      purchaseOrderProductIds.length > 0 ||
+      periodMode !== "month" ||
+      month !== currentMonth ||
       styleId ||
       materialId ||
       search ||
@@ -244,8 +325,13 @@ export default function BomAggregatePage() {
     error,
     refetch,
   } = useBomAggregate({
+    ...(periodMode === "month" ? { month } : {}),
+    ...(periodMode === "year" ? { year } : {}),
+    ...(periodMode === "dateRange"
+      ? { startDate: startDate || undefined, endDate: endDate || undefined }
+      : {}),
     bomId,
-    purchaseOrderProductId,
+    purchaseOrderProductIds,
     purchaseOrderId,
     styleId,
     materialId,
@@ -388,7 +474,7 @@ export default function BomAggregatePage() {
   return (
     <div className="flex flex-col gap-5 p-4 sm:p-6 lg:p-8" data-testid="bom-aggregate-page">
       {/* 1. Header & Navigation */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
         <div className="flex items-start gap-3">
           <Link
             to="/bom"
@@ -398,7 +484,7 @@ export default function BomAggregatePage() {
             <ArrowLeft className="h-5 w-5" />
           </Link>
 
-          <div>
+          <div className="min-w-0">
             <h1
               className="text-xl font-bold tracking-tight text-gray-900 sm:text-2xl dark:text-white"
               aria-label="Tổng hợp nhu cầu NPL"
@@ -414,8 +500,11 @@ export default function BomAggregatePage() {
           </div>
         </div>
 
-        {/* Top-right: Search Box + Xuất Excel Button */}
-        <div className="flex items-center gap-3">
+        {/* Top-right: Time filter, search, and export actions */}
+        <div
+          data-testid="aggregate-page-actions"
+          className="flex w-full min-w-0 flex-wrap items-end justify-end gap-2 sm:gap-3 xl:flex-1"
+        >
           {/* Accessible hidden refresh button for test 37 */}
           <button
             type="button"
@@ -426,15 +515,28 @@ export default function BomAggregatePage() {
             Làm mới
           </button>
 
+          <BomAggregatePeriodFilter
+            periodMode={periodMode}
+            onPeriodModeChange={handlePeriodModeChange}
+            month={month}
+            onMonthChange={handleMonthChange}
+            year={year}
+            onYearChange={handleYearChange}
+            startDate={startDate}
+            onStartDateChange={handleStartDateChange}
+            endDate={endDate}
+            onEndDateChange={handleEndDateChange}
+          />
+
           {/* Search Box */}
-          <div className="relative shrink-0">
+          <div className="relative w-full min-w-[200px] sm:w-56 sm:flex-none xl:w-60">
             <input
               type="text"
               data-testid="aggregate-search-input"
               value={localSearch}
               onChange={(e) => handleSearchChange(e.target.value)}
               placeholder="Tìm mã, tên nguyên phụ liệu..."
-              className="w-56 rounded-xl border border-gray-200 bg-white py-1.5 pr-3 pl-8 text-xs text-gray-700 shadow-2xs placeholder:text-gray-400 focus:border-blue-500 focus:outline-none sm:w-72 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300"
+              className="w-full rounded-xl border border-gray-200 bg-white py-1.5 pr-3 pl-8 text-xs text-gray-700 shadow-2xs placeholder:text-gray-400 focus:border-blue-500 focus:outline-none dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300"
             />
             <Search className="pointer-events-none absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
           </div>
@@ -457,7 +559,7 @@ export default function BomAggregatePage() {
         onPurchaseOrderChange={handlePurchaseOrderChange}
         bomId={bomId}
         onBomChange={handleBomChange}
-        purchaseOrderProductId={purchaseOrderProductId}
+        purchaseOrderProductIds={purchaseOrderProductIds}
         onProductChange={handleProductChange}
         styleId={styleId}
         onStyleChange={handleStyleChange}

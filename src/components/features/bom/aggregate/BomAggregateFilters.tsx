@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { RotateCcw, ChevronDown, FileText, Search, Filter, Layers, Package } from "lucide-react";
 import type {
   AggregateBreakdownType,
@@ -20,9 +20,9 @@ interface BomAggregateFiltersProps {
   purchaseOrderId?: string;
   onPurchaseOrderChange: (poId?: string) => void;
   bomId?: string;
-  onBomChange?: (bomId?: string) => void;
-  purchaseOrderProductId?: string;
-  onProductChange?: (prodId?: string) => void;
+  onBomChange: (bomId?: string) => void;
+  purchaseOrderProductIds: string[];
+  onProductChange?: (productIds: string[]) => void;
   styleId?: string;
   onStyleChange: (styleId?: string) => void;
   materialId?: string;
@@ -44,7 +44,7 @@ export function BomAggregateFilters({
   onPurchaseOrderChange,
   bomId,
   onBomChange,
-  purchaseOrderProductId,
+  purchaseOrderProductIds,
   onProductChange,
   styleId,
   onStyleChange,
@@ -63,6 +63,9 @@ export function BomAggregateFilters({
 }: BomAggregateFiltersProps) {
   const [selectedGroup, setSelectedGroup] = useState<string>("");
   const [isExtraOpen, setIsExtraOpen] = useState<boolean>(false);
+  const [isProductMenuOpen, setIsProductMenuOpen] = useState(false);
+  const productMenuRef = useRef<HTMLDivElement>(null);
+  const productTriggerRef = useRef<HTMLButtonElement>(null);
 
   // Lấy danh sách BOM type=po, revision đã đóng (closed)
   const { data: approvedBomsResponse } = useBoms({
@@ -83,6 +86,33 @@ export function BomAggregateFilters({
     { enabled: Boolean(purchaseOrderId) },
   );
   const poProducts: PurchaseOrderProductItem[] = poProductsResponse?.items || [];
+  const selectedProductIdSet = useMemo(
+    () => new Set(purchaseOrderProductIds),
+    [purchaseOrderProductIds],
+  );
+
+  useEffect(() => {
+    if (!isProductMenuOpen) return;
+
+    const closeOnOutsideClick = (event: PointerEvent) => {
+      if (!productMenuRef.current?.contains(event.target as Node)) {
+        setIsProductMenuOpen(false);
+      }
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsProductMenuOpen(false);
+        productTriggerRef.current?.focus();
+      }
+    };
+
+    document.addEventListener("pointerdown", closeOnOutsideClick);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeOnOutsideClick);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [isProductMenuOpen]);
 
   const allApprovedBoms: BomListItem[] = useMemo(
     () => approvedBomsResponse?.data || [],
@@ -132,15 +162,13 @@ export function BomAggregateFilters({
 
   const handleBomSelect = (newBomId: string) => {
     const val = newBomId || undefined;
-    if (onBomChange) {
-      onBomChange(val);
-    } else {
-      onProductChange?.(val);
-    }
+    setIsProductMenuOpen(false);
+    onBomChange(val);
   };
 
   const handlePoSelect = (newPoId: string) => {
     const val = newPoId || undefined;
+    setIsProductMenuOpen(false);
     onPurchaseOrderChange(val);
   };
 
@@ -152,13 +180,17 @@ export function BomAggregateFilters({
   const handleClear = () => {
     setSelectedGroup("");
     setIsExtraOpen(false);
-    onBomChange?.(undefined);
-    onProductChange?.(undefined);
+    setIsProductMenuOpen(false);
+    onBomChange(undefined);
+    onProductChange?.([]);
     onClearFilters();
   };
 
   return (
-    <div className="flex flex-col gap-4 rounded-2xl border border-gray-200/80 bg-white p-4 shadow-2xs dark:border-gray-800 dark:bg-gray-900">
+    <div
+      data-testid="aggregate-filter-card"
+      className="flex flex-col gap-4 rounded-2xl border border-gray-200/80 bg-white p-4 shadow-2xs dark:border-gray-800 dark:bg-gray-900"
+    >
       {/* Hidden summary for tests */}
       {totalCount !== undefined && (
         <div className="sr-only">
@@ -230,28 +262,99 @@ export function BomAggregateFilters({
           </div>
         </div>
 
-        {/* 5. Sản phẩm */}
-        <div className="flex min-w-[180px] flex-col gap-1.5">
+        {/* 5. Multi-select sản phẩm trong PO */}
+        <div className="flex min-w-[190px] flex-col gap-1.5">
           <label className="text-xs font-semibold text-gray-700 dark:text-gray-300">Sản phẩm</label>
-          <div className="relative">
-            <select
-              id="aggregate-product-select"
-              data-testid="aggregate-product-select"
-              value={purchaseOrderProductId || ""}
-              onChange={(e) => onProductChange?.(e.target.value || undefined)}
-              disabled={!purchaseOrderId}
-              className="w-full cursor-pointer appearance-none rounded-xl border border-gray-200 bg-white py-1.5 pr-7 pl-7 text-xs text-gray-700 shadow-2xs transition-colors hover:border-blue-300 focus:border-blue-500 focus:outline-none disabled:cursor-not-allowed disabled:bg-gray-50 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300 dark:disabled:bg-gray-800"
-            >
-              <option value="">{purchaseOrderId ? "Tất cả sản phẩm" : "Chọn PO trước"}</option>
-              {poProducts.map((product) => (
-                <option key={product.id} value={product.id}>
-                  {product.productCode} - {product.productName}
-                </option>
-              ))}
-            </select>
-            <Package className="pointer-events-none absolute top-1/2 left-2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
-            <ChevronDown className="pointer-events-none absolute top-1/2 right-2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
-          </div>
+          {purchaseOrderId ? (
+            <div className="relative" ref={productMenuRef}>
+              <button
+                type="button"
+                id="aggregate-product-select"
+                data-testid="aggregate-product-select"
+                ref={productTriggerRef}
+                aria-label="Chọn sản phẩm trong PO"
+                aria-haspopup="true"
+                aria-expanded={isProductMenuOpen}
+                aria-controls={isProductMenuOpen ? "aggregate-product-options" : undefined}
+                onClick={() => setIsProductMenuOpen((isOpen) => !isOpen)}
+                className="flex min-h-8 w-full cursor-pointer items-center justify-between gap-2 rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-xs text-gray-700 shadow-2xs transition-colors hover:border-brand-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/30 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300"
+              >
+                <span className="flex min-w-0 items-center gap-2">
+                  <Package className="h-3.5 w-3.5 shrink-0 text-gray-400" />
+                  <span className="truncate">
+                    {purchaseOrderProductIds.length === 0
+                      ? "Tất cả sản phẩm trong PO"
+                      : `${purchaseOrderProductIds.length} sản phẩm đã chọn`}
+                  </span>
+                </span>
+                <ChevronDown
+                  className={`h-3.5 w-3.5 shrink-0 text-gray-400 transition-transform ${
+                    isProductMenuOpen ? "rotate-180" : ""
+                  }`}
+                />
+              </button>
+              {isProductMenuOpen && (
+                <div
+                  id="aggregate-product-options"
+                  role="group"
+                  aria-label="Danh sách sản phẩm trong PO"
+                  className="absolute right-0 z-30 mt-1 max-h-64 w-[min(22rem,calc(100vw-2rem))] overflow-y-auto rounded-xl border border-gray-200 bg-white p-2 shadow-lg dark:border-gray-700 dark:bg-gray-900"
+                >
+                  {poProducts.length === 0 ? (
+                    <p className="px-2 py-3 text-xs text-gray-600 dark:text-gray-300">
+                      PO này chưa có sản phẩm.
+                    </p>
+                  ) : (
+                    <>
+                      <p className="px-2 py-1 text-xs text-gray-600 dark:text-gray-300">
+                        Chọn một hoặc nhiều sản phẩm
+                      </p>
+                      {poProducts.map((product) => (
+                        <label
+                          key={product.id}
+                          className="flex cursor-pointer items-start gap-2 rounded-lg px-2 py-2 text-xs text-gray-800 transition-colors hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-800"
+                        >
+                          <input
+                            type="checkbox"
+                            aria-label={`${product.productCode} - ${product.productName}`}
+                            checked={selectedProductIdSet.has(product.id)}
+                            onChange={(event) =>
+                              onProductChange?.(
+                                event.target.checked
+                                  ? [...purchaseOrderProductIds, product.id]
+                                  : purchaseOrderProductIds.filter((id) => id !== product.id),
+                              )
+                            }
+                            className="mt-0.5 cursor-pointer rounded border-gray-300 text-brand-600 focus:ring-brand-500 dark:border-gray-600"
+                          />
+                          <span>
+                            <span className="block font-medium">{product.productCode}</span>
+                            <span className="block text-gray-600 dark:text-gray-300">
+                              {product.productName}
+                            </span>
+                          </span>
+                        </label>
+                      ))}
+                      {purchaseOrderProductIds.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => onProductChange?.([])}
+                          className="mt-1 w-full cursor-pointer rounded-lg border-t border-gray-100 px-2 py-2 text-left text-xs font-medium text-brand-700 transition-colors hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/30 dark:border-gray-800 dark:text-brand-300 dark:hover:bg-gray-800"
+                        >
+                          Bỏ chọn sản phẩm
+                        </button>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="flex min-h-8 items-center gap-2 rounded-xl border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs text-gray-600 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300">
+              <Package className="h-3.5 w-3.5 text-gray-400" />
+              <span>Chọn PO trước</span>
+            </div>
+          )}
         </div>
 
         {/* 6. Đặt lại & Bộ lọc nâng cao */}
