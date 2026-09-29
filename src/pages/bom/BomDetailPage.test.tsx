@@ -84,22 +84,28 @@ vi.mock("@/hooks/useBoms", () => ({
 
 vi.mock("@/api/material.api", () => ({
   materialApi: {
-    list: vi.fn().mockResolvedValue([
-      {
-        id: "mat-1",
-        materialCode: "VAI-001",
-        materialName: "Vải Cotton 100%",
-        materialGroupName: "Vải chính",
-        defaultUnitName: "Mét",
-      },
-      {
-        id: "mat-2",
-        materialCode: "CUC-001",
-        materialName: "Cúc áo nhựa 4 lỗ",
-        materialGroupName: "Phụ liệu may",
-        defaultUnitName: "Chiếc",
-      },
-    ]),
+    // materialApi.list() thật trả về { data, meta } (paginated), không phải
+    // mảng trần — mock đúng hình dạng response.data thật để bắt được lỗi
+    // "quên bóc .data" thay vì che nó đi.
+    list: vi.fn().mockResolvedValue({
+      data: [
+        {
+          id: "mat-1",
+          materialCode: "VAI-001",
+          materialName: "Vải Cotton 100%",
+          materialGroupName: "Vải chính",
+          defaultUnitName: "Mét",
+        },
+        {
+          id: "mat-2",
+          materialCode: "CUC-001",
+          materialName: "Cúc áo nhựa 4 lỗ",
+          materialGroupName: "Phụ liệu may",
+          defaultUnitName: "Chiếc",
+        },
+      ],
+      meta: { total: 2, page: 1, limit: 100, totalPages: 1 },
+    }),
   },
 }));
 
@@ -460,8 +466,23 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
           <BomDetailPage />
         </BrowserRouter>,
       );
-      expect(screen.getByText(/Mẫu Fit: ST101/i)).toBeTruthy();
+      expect(screen.getByText(/NPL Fit: ST101/i)).toBeTruthy();
       expect(screen.getByText("Áo sơ mi Oxford")).toBeTruthy();
+    });
+
+    it("renders the breadcrumb and back link on the shared PageHeader (Dashboard > Quản lý Nguyên phụ liệu > code)", () => {
+      render(
+        <BrowserRouter>
+          <BomDetailPage />
+        </BrowserRouter>,
+      );
+      expect(screen.getByRole("link", { name: "Dashboard" })).toBeTruthy();
+      expect(
+        screen.getByRole("link", { name: "Quản lý Nguyên phụ liệu" }),
+      ).toBeTruthy();
+      expect(
+        screen.getByRole("link", { name: /Danh sách NPL/ }),
+      ).toHaveProperty("href", expect.stringContaining("/bom"));
     });
 
     it("5. renders PO BOM with PO and Product information", () => {
@@ -471,7 +492,8 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
           <BomDetailPage />
         </BrowserRouter>,
       );
-      expect(screen.getByText(/PO BOM: PO-2026-001 - Váy Maxi Họa Tiết/i)).toBeTruthy();
+      expect(screen.getByText(/NPL PO:/i)).toBeTruthy();
+      expect(screen.getByText("Váy Maxi Họa Tiết")).toBeTruthy();
       expect(screen.getAllByText("PO-2026-001").length).toBeGreaterThan(0);
     });
 
@@ -483,6 +505,29 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
         </BrowserRouter>,
       );
       expect(screen.getByText(/Màu: Đỏ/i)).toBeTruthy();
+    });
+
+    it("falls back to the live PO product's colors and deadline when the BOM's own snapshot fields are null", () => {
+      hooks.useBom.mockReturnValue({
+        data: {
+          ...mockPoBom,
+          colorNameSnapshot: null,
+          deadline: null,
+          product: {
+            ...mockPoBom.product!,
+            colors: ["Ivory", "Black"],
+            deadline: "2026-04-25",
+          },
+        },
+        isLoading: false,
+      });
+      render(
+        <BrowserRouter>
+          <BomDetailPage />
+        </BrowserRouter>,
+      );
+      expect(screen.getByText(/Màu: Ivory, Black/i)).toBeTruthy();
+      expect(screen.getByText(/25\/0?4\/2026/)).toBeTruthy();
     });
 
     it("7. renders Current Order Quantity with proper formatting", () => {
@@ -779,6 +824,40 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       expect(screen.getAllByText("Phụ liệu may").length).toBeGreaterThan(0);
     });
 
+    it("exports the materials list to CSV when 'Xuất Excel' is clicked", () => {
+      const createObjectURL = vi.fn().mockReturnValue("blob:mock-url");
+      const revokeObjectURL = vi.fn();
+      vi.stubGlobal("URL", { ...URL, createObjectURL, revokeObjectURL });
+
+      render(
+        <BrowserRouter>
+          <BomDetailPage />
+        </BrowserRouter>,
+      );
+
+      fireEvent.click(screen.getByRole("button", { name: /Xuất Excel/ }));
+
+      expect(createObjectURL).toHaveBeenCalledTimes(1);
+      const blob = createObjectURL.mock.calls[0][0] as Blob;
+      expect(blob.type).toContain("text/csv");
+      expect(revokeObjectURL).toHaveBeenCalledWith("blob:mock-url");
+
+      vi.unstubAllGlobals();
+    });
+
+    it("does not show 'Xuất Excel' when there are no materials", () => {
+      hooks.useBom.mockReturnValue({
+        data: { ...mockFitBom, lines: [] },
+        isLoading: false,
+      });
+      render(
+        <BrowserRouter>
+          <BomDetailPage />
+        </BrowserRouter>,
+      );
+      expect(screen.queryByRole("button", { name: /Xuất Excel/ })).toBeNull();
+    });
+
     it("24. does not crash when optional snapshots are missing", () => {
       const lineWithoutGroup: BomDetail = {
         ...mockFitBom,
@@ -921,6 +1000,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
           materialId: "mat-1",
           consumption: 2.5,
           note: undefined,
+          expectedRowVersion: 1,
         });
       });
     });
@@ -1035,7 +1115,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       await waitFor(() => {
         expect(hooks.updateLine.mutateAsync).toHaveBeenCalledWith({
           lineId: "line-po-1",
-          payload: { unitCost: 0 },
+          payload: { unitCost: 0, expectedRowVersion: 1 },
         });
       });
     });
@@ -1059,7 +1139,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       await waitFor(() => {
         expect(hooks.updateLine.mutateAsync).toHaveBeenCalledWith({
           lineId: "line-po-1",
-          payload: { unitCost: 12500.5 },
+          payload: { unitCost: 12500.5, expectedRowVersion: 1 },
         });
       });
     });
@@ -1123,7 +1203,10 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       fireEvent.click(confirmBtn);
 
       await waitFor(() => {
-        expect(hooks.deleteLine.mutateAsync).toHaveBeenCalledWith("line-1");
+        expect(hooks.deleteLine.mutateAsync).toHaveBeenCalledWith({
+          lineId: "line-1",
+          expectedRowVersion: 1,
+        });
       });
     });
 
@@ -1161,6 +1244,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       await waitFor(() => {
         expect(hooks.reorderLines.mutateAsync).toHaveBeenCalledWith({
           lineIds: ["line-2", "line-1"],
+          expectedRowVersion: 1,
         });
       });
     });
@@ -1177,6 +1261,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       await waitFor(() => {
         expect(hooks.reorderLines.mutateAsync).toHaveBeenCalledWith({
           lineIds: ["line-2", "line-1"],
+          expectedRowVersion: 1,
         });
       });
     });
@@ -1424,13 +1509,10 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
           <BomDetailPage />
         </BrowserRouter>,
       );
-      const moreBtn = screen.getByLabelText("Thao tác khác");
-      fireEvent.click(moreBtn);
-
-      const discAction = screen.getByText(/Ngừng sử dụng \(Discontinue\)/i);
+      const discAction = screen.getByText("Ngừng sử dụng");
       fireEvent.click(discAction);
 
-      expect(screen.getByText("Ngừng sử dụng BOM")).toBeTruthy();
+      expect(screen.getByText("Ngừng sử dụng NPL")).toBeTruthy();
 
       const reasonInput = screen.getByPlaceholderText(/Nhập lý do ngừng sử dụng/i);
       fireEvent.change(reasonInput, { target: { value: "Hủy mã hàng theo đề xuất" } });
@@ -1452,9 +1534,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
           <BomDetailPage />
         </BrowserRouter>,
       );
-      const moreBtn = screen.getByLabelText("Thao tác khác");
-      fireEvent.click(moreBtn);
-      expect(screen.getByText(/Ngừng sử dụng \(Discontinue\)/i)).toBeTruthy();
+      expect(screen.getByText("Ngừng sử dụng")).toBeTruthy();
     });
 
     it("64. NVKH cannot discontinue (action hidden)", () => {
@@ -1484,8 +1564,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
           <BomDetailPage />
         </BrowserRouter>,
       );
-      fireEvent.click(screen.getByLabelText("Thao tác khác"));
-      fireEvent.click(screen.getByText(/Ngừng sử dụng \(Discontinue\)/i));
+      fireEvent.click(screen.getByText("Ngừng sử dụng"));
 
       const submitBtn = screen.getByText("Xác nhận ngừng sử dụng");
       expect((submitBtn as HTMLButtonElement).disabled).toBe(true);
@@ -1509,7 +1588,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
           <BomDetailPage />
         </BrowserRouter>,
       );
-      expect(screen.getByText(/Rev 2 \(Đang làm việc\)/i)).toBeTruthy();
+      expect(screen.getByText(/Phiên bản 2 \(Đang làm việc\)/i)).toBeTruthy();
     });
 
     it("68. selecting a historical revision displays historical lines and 'Revision lịch sử' banner", () => {
@@ -1560,6 +1639,21 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       expect(screen.getByText("Tạo phiên bản mới")).toBeTruthy();
     });
 
+    it("shows a compact completed summary instead of the full 5-step stepper once closed", () => {
+      const closedBom = { ...mockFitBom, status: "closed" as const };
+      hooks.useBom.mockReturnValue({ data: closedBom, isLoading: false });
+      render(
+        <BrowserRouter>
+          <BomDetailPage />
+        </BrowserRouter>,
+      );
+      expect(
+        screen.getByText("Đã hoàn tất toàn bộ quy trình (Khởi tạo → Phê duyệt)"),
+      ).toBeTruthy();
+      expect(screen.queryByText("Khởi tạo")).toBeNull();
+      expect(screen.queryByText("Phê duyệt")).toBeNull();
+    });
+
     it("71. Create Revision modal requires changeReason and calls POST /boms/:id/revisions", async () => {
       const closedBom = { ...mockFitBom, status: "closed" as const };
       hooks.useBom.mockReturnValue({ data: closedBom, isLoading: false });
@@ -1592,8 +1686,8 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       );
       fireEvent.click(screen.getByText(/Lịch sử phiên bản/i));
 
-      expect(screen.getByText("Lịch sử các phiên bản định mức (Revisions)")).toBeTruthy();
-      expect(screen.getByText("So sánh Diff")).toBeTruthy();
+      expect(screen.getByText("Lịch sử các phiên bản định mức")).toBeTruthy();
+      expect(screen.getByText("So sánh")).toBeTruthy();
     });
 
     it("73. History Tab renders workflow audit trail timeline", () => {
@@ -1615,9 +1709,9 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
         </BrowserRouter>,
       );
       fireEvent.click(screen.getByText(/Lịch sử phiên bản/i));
-      fireEvent.click(screen.getByText("So sánh Diff"));
+      fireEvent.click(screen.getByText("So sánh"));
 
-      expect(screen.getByText("So sánh biến động định mức (Revision Diff)")).toBeTruthy();
+      expect(screen.getByText("So sánh biến động định mức")).toBeTruthy();
       expect(screen.getByText("THÊM MỚI")).toBeTruthy();
       expect(screen.getByText("Vải Lót Oxford")).toBeTruthy();
       expect(screen.getByText("THAY ĐỔI")).toBeTruthy();
@@ -1631,7 +1725,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
         </BrowserRouter>,
       );
       fireEvent.click(screen.getByText(/Lịch sử phiên bản/i));
-      fireEvent.click(screen.getByText("So sánh Diff"));
+      fireEvent.click(screen.getByText("So sánh"));
 
       expect(screen.queryByText(/35\.000/i)).toBeNull();
     });
@@ -1660,7 +1754,6 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
           <BomDetailPage />
         </BrowserRouter>,
       );
-      fireEvent.click(screen.getByLabelText("Thao tác khác"));
       expect(screen.getByText("Nhập từ Fit BOM")).toBeTruthy();
     });
 
@@ -1684,6 +1777,37 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
         </BrowserRouter>,
       );
       expect(screen.queryByText("Nhập từ Fit BOM")).toBeNull();
+    });
+
+    it("shows a clear message instead of blank/loading state when the PO product isn't linked to any Fit style", () => {
+      const unlinkedPoBom: BomDetail = {
+        ...mockPoBom,
+        status: "wait_nvkh",
+        style: null,
+        product: { ...mockPoBom.product!, sourceStyleId: null },
+        currentRevision: {
+          id: "rev-po-1",
+          bomId: "bom-po-uuid",
+          revisionNo: 1,
+          status: "wait_nvkh",
+          createdAt: "2026-09-18T00:00:00.000Z",
+        },
+        lines: [],
+      };
+      hooks.useBom.mockReturnValue({ data: unlinkedPoBom, isLoading: false });
+      render(
+        <BrowserRouter>
+          <BomDetailPage />
+        </BrowserRouter>,
+      );
+
+      fireEvent.click(screen.getByText("Nhập từ Fit BOM"));
+
+      expect(
+        screen.getByText(
+          "Sản phẩm PO này chưa được liên kết với Mẫu Fit nào nên không thể sao chép định mức.",
+        ),
+      ).toBeTruthy();
     });
 
     it("78. FIT BOM hides Copy action", () => {
@@ -1714,7 +1838,6 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
           <BomDetailPage />
         </BrowserRouter>,
       );
-      fireEvent.click(screen.getByLabelText("Thao tác khác"));
       fireEvent.click(screen.getByText("Nhập từ Fit BOM"));
 
       expect(screen.getByText("Sao chép từ Fit BOM")).toBeTruthy();
@@ -1728,6 +1851,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       await waitFor(() => {
         expect(hooks.copyFit.mutateAsync).toHaveBeenCalledWith({
           sourceRevisionId: "rev-fit-src-1",
+          expectedRowVersion: 1,
         });
       });
     });

@@ -12,10 +12,14 @@ export const styleKeys = {
   detail: (id: string) => [...styleKeys.details(), id] as const,
 };
 
-export function useStyles(filter: StyleQueryFilter) {
+export function useStyles(
+  filter: StyleQueryFilter,
+  options?: { enabled?: boolean },
+) {
   return useQuery({
     queryKey: styleKeys.list(filter),
     queryFn: () => stylesApi.getStyles(filter),
+    enabled: options?.enabled ?? true,
   });
 }
 

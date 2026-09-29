@@ -10,17 +10,22 @@ import type {
   UnitQuery,
 } from "@/types/material";
 
-export function useMaterials(filters: MaterialFilters) {
+export function useMaterials(
+  filters: MaterialFilters,
+  options?: { enabled?: boolean },
+) {
   return useQuery({
     queryKey: materialKeys.list(filters),
     queryFn: () => materialApi.list(filters),
+    enabled: options?.enabled ?? true,
   });
 }
 
-export function useActiveUnits() {
+export function useActiveUnits(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: unitKeys.list({ status: "active", limit: 100 }),
     queryFn: () => unitApi.list({ status: "active", limit: 100 }),
+    enabled: options?.enabled ?? true,
   });
 }
 

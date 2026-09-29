@@ -9,11 +9,14 @@ export const styleStepKeys = {
   stageGroups: ["stage-groups"] as const,
 };
 
-export function useStyleOperationSteps(styleId?: string) {
+export function useStyleOperationSteps(
+  styleId?: string,
+  options?: { enabled?: boolean },
+) {
   return useQuery({
     queryKey: styleStepKeys.byStyle(styleId ?? ""),
     queryFn: () => styleOperationStepsApi.getSteps(styleId as string),
-    enabled: Boolean(styleId),
+    enabled: Boolean(styleId) && (options?.enabled ?? true),
   });
 }
 

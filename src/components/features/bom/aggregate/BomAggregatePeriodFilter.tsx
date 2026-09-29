@@ -11,6 +11,11 @@ interface BomAggregatePeriodFilterProps {
   onStartDateChange: (date: string) => void;
   endDate: string;
   onEndDateChange: (date: string) => void;
+  /** Skip the visible "Thời gian NPL" label line — for a compact single-row
+   * toolbar (e.g. BomFilters) where a stacked label would sit taller than
+   * its single-line siblings and throw off their vertical alignment. The
+   * label stays as aria-label either way. */
+  hideLabel?: boolean;
 }
 
 export function BomAggregatePeriodFilter({
@@ -24,6 +29,7 @@ export function BomAggregatePeriodFilter({
   onStartDateChange,
   endDate,
   onEndDateChange,
+  hideLabel,
 }: BomAggregatePeriodFilterProps) {
   const currentYear = new Date().getFullYear();
   const availableYears = Array.from({ length: 7 }, (_, index) => currentYear - 4 + index);
@@ -32,12 +38,14 @@ export function BomAggregatePeriodFilter({
     <div
       data-testid="aggregate-period-filter"
       role="group"
-      aria-label="Thời gian BOM"
-      className="flex min-w-0 flex-col gap-1.5"
+      aria-label="Thời gian NPL"
+      className={hideLabel ? "min-w-0" : "flex min-w-0 flex-col gap-1.5"}
     >
-      <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">
-        Thời gian BOM
-      </span>
+      {!hideLabel && (
+        <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">
+          Thời gian NPL
+        </span>
+      )}
       <div className="flex flex-wrap items-center gap-2">
         {periodMode === "month" && (
           <input

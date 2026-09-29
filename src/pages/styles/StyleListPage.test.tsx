@@ -132,6 +132,11 @@ describe("StyleListPage", () => {
     fireEvent.click(screen.getByTitle("Đang Nháp (Bấm để chuyển thành Hoạt động)"));
 
     await waitFor(() => {
+      expect(screen.getByText("Kích hoạt mẫu Fit")).toBeTruthy();
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Kích hoạt" }));
+
+    await waitFor(() => {
       expect(screen.getByText("Đã kích hoạt mẫu Fit.")).toBeTruthy();
     });
   });

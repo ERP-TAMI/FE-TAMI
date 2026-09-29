@@ -9,10 +9,11 @@ import {
 import { useUploadImage } from "@/hooks/useUploadImage";
 import { useUploadStore } from "@/hooks/useUploadStore";
 import { useToast } from "@/hooks/useToast";
-import { Toast } from "@/components/shared";
+import { ConfirmDialog, Toast } from "@/components/shared";
 import { StyleFormModal } from "@/components/features/styles/StyleFormModal";
 import { StyleOperationStepTable } from "@/components/features/styles/StyleOperationStepTable";
 import { UnsavedChangesDialog } from "@/components/features/styles/UnsavedChangesDialog";
+import { useUnsavedChangesWarning } from "@/hooks/useNavigationBlocker";
 import { StyleHeader } from "@/components/features/styles/StyleHeader";
 import { GeneralTab } from "@/components/features/styles/GeneralTab";
 import { StyleProductionDocTab } from "@/components/features/production-docs/StyleProductionDocTab";
@@ -21,7 +22,6 @@ import { StyleSampleRoundsTab } from "@/components/features/styles/StyleSampleRo
 import { getApiError, isConflictError } from "@/lib/apiError";
 import { validateImageFile } from "@/lib/validateImageFile";
 import type { StyleOperationStepItem } from "@/api/styleOperationStepsApi";
-import { InfoIcon, DocsIcon, PageIcon, FolderIcon, TaskIcon } from "@/icons";
 
 export default function StyleDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -48,46 +48,15 @@ export default function StyleDetailPage() {
 
   const [isProductionDocEditing, setIsProductionDocEditing] = useState(false);
   const [isOperationStepsEditing, setIsOperationStepsEditing] = useState(false);
-  const [pendingTab, setPendingTab] = useState<
-    "general" | "steps" | "production_doc" | "documents" | "sample_rounds" | null
-  >(null);
-  const [pendingNavigation, setPendingNavigation] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!isProductionDocEditing && !isOperationStepsEditing) return;
-
-    const handleDocumentClick = (event: MouseEvent) => {
-      if (
-        event.defaultPrevented ||
-        event.button !== 0 ||
-        event.metaKey ||
-        event.ctrlKey ||
-        event.shiftKey ||
-        event.altKey
-      ) {
-        return;
-      }
-      const target = event.target as HTMLElement | null;
-      const link = target?.closest("a[href]") as HTMLAnchorElement | null;
-      if (!link || link.target === "_blank" || link.download) return;
-      const url = new URL(link.href, window.location.href);
-      if (url.origin !== window.location.origin || url.href === window.location.href) return;
-      event.preventDefault();
-      setPendingNavigation(`${url.pathname}${url.search}${url.hash}`);
-    };
-
-    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-      event.preventDefault();
-      event.returnValue = "";
-    };
-
-    document.addEventListener("click", handleDocumentClick, true);
-    window.addEventListener("beforeunload", handleBeforeUnload);
-    return () => {
-      document.removeEventListener("click", handleDocumentClick, true);
-      window.removeEventListener("beforeunload", handleBeforeUnload);
-    };
-  }, [isProductionDocEditing, isOperationStepsEditing]);
+  // Blocks browser back/forward, Link clicks, and tab switches alike (all of
+  // them go through React Router navigation) — not just same-origin <a>
+  // clicks, which a hand-rolled click-intercept can't cover.
+  const isEditingUnsaved = isProductionDocEditing || isOperationStepsEditing;
+  const navigationBlocker = useUnsavedChangesWarning(
+    isEditingUnsaved,
+    "Bạn có dữ liệu chưa được lưu. Vui lòng bấm lưu trước khi rời khỏi trang!",
+  );
 
   const navigateToTab = (
     tab: "general" | "steps" | "production_doc" | "documents" | "sample_rounds",
@@ -109,22 +78,7 @@ export default function StyleDetailPage() {
   const handleTabChange = (
     tab: "general" | "steps" | "production_doc" | "documents" | "sample_rounds",
   ) => {
-    if ((isProductionDocEditing || isOperationStepsEditing) && tab !== activeTab) {
-      setPendingTab(tab);
-      return;
-    }
     navigateToTab(tab);
-  };
-
-  const handleConfirmLeaveTab = () => {
-    if (pendingNavigation) {
-      const nextPath = pendingNavigation;
-      setPendingNavigation(null);
-      navigate(nextPath);
-    } else if (pendingTab) {
-      navigateToTab(pendingTab);
-    }
-    setPendingTab(null);
   };
 
   const detail = useStyle(id);
@@ -134,10 +88,11 @@ export default function StyleDetailPage() {
   const uploadImage = useUploadImage();
   const { startUpload, tickUpload, finishUpload } = useUploadStore();
 
-  const stepsQuery = useStyleOperationSteps(id);
+  const stepsQuery = useStyleOperationSteps(id, { enabled: activeTab === "steps" });
   const bulkSaveSteps = useBulkSaveStyleOperationSteps(id || "");
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isToggleStatusConfirmOpen, setIsToggleStatusConfirmOpen] = useState(false);
   const { toast, showToast, hideToast } = useToast();
 
   const [imageUrl, setImageUrl] = useState<string | null>(null);
@@ -266,6 +221,7 @@ export default function StyleDetailPage() {
           ? "Đã kích hoạt mẫu Fit."
           : "Đã chuyển mẫu Fit về nháp.",
       );
+      setIsToggleStatusConfirmOpen(false);
     } catch (err: unknown) {
       showToast(
         getApiError(err, "Cập nhật trạng thái thất bại.").message,
@@ -300,6 +256,7 @@ export default function StyleDetailPage() {
       showToast("Đã lưu quy trình công đoạn mẫu Fit thành công.");
     } catch (err) {
       showToast(getApiError(err, "Lưu quy trình công đoạn thất bại.").message, "error");
+      throw err;
     }
   };
 
@@ -347,71 +304,61 @@ export default function StyleDetailPage() {
           status={style.status}
         />
 
-        <div className="border-b border-gray-200 dark:border-gray-800">
-          <nav className="flex space-x-6" aria-label="Tabs">
+        <div className="-mt-1 border-b border-gray-200 dark:border-gray-800">
+          <nav className="-mb-px flex gap-6 text-theme-sm font-semibold">
             <button
               type="button"
               onClick={() => handleTabChange("general")}
-              className={`flex items-center gap-2 border-b-2 py-2.5 px-1 text-sm font-semibold transition-colors cursor-pointer ${
+              className={`border-b-2 py-2.5 transition-colors ${
                 activeTab === "general"
-                  ? "border-brand-500 text-brand-600 dark:text-brand-400"
-                  : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                  ? "border-brand-600 text-brand-600 dark:border-brand-400 dark:text-brand-400"
+                  : "border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400"
               }`}
             >
-              <InfoIcon className="w-4 h-4" />
               Thông tin mẫu Fit
             </button>
             <button
               type="button"
               onClick={() => handleTabChange("steps")}
-              className={`flex items-center gap-2 border-b-2 py-2.5 px-1 text-sm font-semibold transition-colors cursor-pointer ${
+              className={`border-b-2 py-2.5 transition-colors ${
                 activeTab === "steps"
-                  ? "border-brand-500 text-brand-600 dark:text-brand-400"
-                  : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                  ? "border-brand-600 text-brand-600 dark:border-brand-400 dark:text-brand-400"
+                  : "border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400"
               }`}
             >
-              <DocsIcon className="w-4 h-4" />
-              Quy trình công đoạn &amp; KIM
-              {(stepsQuery.data?.length ?? 0) > 0 && (
-                <span className="ml-1.5 rounded-full bg-brand-50 dark:bg-brand-950/60 px-2 py-0.5 text-xs text-brand-600 dark:text-brand-400">
-                  {stepsQuery.data?.length}
-                </span>
-              )}
+              Quy trình công đoạn
             </button>
             <button
               type="button"
               onClick={() => handleTabChange("production_doc")}
-              className={`flex items-center gap-2 border-b-2 py-2.5 px-1 text-sm font-semibold transition-colors cursor-pointer ${
+              className={`border-b-2 py-2.5 transition-colors ${
                 activeTab === "production_doc"
-                  ? "border-brand-500 text-brand-600 dark:text-brand-400"
-                  : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                  ? "border-brand-600 text-brand-600 dark:border-brand-400 dark:text-brand-400"
+                  : "border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400"
               }`}
             >
-              <PageIcon className="w-4 h-4" />
               Tài liệu sản xuất
             </button>
             <button
               type="button"
               onClick={() => handleTabChange("documents")}
-              className={`flex items-center gap-2 border-b-2 py-2.5 px-1 text-sm font-semibold transition-colors cursor-pointer ${
+              className={`border-b-2 py-2.5 transition-colors ${
                 activeTab === "documents"
-                  ? "border-brand-500 text-brand-600 dark:text-brand-400"
-                  : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                  ? "border-brand-600 text-brand-600 dark:border-brand-400 dark:text-brand-400"
+                  : "border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400"
               }`}
             >
-              <FolderIcon className="w-4 h-4" />
               Tài liệu đính kèm
             </button>
             <button
               type="button"
               onClick={() => handleTabChange("sample_rounds")}
-              className={`flex items-center gap-2 border-b-2 py-2.5 px-1 text-sm font-semibold transition-colors cursor-pointer ${
+              className={`border-b-2 py-2.5 transition-colors ${
                 activeTab === "sample_rounds"
-                  ? "border-brand-500 text-brand-600 dark:text-brand-400"
-                  : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                  ? "border-brand-600 text-brand-600 dark:border-brand-400 dark:text-brand-400"
+                  : "border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400"
               }`}
             >
-              <TaskIcon className="w-4 h-4" />
               Lần may mẫu
             </button>
           </nav>
@@ -429,7 +376,7 @@ export default function StyleDetailPage() {
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onClearImage={clearLocalImage}
-          onToggleStatus={() => void handleToggleStatus()}
+          onToggleStatus={() => setIsToggleStatusConfirmOpen(true)}
           isStatusPending={statusUpdate.isPending}
           onEditClick={() => setIsEditModalOpen(true)}
         />
@@ -460,11 +407,12 @@ export default function StyleDetailPage() {
       )}
 
       <UnsavedChangesDialog
-        isOpen={pendingTab !== null || pendingNavigation !== null}
-        onConfirmLeave={handleConfirmLeaveTab}
+        isOpen={navigationBlocker.state === "blocked"}
+        onConfirmLeave={() => {
+          if (navigationBlocker.state === "blocked") navigationBlocker.proceed();
+        }}
         onCancel={() => {
-          setPendingTab(null);
-          setPendingNavigation(null);
+          if (navigationBlocker.state === "blocked") navigationBlocker.reset();
         }}
       />
 
@@ -485,6 +433,27 @@ export default function StyleDetailPage() {
               })
               .catch(() => {})
           }
+        />
+      )}
+
+      {isToggleStatusConfirmOpen && (
+        <ConfirmDialog
+          open
+          title={style.status === "active" ? "Chuyển về Nháp" : "Kích hoạt mẫu Fit"}
+          description={
+            <>
+              Bạn có chắc chắn muốn{" "}
+              {style.status === "active" ? "chuyển về nháp" : "kích hoạt"} mẫu Fit{" "}
+              <strong className="text-brand-600 dark:text-brand-400 font-mono break-all">
+                {style.styleCode}
+              </strong>
+              ?
+            </>
+          }
+          confirmLabel={style.status === "active" ? "Chuyển về Nháp" : "Kích hoạt"}
+          isSubmitting={statusUpdate.isPending}
+          onConfirm={() => void handleToggleStatus()}
+          onClose={() => setIsToggleStatusConfirmOpen(false)}
         />
       )}
 

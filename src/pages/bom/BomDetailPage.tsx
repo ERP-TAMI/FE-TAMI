@@ -177,7 +177,7 @@ export default function BomDetailPage() {
 
   if (isLoadingBom) {
     return (
-      <div className="flex flex-col gap-6 p-4 sm:p-6 lg:p-8" data-testid="bom-detail-skeleton">
+      <div className="flex flex-col gap-6" data-testid="bom-detail-skeleton">
         <div className="flex flex-col gap-2">
           <div className="h-4 w-48 animate-pulse rounded bg-gray-200 dark:bg-gray-800" />
           <div className="h-8 w-80 animate-pulse rounded-lg bg-gray-200 dark:bg-gray-800" />
@@ -404,7 +404,7 @@ export default function BomDetailPage() {
   // Header update handler
   const handleUpdateHeader = async (payload: UpdateBomPayload) => {
     try {
-      await updateBomMutation.mutateAsync(payload);
+      await updateBomMutation.mutateAsync({ ...payload, expectedRowVersion: bom.rowVersion });
       showToast("Đã cập nhật thông tin Header", "success");
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { message?: string } } };
@@ -424,7 +424,7 @@ export default function BomDetailPage() {
   };
 
   const handleCreateLine = async (payload: CreateBomLinePayload) => {
-    await addLineMutation.mutateAsync(payload);
+    await addLineMutation.mutateAsync({ ...payload, expectedRowVersion: bom.rowVersion });
     showToast("Đã thêm nguyên phụ liệu vào BOM", "success");
   };
 
@@ -449,7 +449,7 @@ export default function BomDetailPage() {
     if (!editingLine) return;
     await updateLineMutation.mutateAsync({
       lineId: editingLine.id,
-      payload,
+      payload: { ...payload, expectedRowVersion: bom.rowVersion },
     });
     showToast("Đã cập nhật dòng vật tư", "success");
   };
@@ -461,7 +461,10 @@ export default function BomDetailPage() {
   const handleConfirmDeleteLine = async () => {
     if (!deletingLine) return;
     try {
-      await deleteLineMutation.mutateAsync(deletingLine.id);
+      await deleteLineMutation.mutateAsync({
+        lineId: deletingLine.id,
+        expectedRowVersion: bom.rowVersion,
+      });
       showToast("Đã xóa dòng vật tư", "success");
       setDeletingLine(null);
     } catch (err: unknown) {
@@ -472,7 +475,7 @@ export default function BomDetailPage() {
 
   const handleReorderLines = async (lineIds: string[]) => {
     try {
-      await reorderLinesMutation.mutateAsync({ lineIds });
+      await reorderLinesMutation.mutateAsync({ lineIds, expectedRowVersion: bom.rowVersion });
       showToast("Đã sắp xếp lại thứ tự vật tư", "success");
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { message?: string } }; message?: string };
@@ -560,7 +563,7 @@ export default function BomDetailPage() {
 
   const handleCopyFit = async (sourceRevisionId: string) => {
     try {
-      await copyFitMutation.mutateAsync({ sourceRevisionId });
+      await copyFitMutation.mutateAsync({ sourceRevisionId, expectedRowVersion: bom.rowVersion });
       showToast("Đã sao chép thành công định mức từ Fit BOM", "success");
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { message?: string } } };
@@ -572,7 +575,7 @@ export default function BomDetailPage() {
     <div className="relative min-h-screen w-full">
       {/* Main content: shrinks and yields room when drawer is open */}
       <div
-        className={`flex min-w-0 flex-col gap-6 p-4 transition-all duration-300 sm:p-6 lg:p-8 ${
+        className={`flex min-w-0 flex-col gap-6 transition-all duration-300 ${
           isLineModalOpen ? "lg:mr-[480px]" : ""
         }`}
       >
@@ -689,6 +692,7 @@ export default function BomDetailPage() {
             ) : (
               <BomLinesTable
                 lines={displayLines}
+                bomCode={bom.bomCode}
                 readOnly={isReadOnlyPoBom}
                 currentStatus={currentStatus}
                 isHistorical={isHistorical}

@@ -101,7 +101,7 @@ export function PoProductBomTab({
 
   const handleCreateLine = async (payload: CreateBomLinePayload) => {
     if (readOnly || isProductLocked) return;
-    await addLineMutation.mutateAsync(payload);
+    await addLineMutation.mutateAsync({ ...payload, expectedRowVersion: bom?.rowVersion });
     showToast("Đã thêm nguyên phụ liệu vào BOM", "success");
   };
 
@@ -117,7 +117,7 @@ export function PoProductBomTab({
     if (!editingLine || readOnly || isProductLocked) return;
     await updateLineMutation.mutateAsync({
       lineId: editingLine.id,
-      payload,
+      payload: { ...payload, expectedRowVersion: bom?.rowVersion },
     });
     showToast("Đã cập nhật dòng vật tư", "success");
   };
@@ -125,7 +125,10 @@ export function PoProductBomTab({
   const handleConfirmDelete = async () => {
     if (!deletingLine || readOnly || isProductLocked) return;
     try {
-      await deleteLineMutation.mutateAsync(deletingLine.id);
+      await deleteLineMutation.mutateAsync({
+        lineId: deletingLine.id,
+        expectedRowVersion: bom?.rowVersion,
+      });
       showToast("Đã xóa dòng vật tư", "success");
       setDeletingLine(null);
     } catch (err: unknown) {
@@ -137,7 +140,7 @@ export function PoProductBomTab({
   const handleReorder = async (newLineIds: string[]) => {
     if (readOnly || isProductLocked) return;
     try {
-      await reorderLinesMutation.mutateAsync({ lineIds: newLineIds });
+      await reorderLinesMutation.mutateAsync({ lineIds: newLineIds, expectedRowVersion: bom?.rowVersion });
       showToast("Đã sắp xếp lại thứ tự vật tư", "success");
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { message?: string } }; message?: string };
@@ -238,6 +241,7 @@ export function PoProductBomTab({
       {/* Embedded Inline BOM Lines Table */}
       <BomLinesTable
         lines={bom.lines || []}
+        bomCode={bom.bomCode}
         readOnly={readOnly}
         currentStatus={currentStatus}
         isHistorical={false}

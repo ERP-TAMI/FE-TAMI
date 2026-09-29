@@ -152,12 +152,18 @@ export function BomAggregateFilters({
 
   const currentBomId = bomId;
 
-  const { data: styleResponse } = useStyles({ limit: 100 });
+  // Style/Vật tư/Nhóm NPL chỉ có mặt trong panel "Bộ lọc nâng cao" (collapsed
+  // mặc định) — không fetch cả 3 danh mục này ngay khi vào trang, chỉ bật
+  // khi người dùng thật sự mở panel ra.
+  const { data: styleResponse } = useStyles({ limit: 100 }, { enabled: isExtraOpen });
   const styleList: Style[] = styleResponse?.data || [];
 
-  const { data: materialResponse } = useMaterials({ limit: 100 });
+  const { data: materialResponse } = useMaterials({ limit: 100 }, { enabled: isExtraOpen });
   const materialList = materialResponse?.data ?? [];
-  const { data: materialGroupResponse } = useMaterialGroups({ limit: 100 });
+  const { data: materialGroupResponse } = useMaterialGroups(
+    { limit: 100 },
+    { enabled: isExtraOpen },
+  );
   const materialGroups = materialGroupResponse?.data ?? [];
 
   const handleBomSelect = (newBomId: string) => {
@@ -203,7 +209,7 @@ export function BomAggregateFilters({
         {/* 1. Trạng thái BOM */}
         <div className="flex min-w-[130px] flex-col gap-1.5">
           <label className="text-xs font-semibold text-gray-700 dark:text-gray-300">
-            Trạng thái BOM
+            Trạng thái NPL
           </label>
           <div className="flex items-center gap-2 rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-1.5 text-xs font-medium text-gray-700 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300">
             <span className="h-2 w-2 shrink-0 rounded-full bg-emerald-500" />
@@ -213,7 +219,7 @@ export function BomAggregateFilters({
 
         {/* 3. BOM */}
         <div className="flex min-w-[180px] flex-col gap-1.5">
-          <label className="text-xs font-semibold text-gray-700 dark:text-gray-300">BOM</label>
+          <label className="text-xs font-semibold text-gray-700 dark:text-gray-300">Bảng NPL</label>
           <div className="relative">
             <select
               id="aggregate-bom-select"
@@ -222,7 +228,9 @@ export function BomAggregateFilters({
               onChange={(e) => handleBomSelect(e.target.value)}
               className="w-full cursor-pointer appearance-none rounded-xl border border-gray-200 bg-white py-1.5 pr-7 pl-7 text-xs text-gray-700 shadow-2xs transition-colors hover:border-blue-300 focus:border-blue-500 focus:outline-none dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300"
             >
-              <option value="">{purchaseOrderId ? "Tất cả BOM trong đơn" : "Tất cả BOM"}</option>
+              <option value="">
+                {purchaseOrderId ? "Tất cả bảng NPL trong đơn" : "Tất cả bảng NPL"}
+              </option>
               {eligibleBoms.map((bom: BomListItem) => {
                 const productCode = bom.product?.productCode || bom.style?.styleCode || bom.bomCode;
                 return (

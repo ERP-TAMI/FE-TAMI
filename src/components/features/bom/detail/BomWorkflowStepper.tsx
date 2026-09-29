@@ -1,4 +1,4 @@
-import { Check, AlertTriangle } from "lucide-react";
+import { Check, AlertTriangle, CheckCircle2 } from "lucide-react";
 import type { BomStatus } from "@/types/bom";
 
 interface BomWorkflowStepperProps {
@@ -79,11 +79,22 @@ export function BomWorkflowStepper({
       <div className="flex items-center gap-3 rounded-2xl border border-rose-200 bg-rose-50/70 p-4 text-theme-sm text-rose-800 dark:border-rose-900/40 dark:bg-rose-950/20 dark:text-rose-300">
         <AlertTriangle className="h-5 w-5 shrink-0 text-rose-600 dark:text-rose-400" />
         <div>
-          <span className="font-bold">BOM đã ngừng sử dụng (Discontinued): </span>
+          <span className="font-bold">NPL đã ngừng sử dụng: </span>
           <span className="text-rose-700 dark:text-rose-400">
             Phiên bản này đã bị dừng và bị khóa toàn bộ các thao tác chỉnh sửa.
           </span>
         </div>
+      </div>
+    );
+  }
+
+  // Once every step is done there's nothing left to track — the full 5-node
+  // timeline is a lot of vertical space to spend just confirming that.
+  if (isClosed) {
+    return (
+      <div className="flex items-center gap-3 rounded-2xl border border-brand-200/60 bg-brand-50/60 px-4 py-3 text-theme-sm text-brand-800 dark:border-brand-900/40 dark:bg-brand-950/20 dark:text-brand-300">
+        <CheckCircle2 className="h-5 w-5 shrink-0 text-brand-600 dark:text-brand-400" />
+        <span className="font-semibold">Đã hoàn tất toàn bộ quy trình (Khởi tạo → Phê duyệt)</span>
       </div>
     );
   }

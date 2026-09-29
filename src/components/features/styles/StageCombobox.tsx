@@ -17,79 +17,94 @@ export interface StageComboboxOption {
 
 let _cache: StageComboboxOption[] | null = null;
 let _rawGroups: StageGroup[] | null = null;
+// Every row in the operation-steps table renders its own StageCombobox, and
+// they all mount in the same tick when the table first loads — without this,
+// each one's useEffect sees the cache still empty and fires its own
+// /masters/stages + /masters/stage-groups request before the first one has
+// resolved and populated the cache (a "cache stampede": N rows == N identical
+// requests). Share one in-flight promise so only the first caller fetches.
+let _inFlight: Promise<{ options: StageComboboxOption[]; groups: StageGroup[] }> | null = null;
 
 async function getStageOptions(): Promise<{ options: StageComboboxOption[]; groups: StageGroup[] }> {
   if (_cache && _rawGroups) return { options: _cache, groups: _rawGroups };
-  try {
-    const [stagesResponse, groups] = await Promise.all([
-      stageApi.list({ limit: 100 }),
-      stageGroupApi.getStageGroups(),
-    ]);
-    const stages = stagesResponse.data;
+  if (_inFlight) return _inFlight;
 
-    _rawGroups = groups;
-    const result: StageComboboxOption[] = [];
-    const addedNames = new Set<string>();
+  _inFlight = (async () => {
+    try {
+      const [stagesResponse, groups] = await Promise.all([
+        stageApi.list({ limit: 100 }),
+        stageGroupApi.getStageGroups(),
+      ]);
+      const stages = stagesResponse.data;
 
-    for (const g of groups) {
-      const groupTitle = (g.name || "Nhóm công đoạn").toUpperCase();
+      _rawGroups = groups;
+      const result: StageComboboxOption[] = [];
+      const addedNames = new Set<string>();
 
-      if (g.items && g.items.length > 0) {
-        result.push({
-          id: `group-${g.id}`,
-          name: `${g.name} (Tất cả công đoạn)`,
-          code: g.code,
-          description: g.description,
-          isGroup: true,
-          group: g,
-          groupName: groupTitle,
-        });
+      for (const g of groups) {
+        const groupTitle = (g.name || "Nhóm công đoạn").toUpperCase();
 
-        for (const it of g.items) {
-          addedNames.add(it.name.toLowerCase().trim());
+        if (g.items && g.items.length > 0) {
           result.push({
-            id: it.id || `item-${g.id}-${it.orderIndex}`,
-            name: it.name,
-            description: it.description,
-            ssv: Number(it.ssv) || 0,
-            isGroup: false,
+            id: `group-${g.id}`,
+            name: `${g.name} (Tất cả công đoạn)`,
+            code: g.code,
+            description: g.description,
+            isGroup: true,
+            group: g,
             groupName: groupTitle,
           });
+
+          for (const it of g.items) {
+            addedNames.add(it.name.toLowerCase().trim());
+            result.push({
+              id: it.id || `item-${g.id}-${it.orderIndex}`,
+              name: it.name,
+              description: it.description,
+              ssv: Number(it.ssv) || 0,
+              isGroup: false,
+              groupName: groupTitle,
+            });
+          }
+        } else {
+          result.push({
+            id: g.id,
+            name: `${g.name} (Nhóm công đoạn)`,
+            code: g.code,
+            description: g.description,
+            isGroup: true,
+            group: g,
+            groupName: "NHÓM CÔNG ĐOẠN",
+          });
         }
-      } else {
-        result.push({
-          id: g.id,
-          name: `${g.name} (Nhóm công đoạn)`,
-          code: g.code,
-          description: g.description,
-          isGroup: true,
-          group: g,
-          groupName: "NHÓM CÔNG ĐOẠN",
-        });
       }
-    }
 
-    for (const s of stages) {
-      const lowerName = s.stageName.toLowerCase().trim();
-      if (!addedNames.has(lowerName)) {
-        addedNames.add(lowerName);
-        result.push({
-          id: s.id,
-          name: s.stageName,
-          code: s.stageCode,
-          description: s.description || undefined,
-          ssv: Number(s.ssv) || 0,
-          isGroup: false,
-          groupName: "CÔNG ĐOẠN KHÁC",
-        });
+      for (const s of stages) {
+        const lowerName = s.stageName.toLowerCase().trim();
+        if (!addedNames.has(lowerName)) {
+          addedNames.add(lowerName);
+          result.push({
+            id: s.id,
+            name: s.stageName,
+            code: s.stageCode,
+            description: s.description || undefined,
+            ssv: Number(s.ssv) || 0,
+            isGroup: false,
+            groupName: "CÔNG ĐOẠN KHÁC",
+          });
+        }
       }
-    }
 
-    _cache = result;
-    return { options: _cache, groups: _rawGroups };
-  } catch {
-    return { options: [], groups: [] };
-  }
+      _cache = result;
+      return { options: _cache, groups: _rawGroups };
+    } catch {
+      return { options: [], groups: [] };
+    } finally {
+      _inFlight = null;
+    }
+  })();
+
+  return _inFlight;
 }
 
 function SearchIcon(props: React.SVGProps<SVGSVGElement>) {

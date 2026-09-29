@@ -1,6 +1,5 @@
-import { Link } from "react-router-dom";
+import { PageHeader } from "@/components/shared/PageHeader";
 import {
-  ArrowLeft,
   Plus,
   ArrowRight,
   RotateCcw,
@@ -108,30 +107,19 @@ export function BomDetailHeader({
         bom.style?.styleCode ||
         bom.bomCode;
 
-  const displayTitle =
-    bom.type === "fit"
-      ? `Mẫu Fit: ${displayCode}`
-      : `PO BOM: ${displayCode}`;
+  const typeLabel = bom.type === "fit" ? "NPL Fit" : "NPL PO";
+  const displayTitle = `${typeLabel}: ${displayCode}`;
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Breadcrumbs */}
-      <nav className="flex items-center gap-2 text-theme-xs text-gray-500 dark:text-gray-400">
-        <Link
-          to="/bom"
-          className="transition-colors hover:text-gray-700 dark:hover:text-gray-200"
-        >
-          Quản lý NPL
-        </Link>
-        <span>&gt;</span>
-        <span className="text-gray-600 dark:text-gray-400">
-          {bom.type === "fit" ? "Fit BOM" : "PO BOM"}
-        </span>
-        <span>&gt;</span>
-        <span className="font-semibold text-gray-800 dark:text-gray-200">
-          {displayCode}
-        </span>
-      </nav>
+      <PageHeader
+        back={{ to: "/bom", label: "Danh sách NPL" }}
+        breadcrumb={[
+          { label: "Dashboard", to: "/dashboard" },
+          { label: "Quản lý Nguyên phụ liệu", to: "/bom" },
+          { label: displayCode },
+        ]}
+      />
 
       {/* Discontinued Banner if Discontinued */}
       {isDiscontinued && (
@@ -142,7 +130,7 @@ export function BomDetailHeader({
           <div className="flex flex-col">
             <div className="flex items-center gap-2">
               <span className="font-bold text-rose-900 dark:text-rose-200">
-                Định mức này đã bị Ngừng sử dụng (Discontinued)
+                Định mức này đã bị Ngừng sử dụng
               </span>
               <span className="rounded-full bg-rose-200/70 px-2 py-0.5 text-[11px] font-bold text-rose-800 dark:bg-rose-900 dark:text-rose-300">
                 ĐÃ KHÓA
@@ -184,25 +172,10 @@ export function BomDetailHeader({
 
       {/* Main Title & Action Bar - Single Horizontal Line */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        {/* Left: Back button + Title + Badges */}
+        {/* Left: Title + Badges */}
         <div className="flex flex-wrap items-center gap-3">
-          <Link
-            to="/bom"
-            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-gray-200/80 bg-white text-gray-600 shadow-2xs transition-colors hover:bg-gray-50 hover:text-gray-900 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white"
-            title="Quay lại danh sách"
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
-
           <h1 className="text-xl font-bold tracking-tight text-gray-900 dark:text-white sm:text-2xl">
             {displayTitle}
-            {bom.type !== "fit" && (
-              <span className="sr-only">
-                {`PO BOM: ${bom.purchaseOrder?.poCode || bom.bomCode} - ${
-                  bom.product?.productName || bom.style?.styleName || "Sản phẩm"
-                }`}
-              </span>
-            )}
           </h1>
 
           <div className="flex items-center gap-2">
@@ -222,7 +195,7 @@ export function BomDetailHeader({
                     const isCurrent = r.id === bom.currentRevision?.id || r.isCurrent;
                     return (
                       <option key={r.id} value={r.id}>
-                        Rev {r.revisionNo} ({isCurrent ? "Đang làm việc" : "Đã đóng"})
+                        Phiên bản {r.revisionNo} ({isCurrent ? "Đang làm việc" : "Đã đóng"})
                       </option>
                     );
                   })}
@@ -230,7 +203,7 @@ export function BomDetailHeader({
               </div>
             ) : bom.currentRevision ? (
               <span className="inline-flex items-center gap-1 rounded-full border border-gray-200/80 bg-gray-50 px-2.5 py-0.5 text-theme-xs font-semibold text-gray-600 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-300">
-                Rev {bom.currentRevision.revisionNo}
+                Phiên bản {bom.currentRevision.revisionNo}
               </span>
             ) : null}
           </div>
@@ -249,8 +222,10 @@ export function BomDetailHeader({
 
         {/* Right: Actions Group in single horizontal line matching mockup */}
         <div className="flex items-center gap-2.5 shrink-0">
-          {/* [...] More Actions Dropdown (Only shown when Copy Fit or Discontinue is available) */}
-          {(showCopyFit || showDiscontinue) && (
+          {/* A dropdown only earns its keep once there are 2+ extra actions to
+           * hide — with just one, show it directly instead of making the
+           * user open a menu for a single item. */}
+          {showCopyFit && showDiscontinue ? (
             <div className="relative" ref={menuRef}>
               <button
                 type="button"
@@ -264,37 +239,51 @@ export function BomDetailHeader({
 
               {isMenuOpen && (
                 <div className="absolute right-0 top-full z-30 mt-1.5 w-52 rounded-xl border border-gray-200/80 bg-white p-1.5 shadow-lg dark:border-gray-800 dark:bg-gray-900">
-                  {showCopyFit && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsMenuOpen(false);
-                        onOpenCopyFitModal();
-                      }}
-                      className="flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2 text-left text-theme-xs font-medium text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-800"
-                    >
-                      <Copy className="h-4 w-4 text-brand-600" />
-                      <span>Nhập từ Fit BOM</span>
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsMenuOpen(false);
+                      onOpenCopyFitModal();
+                    }}
+                    className="flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2 text-left text-theme-xs font-medium text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-800"
+                  >
+                    <Copy className="h-4 w-4 text-brand-600" />
+                    <span>Nhập từ Fit BOM</span>
+                  </button>
 
-                  {showDiscontinue && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsMenuOpen(false);
-                        onOpenDiscontinueModal();
-                      }}
-                      className="flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2 text-left text-theme-xs font-medium text-rose-600 transition-colors hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/30"
-                    >
-                      <Ban className="h-4 w-4 text-rose-600" />
-                      <span>Ngừng sử dụng (Discontinue)</span>
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsMenuOpen(false);
+                      onOpenDiscontinueModal();
+                    }}
+                    className="flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2 text-left text-theme-xs font-medium text-rose-600 transition-colors hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/30"
+                  >
+                    <Ban className="h-4 w-4 text-rose-600" />
+                    <span>Ngừng sử dụng</span>
+                  </button>
                 </div>
               )}
             </div>
-          )}
+          ) : showCopyFit ? (
+            <button
+              type="button"
+              onClick={onOpenCopyFitModal}
+              className="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-gray-200/80 bg-white px-3 py-2 text-theme-xs font-semibold text-gray-700 shadow-2xs transition-colors hover:bg-gray-50 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800"
+            >
+              <Copy className="h-3.5 w-3.5 text-brand-600" />
+              <span>Nhập từ Fit BOM</span>
+            </button>
+          ) : showDiscontinue ? (
+            <button
+              type="button"
+              onClick={onOpenDiscontinueModal}
+              className="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50/80 px-3 py-2 text-theme-xs font-semibold text-rose-600 shadow-2xs transition-colors hover:bg-rose-100 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-400 dark:hover:bg-rose-950/60"
+            >
+              <Ban className="h-3.5 w-3.5" />
+              <span>Ngừng sử dụng</span>
+            </button>
+          ) : null}
 
           {/* Workflow Action: Reject */}
           {showReject && (

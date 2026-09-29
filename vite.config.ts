@@ -38,6 +38,13 @@ export default defineConfig(({ mode }) => {
     server: {
       host: "127.0.0.1",
       port: 5173,
+      // Git worktrees (e.g. Claude Code sessions) live under .claude/worktrees
+      // inside this same directory. Without this, file churn in a nested
+      // worktree still triggers this dev server's watcher/full-reloads and
+      // can crash it under enough concurrent activity.
+      watch: {
+        ignored: ["**/.claude/worktrees/**"],
+      },
       proxy: {
         "/api": {
           target: backendTarget,

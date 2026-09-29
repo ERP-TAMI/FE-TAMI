@@ -59,15 +59,15 @@ vi.mock("@/hooks/usePurchaseOrders", () => ({
 }));
 
 vi.mock("@/hooks/useStyles", () => ({
-  useStyles: (query: unknown) => hooks.useStyles(query),
+  useStyles: (query: unknown, options?: unknown) => hooks.useStyles(query, options),
 }));
 
 vi.mock("@/hooks/useMaterials", () => ({
-  useMaterials: (query: unknown) => hooks.useMaterials(query),
+  useMaterials: (query: unknown, options?: unknown) => hooks.useMaterials(query, options),
 }));
 
 vi.mock("@/hooks/useMaterialGroups", () => ({
-  useMaterialGroups: () => hooks.useMaterialGroups(),
+  useMaterialGroups: (query: unknown, options?: unknown) => hooks.useMaterialGroups(query, options),
 }));
 
 // Mock data fixtures
@@ -288,7 +288,11 @@ describe("BomAggregatePage", () => {
         </BrowserRouter>,
       );
 
-      expect(screen.getByRole("heading", { name: "Tổng hợp nhu cầu NPL" })).toBeTruthy();
+      expect(
+        screen.getByRole("heading", { name: "Tổng hợp nhu cầu nguyên phụ liệu" }),
+      ).toBeTruthy();
+      expect(screen.getByRole("link", { name: "Dashboard" })).toBeTruthy();
+      expect(screen.getByRole("link", { name: "Quản lý Nguyên phụ liệu" })).toBeTruthy();
       expect(screen.getByText("Số lượng được tính theo dữ liệu PO hiện tại")).toBeTruthy();
       expect(screen.getByText("Tổng số loại NPL")).toBeTruthy();
       expect(screen.getByText("Chế độ phân rã")).toBeTruthy();
@@ -390,7 +394,7 @@ describe("BomAggregatePage", () => {
       expect(screen.getByText("Chưa có dữ liệu NPL")).toBeTruthy();
       expect(
         screen.getByText(
-          "Chưa có BOM PO nào ở trạng thái đã đóng (closed) để tổng hợp nhu cầu nguyên phụ liệu.",
+          "Chưa có bảng NPL nào của PO ở trạng thái đã đóng (closed) để tổng hợp nhu cầu nguyên phụ liệu.",
         ),
       ).toBeTruthy();
       expect(screen.queryByTestId("clear-filters-btn")).toBeNull();
@@ -600,6 +604,44 @@ describe("BomAggregatePage", () => {
       const bomSelect = screen.getByTestId("aggregate-bom-select");
       fireEvent.change(bomSelect, { target: { value: "bom-1" } });
       expect(mockSetSearchParams).toHaveBeenCalled();
+    });
+
+    it("does not fetch styles/materials/material-groups until 'Bộ lọc nâng cao' is opened", () => {
+      render(
+        <BrowserRouter>
+          <BomAggregatePage />
+        </BrowserRouter>,
+      );
+
+      // Style/Vật tư/Nhóm NPL chỉ dùng trong panel nâng cao (collapsed mặc
+      // định) — không được fetch ngay khi vào trang.
+      expect(hooks.useStyles).toHaveBeenLastCalledWith(
+        { limit: 100 },
+        { enabled: false },
+      );
+      expect(hooks.useMaterials).toHaveBeenLastCalledWith(
+        { limit: 100 },
+        { enabled: false },
+      );
+      expect(hooks.useMaterialGroups).toHaveBeenLastCalledWith(
+        { limit: 100 },
+        { enabled: false },
+      );
+
+      fireEvent.click(screen.getByRole("button", { name: /Bộ lọc nâng cao/i }));
+
+      expect(hooks.useStyles).toHaveBeenLastCalledWith(
+        { limit: 100 },
+        { enabled: true },
+      );
+      expect(hooks.useMaterials).toHaveBeenLastCalledWith(
+        { limit: 100 },
+        { enabled: true },
+      );
+      expect(hooks.useMaterialGroups).toHaveBeenLastCalledWith(
+        { limit: 100 },
+        { enabled: true },
+      );
     });
 
     it("10. Style filter: selecting a style sets styleId", () => {
@@ -1505,7 +1547,7 @@ describe("BomAggregatePage", () => {
 
       const bomSelect = screen.getByTestId("aggregate-bom-select") as HTMLSelectElement;
       expect(bomSelect.disabled).toBe(false);
-      expect(bomSelect.textContent).toContain("Tất cả BOM trong đơn");
+      expect(bomSelect.textContent).toContain("Tất cả bảng NPL trong đơn");
       expect(bomSelect.textContent).toContain("PRD-01");
       expect(bomSelect.textContent).toContain("PRD-02");
     });

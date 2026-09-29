@@ -554,15 +554,11 @@ describe("PR-11: BOM V2 Final Integration & E2E Regression", () => {
   // 1. FLOW A: BOM LIST & FILTERING
   // =======================================================================
   describe("FLOW A: BOM List & Filtering", () => {
-    it("1. renders statistics KPI cards accurately from backend response", () => {
+    it("1. renders the page title and total count from backend response", () => {
       renderWithRouter(<BomPage />, { initialEntries: ["/bom"] });
 
       expect(screen.getAllByText("Quản lý Nguyên phụ liệu")[0]).toBeTruthy();
-      expect(screen.getByText("Tổng NPL")).toBeTruthy();
-      expect(screen.getAllByText("12")[0]).toBeTruthy(); // total
-      expect(screen.getAllByText("3")[0]).toBeTruthy(); // draft
-      expect(screen.getAllByText("4")[0]).toBeTruthy(); // pending
-      expect(screen.getAllByText("5")[0]).toBeTruthy(); // approved
+      expect(screen.getByText("12 bảng NPL")).toBeTruthy();
     });
 
     it("2. filters by BOM type (FIT vs PO) and updates query state", () => {
@@ -585,15 +581,17 @@ describe("PR-11: BOM V2 Final Integration & E2E Regression", () => {
       );
     });
 
-    it("4. debounces style filter updates before triggering query", async () => {
+    it("4. debounces search input updates before triggering query", async () => {
       renderWithRouter(<BomPage />, { initialEntries: ["/bom"] });
 
-      const styleInput = screen.getByPlaceholderText("Mã Fit / Style...");
-      fireEvent.change(styleInput, { target: { value: "Oxford" } });
+      const searchInput = screen.getByPlaceholderText(
+        "Tìm mã PO, mẫu Fit, sản phẩm, màu...",
+      );
+      fireEvent.change(searchInput, { target: { value: "Oxford" } });
 
       await waitFor(
         () => {
-          expect(hooks.useBoms).toHaveBeenCalledWith(expect.objectContaining({ style: "Oxford" }));
+          expect(hooks.useBoms).toHaveBeenCalledWith(expect.objectContaining({ search: "Oxford" }));
         },
         { timeout: 1500 },
       );
@@ -709,10 +707,10 @@ describe("PR-11: BOM V2 Final Integration & E2E Regression", () => {
     it("10. header renders BOM code, type badge, status badge, revision number, and PO info", () => {
       renderWithRouter(<BomDetailPage />, { initialEntries: ["/bom/bom-v2-test-id"] });
 
-      expect(screen.getByText("PO BOM: PRD-QUAN-01")).toBeTruthy();
+      expect(screen.getByText("NPL PO: PRD-QUAN-01")).toBeTruthy();
       expect(screen.getByText("PO")).toBeTruthy();
       expect(screen.getByText("Nháp")).toBeTruthy();
-      expect(screen.getByText("Rev 1")).toBeTruthy();
+      expect(screen.getByText("Phiên bản 1")).toBeTruthy();
       expect(screen.getAllByText("PO-2026-888")[0]).toBeTruthy();
     });
 
@@ -920,10 +918,10 @@ describe("PR-11: BOM V2 Final Integration & E2E Regression", () => {
       // Switch to Revisions tab
       fireEvent.click(screen.getByRole("button", { name: /Lịch sử/i }));
 
-      const diffBtn = screen.getByText("So sánh Diff");
+      const diffBtn = screen.getByText("So sánh");
       fireEvent.click(diffBtn);
 
-      expect(screen.getByText("So sánh biến động định mức (Revision Diff)")).toBeTruthy();
+      expect(screen.getByText("So sánh biến động định mức")).toBeTruthy();
       expect(screen.getByText("Keo dựng vải")).toBeTruthy();
     });
 
@@ -980,6 +978,7 @@ describe("PR-11: BOM V2 Final Integration & E2E Regression", () => {
       await waitFor(() => {
         expect(hooks.useCopyFit.mutateAsync).toHaveBeenCalledWith({
           sourceRevisionId: "rev-fit-src-1",
+          expectedRowVersion: 1,
         });
       });
     });
@@ -988,11 +987,9 @@ describe("PR-11: BOM V2 Final Integration & E2E Regression", () => {
       // BOM lines exist: lines.length > 0
       renderWithRouter(<BomDetailPage />, { initialEntries: ["/bom/bom-v2-test-id"] });
 
-      // 'Thao tác khác' only exists if copy fit or discontinue is available
-      // When lines exist and status is wait_nvkh, only discontinue is available
-      const moreBtn = screen.getByLabelText("Thao tác khác");
-      fireEvent.click(moreBtn);
-
+      // When lines exist and status is wait_nvkh, only discontinue is
+      // available, rendered directly (not behind a dropdown).
+      expect(screen.getByText("Ngừng sử dụng")).toBeTruthy();
       expect(screen.queryByText("Nhập từ Fit BOM")).toBeNull();
     });
   });
@@ -1004,13 +1001,10 @@ describe("PR-11: BOM V2 Final Integration & E2E Regression", () => {
     it("24. discontinues BOM with mandatory reason and locks all mutations", async () => {
       renderWithRouter(<BomDetailPage />, { initialEntries: ["/bom/bom-v2-test-id"] });
 
-      const moreBtn = screen.getByLabelText("Thao tác khác");
-      fireEvent.click(moreBtn);
-
-      const discontinueOption = screen.getByText("Ngừng sử dụng (Discontinue)");
+      const discontinueOption = screen.getByText("Ngừng sử dụng");
       fireEvent.click(discontinueOption);
 
-      expect(screen.getByText(/Ngừng sử dụng BOM/i)).toBeTruthy();
+      expect(screen.getByText(/Ngừng sử dụng NPL/i)).toBeTruthy();
 
       const reasonInput = screen.getByPlaceholderText(/Nhập lý do ngừng sử dụng/i);
       fireEvent.change(reasonInput, { target: { value: "Khách hàng hủy đơn hàng" } });

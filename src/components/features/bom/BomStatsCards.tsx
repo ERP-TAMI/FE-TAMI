@@ -1,9 +1,3 @@
-import {
-  Layers,
-  Package,
-  Clock,
-  CheckCircle2,
-} from "lucide-react";
 import type { BomStats } from "@/types/bom";
 
 export type PeriodMode = "month" | "year" | "dateRange";
@@ -83,33 +77,21 @@ export function BomStatsCards({
       title: "Tổng NPL",
       value: stats?.total ?? 0,
       sublabel: totalSublabel,
-      icon: Layers,
-      iconColor: "text-brand-600 dark:text-brand-400",
-      iconBg: "bg-brand-50/80 dark:bg-brand-950/40 border border-brand-200/50 dark:border-brand-900/30",
     },
     {
       title: "Nháp",
       value: stats?.draftCount ?? 0,
       sublabel: "bảng",
-      icon: Package,
-      iconColor: "text-gray-600 dark:text-gray-300",
-      iconBg: "bg-gray-100/80 dark:bg-gray-800/60 border border-gray-200/50 dark:border-gray-700/50",
     },
     {
       title: "Chờ duyệt",
       value: stats?.pendingCount ?? 0,
       sublabel: "bảng",
-      icon: Clock,
-      iconColor: "text-amber-500 dark:text-amber-400",
-      iconBg: "bg-amber-50/80 dark:bg-amber-950/30 border border-amber-200/50 dark:border-amber-900/30",
     },
     {
       title: "Đã duyệt",
       value: stats?.approvedCount ?? 0,
       sublabel: "đã duyệt",
-      icon: CheckCircle2,
-      iconColor: "text-brand-600 dark:text-brand-400",
-      iconBg: "bg-brand-50/80 dark:bg-brand-950/40 border border-brand-200/50 dark:border-brand-900/30",
     },
   ];
 
@@ -203,36 +185,26 @@ export function BomStatsCards({
                 className="h-24 animate-pulse rounded-2xl border border-gray-200/80 bg-gray-100 p-4 dark:border-gray-800 dark:bg-gray-800"
               />
             ))
-          : cards.map((card, idx) => {
-              const Icon = card.icon;
-              return (
-                <div
-                  key={idx}
-                  className="flex items-center justify-between rounded-2xl border border-gray-200/80 bg-white p-4 shadow-xs transition-all hover:border-gray-300 dark:border-gray-800 dark:bg-gray-900 dark:hover:border-gray-700"
-                >
-                  <div className="flex items-center gap-3.5">
-                    <div
-                      className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${card.iconBg}`}
-                    >
-                      <Icon className={`h-6 w-6 ${card.iconColor}`} />
-                    </div>
-                    <div>
-                      <p className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                        {card.title}
-                      </p>
-                      <p className="mt-0.5 text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
-                        {card.value}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="self-end pb-1 text-right">
-                    <span className="text-xs text-gray-400 dark:text-gray-500">
-                      {card.sublabel}
-                    </span>
-                  </div>
+          : cards.map((card, idx) => (
+              <div
+                key={idx}
+                className="flex items-center justify-between rounded-2xl border border-gray-200/80 bg-white p-4 shadow-xs transition-all hover:border-gray-300 dark:border-gray-800 dark:bg-gray-900 dark:hover:border-gray-700"
+              >
+                <div>
+                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                    {card.title}
+                  </p>
+                  <p className="mt-0.5 text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
+                    {card.value}
+                  </p>
                 </div>
-              );
-            })}
+                <div className="self-end pb-1 text-right">
+                  <span className="text-xs text-gray-400 dark:text-gray-500">
+                    {card.sublabel}
+                  </span>
+                </div>
+              </div>
+            ))}
       </div>
     </div>
   );

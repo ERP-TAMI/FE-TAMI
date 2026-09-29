@@ -60,10 +60,7 @@ describe("StyleFormModal", () => {
       status: "active",
       baseImageKey: null,
       as3bCmBaseDays: 30,
-      rowVersion: 1,
-      createdBy: null,
       createdAt: new Date().toISOString(),
-      updatedBy: null,
       updatedAt: new Date().toISOString(),
     };
     const handleSubmit = vi.fn();

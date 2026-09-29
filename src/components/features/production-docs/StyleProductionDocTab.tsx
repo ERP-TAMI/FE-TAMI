@@ -341,6 +341,7 @@ export function StyleProductionDocTab({
   const [docName, setDocName] = useState("");
   const [sec1Image, setSec1Image] = useState("");
   const [sec1ImageCleared, setSec1ImageCleared] = useState(false);
+  const [sec1Description, setSec1Description] = useState("");
   const [sec2Accessories, setSec2Accessories] = useState("");
   const [sec3Notes, setSec3Notes] = useState("");
   const [sec4Feedback, setSec4Feedback] = useState("");
@@ -361,6 +362,7 @@ export function StyleProductionDocTab({
 
   const [previewOpen, setPreviewOpen] = useState(false);
   const [resyncOpen, setResyncOpen] = useState(false);
+  const [resyncOverwriteConfirmOpen, setResyncOverwriteConfirmOpen] = useState(false);
   const [copyOpen, setCopyOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<
     | { kind: "heading"; sectionIndex: number; groupIndex: number }
@@ -376,6 +378,7 @@ export function StyleProductionDocTab({
       setDocName(doc.name);
       setSec1Image(doc.section1ImageUrl || "");
       setSec1ImageCleared(false);
+      setSec1Description(cleanOptionalText(doc.section1Description));
       setSec2Accessories(cleanOptionalText(doc.section2Accessories));
       setSec3Notes(cleanOptionalText(doc.section3Notes));
       setSec4Feedback(cleanOptionalText(doc.section4CustomerFeedback));
@@ -414,13 +417,14 @@ export function StyleProductionDocTab({
     document
       .querySelectorAll<HTMLTextAreaElement>('textarea[data-auto-grow="true"]')
       .forEach(autoGrowTextarea);
-  }, [isEditing, sec2Accessories, sec3Notes, sec4Feedback, sections]);
+  }, [isEditing, sec1Description, sec2Accessories, sec3Notes, sec4Feedback, sections]);
 
   const startCreate = () => {
     if (readOnly) return;
     setDocName(`Tài liệu sản xuất - ${styleName}`);
     setSec1Image("");
     setSec1ImageCleared(false);
+    setSec1Description("");
     setSec2Accessories("");
     setSec3Notes("");
     setSec4Feedback("");
@@ -525,7 +529,7 @@ export function StyleProductionDocTab({
         name: docName || doc?.name || `Tài liệu sản xuất - ${styleName}`,
         description: doc?.description || null,
         status: (doc?.status as ProductionDocStatus) || "draft",
-        section1Description: null,
+        section1Description: sec1Description.trim() || null,
         section1ImageUrl: sec1Image || null,
         section2Accessories: sec2Accessories || null,
         section3Notes: sec3Notes || null,
@@ -639,18 +643,25 @@ export function StyleProductionDocTab({
     }
   };
 
-  const handleResync = async () => {
+  const handleResync = async (confirmOverwrite = false) => {
     if (!doc || !styleId || readOnly) return;
     try {
       await resyncDoc.mutateAsync({
         styleId,
         docId: doc.id,
-        input: { sections: ["section1", "section2"], confirmOverwrite: true },
+        input: { sections: ["section1", "section2"], confirmOverwrite },
       });
       showToast("Đã đồng bộ Section 1 & 2 từ Style + Nguyên phụ liệu.");
       setResyncOpen(false);
-    } catch (err) {
-      showToast(getApiError(err, "Đồng bộ thất bại.").message, "error");
+      setResyncOverwriteConfirmOpen(false);
+    } catch (err: unknown) {
+      const apiErr = err as { response?: { status?: number } };
+      if (apiErr?.response?.status === 409 && !confirmOverwrite) {
+        setResyncOpen(false);
+        setResyncOverwriteConfirmOpen(true);
+      } else {
+        showToast(getApiError(err, "Đồng bộ thất bại.").message, "error");
+      }
     }
   };
 
@@ -893,6 +904,26 @@ export function StyleProductionDocTab({
                 </div>
               );
             })()}
+            {isEditing ? (
+              <textarea
+                data-auto-grow="true"
+                rows={3}
+                value={sec1Description}
+                onChange={(e) => setSec1Description(e.target.value)}
+                placeholder="Mô tả hình dáng mẫu..."
+                className="w-full resize-none overflow-hidden rounded-xl border border-gray-300 p-3.5 text-sm placeholder:text-gray-400 focus:ring-1 focus:ring-blue-500 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+              />
+            ) : (
+              <div className="rounded-xl border border-gray-100 bg-gray-50/40 p-4 dark:border-gray-800 dark:bg-gray-900/40">
+                {sec1Description || cleanOptionalText(doc?.section1Description) ? (
+                  <p className="text-sm leading-relaxed whitespace-pre-wrap text-gray-800 dark:text-gray-200">
+                    {sec1Description || cleanOptionalText(doc?.section1Description)}
+                  </p>
+                ) : (
+                  <span className="text-sm text-gray-400 italic">Chưa nhập mô tả hình dáng.</span>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Section 02: Phụ liệu */}
@@ -1485,7 +1516,7 @@ export function StyleProductionDocTab({
                   section1ImageUrl:
                     displaySrc(sec1Image) ||
                     (sec1ImageCleared ? null : doc.section1ImageUrl || styleImageUrl || null),
-                  section1Description: null,
+                  section1Description: sec1Description.trim() || cleanOptionalText(doc.section1Description),
                   section2Accessories: sec2Accessories || cleanOptionalText(doc.section2Accessories),
                   section3Notes: sec3Notes || doc.section3Notes,
                   section4CustomerFeedback: sec4Feedback || doc.section4CustomerFeedback,
@@ -1501,7 +1532,7 @@ export function StyleProductionDocTab({
                   name: docName || `Tài liệu sản xuất - ${styleName}`,
                   description: null,
                   status: "draft",
-                  section1Description: null,
+                  section1Description: sec1Description.trim() || null,
                   section1ImageUrl: displaySrc(sec1Image) || styleImageUrl || null,
                   section2Accessories: sec2Accessories,
                   section3Notes: sec3Notes,
@@ -1526,6 +1557,19 @@ export function StyleProductionDocTab({
           isPending={resyncDoc.isPending}
           onConfirm={() => void handleResync()}
           onClose={() => setResyncOpen(false)}
+        />
+      )}
+
+      {resyncOverwriteConfirmOpen && (
+        <ConfirmDialog
+          open
+          title="Ghi đè nội dung đã có?"
+          description="Section 1 (Mô tả hình dáng) và/hoặc Section 2 (Phụ liệu) hiện đã có nội dung. Đồng bộ lại sẽ ghi đè nội dung đang có bằng dữ liệu mới nhất từ Style + BOM."
+          confirmLabel="Ghi đè và đồng bộ"
+          variant="danger"
+          isSubmitting={resyncDoc.isPending}
+          onConfirm={() => void handleResync(true)}
+          onClose={() => setResyncOverwriteConfirmOpen(false)}
         />
       )}
 

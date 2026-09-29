@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
   BoxCubeIcon,
@@ -8,6 +8,8 @@ import {
   PageIcon,
 } from "@/icons";
 import { useSidebar } from "@/context/SidebarContext";
+import { useAuthStore } from "@/store/authStore";
+import { canAccessEditablePurchaseOrderModule } from "@/lib/areaAccess";
 
 type NavChild = {
   name: string;
@@ -21,14 +23,14 @@ type NavItem = {
   children?: NavChild[];
 };
 
-const navItems: NavItem[] = [
+const ALL_NAV_ITEMS: NavItem[] = [
   { name: "Dashboard", path: "/dashboard", icon: <GridIcon /> },
   { name: "Mẫu Fit", path: "/styles", icon: <PageIcon /> },
   {
     name: "Quản lý NPL",
     icon: <BoxCubeIcon />,
     children: [
-      { name: "PO BOM", path: "/bom" },
+      { name: "Danh sách NPL", path: "/bom" },
       { name: "Tổng hợp nhu cầu", path: "/bom/aggregate" },
     ],
   },
@@ -49,8 +51,20 @@ const navItems: NavItem[] = [
 export default function AppSidebar() {
   const { isExpanded, isMobileOpen, isHovered, setIsHovered } = useSidebar();
   const location = useLocation();
+  const user = useAuthStore((state) => state.user);
   const [openGroups, setOpenGroups] = useState<Set<string>>(new Set());
   const showLabels = isExpanded || isHovered || isMobileOpen;
+
+  // SA mặc định ở chế độ "Chỉ xem" PO (xem PurchaseOrderModeToggle ở khu Quản
+  // lý) — route /po bị PurchaseOrderModuleRoute chặn/redirect trong trường
+  // hợp đó, nên ẩn luôn mục này thay vì để một nút bấm vào là bị đá đi.
+  const navItems = useMemo(
+    () =>
+      canAccessEditablePurchaseOrderModule(user)
+        ? ALL_NAV_ITEMS
+        : ALL_NAV_ITEMS.filter((item) => item.path !== "/po"),
+    [user],
+  );
 
   const toggleGroup = (name: string) =>
     setOpenGroups((prev) => {
