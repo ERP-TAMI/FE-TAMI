@@ -80,11 +80,6 @@ export function BomDetailKpiCards({ bom }: BomDetailKpiCardsProps) {
               {productName}
             </div>
           )}
-          {bom.purchaseOrder?.poCode && (
-            <div className="truncate text-[11px] text-gray-400">
-              Mã: {bom.purchaseOrder.poCode}
-            </div>
-          )}
         </div>
       </div>
 

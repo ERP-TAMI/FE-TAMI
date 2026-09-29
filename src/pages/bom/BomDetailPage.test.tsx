@@ -466,11 +466,11 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
           <BomDetailPage />
         </BrowserRouter>,
       );
-      expect(screen.getByText(/Mẫu Fit: ST101/i)).toBeTruthy();
+      expect(screen.getByText(/NPL Fit: ST101/i)).toBeTruthy();
       expect(screen.getByText("Áo sơ mi Oxford")).toBeTruthy();
     });
 
-    it("renders the breadcrumb on the shared PageHeader (Dashboard > Quản lý Nguyên phụ liệu > Định mức Mẫu Fit)", () => {
+    it("renders the breadcrumb on the shared PageHeader (Dashboard > Quản lý Nguyên phụ liệu > NPL Fit)", () => {
       render(
         <BrowserRouter>
           <BomDetailPage />
@@ -480,7 +480,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       expect(
         screen.getByRole("link", { name: "Quản lý Nguyên phụ liệu" }),
       ).toBeTruthy();
-      expect(screen.getByText("Định mức Mẫu Fit")).toBeTruthy();
+      expect(screen.getByText("NPL Fit")).toBeTruthy();
     });
 
     it("5. renders PO BOM with PO and Product information", () => {
@@ -490,7 +490,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
           <BomDetailPage />
         </BrowserRouter>,
       );
-      expect(screen.getByText(/Định mức Sản phẩm PO:/i)).toBeTruthy();
+      expect(screen.getByText(/NPL PO:/i)).toBeTruthy();
       expect(screen.getByText("Váy Maxi Họa Tiết")).toBeTruthy();
       expect(screen.getAllByText("PO-2026-001").length).toBeGreaterThan(0);
     });

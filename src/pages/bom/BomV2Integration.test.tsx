@@ -707,7 +707,7 @@ describe("PR-11: BOM V2 Final Integration & E2E Regression", () => {
     it("10. header renders BOM code, type badge, status badge, revision number, and PO info", () => {
       renderWithRouter(<BomDetailPage />, { initialEntries: ["/bom/bom-v2-test-id"] });
 
-      expect(screen.getByText("Định mức Sản phẩm PO: PRD-QUAN-01")).toBeTruthy();
+      expect(screen.getByText("NPL PO: PRD-QUAN-01")).toBeTruthy();
       expect(screen.getByText("PO")).toBeTruthy();
       expect(screen.getByText("Nháp")).toBeTruthy();
       expect(screen.getByText("Phiên bản 1")).toBeTruthy();

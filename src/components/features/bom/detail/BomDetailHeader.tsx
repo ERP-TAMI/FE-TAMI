@@ -107,7 +107,7 @@ export function BomDetailHeader({
         bom.style?.styleCode ||
         bom.bomCode;
 
-  const typeLabel = bom.type === "fit" ? "Định mức Mẫu Fit" : "Định mức Sản phẩm PO";
+  const typeLabel = bom.type === "fit" ? "NPL Fit" : "NPL PO";
   const displayTitle = `${typeLabel}: ${displayCode}`;
 
   return (

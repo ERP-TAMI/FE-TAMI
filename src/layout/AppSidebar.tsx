@@ -30,7 +30,7 @@ const ALL_NAV_ITEMS: NavItem[] = [
     name: "Quản lý NPL",
     icon: <BoxCubeIcon />,
     children: [
-      { name: "PO BOM", path: "/bom" },
+      { name: "Danh sách NPL", path: "/bom" },
       { name: "Tổng hợp nhu cầu", path: "/bom/aggregate" },
     ],
   },
