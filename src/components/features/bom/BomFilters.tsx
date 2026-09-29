@@ -124,6 +124,7 @@ export function BomFilters({
           onStartDateChange={onStartDateChange}
           endDate={endDate}
           onEndDateChange={onEndDateChange}
+          hideLabel
         />
       </div>
 
