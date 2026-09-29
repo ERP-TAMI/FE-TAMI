@@ -17,10 +17,11 @@ export function useMaterials(filters: MaterialFilters) {
   });
 }
 
-export function useActiveUnits() {
+export function useActiveUnits(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: unitKeys.list({ status: "active", limit: 100 }),
     queryFn: () => unitApi.list({ status: "active", limit: 100 }),
+    enabled: options?.enabled ?? true,
   });
 }
 

@@ -3,10 +3,14 @@ import { materialGroupApi } from "@/api/material-group.api";
 import { materialGroupKeys } from "@/api/material-group.keys";
 import type { MaterialGroupInput, MaterialGroupQuery, MaterialGroupStatus } from "@/types/material-group";
 
-export function useMaterialGroups(query: MaterialGroupQuery = {}) {
+export function useMaterialGroups(
+  query: MaterialGroupQuery = {},
+  options?: { enabled?: boolean },
+) {
   return useQuery({
     queryKey: materialGroupKeys.list(query),
     queryFn: () => materialGroupApi.list(query),
+    enabled: options?.enabled ?? true,
   });
 }
 

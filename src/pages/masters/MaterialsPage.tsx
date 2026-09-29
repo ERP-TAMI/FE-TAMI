@@ -40,10 +40,17 @@ export default function MaterialsPage() {
   const [dialog, setDialog] = useState<Dialog>();
   const [isDirty, setIsDirty] = useState(false);
   const { toast, showToast, hideToast } = useToast();
+  // activeGroups/units chỉ phục vụ dropdown của MaterialForm — không fetch
+  // song song với materials/groups (toolbar) khi trang vừa mở, chỉ bật khi
+  // modal tạo/sửa thật sự mở ra.
+  const isFormOpen = Boolean(editing);
   const list = useMaterials({ ...filters, page, limit: pageSize });
   const groups = useMaterialGroups({ limit: 100 });
-  const activeGroups = useMaterialGroups({ status: "active", limit: 100 });
-  const units = useActiveUnits();
+  const activeGroups = useMaterialGroups(
+    { status: "active", limit: 100 },
+    { enabled: isFormOpen },
+  );
+  const units = useActiveUnits({ enabled: isFormOpen });
   const create = useCreateMaterial();
   const update = useUpdateMaterial();
   const updateStatus = useUpdateMaterialStatus();
