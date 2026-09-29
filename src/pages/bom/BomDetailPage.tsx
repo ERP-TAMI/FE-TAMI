@@ -397,7 +397,7 @@ export default function BomDetailPage() {
   // Header update handler
   const handleUpdateHeader = async (payload: UpdateBomPayload) => {
     try {
-      await updateBomMutation.mutateAsync(payload);
+      await updateBomMutation.mutateAsync({ ...payload, expectedRowVersion: bom.rowVersion });
       showToast("Đã cập nhật thông tin Header", "success");
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { message?: string } } };
@@ -417,7 +417,7 @@ export default function BomDetailPage() {
   };
 
   const handleCreateLine = async (payload: CreateBomLinePayload) => {
-    await addLineMutation.mutateAsync(payload);
+    await addLineMutation.mutateAsync({ ...payload, expectedRowVersion: bom.rowVersion });
     showToast("Đã thêm nguyên phụ liệu vào BOM", "success");
   };
 
@@ -442,7 +442,7 @@ export default function BomDetailPage() {
     if (!editingLine) return;
     await updateLineMutation.mutateAsync({
       lineId: editingLine.id,
-      payload,
+      payload: { ...payload, expectedRowVersion: bom.rowVersion },
     });
     showToast("Đã cập nhật dòng vật tư", "success");
   };
@@ -454,7 +454,10 @@ export default function BomDetailPage() {
   const handleConfirmDeleteLine = async () => {
     if (!deletingLine) return;
     try {
-      await deleteLineMutation.mutateAsync(deletingLine.id);
+      await deleteLineMutation.mutateAsync({
+        lineId: deletingLine.id,
+        expectedRowVersion: bom.rowVersion,
+      });
       showToast("Đã xóa dòng vật tư", "success");
       setDeletingLine(null);
     } catch (err: unknown) {
@@ -465,7 +468,7 @@ export default function BomDetailPage() {
 
   const handleReorderLines = async (lineIds: string[]) => {
     try {
-      await reorderLinesMutation.mutateAsync({ lineIds });
+      await reorderLinesMutation.mutateAsync({ lineIds, expectedRowVersion: bom.rowVersion });
       showToast("Đã sắp xếp lại thứ tự vật tư", "success");
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { message?: string } }; message?: string };
@@ -553,7 +556,7 @@ export default function BomDetailPage() {
 
   const handleCopyFit = async (sourceRevisionId: string) => {
     try {
-      await copyFitMutation.mutateAsync({ sourceRevisionId });
+      await copyFitMutation.mutateAsync({ sourceRevisionId, expectedRowVersion: bom.rowVersion });
       showToast("Đã sao chép thành công định mức từ Fit BOM", "success");
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { message?: string } } };

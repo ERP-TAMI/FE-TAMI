@@ -165,6 +165,10 @@ export interface PaginatedBomsResponse {
 export interface UpdateBomPayload {
   deadline?: string;
   rdNote?: string;
+  // Optional optimistic-lock guard — only meaningful for a single deliberate
+  // save (e.g. the header edit modal). Batch/bulk line-save flows intentionally
+  // omit this (see BomDetailPage's RD/Accounting bulk handlers).
+  expectedRowVersion?: number;
 }
 
 export interface DiscontinueBomPayload {
@@ -178,6 +182,7 @@ export interface CreateBomLinePayload {
   unitCost?: number;
   note?: string;
   orderIndex?: number;
+  expectedRowVersion?: number;
 }
 
 export interface UpdateBomLinePayload {
@@ -186,6 +191,7 @@ export interface UpdateBomLinePayload {
   unitCost?: number | null;
   note?: string;
   orderIndex?: number;
+  expectedRowVersion?: number;
 }
 
 export interface ReorderBomLineItem {
@@ -196,6 +202,7 @@ export interface ReorderBomLineItem {
 export interface ReorderBomLinesPayload {
   lineIds?: string[];
   items?: ReorderBomLineItem[];
+  expectedRowVersion?: number;
 }
 
 export interface ForwardBomPayload {
@@ -224,6 +231,7 @@ export interface CreateRevisionPayload {
 export interface CopyFitToPoPayload {
   sourceRevisionId?: string;
   targetBomId?: string;
+  expectedRowVersion?: number;
 }
 
 export interface RevisionListItem {

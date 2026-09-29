@@ -95,7 +95,7 @@ export function PoProductBomTab({
   };
 
   const handleCreateLine = async (payload: CreateBomLinePayload) => {
-    await addLineMutation.mutateAsync(payload);
+    await addLineMutation.mutateAsync({ ...payload, expectedRowVersion: bom?.rowVersion });
     showToast("Đã thêm nguyên phụ liệu vào BOM", "success");
   };
 
@@ -110,7 +110,7 @@ export function PoProductBomTab({
     if (!editingLine) return;
     await updateLineMutation.mutateAsync({
       lineId: editingLine.id,
-      payload,
+      payload: { ...payload, expectedRowVersion: bom?.rowVersion },
     });
     showToast("Đã cập nhật dòng vật tư", "success");
   };
@@ -118,7 +118,10 @@ export function PoProductBomTab({
   const handleConfirmDelete = async () => {
     if (!deletingLine) return;
     try {
-      await deleteLineMutation.mutateAsync(deletingLine.id);
+      await deleteLineMutation.mutateAsync({
+        lineId: deletingLine.id,
+        expectedRowVersion: bom?.rowVersion,
+      });
       showToast("Đã xóa dòng vật tư", "success");
       setDeletingLine(null);
     } catch (err: unknown) {
@@ -129,7 +132,7 @@ export function PoProductBomTab({
 
   const handleReorder = async (newLineIds: string[]) => {
     try {
-      await reorderLinesMutation.mutateAsync({ lineIds: newLineIds });
+      await reorderLinesMutation.mutateAsync({ lineIds: newLineIds, expectedRowVersion: bom?.rowVersion });
       showToast("Đã sắp xếp lại thứ tự vật tư", "success");
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { message?: string } }; message?: string };

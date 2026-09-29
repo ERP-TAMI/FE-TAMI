@@ -980,6 +980,7 @@ describe("PR-11: BOM V2 Final Integration & E2E Regression", () => {
       await waitFor(() => {
         expect(hooks.useCopyFit.mutateAsync).toHaveBeenCalledWith({
           sourceRevisionId: "rev-fit-src-1",
+          expectedRowVersion: 1,
         });
       });
     });

@@ -116,7 +116,10 @@ export function useUpdateBomLine(bomId: string) {
 export function useDeleteBomLine(bomId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (lineId: string) => bomsApi.deleteLine(bomId, lineId),
+    mutationFn: (arg: string | { lineId: string; expectedRowVersion?: number }) =>
+      typeof arg === "string"
+        ? bomsApi.deleteLine(bomId, arg)
+        : bomsApi.deleteLine(bomId, arg.lineId, arg.expectedRowVersion),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: bomKeys.detail(bomId) });
       void queryClient.invalidateQueries({ queryKey: bomKeys.lists() });

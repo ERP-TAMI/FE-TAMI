@@ -66,6 +66,7 @@ export const bomsApi = {
     const cleanBody: Record<string, unknown> = {};
     if (payload.deadline !== undefined) cleanBody.deadline = payload.deadline;
     if (payload.rdNote !== undefined) cleanBody.rdNote = payload.rdNote;
+    if (payload.expectedRowVersion !== undefined) cleanBody.expectedRowVersion = payload.expectedRowVersion;
 
     const res = await apiClient.patch<BomDetail>(`/boms/${id}`, cleanBody);
     return res.data;
@@ -91,6 +92,7 @@ export const bomsApi = {
     if (payload.orderIndex !== undefined && payload.orderIndex !== null) {
       cleanBody.orderIndex = Number(payload.orderIndex);
     }
+    if (payload.expectedRowVersion !== undefined) cleanBody.expectedRowVersion = payload.expectedRowVersion;
     const res = await apiClient.post<import("@/types/bom").BomLineItem>(`/boms/${id}/lines`, cleanBody);
     return res.data;
   },
@@ -102,13 +104,16 @@ export const bomsApi = {
     if (payload.unitCost !== undefined) cleanBody.unitCost = payload.unitCost;
     if (payload.note !== undefined) cleanBody.note = payload.note;
     if (payload.orderIndex !== undefined) cleanBody.orderIndex = Number(payload.orderIndex);
+    if (payload.expectedRowVersion !== undefined) cleanBody.expectedRowVersion = payload.expectedRowVersion;
 
     const res = await apiClient.patch<import("@/types/bom").BomLineItem>(`/boms/${id}/lines/${lineId}`, cleanBody);
     return res.data;
   },
 
-  async deleteLine(id: string, lineId: string): Promise<{ success: boolean; message: string }> {
-    const res = await apiClient.delete<{ success: boolean; message: string }>(`/boms/${id}/lines/${lineId}`);
+  async deleteLine(id: string, lineId: string, expectedRowVersion?: number): Promise<{ success: boolean; message: string }> {
+    const res = await apiClient.delete<{ success: boolean; message: string }>(`/boms/${id}/lines/${lineId}`, {
+      data: expectedRowVersion !== undefined ? { expectedRowVersion } : {},
+    });
     return res.data;
   },
 
@@ -117,9 +122,10 @@ export const bomsApi = {
     if ((!items || items.length === 0) && Array.isArray(payload.lineIds)) {
       items = payload.lineIds.map((lineId, orderIndex) => ({ lineId, orderIndex }));
     }
-    const cleanBody = {
+    const cleanBody: Record<string, unknown> = {
       items: Array.isArray(items) ? items : [],
     };
+    if (payload.expectedRowVersion !== undefined) cleanBody.expectedRowVersion = payload.expectedRowVersion;
     const res = await apiClient.put<import("@/types/bom").BomLineItem[]>(`/boms/${id}/lines/reorder`, cleanBody);
     return res.data;
   },
@@ -223,6 +229,9 @@ export const bomsApi = {
     const cleanBody: Record<string, unknown> = {};
     if (payload?.sourceRevisionId) {
       cleanBody.sourceRevisionId = payload.sourceRevisionId;
+    }
+    if (payload?.expectedRowVersion !== undefined) {
+      cleanBody.expectedRowVersion = payload.expectedRowVersion;
     }
     const res = await apiClient.post<BomDetail>(`/boms/${id}/copy-from-fit`, cleanBody);
     return res.data;

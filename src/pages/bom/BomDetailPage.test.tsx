@@ -863,6 +863,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
           materialId: "mat-1",
           consumption: 2.5,
           note: undefined,
+          expectedRowVersion: 1,
         });
       });
     });
@@ -977,7 +978,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       await waitFor(() => {
         expect(hooks.updateLine.mutateAsync).toHaveBeenCalledWith({
           lineId: "line-po-1",
-          payload: { unitCost: 0 },
+          payload: { unitCost: 0, expectedRowVersion: 1 },
         });
       });
     });
@@ -1001,7 +1002,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       await waitFor(() => {
         expect(hooks.updateLine.mutateAsync).toHaveBeenCalledWith({
           lineId: "line-po-1",
-          payload: { unitCost: 12500.5 },
+          payload: { unitCost: 12500.5, expectedRowVersion: 1 },
         });
       });
     });
@@ -1065,7 +1066,10 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       fireEvent.click(confirmBtn);
 
       await waitFor(() => {
-        expect(hooks.deleteLine.mutateAsync).toHaveBeenCalledWith("line-1");
+        expect(hooks.deleteLine.mutateAsync).toHaveBeenCalledWith({
+          lineId: "line-1",
+          expectedRowVersion: 1,
+        });
       });
     });
 
@@ -1103,6 +1107,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       await waitFor(() => {
         expect(hooks.reorderLines.mutateAsync).toHaveBeenCalledWith({
           lineIds: ["line-2", "line-1"],
+          expectedRowVersion: 1,
         });
       });
     });
@@ -1119,6 +1124,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       await waitFor(() => {
         expect(hooks.reorderLines.mutateAsync).toHaveBeenCalledWith({
           lineIds: ["line-2", "line-1"],
+          expectedRowVersion: 1,
         });
       });
     });
@@ -1670,6 +1676,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       await waitFor(() => {
         expect(hooks.copyFit.mutateAsync).toHaveBeenCalledWith({
           sourceRevisionId: "rev-fit-src-1",
+          expectedRowVersion: 1,
         });
       });
     });
