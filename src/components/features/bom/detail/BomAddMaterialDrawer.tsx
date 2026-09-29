@@ -81,9 +81,9 @@ export function BomAddMaterialDrawer({
       setIsLoadingMaterials(true);
       setMaterialsLoadError(null);
       materialApi
-        .list()
+        .list({ limit: 100 })
         .then((res) => {
-          setMaterials(Array.isArray(res) ? res : []);
+          setMaterials(res.data);
         })
         .catch((err: unknown) => {
           setMaterials([]);

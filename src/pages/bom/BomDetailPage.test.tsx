@@ -84,22 +84,28 @@ vi.mock("@/hooks/useBoms", () => ({
 
 vi.mock("@/api/material.api", () => ({
   materialApi: {
-    list: vi.fn().mockResolvedValue([
-      {
-        id: "mat-1",
-        materialCode: "VAI-001",
-        materialName: "Vải Cotton 100%",
-        materialGroupName: "Vải chính",
-        defaultUnitName: "Mét",
-      },
-      {
-        id: "mat-2",
-        materialCode: "CUC-001",
-        materialName: "Cúc áo nhựa 4 lỗ",
-        materialGroupName: "Phụ liệu may",
-        defaultUnitName: "Chiếc",
-      },
-    ]),
+    // materialApi.list() thật trả về { data, meta } (paginated), không phải
+    // mảng trần — mock đúng hình dạng response.data thật để bắt được lỗi
+    // "quên bóc .data" thay vì che nó đi.
+    list: vi.fn().mockResolvedValue({
+      data: [
+        {
+          id: "mat-1",
+          materialCode: "VAI-001",
+          materialName: "Vải Cotton 100%",
+          materialGroupName: "Vải chính",
+          defaultUnitName: "Mét",
+        },
+        {
+          id: "mat-2",
+          materialCode: "CUC-001",
+          materialName: "Cúc áo nhựa 4 lỗ",
+          materialGroupName: "Phụ liệu may",
+          defaultUnitName: "Chiếc",
+        },
+      ],
+      meta: { total: 2, page: 1, limit: 100, totalPages: 1 },
+    }),
   },
 }));
 
