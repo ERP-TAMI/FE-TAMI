@@ -166,7 +166,9 @@ export function BomCopyFitModal({
 
         {isLoading ? (
           <div className="text-theme-sm p-8 text-center text-gray-500">
-            Đang tìm kiếm Fit BOM của Style {styleCode}...
+            {styleCode
+              ? `Đang tìm kiếm Fit BOM của Style ${styleCode}...`
+              : "Đang tìm kiếm Fit BOM nguồn..."}
           </div>
         ) : fitBom ? (
           <div className="flex flex-col gap-4">
@@ -234,6 +236,10 @@ export function BomCopyFitModal({
                 Đơn giá sẽ để trống (NULL) để bộ phận Kế toán nhập giá mới cho PO.
               </div>
             )}
+          </div>
+        ) : !styleId && !styleCode ? (
+          <div className="text-theme-xs p-6 text-center text-gray-500">
+            Sản phẩm PO này chưa được liên kết với Mẫu Fit nào nên không thể sao chép định mức.
           </div>
         ) : (
           !error && (

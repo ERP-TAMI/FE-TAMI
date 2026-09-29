@@ -1779,6 +1779,37 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       expect(screen.queryByText("Nhập từ Fit BOM")).toBeNull();
     });
 
+    it("shows a clear message instead of blank/loading state when the PO product isn't linked to any Fit style", () => {
+      const unlinkedPoBom: BomDetail = {
+        ...mockPoBom,
+        status: "wait_nvkh",
+        style: null,
+        product: { ...mockPoBom.product!, sourceStyleId: null },
+        currentRevision: {
+          id: "rev-po-1",
+          bomId: "bom-po-uuid",
+          revisionNo: 1,
+          status: "wait_nvkh",
+          createdAt: "2026-09-18T00:00:00.000Z",
+        },
+        lines: [],
+      };
+      hooks.useBom.mockReturnValue({ data: unlinkedPoBom, isLoading: false });
+      render(
+        <BrowserRouter>
+          <BomDetailPage />
+        </BrowserRouter>,
+      );
+
+      fireEvent.click(screen.getByText("Nhập từ Fit BOM"));
+
+      expect(
+        screen.getByText(
+          "Sản phẩm PO này chưa được liên kết với Mẫu Fit nào nên không thể sao chép định mức.",
+        ),
+      ).toBeTruthy();
+    });
+
     it("78. FIT BOM hides Copy action", () => {
       render(
         <BrowserRouter>
