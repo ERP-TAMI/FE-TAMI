@@ -14,10 +14,7 @@ const style: Style = {
   status: "draft",
   baseImageKey: null,
   as3bCmBaseDays: 30,
-  rowVersion: 1,
-  createdBy: null,
   createdAt: new Date("2026-01-01").toISOString(),
-  updatedBy: null,
   updatedAt: new Date("2026-01-01").toISOString(),
 };
 

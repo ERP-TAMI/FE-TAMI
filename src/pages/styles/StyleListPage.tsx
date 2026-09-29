@@ -34,6 +34,7 @@ export default function StyleListPage() {
   // Modal / dialog state
   const [editingStyle, setEditingStyle] = useState<Style | "create" | undefined>();
   const [styleToDelete, setStyleToDelete] = useState<Style | undefined>();
+  const [styleToToggle, setStyleToToggle] = useState<Style | undefined>();
 
   const filter = {
     search: search.trim() || undefined,
@@ -94,11 +95,13 @@ export default function StyleListPage() {
     }
   };
 
-  const toggleStatus = async (style: Style) => {
-    const nextStatus: StyleStatus = style.status === "active" ? "draft" : "active";
+  const confirmToggleStatus = async () => {
+    if (!styleToToggle) return;
+    const nextStatus: StyleStatus = styleToToggle.status === "active" ? "draft" : "active";
     try {
-      await statusUpdate.mutateAsync({ id: style.id, payload: { status: nextStatus } });
+      await statusUpdate.mutateAsync({ id: styleToToggle.id, payload: { status: nextStatus } });
       showToast(nextStatus === "active" ? "Đã kích hoạt mẫu Fit." : "Đã chuyển mẫu Fit về nháp.");
+      setStyleToToggle(undefined);
     } catch (err: unknown) {
       showToast(getApiError(err, "Đổi trạng thái thất bại.").message, "error");
     }
@@ -272,7 +275,7 @@ export default function StyleListPage() {
             <StyleTable
               styles={styles}
               togglingId={statusUpdate.isPending ? statusUpdate.variables?.id : undefined}
-              onToggleStatus={(style) => void toggleStatus(style)}
+              onToggleStatus={setStyleToToggle}
               onEdit={setEditingStyle}
               onDelete={setStyleToDelete}
             />
@@ -301,7 +304,7 @@ export default function StyleListPage() {
                           <div className="flex shrink-0 items-center gap-1.5">
                             <button
                               type="button"
-                              onClick={() => void toggleStatus(style)}
+                              onClick={() => setStyleToToggle(style)}
                               disabled={isToggling}
                               className={`relative inline-flex h-4 w-7 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
                                 style.status === "active" ? "bg-emerald-500" : "bg-gray-300 dark:bg-gray-700"
@@ -395,6 +398,28 @@ export default function StyleListPage() {
           isSubmitting={remove.isPending}
           onConfirm={() => void confirmDelete()}
           onClose={() => setStyleToDelete(undefined)}
+        />
+      )}
+
+      {/* Toggle Status Confirmation */}
+      {styleToToggle && (
+        <ConfirmDialog
+          open
+          title={styleToToggle.status === "active" ? "Chuyển về Nháp" : "Kích hoạt mẫu Fit"}
+          description={
+            <>
+              Bạn có chắc chắn muốn{" "}
+              {styleToToggle.status === "active" ? "chuyển về nháp" : "kích hoạt"} mẫu Fit{" "}
+              <strong className="text-brand-600 dark:text-brand-400 font-mono break-all">
+                {styleToToggle.styleCode || styleToToggle.styleName}
+              </strong>
+              ?
+            </>
+          }
+          confirmLabel={styleToToggle.status === "active" ? "Chuyển về Nháp" : "Kích hoạt"}
+          isSubmitting={statusUpdate.isPending}
+          onConfirm={() => void confirmToggleStatus()}
+          onClose={() => setStyleToToggle(undefined)}
         />
       )}
       <Toast

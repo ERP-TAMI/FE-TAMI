@@ -99,7 +99,7 @@ export function GeneralTab({
                 Kéo thả ảnh vào đây hoặc nhấn <strong>Ctrl + V</strong>
               </p>
               <span className="mt-4 inline-flex items-center rounded-md bg-white px-3 py-1 text-xs font-medium text-gray-600 shadow-2xs border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
-                PNG, JPG, WebP · tối đa 5MB
+                PNG, JPG, GIF, WebP · tối đa 5MB
               </span>
             </div>
           )}

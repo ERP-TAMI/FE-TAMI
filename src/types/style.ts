@@ -9,10 +9,7 @@ export interface Style {
   status: StyleStatus;
   baseImageKey: string | null;
   as3bCmBaseDays: number;
-  rowVersion: number;
-  createdBy: string | null;
   createdAt: string;
-  updatedBy: string | null;
   updatedAt: string;
 }
 

@@ -179,4 +179,27 @@ describe("StyleOperationStepTable", () => {
     expect(error.textContent).toContain("Vui lòng chọn tên công đoạn");
     await waitFor(() => expect(document.activeElement?.getAttribute("placeholder")).toBe("Tìm công đoạn..."));
   });
+
+  it("keeps editing open and does not discard the draft when onSave rejects", async () => {
+    const onSave = vi.fn().mockRejectedValue(new Error("network error"));
+    render(
+      <StyleOperationStepTable
+        styleId="style-1"
+        steps={mockSteps}
+        canEdit={true}
+        onSave={onSave}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Chỉnh sửa" }));
+    fireEvent.click(screen.getAllByRole("button", { name: /Lưu quy trình/i })[0]);
+
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(showToastMock).toHaveBeenCalledWith(expect.any(String), "error"));
+
+    // Editing mode must stay open (handleEditClose only runs when the save actually succeeded) —
+    // the draft the user was editing must not be discarded on a failed save.
+    expect(screen.queryByRole("button", { name: "Chỉnh sửa" })).toBeNull();
+    expect(screen.getAllByRole("button", { name: /Lưu quy trình/i })[0]).toBeTruthy();
+  });
 });
