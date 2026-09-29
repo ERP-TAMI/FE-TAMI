@@ -13,6 +13,16 @@ export function canManageUsers(user: AuthUser | null): boolean {
   return user?.permissions.includes(USER_MANAGEMENT_PERMISSION) ?? false;
 }
 
+export function canManagePurchaseOrders(user: AuthUser | null): boolean {
+  return user?.roleCode === "SA" && user.purchaseOrderMode === "FULL_ACCESS";
+}
+
+export function canAccessEditablePurchaseOrderModule(user: AuthUser | null): boolean {
+  if (!user) return false;
+  if (user.roleCode === "SA") return canManagePurchaseOrders(user);
+  return !canAccessManagement(user);
+}
+
 export function getLandingPath(user: AuthUser | null): string {
   if (canAccessItArea(user)) return canManageUsers(user) ? "/it/users" : "/it/profile";
   if (canAccessManagement(user)) return "/management/dashboard";

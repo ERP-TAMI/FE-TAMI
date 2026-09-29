@@ -27,6 +27,7 @@ interface PoProductBomTabProps {
   productName: string;
   poId: string;
   isProductLocked?: boolean;
+  readOnly?: boolean;
 }
 
 export function PoProductBomTab({
@@ -34,6 +35,7 @@ export function PoProductBomTab({
   productCode,
   productName,
   isProductLocked = false,
+  readOnly = false,
 }: PoProductBomTabProps) {
   const { showToast } = useToast();
 
@@ -70,6 +72,7 @@ export function PoProductBomTab({
 
   // Create BOM handler
   const handleCreateBomForProduct = async () => {
+    if (readOnly || isProductLocked) return;
     try {
       await createBomMutation.mutateAsync({
         type: "po",
@@ -85,21 +88,25 @@ export function PoProductBomTab({
 
   // Line CRUD handlers
   const handleOpenAddLine = () => {
+    if (readOnly || isProductLocked) return;
     setEditingLine(null);
     setIsLineModalOpen(true);
   };
 
   const handleOpenEditLine = (line: BomLineItem) => {
+    if (readOnly || isProductLocked) return;
     setEditingLine(line);
     setIsLineModalOpen(true);
   };
 
   const handleCreateLine = async (payload: CreateBomLinePayload) => {
+    if (readOnly || isProductLocked) return;
     await addLineMutation.mutateAsync({ ...payload, expectedRowVersion: bom?.rowVersion });
     showToast("Đã thêm nguyên phụ liệu vào BOM", "success");
   };
 
   const handleCreateBatch = async (payloads: CreateBomLinePayload[]) => {
+    if (readOnly || isProductLocked) return;
     for (const payload of payloads) {
       await addLineMutation.mutateAsync(payload);
     }
@@ -107,7 +114,7 @@ export function PoProductBomTab({
   };
 
   const handleUpdateLine = async (payload: UpdateBomLinePayload) => {
-    if (!editingLine) return;
+    if (!editingLine || readOnly || isProductLocked) return;
     await updateLineMutation.mutateAsync({
       lineId: editingLine.id,
       payload: { ...payload, expectedRowVersion: bom?.rowVersion },
@@ -116,7 +123,7 @@ export function PoProductBomTab({
   };
 
   const handleConfirmDelete = async () => {
-    if (!deletingLine) return;
+    if (!deletingLine || readOnly || isProductLocked) return;
     try {
       await deleteLineMutation.mutateAsync({
         lineId: deletingLine.id,
@@ -131,6 +138,7 @@ export function PoProductBomTab({
   };
 
   const handleReorder = async (newLineIds: string[]) => {
+    if (readOnly || isProductLocked) return;
     try {
       await reorderLinesMutation.mutateAsync({ lineIds: newLineIds, expectedRowVersion: bom?.rowVersion });
       showToast("Đã sắp xếp lại thứ tự vật tư", "success");
@@ -162,9 +170,9 @@ export function PoProductBomTab({
         </h3>
         <p className="mt-1.5 max-w-md text-xs text-gray-500 dark:text-gray-400">
           Sản phẩm <strong>{productCode}</strong> ({productName}) chưa được thiết lập bảng BOM.
-          Khởi tạo ngay để nhập liệu định mức vải, phụ liệu, chỉ may và tính toán giá thành.
+          {!readOnly && " Khởi tạo BOM để nhập định mức vải, phụ liệu, chỉ may và tính toán giá thành."}
         </p>
-        <button
+        {!readOnly && <button
           type="button"
           disabled={isProductLocked || createBomMutation.isPending}
           onClick={() => void handleCreateBomForProduct()}
@@ -176,7 +184,7 @@ export function PoProductBomTab({
               ? "Đang khởi tạo BOM..."
               : "Tạo bảng BOM cho sản phẩm này"}
           </span>
-        </button>
+        </button>}
       </div>
     );
   }
@@ -221,18 +229,19 @@ export function PoProductBomTab({
         </div>
 
         {/* Action: Open Master BOM Detail Page */}
-        <Link
+        {!readOnly && <Link
           to={`/bom/${bom.id}`}
           className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-gray-200/80 bg-gray-50 px-3.5 py-2 text-xs font-semibold text-gray-700 transition-colors hover:bg-gray-100 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
         >
           <span>Mở trang BOM đầy đủ &amp; Luân chuyển duyệt</span>
           <ExternalLink className="h-3.5 w-3.5 text-gray-400" />
-        </Link>
+        </Link>}
       </div>
 
       {/* Embedded Inline BOM Lines Table */}
       <BomLinesTable
         lines={bom.lines || []}
+        readOnly={readOnly}
         currentStatus={currentStatus}
         isHistorical={false}
         costPerUnit={bom.costPerUnit}
@@ -253,7 +262,7 @@ export function PoProductBomTab({
 
       {/* Modal Add / Edit Line (Alternative Modal Option) */}
       <BomAddMaterialDrawer
-        isOpen={isLineModalOpen}
+        isOpen={isLineModalOpen && !readOnly && !isProductLocked}
         onClose={() => setIsLineModalOpen(false)}
         initialLine={editingLine}
         existingLines={bom.lines || []}
@@ -266,7 +275,7 @@ export function PoProductBomTab({
 
       {/* Modal Confirm Delete Line */}
       <BomLineDeleteDialog
-        isOpen={Boolean(deletingLine)}
+        isOpen={Boolean(deletingLine) && !readOnly && !isProductLocked}
         line={deletingLine}
         onClose={() => setDeletingLine(null)}
         onConfirm={handleConfirmDelete}

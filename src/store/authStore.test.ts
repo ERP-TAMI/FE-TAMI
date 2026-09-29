@@ -9,6 +9,7 @@ const user = {
   roleCode: "NVKH",
   roleName: "Nhân viên kinh doanh",
   permissions: [],
+  purchaseOrderMode: "READ_ONLY" as const,
 };
 
 describe("authStore profile synchronization", () => {

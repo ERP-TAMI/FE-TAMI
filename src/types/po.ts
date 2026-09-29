@@ -1,3 +1,5 @@
+import type { SampleStatus } from "./style-sample-round";
+
 export type PoStatus =
   | "draft"
   | "pending_rd"
@@ -266,36 +268,50 @@ export interface SaveProductOperationStepsInput {
 
 export interface ProductSampleImage {
   id: string;
-  sampleRoundId: string;
-  documentVersionId: string;
-  colorNameSnapshot?: string;
-  orderIndex?: number;
-  fileUrl?: string;
-  fileName?: string;
+  url: string;
+  fileName: string;
+  mimeType: string;
+  orderIndex: number;
+  colorName: string | null;
+  uploadedAt: string;
 }
 
 export interface ProductSampleRound {
   id: string;
-  productId: string;
+  productId?: string;
   roundNo: number;
-  sampleDate?: string;
-  feedback?: string;
-  status: string;
-  images?: ProductSampleImage[];
+  sampleDate: string | null;
+  feedback: string | null;
+  status: SampleStatus;
+  createdBy?: string | null;
   createdAt?: string;
-  updatedAt?: string;
+  reviewedBy?: string | null;
+  reviewedAt?: string | null;
+  images: ProductSampleImage[];
 }
 
 export interface CreateProductSampleRoundInput {
   roundNo?: number;
   sampleDate?: string;
   feedback?: string;
-  status?: string;
+  status?: SampleStatus;
   images?: Array<{
     imageUrl?: string;
     documentVersionId?: string;
     colorName?: string;
   }>;
+}
+
+export interface UpdateProductSampleRoundInput {
+  sampleDate?: string;
+  feedback?: string;
+  status?: SampleStatus;
+}
+
+export interface PresignProductSampleImageResponse {
+  objectKey: string;
+  uploadUrl: string;
+  expiresIn: number;
 }
 
 export interface ProductProductionDoc {
@@ -459,4 +475,6 @@ export interface PaginatedPoResponse {
   page: number;
   limit: number;
   totalPages: number;
+  /** Đếm theo trạng thái trên toàn bộ kết quả tìm kiếm (không chỉ trang hiện tại). */
+  statusCounts?: Record<string, number>;
 }

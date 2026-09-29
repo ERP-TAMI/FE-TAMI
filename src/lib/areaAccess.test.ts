@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { AuthUser } from "@/store/authStore";
 import {
+  canAccessEditablePurchaseOrderModule,
   canAccessItArea,
   canAccessManagement,
   canManageUsers,
@@ -17,6 +18,7 @@ function user(roleCode: string, permissions: string[] = []): AuthUser {
     roleCode,
     roleName: roleCode,
     permissions,
+    purchaseOrderMode: "READ_ONLY",
   };
 }
 
@@ -42,6 +44,22 @@ describe("area access policy", () => {
     expect(canManageUsers(user("SA", ["management.area.access"]))).toBe(false);
     expect(canManageUsers(user("NVKH"))).toBe(false);
     expect(getLandingPath(user("IT"))).toBe("/it/profile");
+  });
+
+  it("allows only full-access SA users into the editable PO module", () => {
+    expect(canAccessEditablePurchaseOrderModule(user("SA"))).toBe(false);
+    expect(
+      canAccessEditablePurchaseOrderModule({
+        ...user("SA"),
+        purchaseOrderMode: "FULL_ACCESS",
+      }),
+    ).toBe(true);
+    expect(canAccessEditablePurchaseOrderModule(user("NVKH"))).toBe(true);
+    expect(
+      canAccessEditablePurchaseOrderModule(
+        user("TPKH", ["management.area.access"]),
+      ),
+    ).toBe(false);
   });
 
   it("keeps only authorized internal deep links after login", () => {

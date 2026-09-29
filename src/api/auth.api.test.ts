@@ -51,6 +51,7 @@ describe("authApi profile", () => {
     roleCode: "NVKH",
     roleName: "Nhân viên kinh doanh",
     permissions: [],
+    purchaseOrderMode: "READ_ONLY" as const,
   };
 
   beforeEach(() => vi.clearAllMocks());
@@ -66,6 +67,20 @@ describe("authApi profile", () => {
     expect(apiClient.patch).toHaveBeenCalledWith("/auth/me", {
       fullName: "Tên mới",
       phone: null,
+    });
+  });
+
+  it("updates the signed-in user's PO access mode through the dedicated endpoint", async () => {
+    vi.mocked(apiClient.patch).mockResolvedValue({
+      data: { ...user, roleCode: "SA", purchaseOrderMode: "FULL_ACCESS" },
+    });
+
+    await expect(authApi.updatePurchaseOrderMode("FULL_ACCESS")).resolves.toMatchObject({
+      roleCode: "SA",
+      purchaseOrderMode: "FULL_ACCESS",
+    });
+    expect(apiClient.patch).toHaveBeenCalledWith("/auth/me/purchase-order-mode", {
+      mode: "FULL_ACCESS",
     });
   });
 

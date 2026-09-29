@@ -8,6 +8,11 @@ export { Input } from "@/components/shared/Input";
 export { Modal } from "@/components/shared/Modal";
 export { PageHeader } from "@/components/shared/PageHeader";
 export { Pagination } from "@/components/shared/Pagination";
+export {
+  SampleStatusPicker,
+  sampleStatusLabel,
+  SAMPLE_STATUS_OPTIONS,
+} from "@/components/shared/SampleStatusPicker";
 export { UploadProgressWidget } from "@/components/shared/UploadProgressWidget";
 export { Select } from "@/components/shared/Select";
 export { SearchableSelect } from "@/components/shared/SearchableSelect";

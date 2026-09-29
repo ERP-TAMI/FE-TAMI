@@ -11,6 +11,7 @@ interface Props {
   documents: PurchaseOrderDocumentItem[];
   isLocked: boolean;
   isPending: boolean;
+  allowDownload?: boolean;
   onUpload: (
     files: File[] | File,
     purpose: string,
@@ -47,6 +48,7 @@ export function PoDocumentsSection({
   documents,
   isLocked,
   isPending,
+  allowDownload = true,
   onUpload,
   onUnlink,
   onUpdatePurpose,
@@ -209,11 +211,11 @@ export function PoDocumentsSection({
             <p className="mt-3 text-theme-base font-semibold text-gray-900 dark:text-white">
               Chưa có tài liệu nào được đính kèm.
             </p>
-            <p className="mt-1 text-theme-xs text-gray-500 dark:text-gray-400">
-              {!isLocked
-                ? "Sử dụng khung tải lên ở trên để đính kèm tệp tài liệu vào đơn hàng PO này."
-                : "Đơn hàng đã khóa, không có tài liệu đính kèm."}
-            </p>
+            {!isLocked && (
+              <p className="mt-1 text-theme-xs text-gray-500 dark:text-gray-400">
+                Sử dụng khung tải lên ở trên để đính kèm tệp tài liệu vào đơn hàng PO này.
+              </p>
+            )}
           </div>
         ) : filteredDocuments.length === 0 ? (
           <div className="p-10 text-center">
@@ -223,9 +225,11 @@ export function PoDocumentsSection({
             <p className="mt-3 text-theme-base font-semibold text-gray-900 dark:text-white">
               Chưa có tài liệu nào thuộc danh mục {getDocumentCategoryInfo(activeCategoryTab).label}.
             </p>
-            <p className="mt-1 text-theme-xs text-gray-500 dark:text-gray-400">
-              Bạn có thể sử dụng khung tải lên ở trên để đính kèm thêm tài liệu cho danh mục này.
-            </p>
+            {!isLocked && (
+              <p className="mt-1 text-theme-xs text-gray-500 dark:text-gray-400">
+                Bạn có thể sử dụng khung tải lên ở trên để đính kèm thêm tài liệu cho danh mục này.
+              </p>
+            )}
             <button
               type="button"
               onClick={() => setActiveCategoryTab("all")}
@@ -300,23 +304,25 @@ export function PoDocumentsSection({
                                 href={fullUrl}
                                 target="_blank"
                                 rel="noreferrer"
-                                className="inline-flex items-center gap-1 rounded-lg border border-brand-200 bg-brand-50 px-2.5 py-1.5 text-theme-xs font-medium text-brand-700 shadow-xs hover:bg-brand-100 dark:border-brand-900/50 dark:bg-brand-950/40 dark:text-brand-300 dark:hover:bg-brand-900/50 transition-colors"
+                                className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-brand-200 bg-brand-50 px-2.5 py-1.5 text-theme-xs font-medium text-brand-700 shadow-xs transition-colors hover:bg-brand-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 dark:border-brand-900/50 dark:bg-brand-950/40 dark:text-brand-300 dark:hover:bg-brand-900/50"
                                 title="Xem tài liệu"
                               >
                                 <EyeIcon className="h-3.5 w-3.5" />
                                 Xem
                               </a>
-                              <a
-                                href={fullUrl}
-                                target="_blank"
-                                rel="noreferrer"
-                                download={doc.fileName || doc.title}
-                                className="inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-theme-xs font-medium text-gray-700 shadow-xs hover:bg-gray-50 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700 transition-colors"
-                                title="Tải về tệp"
-                              >
-                                <DownloadIcon className="h-3.5 w-3.5" />
-                                Tải về
-                              </a>
+                              {allowDownload && (
+                                <a
+                                  href={fullUrl}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  download={doc.fileName || doc.title}
+                                  className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-theme-xs font-medium text-gray-700 shadow-xs transition-colors hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+                                  title="Tải về tệp"
+                                >
+                                  <DownloadIcon className="h-3.5 w-3.5" />
+                                  Tải về
+                                </a>
+                              )}
                             </>
                           )}
                           {!isLocked && (

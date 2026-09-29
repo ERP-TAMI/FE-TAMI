@@ -543,6 +543,90 @@ export function useCreateProductSampleRound() {
   });
 }
 
+export function useUpdateProductSampleRound() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      poId,
+      productId,
+      roundId,
+      input,
+    }: {
+      poId: string;
+      productId: string;
+      roundId: string;
+      input: import("@/types/po").UpdateProductSampleRoundInput;
+    }) => poApi.updateProductSampleRound(poId, productId, roundId, input),
+    onSuccess: (_, { poId, productId }) => {
+      void queryClient.invalidateQueries({
+        queryKey: PO_KEYS.productSamples(poId, productId),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: PO_KEYS.productDetail(poId, productId),
+      });
+    },
+  });
+}
+
+export function useUploadProductSampleImage() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      poId,
+      productId,
+      roundId,
+      file,
+    }: {
+      poId: string;
+      productId: string;
+      roundId: string;
+      file: File;
+    }) => {
+      const presign = await poApi.presignProductSampleImage(poId, productId, roundId, file);
+      await poApi.uploadProductSampleImageToS3(presign.uploadUrl, file);
+      return poApi.confirmProductSampleImage(poId, productId, roundId, {
+        objectKey: presign.objectKey,
+        fileName: file.name,
+        mimeType: file.type,
+        sizeBytes: file.size,
+      });
+    },
+    onSuccess: (_, { poId, productId }) => {
+      void queryClient.invalidateQueries({
+        queryKey: PO_KEYS.productSamples(poId, productId),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: PO_KEYS.productDetail(poId, productId),
+      });
+    },
+  });
+}
+
+export function useRemoveProductSampleImage() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      poId,
+      productId,
+      roundId,
+      imageId,
+    }: {
+      poId: string;
+      productId: string;
+      roundId: string;
+      imageId: string;
+    }) => poApi.removeProductSampleImage(poId, productId, roundId, imageId),
+    onSuccess: (_, { poId, productId }) => {
+      void queryClient.invalidateQueries({
+        queryKey: PO_KEYS.productSamples(poId, productId),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: PO_KEYS.productDetail(poId, productId),
+      });
+    },
+  });
+}
+
 export function useProductProductionDoc(
   poId: string | undefined,
   productId: string | undefined,

@@ -3,6 +3,7 @@ import { ThemeToggleButton } from "@/components/shared/ThemeToggleButton";
 import AccountMenu from "@/layout/AccountMenu";
 import { canManageUsers } from "@/lib/areaAccess";
 import { useAuthStore } from "@/store/authStore";
+import { PurchaseOrderModeToggle } from "@/components/features/po/PurchaseOrderModeToggle";
 
 export default function ManagementLayout() {
   const user = useAuthStore((state) => state.user);
@@ -37,6 +38,7 @@ export default function ManagementLayout() {
         <header className="sticky top-0 z-40 flex items-center justify-between gap-3 border-b border-gray-200 bg-white px-4 py-3 sm:px-6 dark:border-gray-800 dark:bg-gray-900">
           <span className="text-sm font-semibold text-gray-900 dark:text-white">Quản lý</span>
           <div className="flex items-center gap-3">
+            <PurchaseOrderModeToggle />
             <ThemeToggleButton />
             <AccountMenu area="management" />
           </div>

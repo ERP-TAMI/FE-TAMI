@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef, useCallback } from "react";
-import { useParams, useNavigate, useLocation } from "react-router-dom";
+import { useParams, useNavigate, useLocation, Link } from "react-router-dom";
 import { PageHeader, Toast, Button, ConfirmDialog } from "@/components/shared";
 import { PoStatusBadge } from "@/components/features/po/PoStatusBadge";
 import { ProductStatusBadge } from "@/components/features/po/ProductStatusBadge";
@@ -25,6 +25,11 @@ import {
 } from "@/hooks/usePurchaseOrders";
 import { useToast } from "@/hooks/useToast";
 import { getApiError } from "@/lib/apiError";
+import { getDeadlineInfo, deadlineValueClasses, deadlineHintClasses } from "@/lib/poDeadline";
+import {
+  getCurrentManagementPoMonth,
+  getManagementPoOverviewReturnPath,
+} from "@/lib/managementPoNavigation";
 import type { UploadProgress } from "@/api/po.api";
 import { TrashBinIcon, EyeIcon, CalenderIcon } from "@/icons";
 import type {
@@ -57,8 +62,7 @@ function formatDateTime(dateStr: string | null | undefined): string {
   })}`;
 }
 
-/** Số ngày còn lại tính từ đó Hạn hoàn thành được coi là "sắp tới hạn". */
-const DEADLINE_SOON_DAYS = 7;
+const PRODUCT_LAYOUT_STORAGE_KEY = "po.productLayout";
 
 /** Số tài liệu PO tải mỗi trang. BE chặn trên ở 100. */
 const PO_DOCS_PAGE_SIZE = 20;
@@ -66,56 +70,28 @@ const PO_DOCS_PAGE_SIZE = 20;
 /** Số sản phẩm tải mỗi trang. BE chặn trên ở 100. */
 const PO_PRODUCTS_PAGE_SIZE = 20;
 
-type DeadlineTone = "overdue" | "soon" | "normal";
-
-const deadlineValueClasses: Record<DeadlineTone, string> = {
-  overdue: "text-error-600 dark:text-error-400",
-  soon: "text-warning-600 dark:text-warning-400",
-  normal: "text-gray-800 dark:text-gray-200",
-};
-
-const deadlineHintClasses: Record<DeadlineTone, string> = {
-  overdue:
-    "border-error-200 bg-error-50 text-error-700 dark:border-error-900/40 dark:bg-error-950/40 dark:text-error-300",
-  soon: "border-warning-200 bg-warning-50 text-warning-700 dark:border-warning-900/40 dark:bg-warning-950/40 dark:text-warning-300",
-  normal: "",
-};
-
-/**
- * Trạng thái hạn hoàn thành. PO đã khóa hoặc đã hủy thì không cảnh báo nữa
- * vì đơn đã kết thúc, tô đỏ chỉ gây nhiễu.
- */
-function getDeadlineInfo(
-  deadline: string | null | undefined,
-  status: PoStatus | undefined,
-): { tone: DeadlineTone; hint: string | null } {
-  if (!deadline || status === "closed" || status === "cancelled") {
-    return { tone: "normal", hint: null };
-  }
-
-  const due = new Date(deadline);
-  if (isNaN(due.getTime())) return { tone: "normal", hint: null };
-
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  due.setHours(0, 0, 0, 0);
-
-  const diffDays = Math.round((due.getTime() - today.getTime()) / 86_400_000);
-
-  if (diffDays < 0) {
-    return { tone: "overdue", hint: `Quá hạn ${Math.abs(diffDays)} ngày` };
-  }
-  if (diffDays === 0) return { tone: "soon", hint: "Đến hạn hôm nay" };
-  if (diffDays <= DEADLINE_SOON_DAYS) {
-    return { tone: "soon", hint: `Còn ${diffDays} ngày` };
-  }
-  return { tone: "normal", hint: null };
-}
-
-export default function PoDetailPage() {
+export default function PoDetailPage({
+  readOnlyManagement = false,
+  managementContext = readOnlyManagement,
+}: {
+  readOnlyManagement?: boolean;
+  managementContext?: boolean;
+}) {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
+  const managementOverviewReturnPath = getManagementPoOverviewReturnPath(
+    new URLSearchParams(location.search),
+    getCurrentManagementPoMonth(),
+  );
+  const detailPath = managementContext
+    ? `/management/purchase-orders/${encodeURIComponent(id ?? "")}`
+    : `/po/${id ?? ""}`;
+  const listPath = managementContext ? managementOverviewReturnPath : "/po";
+  const productDetailPath = (productId: string) =>
+    managementContext
+      ? `${detailPath}/products/${encodeURIComponent(productId)}${location.search}`
+      : `/po/${id ?? ""}/products/${encodeURIComponent(productId)}`;
   const { toast, showToast, hideToast } = useToast();
 
   const { data: po, isLoading, isError } = usePurchaseOrder(id);
@@ -128,16 +104,19 @@ export default function PoDetailPage() {
   const addProductMutation = useAddPoProduct();
   const removeProductMutation = useRemovePoProduct();
   const deletePoMutation = useDeletePurchaseOrder();
+  const isLocked = po?.status === "closed" || po?.status === "cancelled";
+  const isReadOnly = isLocked || readOnlyManagement;
+  const deadlineInfo = getDeadlineInfo(po?.deadline, po?.status);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [productPendingRemoval, setProductPendingRemoval] =
     useState<PurchaseOrderProductItem | null>(null);
 
   const handleDeletePo = async () => {
-    if (!id) return;
+    if (!id || readOnlyManagement) return;
     try {
       await deletePoMutation.mutateAsync(id);
       showToast("Đã xóa đơn hàng PO.");
-      navigate("/po");
+      navigate(listPath);
     } catch (err) {
       const apiErr = getApiError(err, "Xóa đơn hàng PO thất bại.");
       showToast(apiErr.message, "error");
@@ -156,9 +135,10 @@ export default function PoDetailPage() {
   const activeTab = getTabFromPath();
 
   const handleTabClick = (tabKey: "general" | "lines" | "documents") => {
-    if (tabKey === "general") navigate(`/po/${id}/detail`);
-    else if (tabKey === "lines") navigate(`/po/${id}/products`);
-    else if (tabKey === "documents") navigate(`/po/${id}/documents`);
+    const contextSearch = managementContext ? location.search : "";
+    if (tabKey === "general") navigate(`${detailPath}/detail${contextSearch}`);
+    else if (tabKey === "lines") navigate(`${detailPath}/products${contextSearch}`);
+    else if (tabKey === "documents") navigate(`${detailPath}/documents${contextSearch}`);
   };
 
   // Chỉ tải danh sách sản phẩm khi người dùng thực sự mở tab Sản phẩm.
@@ -226,8 +206,17 @@ export default function PoDetailPage() {
     setSplitRatio(50); // Double-click reset về 50/50
   }, []);
 
-  // Chế độ hiển thị danh sách sản phẩm trong ô Sản phẩm: "grid" (thẻ) hoặc "table" (bảng)
-  const [productLayout, setProductLayout] = useState<"grid" | "table">("grid");
+  // Chế độ hiển thị danh sách sản phẩm trong ô Sản phẩm: "grid" (thẻ) hoặc "table" (bảng).
+  // Nhớ lựa chọn gần nhất của người dùng qua localStorage, để lần sau mở lại
+  // không bị reset về mặc định "grid".
+  const [productLayout, setProductLayoutState] = useState<"grid" | "table">(() => {
+    const saved = localStorage.getItem(PRODUCT_LAYOUT_STORAGE_KEY);
+    return saved === "table" ? "table" : "grid";
+  });
+  const setProductLayout = (layout: "grid" | "table") => {
+    setProductLayoutState(layout);
+    localStorage.setItem(PRODUCT_LAYOUT_STORAGE_KEY, layout);
+  };
   const [draggedDocId, setDraggedDocId] = useState<string | null>(null);
   const [showInlineSplitForm, setShowInlineSplitForm] = useState(false);
   const [quickFormDocIds, setQuickFormDocIds] = useState<string[]>([]);
@@ -257,11 +246,8 @@ export default function PoDetailPage() {
     actionText: "",
   });
 
-  const isLocked = po?.status === "closed" || po?.status === "cancelled";
-  const deadlineInfo = getDeadlineInfo(po?.deadline, po?.status);
-
   const startEdit = () => {
-    if (!po) return;
+    if (!po || isReadOnly) return;
     setCustomerPoCode(po.customerPoCode || "");
     setCustomerNameSnapshot(po.customerNameSnapshot || "");
     setReceivedDate(
@@ -276,7 +262,7 @@ export default function PoDetailPage() {
   };
 
   const handleSaveGeneral = async () => {
-    if (!po || !id) return;
+    if (!po || !id || isReadOnly) return;
     if (!deadline) {
       setGeneralFieldErrors({
         deadline: "Hạn hoàn thành (deadline) là bắt buộc, không được để trống.",
@@ -312,7 +298,7 @@ export default function PoDetailPage() {
   };
 
   const triggerStatusTransition = async (targetStatus: PoStatus, reason?: string) => {
-    if (!po || !id) return;
+    if (!po || !id || isReadOnly) return;
     try {
       await updateStatusMutation.mutateAsync({
         id,
@@ -326,6 +312,7 @@ export default function PoDetailPage() {
   };
 
   const handleStatusButtonClick = (targetStatus: PoStatus) => {
+    if (isReadOnly) return;
     if (targetStatus === "closed") {
       setReasonModalState({
         isOpen: true,
@@ -346,7 +333,7 @@ export default function PoDetailPage() {
   };
 
   const handleAddProduct = async (input: CreatePoProductInput) => {
-    if (!id) return;
+    if (!id || isReadOnly) return;
     try {
       await addProductMutation.mutateAsync({ id, input });
       showToast("Đã thêm sản phẩm vào đơn hàng PO.");
@@ -358,7 +345,7 @@ export default function PoDetailPage() {
   };
 
   const handleRemoveProduct = async () => {
-    if (!id || !productPendingRemoval) return;
+    if (!id || !productPendingRemoval || isReadOnly) return;
     try {
       await removeProductMutation.mutateAsync({
         id,
@@ -381,7 +368,7 @@ export default function PoDetailPage() {
     purpose: string,
     onProgress?: (p: UploadProgress) => void,
   ) => {
-    if (!id) return;
+    if (!id || isReadOnly) return;
     const fileList = Array.isArray(files) ? files : [files];
     if (fileList.length === 0) return;
     try {
@@ -409,7 +396,7 @@ export default function PoDetailPage() {
   };
 
   const handleUnlinkAttachment = async (documentId: string) => {
-    if (!id) return;
+    if (!id || isReadOnly) return;
     try {
       await unlinkDocMutation.mutateAsync({ id, documentId });
       showToast("Đã gỡ liên kết tài liệu khỏi PO.");
@@ -420,7 +407,7 @@ export default function PoDetailPage() {
   };
 
   const handleUpdateDocumentPurpose = async (documentId: string, purpose: string) => {
-    if (!id) return;
+    if (!id || isReadOnly) return;
     try {
       await updateDocPurposeMutation.mutateAsync({ id, documentId, purpose });
       showToast("Đã cập nhật phân loại tài liệu thành công.");
@@ -484,10 +471,10 @@ export default function PoDetailPage() {
         Không tìm thấy đơn hàng PO hoặc có lỗi xảy ra.{" "}
         <button
           type="button"
-          onClick={() => navigate("/po")}
-          className="font-semibold underline hover:text-error-800"
+          onClick={() => navigate(listPath)}
+          className="cursor-pointer font-semibold underline hover:text-error-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-error-600"
         >
-          Quay lại danh sách PO
+          {managementContext ? "Quay lại Tổng quan PO" : "Quay lại danh sách PO"}
         </button>
       </div>
     );
@@ -509,13 +496,30 @@ export default function PoDetailPage() {
 
       {/* Breadcrumb Header */}
       <PageHeader
-        breadcrumb={[
-          { label: "Dashboard", to: "/dashboard" },
-          { label: "Quản lý PO", to: "/po" },
-          { label: po.poCode },
-        ]}
+        breadcrumb={
+          managementContext
+            ? [
+                { label: "Dashboard quản lý", to: "/management/dashboard" },
+                { label: "Tổng quan PO", to: listPath },
+                { label: po.poCode },
+              ]
+            : [
+                { label: "Dashboard", to: "/dashboard" },
+                { label: "Quản lý PO", to: "/po" },
+                { label: po.poCode },
+              ]
+        }
         title="Chi tiết đơn hàng PO"
       />
+
+      {readOnlyManagement && (
+        <p
+          role="status"
+          className="rounded-xl border border-brand-200 bg-brand-50 px-4 py-3 text-sm font-medium text-brand-800 dark:border-brand-900/50 dark:bg-brand-950/40 dark:text-brand-200"
+        >
+          Đang xem ở khu Quản lý · chỉ đọc
+        </p>
+      )}
 
       {/* Unified PO Header Card */}
       <div className="-mt-1 rounded-2xl border border-gray-200 bg-white px-4 py-2.5 shadow-xs dark:border-gray-800 dark:bg-gray-900">
@@ -530,7 +534,7 @@ export default function PoDetailPage() {
           </div>
 
           <div className="flex flex-wrap items-center justify-start lg:justify-end gap-2 shrink-0">
-            {po.status === "draft" && (
+            {!readOnlyManagement && po.status === "draft" && (
               <>
                 <Button
                   size="xs"
@@ -559,9 +563,10 @@ export default function PoDetailPage() {
               </>
             )}
 
-            {(po.status === "in_progress" || po.status === "pending_rd") && (
+            {!readOnlyManagement && (po.status === "in_progress" || po.status === "pending_rd") && (
               <>
                 <Button
+                  variant="danger"
                   size="xs"
                   onClick={() => handleStatusButtonClick("closed")}
                   disabled={updateStatusMutation.isPending}
@@ -600,7 +605,7 @@ export default function PoDetailPage() {
           <button
             type="button"
             onClick={() => handleTabClick("general")}
-            className={`border-b-2 py-2.5 transition-colors ${activeTab === "general"
+            className={`cursor-pointer border-b-2 py-2.5 transition-colors focus-visible:outline-brand-500 focus-visible:outline-2 ${activeTab === "general"
                 ? "border-brand-600 text-brand-600 dark:border-brand-400 dark:text-brand-400"
                 : "border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400"
               }`}
@@ -610,7 +615,7 @@ export default function PoDetailPage() {
           <button
             type="button"
             onClick={() => handleTabClick("lines")}
-            className={`border-b-2 py-2.5 transition-colors ${activeTab === "lines"
+            className={`cursor-pointer border-b-2 py-2.5 transition-colors focus-visible:outline-brand-500 focus-visible:outline-2 ${activeTab === "lines"
                 ? "border-brand-600 text-brand-600 dark:border-brand-400 dark:text-brand-400"
                 : "border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400"
               }`}
@@ -620,7 +625,7 @@ export default function PoDetailPage() {
           <button
             type="button"
             onClick={() => handleTabClick("documents")}
-            className={`border-b-2 py-2.5 transition-colors ${activeTab === "documents"
+            className={`cursor-pointer border-b-2 py-2.5 transition-colors focus-visible:outline-brand-500 focus-visible:outline-2 ${activeTab === "documents"
                 ? "border-brand-600 text-brand-600 dark:border-brand-400 dark:text-brand-400"
                 : "border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400"
               }`}
@@ -630,7 +635,7 @@ export default function PoDetailPage() {
         </nav>
 
         {/* Nút bật/tắt chế độ chia khung 50/50 khi ở tab Sản phẩm / Mẫu Fit */}
-        {activeTab === "lines" && (
+        {activeTab === "lines" && !readOnlyManagement && (
           <div className="pb-1.5">
             <button
               type="button"
@@ -676,17 +681,12 @@ export default function PoDetailPage() {
                     />
                   </svg>
                 </div>
-                <div>
-                  <h3 className="text-theme-sm font-bold text-gray-900 dark:text-white uppercase tracking-wide">
-                    Thông tin PO
-                  </h3>
-                  <p className="text-theme-xs text-gray-500 dark:text-gray-400">
-                    Chi tiết định danh và thông tin khách hàng của đơn hàng
-                  </p>
-                </div>
+                <h3 className="text-theme-sm font-bold text-gray-900 dark:text-white uppercase tracking-wide">
+                  Thông tin PO
+                </h3>
               </div>
-              {!isEditing && !isLocked && (
-                <Button variant="secondary" size="sm" onClick={startEdit}>
+              {!isEditing && !isReadOnly && (
+                <Button variant="outline" size="sm" onClick={startEdit}>
                   Chỉnh sửa
                 </Button>
               )}
@@ -1211,7 +1211,7 @@ export default function PoDetailPage() {
                     </div>
                   )}
 
-                  {!isLocked && (
+                  {!isReadOnly && (
                     showInlineSplitForm ? (
                       <button
                         type="button"
@@ -1261,8 +1261,8 @@ export default function PoDetailPage() {
                       return (
                         <div
                           key={line.id}
-                          onClick={() => navigate(`/po/${id}/products/${line.id}`)}
-                          className="group relative flex flex-col overflow-hidden rounded-xl border border-gray-200 bg-white hover:border-brand-400 hover:shadow-md dark:border-gray-800 dark:bg-gray-800/50 shadow-2xs transition-all cursor-pointer p-2.5"
+                          onClick={readOnlyManagement ? undefined : () => navigate(productDetailPath(line.id))}
+                          className={`group relative flex flex-col overflow-hidden rounded-xl border border-gray-200 bg-white p-2.5 shadow-2xs transition-all hover:border-brand-400 hover:shadow-md dark:border-gray-800 dark:bg-gray-800/50 ${readOnlyManagement ? "" : "cursor-pointer"}`}
                         >
                           {/* Khung ảnh tỉ lệ 3*4 (aspect-[3/4]) */}
                           <div className="relative aspect-[3/4] w-full overflow-hidden rounded-lg bg-gray-100 dark:bg-gray-800/70 border border-gray-100 dark:border-gray-700/60 flex items-center justify-center">
@@ -1285,7 +1285,7 @@ export default function PoDetailPage() {
                               </div>
                             </div>
 
-                            {!isLocked && (
+                            {!isReadOnly && (
                               <div className="absolute bottom-2 right-2 pointer-events-auto opacity-0 group-hover:opacity-100 transition-opacity">
                                 <button
                                   type="button"
@@ -1305,9 +1305,13 @@ export default function PoDetailPage() {
 
                           {/* Thông tin sản phẩm: Mã chủ đạo, tên phụ */}
                           <div className="mt-2.5 space-y-1">
-                            <span className="font-mono text-lg font-bold text-brand-600 group-hover:text-brand-700 dark:text-brand-400 truncate block">
+                            <Link
+                              to={productDetailPath(line.id)}
+                              onClick={(event) => event.stopPropagation()}
+                              className="block truncate font-mono text-lg font-bold text-brand-600 group-hover:text-brand-700 dark:text-brand-400"
+                            >
                               {line.productCode || line.styleCode}
-                            </span>
+                            </Link>
                             <div className="text-xs text-gray-500 dark:text-gray-400 truncate" title={line.productName}>
                               {line.productName}
                             </div>
@@ -1344,21 +1348,32 @@ export default function PoDetailPage() {
                           <th className="px-3 py-2.5">Nguồn Fit</th>
                           <th className="px-3 py-2.5">Hạn giao</th>
                           <th className="px-3 py-2.5 text-right">Trạng thái</th>
-                          {!isLocked && <th className="w-10 px-2 py-2.5"></th>}
+                          {!isReadOnly && <th className="w-10 px-2 py-2.5"></th>}
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
                         {lines.map((line) => (
                           <tr
                             key={line.id}
-                            onClick={() => navigate(`/po/${id}/products/${line.id}`)}
-                            className="transition-colors hover:bg-brand-50/50 dark:hover:bg-gray-800/60 cursor-pointer group"
+                            className="transition-colors hover:bg-brand-50/50 dark:hover:bg-gray-800/60 group"
                           >
-                            <td className="px-3 py-3 font-mono font-bold text-base text-brand-600 group-hover:text-brand-700 dark:text-brand-400">
-                              {line.productCode || line.styleCode}
+                            <td className="px-3 py-3">
+                              <button
+                                type="button"
+                                onClick={() => navigate(productDetailPath(line.id))}
+                                className="cursor-pointer font-mono text-base font-bold text-brand-600 hover:underline group-hover:text-brand-700 dark:text-brand-400"
+                              >
+                                {line.productCode || line.styleCode}
+                              </button>
                             </td>
                             <td className="px-3 py-3 text-xs text-gray-500 dark:text-gray-400 truncate max-w-[120px]" title={line.productName}>
-                              {line.productName}
+                              <button
+                                type="button"
+                                onClick={() => navigate(productDetailPath(line.id))}
+                                className="cursor-pointer hover:text-brand-600 hover:underline dark:hover:text-brand-400"
+                              >
+                                {line.productName}
+                              </button>
                             </td>
                             <td className="px-2.5 py-3 text-right font-mono font-bold text-xs text-gray-800 dark:text-gray-200">
                               {line.totalQuantity ? line.totalQuantity.toLocaleString() : "—"}
@@ -1378,7 +1393,7 @@ export default function PoDetailPage() {
                             <td className="px-3 py-3 text-right">
                               <ProductStatusBadge status={line.status} />
                             </td>
-                            {!isLocked && (
+                            {!isReadOnly && (
                               <td className="px-2 py-3 text-right">
                                 <button
                                   type="button"
@@ -1449,7 +1464,7 @@ export default function PoDetailPage() {
                   </div>
                 )}
 
-                {!isLocked && (
+                {!isReadOnly && (
                   <Button size="sm" onClick={() => setIsAddProductOpen(true)}>
                     + Thêm SP
                   </Button>
@@ -1476,7 +1491,7 @@ export default function PoDetailPage() {
                   <p className="mt-1 text-theme-xs text-gray-500 dark:text-gray-400">
                     Thêm mẫu sản phẩm từ danh mục Mẫu Fit hoặc nhập thủ công để bắt đầu quản lý.
                   </p>
-                  {!isLocked && (
+                  {!isReadOnly && (
                     <div className="mt-4">
                       <Button size="sm" onClick={() => setIsAddProductOpen(true)}>
                         + Thêm sản phẩm ngay
@@ -1492,8 +1507,8 @@ export default function PoDetailPage() {
                     return (
                       <div
                         key={line.id}
-                        onClick={() => navigate(`/po/${id}/products/${line.id}`)}
-                        className="group relative flex flex-col overflow-hidden rounded-xl border border-gray-200 bg-white hover:border-brand-400 hover:shadow-md dark:border-gray-800 dark:bg-gray-800/50 shadow-2xs transition-all cursor-pointer p-2.5"
+                        onClick={readOnlyManagement ? undefined : () => navigate(productDetailPath(line.id))}
+                        className={`group relative flex flex-col overflow-hidden rounded-xl border border-gray-200 bg-white p-2.5 shadow-2xs transition-all hover:border-brand-400 hover:shadow-md dark:border-gray-800 dark:bg-gray-800/50 ${readOnlyManagement ? "" : "cursor-pointer"}`}
                       >
                         {/* Khung ảnh 3*4 */}
                         <div className="relative aspect-[3/4] w-full overflow-hidden rounded-lg bg-gray-100 dark:bg-gray-800/70 border border-gray-100 dark:border-gray-700/60 flex items-center justify-center">
@@ -1516,7 +1531,7 @@ export default function PoDetailPage() {
                             </div>
                           </div>
 
-                          {!isLocked && (
+                          {!isReadOnly && (
                             <div className="absolute bottom-2 right-2 pointer-events-auto opacity-0 group-hover:opacity-100 transition-opacity">
                               <button
                                 type="button"
@@ -1536,9 +1551,13 @@ export default function PoDetailPage() {
 
                         {/* Thông tin sản phẩm: Mã chủ đạo, tên phụ */}
                         <div className="mt-2.5 space-y-1">
-                          <span className="font-mono text-lg font-bold text-brand-600 group-hover:text-brand-700 dark:text-brand-400 truncate block">
+                          <Link
+                            to={productDetailPath(line.id)}
+                            onClick={(event) => event.stopPropagation()}
+                            className="block truncate font-mono text-lg font-bold text-brand-600 group-hover:text-brand-700 dark:text-brand-400"
+                          >
                             {line.productCode || line.styleCode}
-                          </span>
+                          </Link>
                           <div className="text-xs text-gray-500 dark:text-gray-400 truncate" title={line.productName}>
                             {line.productName}
                           </div>
@@ -1572,25 +1591,35 @@ export default function PoDetailPage() {
                         <th className="px-5 py-3.5">Mã SP</th>
                         <th className="px-5 py-3.5">Tên SP</th>
                         <th className="px-5 py-3.5 text-right">Số lượng (pcs)</th>
-                        <th className="px-5 py-3.5">Mẫu Fit nguồn</th>
                         <th className="px-5 py-3.5">Danh mục</th>
                         <th className="px-5 py-3.5">Hạn giao</th>
                         <th className="px-5 py-3.5 text-right">Trạng thái</th>
-                        {!isLocked && <th className="w-12 px-3 py-3.5"></th>}
+                        {!isReadOnly && <th className="w-12 px-3 py-3.5"></th>}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
                       {lines.map((line) => (
                         <tr
                           key={line.id}
-                          onClick={() => navigate(`/po/${id}/products/${line.id}`)}
-                          className="transition-colors hover:bg-brand-50/50 dark:hover:bg-gray-800/60 cursor-pointer group"
+                          className="transition-colors hover:bg-brand-50/50 dark:hover:bg-gray-800/60 group"
                         >
-                          <td className="px-5 py-4 font-mono font-bold text-base text-brand-600 group-hover:text-brand-700 dark:text-brand-400">
-                            {line.productCode || line.styleCode}
+                          <td className="px-5 py-4">
+                              <button
+                                type="button"
+                                onClick={() => navigate(productDetailPath(line.id))}
+                                className="cursor-pointer font-mono text-base font-bold text-brand-600 hover:underline group-hover:text-brand-700 dark:text-brand-400"
+                              >
+                                {line.productCode || line.styleCode}
+                              </button>
                           </td>
                           <td className="px-5 py-4 font-medium text-gray-900 dark:text-white">
-                            {line.productName}
+                              <button
+                                type="button"
+                                onClick={() => navigate(productDetailPath(line.id))}
+                                className="cursor-pointer hover:text-brand-600 hover:underline dark:hover:text-brand-400"
+                              >
+                                {line.productName}
+                              </button>
                           </td>
                           <td className="px-5 py-4 text-right">
                             <span className="font-mono font-bold text-sm text-brand-600 dark:text-brand-400 block">
@@ -1602,15 +1631,6 @@ export default function PoDetailPage() {
                               </div>
                             )}
                           </td>
-                          <td className="px-5 py-4 text-xs">
-                            {line.sourceStyle ? (
-                              <span className="inline-flex items-center rounded-md bg-brand-50 px-2 py-0.5 font-semibold text-brand-700 dark:bg-brand-950/50 dark:text-brand-300 border border-brand-100 dark:border-brand-900">
-                                {line.sourceStyle.styleCode}
-                              </span>
-                            ) : (
-                              <span className="text-gray-400 italic">Thủ công</span>
-                            )}
-                          </td>
                           <td className="px-5 py-4 text-xs text-gray-500 dark:text-gray-400">
                             {line.category || "—"}
                           </td>
@@ -1620,7 +1640,7 @@ export default function PoDetailPage() {
                           <td className="px-5 py-4 text-right">
                             <ProductStatusBadge status={line.status} />
                           </td>
-                          {!isLocked && (
+                          {!isReadOnly && (
                             <td className="px-3 py-4 text-right">
                               <button
                                 type="button"
@@ -1683,13 +1703,14 @@ export default function PoDetailPage() {
             poId={id}
             poCode={po.poCode}
             documents={poDocuments}
-            isLocked={isLocked}
+            isLocked={isReadOnly}
             isPending={
               uploadDocMutation.isPending ||
               uploadDocsMutation.isPending ||
               unlinkDocMutation.isPending ||
               updateDocPurposeMutation.isPending
             }
+            allowDownload={!readOnlyManagement}
             onUpload={handleUploadDocument}
             onUnlink={handleUnlinkAttachment}
             onUpdatePurpose={handleUpdateDocumentPurpose}

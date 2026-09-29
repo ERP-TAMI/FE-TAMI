@@ -32,6 +32,7 @@ import { useAuthStore } from "@/store/authStore";
 
 interface BomDetailHeaderProps {
   bom: BomDetail;
+  readOnly?: boolean;
   revisions?: RevisionListItem[];
   selectedRevisionId?: string;
   isHistorical?: boolean;
@@ -50,6 +51,7 @@ interface BomDetailHeaderProps {
 
 export function BomDetailHeader({
   bom,
+  readOnly = false,
   revisions = [],
   selectedRevisionId,
   isHistorical = false,
@@ -86,14 +88,14 @@ export function BomDetailHeader({
     : bom.status || bom.currentRevision?.status || "wait_nvkh";
   const isDiscontinued = currentStatus === "discontinued" || !!bom.discontinuedAt;
 
-  const showEditHeader = canEditHeader(user, currentStatus, isHistorical);
-  const showForward = canForwardBom(user, currentStatus, isHistorical);
-  const showReject = canRejectBom(user, currentStatus, isHistorical);
-  const showApprove = canApproveBom(user, currentStatus, isHistorical);
-  const showAddLine = canAddBomLine(user, currentStatus, isHistorical);
-  const showCreateRevision = canCreateRevision(user, currentStatus, isHistorical);
-  const showDiscontinue = canDiscontinueBom(user, currentStatus, isHistorical);
-  const showCopyFit = canCopyFitBom(user, bom, isHistorical);
+  const showEditHeader = !readOnly && canEditHeader(user, currentStatus, isHistorical);
+  const showForward = !readOnly && canForwardBom(user, currentStatus, isHistorical);
+  const showReject = !readOnly && canRejectBom(user, currentStatus, isHistorical);
+  const showApprove = !readOnly && canApproveBom(user, currentStatus, isHistorical);
+  const showAddLine = !readOnly && canAddBomLine(user, currentStatus, isHistorical);
+  const showCreateRevision = !readOnly && canCreateRevision(user, currentStatus, isHistorical);
+  const showDiscontinue = !readOnly && canDiscontinueBom(user, currentStatus, isHistorical);
+  const showCopyFit = !readOnly && canCopyFitBom(user, bom, isHistorical);
 
   const forwardInfo = getForwardActionInfo(currentStatus);
 
@@ -348,7 +350,7 @@ export function BomDetailHeader({
           )}
 
           {/* Primary Action: + Lưu nháp (in wait_rd or wait_accounting) or + Thêm nguyên liệu */}
-          {(currentStatus === "wait_rd" || currentStatus === "wait_accounting") && onSaveDraft ? (
+          {!readOnly && (currentStatus === "wait_rd" || currentStatus === "wait_accounting") && onSaveDraft ? (
             <button
               type="button"
               onClick={onSaveDraft}

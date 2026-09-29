@@ -252,8 +252,14 @@ export const bomsApi = {
 
     const cleanParams: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(rawParams)) {
-      if (value !== undefined && value !== null && value !== "" && value !== "all") {
-        cleanParams[key] = value;
+      if (
+        value !== undefined &&
+        value !== null &&
+        value !== "" &&
+        value !== "all" &&
+        !(Array.isArray(value) && value.length === 0)
+      ) {
+        cleanParams[key] = Array.isArray(value) ? value.join(",") : value;
       }
     }
 

@@ -68,9 +68,6 @@ export default function StyleListPage() {
 
   const isFiltering = search.trim() !== "" || category.trim() !== "" || status !== "";
 
-  const activeCount = styles.filter((s) => s.status === "active").length;
-  const draftCount = styles.filter((s) => s.status === "draft").length;
-
   const closeForm = () => setEditingStyle(undefined);
 
   const saveForm = async (payload: CreateStylePayload) => {
@@ -112,11 +109,6 @@ export default function StyleListPage() {
       <PageHeader
         breadcrumb={[{ label: "Dashboard", to: "/dashboard" }, { label: "Mẫu Fit" }]}
         title="Mẫu Fit"
-        stats={[
-          { label: "mẫu", value: total },
-          { label: "hoạt động", value: activeCount, tone: "success" },
-          { label: "nháp", value: draftCount, tone: "warning" },
-        ]}
         action={{ label: "+ Tạo Mẫu Fit Mới", onClick: () => setEditingStyle("create") }}
       />
 

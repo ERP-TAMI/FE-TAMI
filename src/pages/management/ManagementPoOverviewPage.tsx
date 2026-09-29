@@ -1,5 +1,6 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { CalendarDays, ClockAlert, Package, Timer } from "lucide-react";
+import { Link, useSearchParams } from "react-router-dom";
 import { Alert, Button, Input, Pagination, Table } from "@/components/shared";
 import type { TableColumn } from "@/components/shared/Table";
 import { ManagementStatCard } from "@/components/features/management-dashboard/ManagementStatCard";
@@ -15,21 +16,21 @@ import {
   getVietnamBusinessDate,
   resolveManagementPoSummary,
 } from "@/components/features/management-dashboard/managementPoOverviewPresentation";
+import {
+  getCurrentManagementPoMonth,
+  getManagementPoDetailPath,
+  getManagementPoOverviewContext,
+} from "@/lib/managementPoNavigation";
 
 const PAGE_SIZE = 10;
 
-function getCurrentMonth(): string {
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone: "Asia/Ho_Chi_Minh",
-    year: "numeric",
-    month: "2-digit",
-  }).formatToParts(new Date());
-  return `${parts.find((part) => part.type === "year")?.value}-${parts.find((part) => part.type === "month")?.value}`;
+function formatMonthPeriod(month: string): string {
+  const [year, monthNumber] = month.split("-");
+  return `${monthNumber}/${year}`;
 }
 
 function formatMonth(month: string): string {
-  const [year, monthNumber] = month.split("-");
-  return `tháng ${monthNumber}/${year}`;
+  return `tháng ${formatMonthPeriod(month)}`;
 }
 
 function formatDate(date: string): string {
@@ -41,26 +42,36 @@ function formatDate(date: string): string {
   }).format(new Date(`${date}T00:00:00Z`));
 }
 
-function createColumns(today: string): TableColumn<ManagementPurchaseOrderItem>[] {
+function createColumns(
+  today: string,
+  month: string,
+  page: number,
+): TableColumn<ManagementPurchaseOrderItem>[] {
   return [
     {
       key: "poCode",
       header: "Mã PO",
-      width: "w-[16%]",
+      width: "w-[22%]",
       render: (item) => (
-        <p className="truncate font-semibold text-gray-900 dark:text-white">{item.poCode}</p>
+        <Link
+          to={getManagementPoDetailPath(item.id, month, page)}
+          title={item.poCode}
+          className="block max-w-full cursor-pointer truncate font-semibold text-brand-600 transition-colors duration-150 hover:text-brand-700 focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 dark:text-brand-400 dark:hover:text-brand-300"
+        >
+          {item.poCode}
+        </Link>
       ),
     },
     {
       key: "customerNameSnapshot",
       header: "Khách hàng",
-      width: "w-[19%]",
+      width: "w-[22%]",
       render: (item) => <p className="truncate">{item.customerNameSnapshot}</p>,
     },
     {
       key: "receivedDate",
       header: "Ngày nhận",
-      width: "w-[14%]",
+      width: "w-[13%]",
       render: (item) => formatDate(item.receivedDate),
     },
     {
@@ -72,7 +83,7 @@ function createColumns(today: string): TableColumn<ManagementPurchaseOrderItem>[
     {
       key: "daysToDeadline",
       header: "Còn/trễ",
-      width: "w-[16%]",
+      width: "w-[12%]",
       render: (item) => {
         const summary = resolveManagementPoSummary(item, today);
         return (
@@ -86,7 +97,7 @@ function createColumns(today: string): TableColumn<ManagementPurchaseOrderItem>[
     {
       key: "managementStatus",
       header: "Trạng thái",
-      width: "w-[17%]",
+      width: "w-[13%]",
       render: (item) => (
         <ManagementPoSummaryStatusBadge
           status={resolveManagementPoSummary(item, today).managementStatus}
@@ -98,35 +109,40 @@ function createColumns(today: string): TableColumn<ManagementPurchaseOrderItem>[
 
 export default function ManagementPoOverviewPage() {
   const today = getVietnamBusinessDate();
-  const columns = useMemo(() => createColumns(today), [today]);
-  const [month, setMonth] = useState(getCurrentMonth);
-  const [page, setPage] = useState(1);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { month, page } = getManagementPoOverviewContext(
+    searchParams,
+    getCurrentManagementPoMonth(),
+  );
+  const columns = useMemo(() => createColumns(today, month, page), [today, month, page]);
   const { data, isLoading, isFetching, isPlaceholderData, isError, refetch } =
     useManagementPurchaseOrdersOverview(month, page, PAGE_SIZE);
 
+  const updateOverviewLocation = (nextMonth: string, nextPage: number) => {
+    setSearchParams({ month: nextMonth, page: String(nextPage) });
+  };
+
   return (
-    <section className="space-y-6" aria-labelledby="management-po-overview-title">
+    <section className="space-y-4" aria-labelledby="management-po-overview-title">
       <PageMeta title="Tổng quan PO | TAMI ERP" description="Theo dõi PO theo tháng" />
 
-      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
         <div>
-          <p className="text-theme-xs text-brand-500 font-semibold tracking-wide uppercase">
-            Quản lý đơn hàng
-          </p>
           <h1
             id="management-po-overview-title"
-            className="mt-1 text-2xl font-semibold text-gray-900 dark:text-white"
+            className="text-2xl font-semibold text-gray-900 dark:text-white"
           >
             Tổng quan PO
           </h1>
-          <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-            PO có thời gian thực hiện giao với tháng được chọn.
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            Theo dõi tiến độ giao hàng theo tháng.
           </p>
         </div>
-        <div className="w-full sm:w-56">
+        <div className="w-full sm:w-52">
           <Input
             label="Tháng xem báo cáo"
             type="month"
+            lang="vi"
             required
             min="0001-01"
             value={month}
@@ -134,8 +150,7 @@ export default function ManagementPoOverviewPage() {
               const nextMonth = event.currentTarget.value;
               const parsedMonth = managementDashboardMonthSchema.safeParse(nextMonth);
               if (!parsedMonth.success) return;
-              setMonth(parsedMonth.data);
-              setPage(1);
+              updateOverviewLocation(parsedMonth.data, 1);
             }}
             className="cursor-pointer bg-white focus-visible:ring-3 dark:bg-gray-900 dark:[color-scheme:dark]"
           />
@@ -171,11 +186,16 @@ export default function ManagementPoOverviewPage() {
             <div
               key={index}
               aria-hidden="true"
-              className="h-44 animate-pulse rounded-2xl border border-gray-200 bg-white p-5 motion-reduce:animate-none dark:border-gray-800 dark:bg-gray-900"
+              className="h-32 animate-pulse rounded-xl border border-gray-200 bg-white p-4 motion-reduce:animate-none dark:border-gray-800 dark:bg-gray-900"
             >
-              <div className="h-10 w-10 rounded-xl bg-gray-100 dark:bg-gray-800" />
-              <div className="mt-5 h-4 w-32 rounded bg-gray-100 dark:bg-gray-800" />
-              <div className="mt-3 h-8 w-16 rounded bg-gray-100 dark:bg-gray-800" />
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <div className="h-4 w-24 rounded bg-gray-100 dark:bg-gray-800" />
+                  <div className="mt-1 h-7 w-16 rounded bg-gray-100 dark:bg-gray-800" />
+                </div>
+                <div className="h-9 w-9 rounded-lg bg-gray-100 dark:bg-gray-800" />
+              </div>
+              <div className="mt-2 h-3 w-32 rounded bg-gray-100 dark:bg-gray-800" />
             </div>
           ))}
         </div>
@@ -187,32 +207,35 @@ export default function ManagementPoOverviewPage() {
                 Đang cập nhật danh sách PO; trang hiện tại được giữ trong lúc tải.
               </p>
             )}
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
               <ManagementStatCard
                 label="Tổng số PO"
                 value={data.totalPurchaseOrders}
-                helper={`Có thời gian thực hiện giao với ${formatMonth(data.month)}`}
+                helper={`Giao trong ${formatMonthPeriod(data.month)}`}
                 icon={<Package className="h-5 w-5" />}
                 tone="brand"
+                compact
               />
               <ManagementStatCard
                 label="PO trễ hạn"
                 value={data.overduePurchaseOrders}
-                helper="Chưa Final, chưa hủy và deadline đã qua"
+                helper="Chưa Final, chưa hủy · deadline đã qua"
                 icon={<ClockAlert className="h-5 w-5" />}
                 tone="danger"
+                compact
               />
               <ManagementStatCard
                 label="PO sắp đến hạn"
                 value={data.upcomingPurchaseOrders}
-                helper="Chưa Final, chưa hủy và còn dưới 7 ngày"
+                helper="Chưa Final, chưa hủy · còn dưới 7 ngày"
                 icon={<Timer className="h-5 w-5" />}
                 tone="warning"
+                compact
               />
             </div>
 
-            <section className="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
-              <div className="flex flex-col gap-1 border-b border-gray-200 px-5 py-4 sm:flex-row sm:items-center sm:justify-between dark:border-gray-800">
+            <section className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
+              <div className="flex flex-col gap-1 border-b border-gray-200 px-4 py-3 sm:flex-row sm:items-center sm:justify-between dark:border-gray-800">
                 <div>
                   <h2 className="font-semibold text-gray-900 dark:text-white">
                     Danh sách PO giao trong {formatMonth(data.month)}
@@ -244,11 +267,17 @@ export default function ManagementPoOverviewPage() {
                     {data.items.map((item) => {
                       const summary = resolveManagementPoSummary(item, today);
                       return (
-                        <article key={item.id} className="space-y-3 px-5 py-4">
+                        <article key={item.id} className="space-y-3 px-4 py-3">
                           <div className="flex flex-wrap items-start justify-between gap-3">
                             <div className="min-w-0">
                               <h3 className="truncate font-semibold text-gray-900 dark:text-white">
-                                {item.poCode}
+                                <Link
+                                  to={getManagementPoDetailPath(item.id, month, page)}
+                                  title={item.poCode}
+                                  className="block max-w-full cursor-pointer truncate text-brand-600 transition-colors duration-150 hover:text-brand-700 focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 dark:text-brand-400 dark:hover:text-brand-300"
+                                >
+                                  {item.poCode}
+                                </Link>
                               </h3>
                               <p className="mt-1 truncate text-sm text-gray-500 dark:text-gray-400">
                                 {item.customerNameSnapshot}
@@ -295,6 +324,8 @@ export default function ManagementPoOverviewPage() {
                       rows={data.items}
                       getRowKey={(item) => item.id}
                       emptyMessage="Không có PO ở trang này."
+                      embedded
+                      tableClassName="[&_tbody_tr]:h-12 [&_thead_th]:px-3 [&_thead_th]:py-3 [&_tbody_td]:px-3 [&_tbody_td]:py-3"
                     />
                   </div>
                   <Pagination
@@ -304,7 +335,7 @@ export default function ManagementPoOverviewPage() {
                     totalPages={data.meta.totalPages}
                     itemLabel="PO"
                     disabled={isPlaceholderData}
-                    onPageChange={setPage}
+                    onPageChange={(nextPage) => updateOverviewLocation(month, nextPage)}
                   />
                 </>
               )}

@@ -25,6 +25,7 @@ describe("ProfilePage", () => {
           roleCode: "IT",
           roleName: "Công nghệ thông tin",
           permissions: ["dashboard.view", "users.read"],
+          purchaseOrderMode: "READ_ONLY",
         },
         isPending: false,
         isError: false,

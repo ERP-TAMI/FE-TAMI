@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, useNavigate, useLocation, Link } from "react-router-dom";
 import { Toast, Button, Modal } from "@/components/shared";
 import {
   usePurchaseOrder,
@@ -8,7 +8,6 @@ import {
   useUpdatePoProduct,
   useUpdateProductStatus,
   useSaveProductOperationSteps,
-  useCreateProductSampleRound,
   useUnlinkProductDocument,
   useLinkProductDocument,
   useUploadProductDocument,
@@ -18,22 +17,19 @@ import { useUploadImage } from "@/hooks/useUploadImage";
 import { uploadsApi } from "@/api/uploads.api";
 import { useToast } from "@/hooks/useToast";
 import { getApiError } from "@/lib/apiError";
+import { getDeadlineInfo, deadlineValueClasses } from "@/lib/poDeadline";
 import { validateImageFile } from "@/lib/validateImageFile";
 import { resolveImageUrl } from "@/lib/imageUtils";
 import {
-  InfoIcon,
-  DocsIcon,
-  PageIcon,
   PlusIcon,
-  FileIcon,
   EyeIcon,
   LockIcon,
   UnlockIcon,
   AlertHexaIcon,
   TableIcon,
-  GridIcon,
   DownloadIcon,
   TrashBinIcon,
+  PencilIcon,
 } from "@/icons";
 import { StyleImagePlaceholder } from "@/components/features/styles/StyleImagePlaceholder";
 import { StyleOperationStepTable } from "@/components/features/styles/StyleOperationStepTable";
@@ -44,7 +40,8 @@ import { ProductColorSizeEditor } from "@/components/features/po/ProductColorSiz
 import { ProductVersionedFileGroup } from "@/components/features/po/ProductVersionedFileGroup";
 import { PoSplitDocumentPreview } from "@/components/features/po/PoSplitDocumentPreview";
 import { PoProductBomTab } from "@/components/features/po/PoProductBomTab";
-import { FileSpreadsheet } from "lucide-react";
+import { PoProductSampleRoundsTab } from "@/components/features/po/PoProductSampleRoundsTab";
+import { ArrowLeft } from "lucide-react";
 import type {
   ProductColorItem,
   ProductDocumentItem,
@@ -60,23 +57,6 @@ function formatDate(dateStr: string | null | undefined): string {
   return d.toLocaleDateString("vi-VN");
 }
 
-// Trạng thái đợt may mẫu là free-text (xem select trong modal "Thêm đợt may
-// mẫu"), nhưng vẫn tô màu theo ngữ nghĩa cho nhất quán với các badge trạng
-// thái khác trong app thay vì luôn dùng một màu xanh dương cố định.
-function getSampleRoundBadgeClass(status: string): string {
-  const s = status.trim().toLowerCase();
-  if (s.includes("đạt")) {
-    return "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300";
-  }
-  if (s.includes("hủy") || s.includes("huỷ")) {
-    return "bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300";
-  }
-  if (s.includes("chỉnh sửa") || s.includes("sua")) {
-    return "bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300";
-  }
-  return "bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300";
-}
-
 function formatDateTime(dateStr: string | null | undefined): string {
   if (!dateStr) return "—";
   const d = new Date(dateStr);
@@ -89,14 +69,29 @@ function formatDateTime(dateStr: string | null | undefined): string {
 
 
 
-export default function PoProductDetailPage() {
+export default function PoProductDetailPage({
+  readOnlyManagement = false,
+  managementContext = readOnlyManagement,
+}: {
+  readOnlyManagement?: boolean;
+  managementContext?: boolean;
+} = {}) {
   const { id: poId, productId, tab } = useParams<{
     id: string;
     productId: string;
     tab?: string;
   }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast, showToast, hideToast } = useToast();
+  const productPath = managementContext
+    ? `/management/purchase-orders/${encodeURIComponent(poId ?? "")}/products/${encodeURIComponent(productId ?? "")}`
+    : `/po/${poId ?? ""}/products/${productId ?? ""}`;
+  const poDetailBasePath = managementContext
+    ? `/management/purchase-orders/${encodeURIComponent(poId ?? "")}`
+    : `/po/${poId ?? ""}`;
+  const poDetailPath = `${poDetailBasePath}${managementContext ? location.search : ""}`;
+  const productListPath = `${poDetailBasePath}/products${managementContext ? location.search : ""}`;
 
   const isSizesTab = tab === "sizes" || tab === "size-breakdown" || tab === "size";
   const isColorsTab = tab === "colors" || tab === "color-palette" || tab === "palette";
@@ -194,21 +189,21 @@ export default function PoProductDetailPage() {
   ) => {
     if (!poId || !productId) return;
     if (nextTab === "sizes") {
-      navigate(`/po/${poId}/products/${productId}/sizes`);
+      navigate(`${productPath}/sizes${managementContext ? location.search : ""}`);
     } else if (nextTab === "colors") {
-      navigate(`/po/${poId}/products/${productId}/colors`);
+      navigate(`${productPath}/colors${managementContext ? location.search : ""}`);
     } else if (nextTab === "production_doc") {
-      navigate(`/po/${poId}/products/${productId}/production-doc`);
+      navigate(`${productPath}/production-doc${managementContext ? location.search : ""}`);
     } else if (nextTab === "bom") {
-      navigate(`/po/${poId}/products/${productId}/bom`);
+      navigate(`${productPath}/bom${managementContext ? location.search : ""}`);
     } else if (nextTab === "steps") {
-      navigate(`/po/${poId}/products/${productId}/operation-steps`);
+      navigate(`${productPath}/operation-steps${managementContext ? location.search : ""}`);
     } else if (nextTab === "samples") {
-      navigate(`/po/${poId}/products/${productId}/samples`);
+      navigate(`${productPath}/samples${managementContext ? location.search : ""}`);
     } else if (nextTab === "documents") {
-      navigate(`/po/${poId}/products/${productId}/documents`);
+      navigate(`${productPath}/documents${managementContext ? location.search : ""}`);
     } else {
-      navigate(`/po/${poId}/products/${productId}/detail`);
+      navigate(`${productPath}/detail${managementContext ? location.search : ""}`);
     }
   };
 
@@ -247,11 +242,12 @@ export default function PoProductDetailPage() {
     isLoading,
     isError,
   } = usePoProductDetail(poId, productId);
+  const isProductLocked = product?.status === "closed";
+  const isReadOnly = isProductLocked || readOnlyManagement;
 
   const updateProductMutation = useUpdatePoProduct();
   const updateStatusMutation = useUpdateProductStatus();
   const saveStepsMutation = useSaveProductOperationSteps();
-  const createSampleMutation = useCreateProductSampleRound();
   const unlinkDocMutation = useUnlinkProductDocument();
   const linkDocMutation = useLinkProductDocument();
   const uploadProductDocMutation = useUploadProductDocument();
@@ -281,8 +277,21 @@ export default function PoProductDetailPage() {
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Local state for PO document picker modal
+  // Local state for PO document picker modal.
+  // linkDocFilter khóa danh sách theo đúng mục đã bấm "Gán từ kho PO" —
+  // trước đây cả 3 nút (PO Chi Tiết/TechPack/Khác) đều mở chung 1 danh sách
+  // không lọc, nên chọn nhầm 1 file "Khác" từ nút của mục "PO Chi Tiết" thì
+  // file lại tự nằm dưới "Khác" (đúng theo purpose gốc) — gây cảm giác bug UI.
   const [isLinkPoDocOpen, setIsLinkPoDocOpen] = useState(false);
+  const [linkDocFilter, setLinkDocFilter] = useState<"po_detail" | "tech_pack" | "other" | null>(
+    null,
+  );
+
+  const openLinkPoDocModal = (filter: "po_detail" | "tech_pack" | "other" | null) => {
+    if (isReadOnly) return;
+    setLinkDocFilter(filter);
+    setIsLinkPoDocOpen(true);
+  };
 
   // Kho tài liệu của PO chỉ cần khi mở modal gán tài liệu vào sản phẩm.
   const { data: poDocumentsPage } = usePoDocuments(
@@ -311,43 +320,11 @@ export default function PoProductDetailPage() {
   // Local state for document preview modal
   const [previewDocItem, setPreviewDocItem] = useState<(ProductDocumentItem & { versionId?: string }) | null>(null);
 
-  // Local state for sample round modal
-  const [isAddSampleOpen, setIsAddSampleOpen] = useState(false);
-  const [sampleFeedback, setSampleFeedback] = useState("");
-  const [sampleStatus, setSampleStatus] = useState("working");
-
-  // Local state cho quản lý ảnh bảng màu sản phẩm (Tab 3: Bảng màu)
-  interface ColorPaletteItem {
-    id: string;
-    url: string;
-    name: string;
-    size: number;
-    uploadedAt: string;
-  }
-  const [paletteImages, setPaletteImages] = useState<ColorPaletteItem[]>([]);
+  // Ảnh bảng màu sản phẩm (Tab 3: Bảng màu) — lưu thật qua kho tài liệu sản
+  // phẩm dùng chung (purpose "color_card"), tái dùng nguyên luồng
+  // presign/confirm đã có sẵn cho PO Chi Tiết/TechPack/Khác thay vì local
+  // state giả (trước đây chỉ tạo blob URL tạm, F5 là mất).
   const [palettePreviewModalUrl, setPalettePreviewModalUrl] = useState<{ url: string; name: string } | null>(null);
-  const paletteFileInputRef = useRef<HTMLInputElement>(null);
-
-  const handleUploadPaletteFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const url = URL.createObjectURL(file);
-    const newImg: ColorPaletteItem = {
-      id: `palette-${Date.now()}`,
-      url,
-      name: file.name,
-      size: file.size,
-      uploadedAt: new Date().toISOString(),
-    };
-    setPaletteImages((prev) => [newImg, ...prev]);
-    showToast(`Đã tải lên ảnh bảng màu "${file.name}" thành công!`);
-    if (paletteFileInputRef.current) paletteFileInputRef.current.value = "";
-  };
-
-  const handleDeletePaletteImage = (id: string) => {
-    setPaletteImages((prev) => prev.filter((img) => img.id !== id));
-    showToast("Đã xóa ảnh bảng màu.");
-  };
 
   // Local state cho xem lịch sử tinh gọn
 
@@ -403,7 +380,7 @@ export default function PoProductDetailPage() {
   }, [product?.colors]);
 
   const handleOpenEditModal = () => {
-    if (!product) return;
+    if (!product || isReadOnly) return;
     setEditProductCode(product.productCode);
     setEditProductName(product.productName);
     setEditCategory(product.category || "");
@@ -477,7 +454,7 @@ export default function PoProductDetailPage() {
 
   const handleSaveEditProduct = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!poId || !productId) return;
+    if (!poId || !productId || isReadOnly) return;
     if (!validateEditFields()) return;
 
     const cleanColors = editColors
@@ -517,7 +494,7 @@ export default function PoProductDetailPage() {
 
   const handleUploadAndSaveImage = useCallback(
     async (file: File) => {
-      if (!poId || !productId) return;
+      if (!poId || !productId || isReadOnly) return;
       const validationError = validateImageFile(file);
       if (validationError) {
         showToast(validationError, "error");
@@ -541,11 +518,11 @@ export default function PoProductDetailPage() {
         showToast(getApiError(err, "Tải ảnh sản phẩm thất bại.").message, "error");
       }
     },
-    [poId, productId, uploadImage, updateProductMutation, showToast],
+    [poId, productId, isReadOnly, uploadImage, updateProductMutation, showToast],
   );
 
   const clearLocalImage = useCallback(async () => {
-    if (!poId || !productId) return;
+    if (!poId || !productId || isReadOnly) return;
     try {
       setImageUrl(null);
       await updateProductMutation.mutateAsync({
@@ -557,11 +534,11 @@ export default function PoProductDetailPage() {
     } catch (err) {
       showToast(getApiError(err, "Xóa ảnh thất bại.").message, "error");
     }
-  }, [poId, productId, updateProductMutation, showToast]);
+  }, [poId, productId, isReadOnly, updateProductMutation, showToast]);
 
   const handlePaste = useCallback(
     (e: ClipboardEvent) => {
-      if (activeTab !== "general") return;
+      if (isReadOnly || activeTab !== "general") return;
       const items = e.clipboardData?.items;
       if (!items) return;
       for (let i = 0; i < items.length; i++) {
@@ -571,7 +548,7 @@ export default function PoProductDetailPage() {
         }
       }
     },
-    [activeTab, handleUploadAndSaveImage],
+    [activeTab, handleUploadAndSaveImage, isReadOnly],
   );
 
   useEffect(() => {
@@ -580,6 +557,7 @@ export default function PoProductDetailPage() {
   }, [handlePaste]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (isReadOnly) return;
     const file = e.target.files?.[0];
     if (file) void handleUploadAndSaveImage(file);
   };
@@ -587,12 +565,14 @@ export default function PoProductDetailPage() {
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
+    if (isReadOnly) return;
     const file = e.dataTransfer.files?.[0];
     if (file && file.type.startsWith("image/")) void handleUploadAndSaveImage(file);
   };
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
+    if (isReadOnly) return;
     setIsDragging(true);
   };
 
@@ -601,7 +581,6 @@ export default function PoProductDetailPage() {
     setIsDragging(false);
   };
 
-  const isProductLocked = product?.status === "closed";
   const [isLockModalOpen, setIsLockModalOpen] = useState(false);
   const [lockReason, setLockReason] = useState("");
   const [isUnlockModalOpen, setIsUnlockModalOpen] = useState(false);
@@ -611,7 +590,7 @@ export default function PoProductDetailPage() {
 
   const handleConfirmLockProduct = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!poId || !productId || !product) return;
+    if (!poId || !productId || !product || isReadOnly) return;
     try {
       await updateStatusMutation.mutateAsync({
         poId,
@@ -630,7 +609,7 @@ export default function PoProductDetailPage() {
 
   const handleConfirmUnlockProduct = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!poId || !productId || !product) return;
+    if (!poId || !productId || !product || readOnlyManagement) return;
     try {
       await updateStatusMutation.mutateAsync({
         poId,
@@ -652,7 +631,7 @@ export default function PoProductDetailPage() {
     stepsData: Partial<StyleOperationStepItem>[],
     baseDays?: number,
   ) => {
-    if (!poId || !productId) return;
+    if (!poId || !productId || isReadOnly) return;
     try {
       // StyleOperationStepTable generates client-only row ids like "new-<ts>",
       // "child-<ts>-<rand>" and "group-<ts>" for rows that aren't persisted
@@ -694,29 +673,8 @@ export default function PoProductDetailPage() {
   };
 
 
-  const handleAddSampleRound = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!poId || !productId) return;
-    try {
-      await createSampleMutation.mutateAsync({
-        poId,
-        productId,
-        input: {
-          feedback: sampleFeedback.trim() || undefined,
-          status: sampleStatus,
-        },
-      });
-      showToast("Đã thêm đợt may mẫu mới thành công.");
-      setIsAddSampleOpen(false);
-      setSampleFeedback("");
-    } catch (err: unknown) {
-      const apiErr = getApiError(err, "Thêm đợt may mẫu thất bại.");
-      showToast(apiErr.message, "error");
-    }
-  };
-
   const handleUnlinkDocument = async (documentId: string) => {
-    if (!poId || !productId) return;
+    if (!poId || !productId || isReadOnly) return;
     try {
       await unlinkDocMutation.mutateAsync({ poId, productId, documentId });
       showToast("Đã gỡ liên kết tài liệu khỏi sản phẩm.");
@@ -727,7 +685,7 @@ export default function PoProductDetailPage() {
   };
 
   const handleLinkExistingPoDoc = async (documentId: string) => {
-    if (!poId || !productId) return;
+    if (!poId || !productId || isReadOnly) return;
     try {
       await linkDocMutation.mutateAsync({ poId, productId, documentId });
       showToast("Đã gán tài liệu vào sản phẩm thành công.");
@@ -739,6 +697,7 @@ export default function PoProductDetailPage() {
   };
 
   const handleOpenUploadDoc = (category: string) => {
+    if (isReadOnly) return;
     setDocUploadCategory(category);
     setDocUploadFile(null);
     setIsUploadDocOpen(true);
@@ -746,7 +705,7 @@ export default function PoProductDetailPage() {
 
   const handleConfirmUploadDoc = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!poId || !productId || !docUploadFile) return;
+    if (!poId || !productId || !docUploadFile || isReadOnly) return;
     try {
       await uploadProductDocMutation.mutateAsync({
         poId,
@@ -769,6 +728,7 @@ export default function PoProductDetailPage() {
     title: string,
     purpose: string,
   ) => {
+    if (isReadOnly) return;
     setVersionTargetInfo({ documentId, currentVersionNo, title, purpose });
     setNewVersionFile(null);
     setNewVersionReason("");
@@ -777,7 +737,7 @@ export default function PoProductDetailPage() {
 
   const handleConfirmUploadVersion = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!poId || !productId || !versionTargetInfo || !newVersionFile) return;
+    if (!poId || !productId || !versionTargetInfo || !newVersionFile || isReadOnly) return;
     if (!newVersionReason.trim()) {
       showToast("Vui lòng nhập lý do / ghi chú thay đổi phiên bản từ khách hàng.", "error");
       return;
@@ -836,7 +796,7 @@ export default function PoProductDetailPage() {
           Sản phẩm không tồn tại hoặc bạn không có quyền truy cập.
         </p>
         <Link
-          to={`/po/${poId}/products`}
+          to={productListPath}
           className="mt-4 inline-block rounded-md bg-red-600 px-4 py-2 text-xs font-medium text-white hover:bg-red-700 transition-colors cursor-pointer"
         >
           Quay lại danh sách sản phẩm PO
@@ -872,6 +832,8 @@ export default function PoProductDetailPage() {
   const isTechPackPurpose = (purpose?: string | null) =>
     purpose === "tech_pack" || purpose === "techpack";
 
+  const isColorCardPurpose = (purpose?: string | null) => purpose === "color_card";
+
   // Phân nhóm tài liệu đính kèm: PO Chi Tiết, TechPack, Khác
   const poDocuments = (product.documents || []).filter((d) =>
     isPoDetailPurpose(d.purpose),
@@ -879,45 +841,60 @@ export default function PoProductDetailPage() {
   const techPackDocuments = (product.documents || []).filter((d) =>
     isTechPackPurpose(d.purpose),
   );
+  const paletteDocuments = (product.documents || []).filter((d) =>
+    isColorCardPurpose(d.purpose),
+  );
   const otherDocuments = (product.documents || []).filter(
-    (d) => !isPoDetailPurpose(d.purpose) && !isTechPackPurpose(d.purpose),
+    (d) =>
+      !isPoDetailPurpose(d.purpose) &&
+      !isTechPackPurpose(d.purpose) &&
+      !isColorCardPurpose(d.purpose),
   );
 
   return (
-    <div className="space-y-3 pt-1">
-      {/* ─── 1. BREADCRUMB PHÂN CẤP TINH GỌN ────────────────────────────────────── */}
-      <nav className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-        <Link to="/dashboard" className="hover:text-gray-900 dark:hover:text-white transition-colors">
-          Dashboard
-        </Link>
-        <span className="text-gray-300 dark:text-gray-600">/</span>
-        <Link to="/po" className="hover:text-gray-900 dark:hover:text-white transition-colors">
-          Đơn hàng PO
-        </Link>
-        <span className="text-gray-300 dark:text-gray-600">/</span>
+    <div className="space-y-3">
+      {/* ─── 1. HÀNG TRÊN: "← Danh sách SP" bên trái, breadcrumb bên phải ──────── */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <Link
-          to={`/po/${poId}/products`}
-          className="font-mono hover:text-gray-900 dark:hover:text-white transition-colors"
+          to={productListPath}
+          className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl border border-gray-200/80 bg-white px-3 text-xs font-semibold text-gray-600 shadow-2xs transition-colors hover:bg-gray-50 hover:text-gray-900 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white"
         >
-          {po?.poCode || "PO"}
+          <ArrowLeft className="h-4 w-4 shrink-0" />
+          Danh sách sản phẩm
         </Link>
-        <span className="text-gray-300 dark:text-gray-600">/</span>
-        <span className="font-mono font-semibold text-gray-800 dark:text-gray-200 truncate max-w-[200px] sm:max-w-none">
-          {product.productCode}
-        </span>
-      </nav>
+        <nav className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+          <Link to={managementContext ? "/management/dashboard" : "/dashboard"} className="hover:text-gray-900 dark:hover:text-white transition-colors">
+            Dashboard
+          </Link>
+          <span className="text-gray-300 dark:text-gray-600">/</span>
+          <Link to={managementContext ? "/management/purchase-orders" : "/po"} className="hover:text-gray-900 dark:hover:text-white transition-colors">
+            Đơn hàng PO
+          </Link>
+          <span className="text-gray-300 dark:text-gray-600">/</span>
+          <Link
+            to={poDetailPath}
+            className="font-mono hover:text-gray-900 dark:hover:text-white transition-colors"
+          >
+            {po?.poCode || "PO"}
+          </Link>
+          <span className="text-gray-300 dark:text-gray-600">/</span>
+          <span className="font-mono font-semibold text-gray-800 dark:text-gray-200 truncate max-w-[200px] sm:max-w-none">
+            {product.productCode}
+          </span>
+        </nav>
+      </div>
 
       {/* ─── 2. UNIFIED PRODUCT HEADER CARD (BỐ CỤC CHUẨN GỌN GÀNG, SANG TRỌNG) ──── */}
-      <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-xs dark:border-gray-800 dark:bg-gray-900 space-y-4">
+      <div className="-mt-1 rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-xs dark:border-gray-800 dark:bg-gray-900 space-y-3">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           {/* Cột trái: Mã sản phẩm TO và ĐẦU TIÊN (Focus), Tên SP phụ trợ & Trạng thái */}
           <div className="space-y-1.5">
             <div className="flex flex-wrap items-center gap-3">
-              <h1 className="text-lg sm:text-xl font-bold font-mono tracking-tight text-gray-900 dark:text-white">
+              <h1 className="text-base sm:text-lg font-bold font-mono tracking-tight text-gray-900 dark:text-white">
                 {product.productCode}
               </h1>
               {product.productName && (
-                <span className="text-base sm:text-lg font-medium text-gray-600 dark:text-gray-300">
+                <span className="text-sm sm:text-base font-medium text-gray-600 dark:text-gray-300">
                   {product.productName}
                 </span>
               )}
@@ -927,42 +904,40 @@ export default function PoProductDetailPage() {
 
           {/* Cột phải: Nhóm nút hành động */}
           <div className="flex flex-wrap items-center gap-2 shrink-0">
-            <Link
-              to={`/po/${poId}/products`}
-              className="inline-flex items-center justify-center rounded-xl border border-gray-300 bg-white px-3.5 py-2 text-xs font-semibold text-gray-700 shadow-xs hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700 transition-colors"
-            >
-              ← Danh sách SP
-            </Link>
-            {!isProductLocked ? (
+            {!readOnlyManagement &&
+              (isProductLocked ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsUnlockModalOpen(true)}
+                  disabled={updateStatusMutation.isPending}
+                  className="border-emerald-300 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-300 flex items-center gap-1.5"
+                >
+                  <UnlockIcon className="w-4 h-4 shrink-0" />
+                  <span>Mở khoá để xử lý tiếp</span>
+                </Button>
+              ) : (
+                <Button
+                  size="sm"
+                  onClick={() => setIsLockModalOpen(true)}
+                  disabled={updateStatusMutation.isPending}
+                  className="bg-rose-600 hover:bg-rose-700 text-white font-semibold flex items-center gap-1.5"
+                >
+                  <LockIcon className="w-4 h-4 shrink-0" />
+                  <span>Khóa sản phẩm</span>
+                </Button>
+              ))}
+            {!isReadOnly && (
               <Button
+                variant="secondary"
                 size="sm"
-                onClick={() => setIsLockModalOpen(true)}
-                disabled={updateStatusMutation.isPending}
-                className="bg-rose-600 hover:bg-rose-700 text-white font-semibold flex items-center gap-1.5"
+                onClick={handleOpenEditModal}
+                className="flex items-center gap-1.5"
               >
-                <LockIcon className="w-4 h-4 shrink-0" />
-                <span>Khóa sản phẩm</span>
-              </Button>
-            ) : (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setIsUnlockModalOpen(true)}
-                disabled={updateStatusMutation.isPending}
-                className="border-emerald-300 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-300 flex items-center gap-1.5"
-              >
-                <UnlockIcon className="w-4 h-4 shrink-0" />
-                <span>Mở khoá để xử lý tiếp</span>
+                <PencilIcon className="w-3.5 h-3.5 shrink-0" />
+                <span>Chỉnh sửa</span>
               </Button>
             )}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleOpenEditModal}
-              disabled={isProductLocked}
-            >
-              Chỉnh sửa
-            </Button>
           </div>
         </div>
 
@@ -977,31 +952,37 @@ export default function PoProductDetailPage() {
                 Sản phẩm này đã được <strong>Khoá</strong> sau khi xử lý hoàn tất. Quy trình công đoạn và các thông tin đã được chốt và chuyển sang chế độ <strong>Chỉ đọc</strong>.
               </span>
             </div>
-            <button
-              type="button"
-              onClick={() => setIsUnlockModalOpen(true)}
-              disabled={updateStatusMutation.isPending}
-              className="text-xs font-bold text-rose-700 underline hover:text-rose-900 dark:text-rose-300 dark:hover:text-white shrink-0 cursor-pointer"
-            >
-              Mở khoá để tiếp tục xử lý
-            </button>
+            {!readOnlyManagement && (
+              <button
+                type="button"
+                onClick={() => setIsUnlockModalOpen(true)}
+                disabled={updateStatusMutation.isPending}
+                className="text-xs font-bold text-rose-700 underline hover:text-rose-900 dark:text-rose-300 dark:hover:text-white shrink-0 cursor-pointer"
+              >
+                Mở khoá để tiếp tục xử lý
+              </button>
+            )}
           </div>
+        )}
+        {readOnlyManagement && (
+          <p className="rounded-xl border border-brand-200 bg-brand-50 px-3.5 py-2.5 text-xs font-medium text-brand-800 dark:border-brand-900/50 dark:bg-brand-950/40 dark:text-brand-200">
+            Bạn đang xem chi tiết sản phẩm trong khu Quản lý · chỉ đọc.
+          </p>
         )}
       </div>
 
       {/* ─── 3. THANH TABS GẠCH CHÂN RIÊNG BIỆT ──────────────────── */}
-      <div className="flex flex-wrap items-center justify-between border-b border-gray-200 dark:border-gray-800 pt-2 gap-2">
-          <nav className="flex min-w-0 flex-wrap items-center gap-x-6 gap-y-2" aria-label="Tabs">
+      <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-800 pt-2 gap-2">
+          <nav className="flex min-w-0 flex-nowrap items-center gap-x-6 overflow-x-auto" aria-label="Tabs">
             <button
               type="button"
               onClick={() => handleTabChange("general")}
-              className={`flex items-center gap-2 border-b-2 py-2.5 px-1 text-sm font-semibold transition-colors cursor-pointer whitespace-nowrap ${
+              className={`border-b-2 py-2.5 px-1 text-sm font-semibold transition-colors cursor-pointer whitespace-nowrap ${
                 activeTab === "general"
                   ? "border-brand-500 text-brand-600 dark:text-brand-400"
                   : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
               }`}
             >
-              <InfoIcon className="w-4 h-4" />
               Thông tin sản phẩm
             </button>
 
@@ -1009,119 +990,87 @@ export default function PoProductDetailPage() {
             <button
               type="button"
               onClick={() => handleTabChange("sizes")}
-              className={`flex items-center gap-2 border-b-2 py-2.5 px-1 text-sm font-semibold transition-colors cursor-pointer whitespace-nowrap ${
+              className={`border-b-2 py-2.5 px-1 text-sm font-semibold transition-colors cursor-pointer whitespace-nowrap ${
                 activeTab === "sizes"
                   ? "border-brand-500 text-brand-600 dark:text-brand-400"
                   : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
               }`}
             >
-              <TableIcon className="w-4 h-4" />
               Bảng size
-              {uniqueSizes.length > 0 && (
-                <span className="ml-1.5 rounded-full bg-brand-50 dark:bg-brand-950/60 px-2 py-0.5 text-xs text-brand-600 dark:text-brand-400">
-                  {uniqueSizes.length} size
-                </span>
-              )}
             </button>
 
             {/* TAB 3: BẢNG MÀU (ẢNH BẢNG MÀU) */}
             <button
               type="button"
               onClick={() => handleTabChange("colors")}
-              className={`flex items-center gap-2 border-b-2 py-2.5 px-1 text-sm font-semibold transition-colors cursor-pointer whitespace-nowrap ${
+              className={`border-b-2 py-2.5 px-1 text-sm font-semibold transition-colors cursor-pointer whitespace-nowrap ${
                 activeTab === "colors"
                   ? "border-brand-500 text-brand-600 dark:text-brand-400"
                   : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
               }`}
             >
-              <GridIcon className="w-4 h-4" />
               Bảng màu
-              {(product.colors?.length || 0) > 0 && (
-                <span className="ml-1.5 rounded-full bg-brand-50 dark:bg-brand-950/60 px-2 py-0.5 text-xs text-brand-600 dark:text-brand-400">
-                  {product.colors?.length}
-                </span>
-              )}
             </button>
 
             <button
               type="button"
               onClick={() => handleTabChange("steps")}
-              className={`flex items-center gap-2 border-b-2 py-2.5 px-1 text-sm font-semibold transition-colors cursor-pointer whitespace-nowrap ${
+              className={`border-b-2 py-2.5 px-1 text-sm font-semibold transition-colors cursor-pointer whitespace-nowrap ${
                 activeTab === "steps"
                   ? "border-brand-500 text-brand-600 dark:text-brand-400"
                   : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
               }`}
             >
-              <DocsIcon className="w-4 h-4" />
-              Quy trình công đoạn &amp; KIM
-              {mappedSteps.length > 0 && (
-                <span className="ml-1.5 rounded-full bg-brand-50 dark:bg-brand-950/60 px-2 py-0.5 text-xs text-brand-600 dark:text-brand-400">
-                  {mappedSteps.length}
-                </span>
-              )}
+              Quy trình công đoạn
             </button>
 
             {/* TAB NGUYÊN PHỤ LIỆU (BOM) */}
             <button
               type="button"
               onClick={() => handleTabChange("bom")}
-              className={`flex items-center gap-2 border-b-2 py-2.5 px-1 text-sm font-semibold transition-colors cursor-pointer whitespace-nowrap ${
+              className={`border-b-2 py-2.5 px-1 text-sm font-semibold transition-colors cursor-pointer whitespace-nowrap ${
                 activeTab === "bom"
                   ? "border-brand-500 text-brand-600 dark:text-brand-400"
                   : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
               }`}
             >
-              <FileSpreadsheet className="w-4 h-4" />
-              Nguyên phụ liệu (BOM)
+              Nguyên phụ liệu
             </button>
 
             <button
               type="button"
               onClick={() => handleTabChange("production_doc")}
-              className={`flex items-center gap-2 border-b-2 py-2.5 px-1 text-sm font-semibold transition-colors cursor-pointer whitespace-nowrap ${
+              className={`border-b-2 py-2.5 px-1 text-sm font-semibold transition-colors cursor-pointer whitespace-nowrap ${
                 activeTab === "production_doc"
                   ? "border-brand-500 text-brand-600 dark:text-brand-400"
                   : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
               }`}
             >
-              <PageIcon className="w-4 h-4" />
               Tài liệu sản xuất
             </button>
 
             <button
               type="button"
               onClick={() => handleTabChange("samples")}
-              className={`flex items-center gap-2 border-b-2 py-2.5 px-1 text-sm font-semibold transition-colors cursor-pointer whitespace-nowrap ${
+              className={`border-b-2 py-2.5 px-1 text-sm font-semibold transition-colors cursor-pointer whitespace-nowrap ${
                 activeTab === "samples"
                   ? "border-brand-500 text-brand-600 dark:text-brand-400"
                   : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
               }`}
             >
-              <EyeIcon className="w-4 h-4" />
               Đợt may mẫu
-              {(product.sampleRounds?.length || 0) > 0 && (
-                <span className="ml-1.5 rounded-full bg-gray-100 dark:bg-gray-800 px-2 py-0.5 text-xs text-gray-600 dark:text-gray-400">
-                  {product.sampleRounds?.length}
-                </span>
-              )}
             </button>
 
             <button
               type="button"
               onClick={() => handleTabChange("documents")}
-              className={`flex items-center gap-2 border-b-2 py-2.5 px-1 text-sm font-semibold transition-colors cursor-pointer whitespace-nowrap ${
+              className={`border-b-2 py-2.5 px-1 text-sm font-semibold transition-colors cursor-pointer whitespace-nowrap ${
                 activeTab === "documents"
                   ? "border-brand-500 text-brand-600 dark:text-brand-400"
                   : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
               }`}
             >
-              <FileIcon className="w-4 h-4" />
               Tài liệu đính kèm
-              {(product.documents?.length || 0) > 0 && (
-                <span className="ml-1.5 rounded-full bg-gray-100 dark:bg-gray-800 px-2 py-0.5 text-xs text-gray-600 dark:text-gray-400">
-                  {product.documents?.length}
-                </span>
-              )}
             </button>
 
           </nav>
@@ -1144,7 +1093,7 @@ export default function PoProductDetailPage() {
                       className="max-h-56 max-w-full object-contain"
                     />
                   </div>
-                  <div className="flex gap-2">
+                  {!isReadOnly && <div className="flex gap-2">
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
@@ -1159,132 +1108,152 @@ export default function PoProductDetailPage() {
                     >
                       Xóa
                     </button>
-                  </div>
+                  </div>}
                 </div>
               ) : (
                 <div
-                  onDrop={handleDrop}
-                  onDragOver={handleDragOver}
-                  onDragLeave={handleDragLeave}
-                  onClick={() => fileInputRef.current?.click()}
-                  className={`relative flex h-56 w-full cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed p-6 text-center transition-colors ${
-                    isDragging
-                      ? "border-blue-500 bg-blue-50/50 dark:bg-blue-950/30"
-                      : "border-gray-200 hover:border-gray-300 bg-gray-50/50 dark:border-gray-800 dark:bg-gray-800/40"
+                  onDrop={isReadOnly ? undefined : handleDrop}
+                  onDragOver={isReadOnly ? undefined : handleDragOver}
+                  onDragLeave={isReadOnly ? undefined : handleDragLeave}
+                  onClick={isReadOnly ? undefined : () => fileInputRef.current?.click()}
+                  className={`relative flex h-56 w-full flex-col items-center justify-center rounded-xl border-2 border-dashed p-6 text-center transition-colors ${
+                    isReadOnly
+                      ? "border-gray-200 bg-gray-50/50 dark:border-gray-800 dark:bg-gray-800/40"
+                      : `cursor-pointer ${isDragging ? "border-blue-500 bg-blue-50/50 dark:bg-blue-950/30" : "border-gray-200 bg-gray-50/50 hover:border-gray-300 dark:border-gray-800 dark:bg-gray-800/40"}`
                   }`}
                 >
                   <StyleImagePlaceholder className="h-16 w-16 text-gray-300 dark:text-gray-600 mb-3" />
                   <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">
-                    Thêm ảnh sản phẩm
+                    {isReadOnly ? "Chưa có ảnh mô tả sản phẩm" : "Thêm ảnh sản phẩm"}
                   </p>
-                  <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">
+                  {!isReadOnly && <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">
                     Kéo thả ảnh vào đây hoặc nhấn <strong>Ctrl + V</strong>
-                  </p>
-                  <span className="mt-3 inline-flex items-center rounded-md bg-white px-3 py-1 text-xs font-medium text-gray-600 shadow-2xs border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
+                  </p>}
+                  {!isReadOnly && <span className="mt-3 inline-flex items-center rounded-md bg-white px-3 py-1 text-xs font-medium text-gray-600 shadow-2xs border border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
                     PNG, JPG, WebP · tối đa 5MB
-                  </span>
+                  </span>}
                 </div>
               )}
             </div>
 
-            <input
+            {!isReadOnly && <input
               ref={fileInputRef}
               type="file"
               accept="image/*"
               onChange={handleFileSelect}
               className="hidden"
-            />
+            />}
           </div>
 
-          {/* Cột phải (8 cols / ~67%): Chi tiết thông số sản phẩm */}
+          {/* Cột phải (8 cols / ~67%): Chi tiết thông số sản phẩm — 1 card thống
+              nhất, các phần ngăn cách bằng đường kẻ thay vì nhiều khối xám
+              rời rạc, để nhìn có hệ thống hơn. */}
           <div className="lg:col-span-8 space-y-4">
-            <dl className="grid grid-cols-2 gap-x-4 gap-y-4 rounded-xl border border-gray-100 bg-gray-50/60 p-5 text-base dark:border-gray-800/80 dark:bg-gray-800/20">
-              <div>
-                <dt className="text-sm text-gray-500 dark:text-gray-400">Dòng sản phẩm</dt>
-                <dd className="font-semibold text-gray-800 dark:text-gray-200">
-                  {product.category || "—"}
-                </dd>
-              </div>
-
-              <div>
-                <dt className="text-sm text-gray-500 dark:text-gray-400">Hạn giao</dt>
-                <dd className="font-semibold text-gray-800 dark:text-gray-200">
-                  {formatDate(product.deadline)}
-                </dd>
-              </div>
-
-              <div>
-                <dt className="text-sm text-gray-500 dark:text-gray-400">Trạng thái</dt>
-                <dd
-                  className="mt-0.5"
-                  title={
-                    !isProductLocked
-                      ? "Đang trong quá trình xử lý dữ liệu — dùng nút \"Khóa sản phẩm\" ở trên để khoá"
-                      : "Đã khóa sau khi xử lý xong, chế độ chỉ đọc"
-                  }
-                >
-                  <ProductStatusBadge status={product.status} />
-                </dd>
-              </div>
-
-              {product.sourceStyle && (
+            <div className="divide-y divide-gray-100 rounded-2xl border border-gray-200 bg-white dark:divide-gray-800 dark:border-gray-800 dark:bg-gray-900">
+              <dl className="grid grid-cols-2 gap-x-4 gap-y-4 p-5 sm:grid-cols-3">
                 <div>
-                  <dt className="text-sm text-gray-500 dark:text-gray-400">Mẫu Fit nguồn</dt>
-                  <dd>
-                    <Link
-                      to={`/styles/${product.sourceStyle.id}/detail`}
-                      target="_blank"
-                      className="font-mono text-sm font-semibold text-blue-600 dark:text-blue-300 hover:underline"
-                    >
-                      {product.sourceStyle.styleCode} ↗
-                    </Link>
+                  <dt className="text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">
+                    Dòng sản phẩm
+                  </dt>
+                  <dd className="mt-1 text-sm font-semibold text-gray-900 dark:text-white">
+                    {product.category || "—"}
                   </dd>
                 </div>
-              )}
 
-              {product.sourceStyle && product.importedAt && (
                 <div>
-                  <dt className="text-sm text-gray-500 dark:text-gray-400">Ngày import từ Fit</dt>
+                  <dt className="text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">
+                    Hạn giao
+                  </dt>
                   <dd
-                    className="font-semibold text-gray-800 dark:text-gray-200"
+                    className={`mt-1 text-sm font-semibold ${deadlineValueClasses[getDeadlineInfo(product.deadline, isProductLocked ? "closed" : undefined).tone]}`}
+                  >
+                    {formatDate(product.deadline)}
+                  </dd>
+                </div>
+
+                <div>
+                  <dt className="text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">
+                    Trạng thái
+                  </dt>
+                  <dd
+                    className="mt-1.5"
                     title={
-                      product.importedBy
-                        ? `Người import: ${product.importedBy}`
-                        : undefined
+                      readOnlyManagement
+                        ? "Khu Quản lý đang ở chế độ chỉ xem"
+                        : !isProductLocked
+                          ? "Đang trong quá trình xử lý dữ liệu — dùng nút \"Khóa sản phẩm\" ở trên để khoá"
+                          : "Đã khóa sau khi xử lý xong, chế độ chỉ đọc"
                     }
                   >
-                    {formatDate(product.importedAt)}
+                    <ProductStatusBadge status={product.status} />
                   </dd>
                 </div>
+
+                {product.sourceStyle && (
+                  <div>
+                    <dt className="text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">
+                      Mẫu Fit nguồn
+                    </dt>
+                    <dd className="mt-1">
+                      <Link
+                        to={`/styles/${product.sourceStyle.id}/detail`}
+                        target="_blank"
+                        className="font-mono text-sm font-semibold text-blue-600 dark:text-blue-300 hover:underline"
+                      >
+                        {product.sourceStyle.styleCode} ↗
+                      </Link>
+                    </dd>
+                  </div>
+                )}
+
+                {product.sourceStyle && product.importedAt && (
+                  <div>
+                    <dt className="text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">
+                      Ngày import từ Fit
+                    </dt>
+                    <dd
+                      className="mt-1 text-sm font-semibold text-gray-900 dark:text-white"
+                      title={
+                        product.importedBy
+                          ? `Người import: ${product.importedBy}`
+                          : undefined
+                      }
+                    >
+                      {formatDate(product.importedAt)}
+                    </dd>
+                  </div>
+                )}
+              </dl>
+
+              {/* Liên kết nhanh sang Tab 2: Bảng size */}
+              <div className="flex items-center justify-between gap-3 px-5 py-4">
+                <div className="min-w-0">
+                  <span className="text-sm font-semibold text-gray-900 dark:text-white">Màu sắc &amp; Kích cỡ</span>
+                  <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">
+                    {product.colors?.length || 0} màu · {uniqueSizes.length} size · {(product.totalQuantity || 0).toLocaleString()} pcs
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleTabChange("sizes")}
+                  className="shrink-0 text-sm font-semibold text-brand-600 hover:underline cursor-pointer"
+                >
+                  Xem Bảng size →
+                </button>
+              </div>
+
+              {/* Chất liệu & đặc điểm */}
+              {product.materialNote && (
+                <div className="px-5 py-4">
+                  <dt className="text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500 mb-1.5">
+                    Ghi chú chất liệu
+                  </dt>
+                  <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed">
+                    {product.materialNote}
+                  </p>
+                </div>
               )}
-            </dl>
-
-            {/* Thẻ liên kết nhanh sang Tab 2: Bảng size */}
-            <div className="flex items-center justify-between gap-3 rounded-xl border border-gray-100 bg-gray-50/60 px-5 py-4 text-base dark:border-gray-800/80 dark:bg-gray-800/20">
-              <div className="min-w-0">
-                <span className="font-semibold text-gray-800 dark:text-gray-200">Màu sắc &amp; Kích cỡ</span>
-                <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">
-                  {product.colors?.length || 0} màu · {uniqueSizes.length} size · {(product.totalQuantity || 0).toLocaleString()} pcs
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={() => handleTabChange("sizes")}
-                className="shrink-0 text-sm font-semibold text-brand-600 hover:underline cursor-pointer"
-              >
-                Xem Bảng size →
-              </button>
             </div>
-
-            {/* Khối chất liệu & đặc điểm */}
-            {product.materialNote && (
-              <div className="rounded-xl border border-gray-100 bg-gray-50/60 p-5 text-base dark:border-gray-800/80 dark:bg-gray-800/20">
-                <dt className="text-sm text-gray-500 dark:text-gray-400 mb-1">Ghi chú chất liệu</dt>
-                <p className="text-gray-800 dark:text-gray-200 whitespace-pre-wrap leading-relaxed">
-                  {product.materialNote}
-                </p>
-              </div>
-            )}
 
             {/* Metadata Footer */}
             <div className="text-xs text-gray-400 dark:text-gray-500 flex flex-wrap gap-3">
@@ -1302,20 +1271,12 @@ export default function PoProductDetailPage() {
       {activeTab === "sizes" && (
         <div className="space-y-5 pt-3">
           {/* Header Bảng size */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white dark:bg-gray-900 p-5 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-xs">
-            <div>
-              <h3 className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                <span>Bảng phân bổ Size &amp; Phối màu sản phẩm</span>
-                <span className="rounded-full bg-brand-50 px-2.5 py-0.5 text-xs font-bold text-brand-600 border border-brand-200 dark:bg-brand-950/40 dark:text-brand-300">
-                  {(product.colors || []).length} màu • {uniqueSizes.length} size
-                </span>
-              </h3>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                Ma trận phân bổ chi tiết sản lượng theo từng màu sắc và kích cỡ của sản phẩm
-              </p>
-            </div>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <h3 className="text-base font-bold text-gray-900 dark:text-white">
+              Bảng phân bổ Size &amp; Phối màu sản phẩm
+            </h3>
 
-            {!isProductLocked && (
+            {!isReadOnly && (
               <Button
                 variant="outline"
                 size="sm"
@@ -1327,34 +1288,6 @@ export default function PoProductDetailPage() {
             )}
           </div>
 
-          {/* 3 Thẻ thống kê KPI nhanh */}
-          {/* Thống kê nhanh: một dải gọn thay cho 3 thẻ lớn — số liệu ở đây là
-              phần phụ, bảng ma trận bên dưới mới là nội dung chính. */}
-          <div className="flex flex-wrap items-center gap-x-8 gap-y-2 rounded-xl border border-gray-200 bg-gray-50/60 px-4 py-2.5 dark:border-gray-800 dark:bg-gray-800/40">
-            <div className="flex items-baseline gap-1.5">
-              <span className="text-theme-xs text-gray-500 dark:text-gray-400">Tổng sản lượng</span>
-              <span className="font-mono text-theme-sm font-bold text-brand-600 dark:text-brand-400">
-                {(product.totalQuantity || 0).toLocaleString()}
-              </span>
-              <span className="text-theme-xs text-gray-400">pcs</span>
-            </div>
-            <div className="flex items-baseline gap-1.5">
-              <span className="text-theme-xs text-gray-500 dark:text-gray-400">Phối màu</span>
-              <span className="font-mono text-theme-sm font-bold text-gray-900 dark:text-white">
-                {(product.colors || []).length}
-              </span>
-            </div>
-            <div className="flex min-w-0 items-baseline gap-1.5">
-              <span className="shrink-0 text-theme-xs text-gray-500 dark:text-gray-400">Kích cỡ</span>
-              <span
-                className="truncate font-mono text-theme-sm font-bold text-gray-900 dark:text-white"
-                title={uniqueSizes.join(", ")}
-              >
-                {uniqueSizes.length > 0 ? uniqueSizes.join(" • ") : "Chưa có"}
-              </span>
-            </div>
-          </div>
-
           {/* Ma trận bảng Size + Màu */}
           {!product.colors || product.colors.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-gray-300 p-12 text-center dark:border-gray-700 bg-white dark:bg-gray-900">
@@ -1363,7 +1296,7 @@ export default function PoProductDetailPage() {
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 max-w-md mx-auto">
                 Sản phẩm này chưa được thiết lập cơ cấu kích cỡ và phối màu sản xuất.
               </p>
-              {!isProductLocked && (
+              {!isReadOnly && (
                 <Button
                   size="sm"
                   onClick={handleOpenEditModal}
@@ -1427,7 +1360,7 @@ export default function PoProductDetailPage() {
                   </tbody>
                   <tfoot className="border-t-2 border-gray-200 bg-gray-50/90 font-semibold dark:border-gray-700 dark:bg-gray-800/80">
                     <tr>
-                      <td colSpan={3} className="px-5 py-3.5 text-gray-900 dark:text-white uppercase text-[11px] tracking-wider">
+                      <td colSpan={2} className="px-5 py-3.5 text-gray-900 dark:text-white uppercase text-[11px] tracking-wider">
                         Tổng cộng theo Size
                       </td>
                       {uniqueSizes.map((size) => (
@@ -1453,142 +1386,99 @@ export default function PoProductDetailPage() {
       {activeTab === "colors" && (
         <div className="space-y-5 pt-3">
           {/* Header Bảng màu */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white dark:bg-gray-900 p-5 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-xs">
-            <div>
-              <h3 className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                <span>Bảng màu sản phẩm (Color Palette &amp; Swatches)</span>
-                <span className="rounded-full bg-brand-50 px-2.5 py-0.5 text-xs font-bold text-brand-600 border border-brand-200 dark:bg-brand-950/40 dark:text-brand-300">
-                  {paletteImages.length} ảnh bảng màu
-                </span>
-              </h3>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                Khu vực lưu trữ, tải lên và cập nhật hình ảnh bảng màu, lab-dips và mẫu vải cho sản phẩm
-              </p>
-            </div>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <h3 className="text-base font-bold text-gray-900 dark:text-white">
+              Bảng màu sản phẩm
+            </h3>
 
-            {!isProductLocked && (
+            {!isReadOnly && (
               <Button
                 size="sm"
-                onClick={() => paletteFileInputRef.current?.click()}
+                onClick={() => handleOpenUploadDoc("color_card")}
                 className="text-xs font-semibold shrink-0"
               >
                 <PlusIcon className="w-4 h-4 mr-1.5" />
                 Tải ảnh bảng màu lên
               </Button>
             )}
-            <input
-              ref={paletteFileInputRef}
-              type="file"
-              accept="image/*"
-              onChange={handleUploadPaletteFile}
-              className="hidden"
-            />
           </div>
 
-          {/* Khu vực upload ảnh nhanh (Dropzone) */}
-          {!isProductLocked && (
-            <div
-              onClick={() => paletteFileInputRef.current?.click()}
-              className="cursor-pointer rounded-2xl border-2 border-dashed border-gray-300 bg-white p-8 text-center hover:border-brand-400 hover:bg-gray-50/50 dark:border-gray-700 dark:bg-gray-900 dark:hover:border-brand-500 transition-all group"
-            >
-              <GridIcon className="w-10 h-10 mx-auto text-gray-400 group-hover:text-brand-600 transition-colors mb-2" />
-              <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">
-                Nhấp hoặc kéo thả hình ảnh bảng màu vào đây để tải lên
-              </p>
-              <p className="text-xs text-gray-400 mt-1">Hỗ trợ PNG, JPG, WEBP dung lượng tối đa 15MB</p>
-            </div>
-          )}
-
           {/* Thư viện hình ảnh bảng màu đã tải lên */}
-          {paletteImages.length > 0 ? (
+          {paletteDocuments.length > 0 ? (
             <div className="space-y-3">
               <h4 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                <span>Hình ảnh bảng màu đã tải lên ({paletteImages.length})</span>
+                <span>Hình ảnh bảng màu đã tải lên ({paletteDocuments.length})</span>
               </h4>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                {paletteImages.map((img) => (
-                  <div
-                    key={img.id}
-                    className="group relative rounded-xl border border-gray-200 bg-white overflow-hidden shadow-xs dark:border-gray-800 dark:bg-gray-900 transition-all hover:shadow-md"
-                  >
-                    <div className="aspect-square bg-gray-50 dark:bg-gray-800 flex items-center justify-center overflow-hidden">
-                      <img
-                        src={img.url}
-                        alt={img.name}
-                        className="w-full h-full object-contain transition-transform duration-200 group-hover:scale-105"
-                      />
-                    </div>
-                    <div className="p-3 border-t border-gray-100 dark:border-gray-800">
-                      <p className="text-xs font-semibold text-gray-800 dark:text-gray-200 truncate" title={img.name}>
-                        {img.name}
-                      </p>
-                      <p className="text-[10px] text-gray-400 mt-0.5">{formatDateTime(img.uploadedAt)}</p>
-
-                      <div className="flex items-center justify-between pt-2 mt-1 border-t border-gray-100 dark:border-gray-800">
-                        <button
-                          type="button"
-                          onClick={() => setPalettePreviewModalUrl({ url: img.url, name: img.name })}
-                          className="inline-flex items-center gap-1 text-[11px] font-semibold text-brand-600 hover:text-brand-700 cursor-pointer"
-                        >
-                          <EyeIcon className="w-3.5 h-3.5" />
-                          <span>Xem</span>
-                        </button>
-
-                        <a
-                          href={img.url}
-                          download={img.name}
-                          className="inline-flex items-center gap-1 text-[11px] font-semibold text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white cursor-pointer"
-                          title="Tải về"
-                        >
-                          <DownloadIcon className="w-3.5 h-3.5" />
-                        </a>
-
-                        {!isProductLocked && (
-                          <button
-                            type="button"
-                            onClick={() => handleDeletePaletteImage(img.id)}
-                            className="text-gray-400 hover:text-red-600 transition-colors cursor-pointer"
-                            title="Xóa ảnh"
-                          >
-                            <TrashBinIcon className="w-3.5 h-3.5" />
-                          </button>
+                {paletteDocuments.map((doc) => {
+                  const imgName = doc.fileName || doc.title;
+                  return (
+                    <div
+                      key={doc.documentId}
+                      className="group relative rounded-xl border border-gray-200 bg-white overflow-hidden shadow-xs dark:border-gray-800 dark:bg-gray-900 transition-all hover:shadow-md"
+                    >
+                      <div className="aspect-square bg-gray-50 dark:bg-gray-800 flex items-center justify-center overflow-hidden">
+                        {doc.fileUrl ? (
+                          <img
+                            src={doc.fileUrl}
+                            alt={imgName}
+                            className="w-full h-full object-contain transition-transform duration-200 group-hover:scale-105"
+                          />
+                        ) : (
+                          <StyleImagePlaceholder className="h-10 w-10 text-gray-300 dark:text-gray-600" />
                         )}
                       </div>
+                      <div className="p-3 border-t border-gray-100 dark:border-gray-800">
+                        <p className="text-xs font-semibold text-gray-800 dark:text-gray-200 truncate" title={imgName}>
+                          {imgName}
+                        </p>
+                        <p className="text-[10px] text-gray-400 mt-0.5">{formatDateTime(doc.linkedAt)}</p>
+
+                        <div className="flex items-center justify-between pt-2 mt-1 border-t border-gray-100 dark:border-gray-800">
+                          <button
+                            type="button"
+                            disabled={!doc.fileUrl}
+                            onClick={() =>
+                              doc.fileUrl &&
+                              setPalettePreviewModalUrl({ url: doc.fileUrl, name: imgName })
+                            }
+                            className="inline-flex items-center gap-1 text-[11px] font-semibold text-brand-600 hover:text-brand-700 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            <EyeIcon className="w-3.5 h-3.5" />
+                            <span>Xem</span>
+                          </button>
+
+                          {!readOnlyManagement && (
+                            <a
+                              href={doc.fileUrl || undefined}
+                              download={imgName}
+                              className="inline-flex cursor-pointer items-center gap-1 text-[11px] font-semibold text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white"
+                              title="Tải về"
+                            >
+                              <DownloadIcon className="w-3.5 h-3.5" />
+                            </a>
+                          )}
+
+                          {!isReadOnly && (
+                            <button
+                              type="button"
+                              onClick={() => handleUnlinkDocument(doc.documentId)}
+                              className="text-gray-400 hover:text-red-600 transition-colors cursor-pointer"
+                              title="Xóa ảnh"
+                            >
+                              <TrashBinIcon className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           ) : (
             <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center dark:border-gray-800 dark:bg-gray-900">
               <p className="text-xs text-gray-400 italic">Chưa có ảnh bảng màu nào được tải lên.</p>
-            </div>
-          )}
-
-          {/* Danh sách các phối màu đã khai báo của sản phẩm */}
-          {(product.colors || []).length > 0 && (
-            <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-xs dark:border-gray-800 dark:bg-gray-900 space-y-3">
-              <h4 className="text-sm font-bold text-gray-900 dark:text-white">
-                Các phối màu hiện có của sản phẩm ({product.colors?.length})
-              </h4>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {product.colors?.map((c, i) => {
-                  const qty = (c.sizes || []).reduce((sum, s) => sum + (Number(s.quantity) || 0), 0);
-                  return (
-                    <div
-                      key={c.id || i}
-                      className="flex items-center gap-3 p-3 rounded-xl border border-gray-100 bg-gray-50/60 dark:border-gray-800 dark:bg-gray-800/40"
-                    >
-                      <div className="min-w-0 flex-1">
-                        <p className="text-xs font-bold text-gray-900 dark:text-white truncate">{c.colorName}</p>
-                      </div>
-                      <span className="text-xs font-mono font-semibold text-brand-600 dark:text-brand-400 shrink-0">
-                        {qty.toLocaleString()} pcs
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
             </div>
           )}
 
@@ -1620,13 +1510,14 @@ export default function PoProductDetailPage() {
           styleId={product.id}
           steps={mappedSteps}
           cmBaseDays={product.as3bCmBaseDays || 30}
-          canEdit={!isProductLocked}
+          canEdit={!isReadOnly}
+          canExport={!readOnlyManagement}
           onEditingChange={setIsOperationStepsEditing}
           onSave={handleSaveSteps}
           imageUrl={imageUrl}
           styleCode={product.productCode}
           styleName={product.productName}
-          onImageChange={(file) => void handleUploadAndSaveImage(file)}
+          onImageChange={isReadOnly ? undefined : (file) => void handleUploadAndSaveImage(file)}
         />
       )}
 
@@ -1640,6 +1531,7 @@ export default function PoProductDetailPage() {
           productName={product.productName}
           poId={poId || ""}
           isProductLocked={isProductLocked}
+          readOnly={readOnlyManagement}
         />
       )}
 
@@ -1652,97 +1544,20 @@ export default function PoProductDetailPage() {
           productId={productId}
           styleName={product.productName}
           styleImageUrl={imageUrl || product.structureImageVersionId || undefined}
+          readOnly={readOnlyManagement}
           onEditingChange={setIsProductionDocEditing}
         />
       )}
 
       {/* ========================================================================= */}
-      {/* TAB 4: ĐỢT MAY MẪU (SAMPLES)                                              */}
+      {/* TAB 4: ĐỢT MAY MẪU (SAMPLES) — dùng chung UI với "Lần may mẫu" bên Mẫu Fit */}
       {/* ========================================================================= */}
-      {activeTab === "samples" && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-base font-bold text-gray-900 dark:text-white">
-                Danh sách các đợt may mẫu của sản phẩm
-              </h3>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                Theo dõi quá trình may mẫu, feedback từ khách hàng và ảnh chụp mẫu
-              </p>
-            </div>
-            <Button size="sm" onClick={() => setIsAddSampleOpen(true)}>
-              <PlusIcon className="w-4 h-4 mr-1" />
-              Thêm đợt may mẫu
-            </Button>
-          </div>
-
-          <div className="grid grid-cols-1 gap-4">
-            {!product.sampleRounds || product.sampleRounds.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-gray-200 p-8 text-center text-xs text-gray-400 dark:border-gray-800">
-                Sản phẩm này chưa có đợt may mẫu nào. Bấm "Thêm đợt may mẫu" để tạo mới.
-              </div>
-            ) : (
-              product.sampleRounds.map((round) => (
-                <div
-                  key={round.id}
-                  className="rounded-2xl border border-gray-200 bg-white p-5 shadow-xs dark:border-gray-800 dark:bg-gray-900 space-y-3"
-                >
-                  <div className="flex items-center justify-between border-b border-gray-100 pb-3 dark:border-gray-800">
-                    <div className="flex items-center gap-3">
-                      <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-brand-50 text-sm font-bold text-brand-600 dark:bg-brand-950 dark:text-brand-400 font-mono">
-                        #{round.roundNo}
-                      </span>
-                      <div>
-                        <h4 className="font-bold text-sm text-gray-900 dark:text-white">
-                          Đợt may mẫu {round.roundNo}
-                        </h4>
-                        <span className="text-[11px] text-gray-400">
-                          Ngày tạo: {formatDate(round.createdAt)}
-                        </span>
-                      </div>
-                    </div>
-                    <span
-                      className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${getSampleRoundBadgeClass(round.status)}`}
-                    >
-                      {round.status}
-                    </span>
-                  </div>
-
-                  <div>
-                    <span className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">
-                      Ý kiến phản hồi (Feedback):
-                    </span>
-                    <p className="text-sm text-gray-800 dark:text-gray-200 bg-gray-50 p-3 rounded-xl dark:bg-gray-800/40">
-                      {round.feedback || "Chưa có phản hồi cho đợt mẫu này."}
-                    </p>
-                  </div>
-
-                  {round.images && round.images.length > 0 && (
-                    <div>
-                      <span className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2">
-                        Ảnh chụp kiểm mẫu ({round.images.length} ảnh):
-                      </span>
-                      <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-2.5">
-                        {round.images.map((img) => (
-                          <div
-                            key={img.id}
-                            className="aspect-square rounded-xl overflow-hidden border border-gray-200 bg-gray-50 dark:border-gray-700"
-                          >
-                            <img
-                              src={img.documentVersionId || img.fileUrl}
-                              alt="Ảnh mẫu"
-                              className="w-full h-full object-cover"
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ))
-            )}
-          </div>
-        </div>
+      {activeTab === "samples" && poId && productId && (
+        <PoProductSampleRoundsTab
+          poId={poId}
+          productId={productId}
+          readOnly={readOnlyManagement}
+        />
       )}
 
       {/* ========================================================================= */}
@@ -1752,17 +1567,14 @@ export default function PoProductDetailPage() {
         <div className="space-y-4">
           {/* Header tổng quan */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <h3 className="flex items-center gap-2 text-theme-base font-bold text-gray-900 dark:text-white">
-              <span>Tài liệu đính kèm</span>
-              <span className="rounded-full border border-gray-200 bg-gray-100 px-2 py-0.5 text-theme-xs font-semibold text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
-                {(product.documents || []).length} file
-              </span>
+            <h3 className="text-theme-base font-bold text-gray-900 dark:text-white">
+              Tài liệu đính kèm
             </h3>
 
-            {!isProductLocked && (
+            {!isReadOnly && (
               <Button
                 size="sm"
-                onClick={() => setIsLinkPoDocOpen(true)}
+                onClick={() => openLinkPoDocModal(null)}
                 className="shrink-0"
               >
                 <PlusIcon className="w-4 h-4 mr-1" />
@@ -1776,14 +1588,17 @@ export default function PoProductDetailPage() {
             <div className="rounded-xl border border-rose-200 bg-rose-50/80 p-3.5 text-xs text-rose-800 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300 flex items-center gap-2.5">
               <LockIcon className="w-4 h-4 shrink-0 text-rose-600" />
               <span>
-                <strong>Sản phẩm đã bị khóa:</strong> Chế độ chỉ đọc. Bạn có thể xem trước nội dung hoặc tải về các phiên bản của tài liệu, nhưng không thể thêm, xóa hoặc cập nhật phiên bản mới.
+                <strong>{readOnlyManagement ? "Khu Quản lý chỉ xem:" : "Sản phẩm đã bị khóa:"}</strong>{" "}
+                {readOnlyManagement
+                  ? "Bạn có thể xem thông tin và xem trước tài liệu; không thể chỉnh sửa hoặc tải file xuống."
+                  : "Chế độ chỉ đọc. Bạn có thể xem trước nội dung hoặc tải về các phiên bản của tài liệu, nhưng không thể thêm, xóa hoặc cập nhật phiên bản mới."}
               </span>
             </div>
           )}
 
           {/* ── MỤC 1: PO CHI TIẾT ── */}
           <div className="rounded-2xl border border-gray-200 bg-white p-4 sm:p-5 shadow-xs dark:border-gray-800 dark:bg-gray-900 space-y-3.5">
-            <div className="flex items-center justify-between pb-2 border-b border-gray-100 dark:border-gray-800">
+            <div className="flex flex-wrap items-start justify-between gap-3 pb-2 border-b border-gray-100 dark:border-gray-800">
               <div className="flex items-center gap-2.5">
                 <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-50 text-brand-600 font-bold text-xs border border-brand-200/80 dark:bg-brand-950/60 dark:text-brand-400 dark:border-brand-900/60">
                   1
@@ -1801,13 +1616,13 @@ export default function PoProductDetailPage() {
                 </div>
               </div>
 
-              {!isProductLocked && (
+              {!isReadOnly && (
                 <div className="flex items-center gap-1.5">
                   <Button
                     size="sm"
                     variant="outline"
                     className="h-8 text-xs font-medium text-gray-700 border-gray-200 bg-white hover:bg-gray-50 hover:text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
-                    onClick={() => setIsLinkPoDocOpen(true)}
+                    onClick={() => openLinkPoDocModal("po_detail")}
                   >
                     <PlusIcon className="w-3.5 h-3.5 mr-1" />
                     Gán từ kho PO
@@ -1827,7 +1642,9 @@ export default function PoProductDetailPage() {
 
             {poDocuments.length === 0 ? (
               <div className="py-6 text-center text-xs text-gray-400 italic bg-gray-50/50 rounded-xl border border-dashed border-gray-200 dark:border-gray-800 dark:bg-gray-800/20">
-                Chưa có file PO chi tiết nào. Bấm "Tải file PO lên" hoặc "Gán từ kho PO".
+                {isReadOnly
+                  ? "Chưa có file PO chi tiết nào được đính kèm."
+                  : 'Chưa có file PO chi tiết nào. Bấm "Tải file PO lên" hoặc "Gán từ kho PO".'}
               </div>
             ) : (
               <div className="space-y-2.5">
@@ -1835,7 +1652,8 @@ export default function PoProductDetailPage() {
                   <ProductVersionedFileGroup
                     key={doc.documentId}
                     doc={doc}
-                    canEdit={!isProductLocked}
+                    canEdit={!isReadOnly}
+                    canDownload={!readOnlyManagement}
                     onUploadVersion={handleOpenUploadVersion}
                     onDelete={handleUnlinkDocument}
                     onPreview={handlePreviewDoc}
@@ -1847,7 +1665,7 @@ export default function PoProductDetailPage() {
 
           {/* ── MỤC 2: TECHPACK ── */}
           <div className="rounded-2xl border border-gray-200 bg-white p-4 sm:p-5 shadow-xs dark:border-gray-800 dark:bg-gray-900 space-y-3.5">
-            <div className="flex items-center justify-between pb-2 border-b border-gray-100 dark:border-gray-800">
+            <div className="flex flex-wrap items-start justify-between gap-3 pb-2 border-b border-gray-100 dark:border-gray-800">
               <div className="flex items-center gap-2.5">
                 <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-50 text-brand-600 font-bold text-xs border border-brand-200/80 dark:bg-brand-950/60 dark:text-brand-400 dark:border-brand-900/60">
                   2
@@ -1865,13 +1683,13 @@ export default function PoProductDetailPage() {
                 </div>
               </div>
 
-              {!isProductLocked && (
+              {!isReadOnly && (
                 <div className="flex items-center gap-1.5">
                   <Button
                     size="sm"
                     variant="outline"
                     className="h-8 text-xs font-medium text-gray-700 border-gray-200 bg-white hover:bg-gray-50 hover:text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
-                    onClick={() => setIsLinkPoDocOpen(true)}
+                    onClick={() => openLinkPoDocModal("tech_pack")}
                   >
                     <PlusIcon className="w-3.5 h-3.5 mr-1" />
                     Gán từ kho PO
@@ -1899,7 +1717,8 @@ export default function PoProductDetailPage() {
                   <ProductVersionedFileGroup
                     key={doc.documentId}
                     doc={doc}
-                    canEdit={!isProductLocked}
+                    canEdit={!isReadOnly}
+                    canDownload={!readOnlyManagement}
                     onUploadVersion={handleOpenUploadVersion}
                     onDelete={handleUnlinkDocument}
                     onPreview={handlePreviewDoc}
@@ -1911,7 +1730,7 @@ export default function PoProductDetailPage() {
 
           {/* ── MỤC 3: KHÁC ── */}
           <div className="rounded-2xl border border-gray-200 bg-white p-4 sm:p-5 shadow-xs dark:border-gray-800 dark:bg-gray-900 space-y-3.5">
-            <div className="flex items-center justify-between pb-2 border-b border-gray-100 dark:border-gray-800">
+            <div className="flex flex-wrap items-start justify-between gap-3 pb-2 border-b border-gray-100 dark:border-gray-800">
               <div className="flex items-center gap-2.5">
                 <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-50 text-brand-600 font-bold text-xs border border-brand-200/80 dark:bg-brand-950/60 dark:text-brand-400 dark:border-brand-900/60">
                   3
@@ -1929,13 +1748,13 @@ export default function PoProductDetailPage() {
                 </div>
               </div>
 
-              {!isProductLocked && (
+              {!isReadOnly && (
                 <div className="flex items-center gap-1.5">
                   <Button
                     size="sm"
                     variant="outline"
                     className="h-8 text-xs font-medium text-gray-700 border-gray-200 bg-white hover:bg-gray-50 hover:text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
-                    onClick={() => setIsLinkPoDocOpen(true)}
+                    onClick={() => openLinkPoDocModal("other")}
                   >
                     <PlusIcon className="w-3.5 h-3.5 mr-1" />
                     Gán từ kho PO
@@ -1963,7 +1782,8 @@ export default function PoProductDetailPage() {
                   <ProductVersionedFileGroup
                     key={doc.documentId}
                     doc={doc}
-                    canEdit={!isProductLocked}
+                    canEdit={!isReadOnly}
+                    canDownload={!readOnlyManagement}
                     onUploadVersion={handleOpenUploadVersion}
                     onDelete={handleUnlinkDocument}
                     onPreview={handlePreviewDoc}
@@ -1981,7 +1801,7 @@ export default function PoProductDetailPage() {
 
       {/* ─── HỘP THOẠI XÁC NHẬN RỜI TRANG KHI CHƯA LƯU (UNSAVEDCHANGESDIALOG) ──── */}
       <UnsavedChangesDialog
-        isOpen={pendingTab !== null || pendingNavigation !== null}
+        isOpen={!readOnlyManagement && (pendingTab !== null || pendingNavigation !== null)}
         onConfirmLeave={handleConfirmLeaveTab}
         onCancel={() => {
           setPendingTab(null);
@@ -1990,7 +1810,7 @@ export default function PoProductDetailPage() {
       />
 
       {/* ─── MODAL CHỈNH SỬA THÔNG TIN SẢN PHẨM ─────────────────────────────────── */}
-      {isEditModalOpen && (
+      {isEditModalOpen && !isReadOnly && (
         <Modal
           open={isEditModalOpen}
           onClose={() => {
@@ -2152,25 +1972,55 @@ export default function PoProductDetailPage() {
       )}
 
       {/* ─── MODAL GÁN TÀI LIỆU TỪ KHO PO ───────────────────────────────────────── */}
-      {isLinkPoDocOpen && (
+      {isLinkPoDocOpen && !isReadOnly && (
         <Modal
           open={isLinkPoDocOpen}
-          onClose={() => setIsLinkPoDocOpen(false)}
-          title="Chọn tài liệu từ kho PO để gán vào sản phẩm"
+          onClose={() => {
+            setIsLinkPoDocOpen(false);
+            setLinkDocFilter(null);
+          }}
+          title={
+            linkDocFilter === "po_detail"
+              ? "Gán tài liệu từ kho PO — mục PO Chi Tiết"
+              : linkDocFilter === "tech_pack"
+              ? "Gán tài liệu từ kho PO — mục TechPack"
+              : linkDocFilter === "other"
+              ? "Gán tài liệu từ kho PO — mục Khác"
+              : "Chọn tài liệu từ kho PO để gán vào sản phẩm"
+          }
           size="lg"
         >
           <div className="space-y-4">
             <p className="text-xs text-gray-500">
-              Chọn tài liệu từ kho PO để gán vào sản phẩm. Tài liệu sẽ tự động nằm đúng mục theo phân loại gốc bên ngoài (<strong>PO Chi Tiết</strong>, <strong>TechPack</strong> hoặc <strong>Khác</strong>).
+              {linkDocFilter ? (
+                <>Chỉ hiện tài liệu đã phân loại đúng mục này ở kho PO — để mục nào ra file đúng mục đó, không lẫn qua "Khác".</>
+              ) : (
+                <>Chọn tài liệu từ kho PO để gán vào sản phẩm. Tài liệu sẽ tự động nằm đúng mục theo phân loại gốc bên ngoài (<strong>PO Chi Tiết</strong>, <strong>TechPack</strong> hoặc <strong>Khác</strong>).</>
+              )}
             </p>
 
-            {poStoreDocuments.length === 0 ? (
-              <p className="text-xs text-gray-400 italic">
-                Đơn hàng PO này chưa có tài liệu nào trong kho tài liệu chung.
-              </p>
-            ) : (
+            {(() => {
+              const visibleDocs = poStoreDocuments.filter((d) => {
+                if (linkDocFilter === "po_detail") return isPoDetailPurpose(d.purpose);
+                if (linkDocFilter === "tech_pack") return isTechPackPurpose(d.purpose);
+                if (linkDocFilter === "other")
+                  return !isPoDetailPurpose(d.purpose) && !isTechPackPurpose(d.purpose);
+                return true;
+              });
+
+              if (visibleDocs.length === 0) {
+                return (
+                  <p className="text-xs text-gray-400 italic">
+                    {linkDocFilter
+                      ? "Kho PO chưa có tài liệu nào thuộc đúng mục này."
+                      : "Đơn hàng PO này chưa có tài liệu nào trong kho tài liệu chung."}
+                  </p>
+                );
+              }
+
+              return (
               <div className="max-h-80 overflow-y-auto space-y-2">
-                {poStoreDocuments.map((d) => {
+                {visibleDocs.map((d) => {
                   const alreadyLinked = product.documents?.some((doc) => doc.documentId === d.documentId);
                   const isPo = isPoDetailPurpose(d.purpose);
                   const isTp = isTechPackPurpose(d.purpose);
@@ -2218,9 +2068,17 @@ export default function PoProductDetailPage() {
                   );
                 })}
               </div>
-            )}
+              );
+            })()}
             <div className="flex justify-end pt-3 border-t">
-              <Button variant="outline" size="sm" onClick={() => setIsLinkPoDocOpen(false)}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setIsLinkPoDocOpen(false);
+                  setLinkDocFilter(null);
+                }}
+              >
                 Đóng
               </Button>
             </div>
@@ -2228,55 +2086,8 @@ export default function PoProductDetailPage() {
         </Modal>
       )}
 
-      {/* ─── MODAL THÊM ĐỢT MAY MẪU ─────────────────────────────────────────────── */}
-      {isAddSampleOpen && (
-        <Modal
-          open={isAddSampleOpen}
-          onClose={() => setIsAddSampleOpen(false)}
-          title="Thêm đợt may mẫu mới"
-          size="md"
-        >
-          <form onSubmit={handleAddSampleRound} className="space-y-4">
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                Trạng thái đợt mẫu
-              </label>
-              <select
-                value={sampleStatus}
-                onChange={(e) => setSampleStatus(e.target.value)}
-                className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs text-gray-900 outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-              >
-                <option value="working">Đang làm</option>
-                <option value="approved">Đạt</option>
-                <option value="needs_revision">Chưa đạt</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                Ý kiến đóng góp / Feedback kiểm mẫu
-              </label>
-              <textarea
-                rows={3}
-                value={sampleFeedback}
-                onChange={(e) => setSampleFeedback(e.target.value)}
-                className="w-full rounded-xl border border-gray-200 p-3 text-xs text-gray-900 outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                placeholder="Nhập nhận xét về form dáng, đường may..."
-              />
-            </div>
-            <div className="flex justify-end gap-2 pt-3 border-t">
-              <Button variant="outline" size="sm" onClick={() => setIsAddSampleOpen(false)}>
-                Hủy
-              </Button>
-              <Button size="sm" type="submit" disabled={createSampleMutation.isPending}>
-                {createSampleMutation.isPending ? "Đang lưu..." : "Xác nhận tạo"}
-              </Button>
-            </div>
-          </form>
-        </Modal>
-      )}
-
       {/* ─── MODAL XÁC NHẬN KHÓA SẢN PHẨM (ĐANG XỬ LÝ -> KHÓA) ───────────────── */}
-      {isLockModalOpen && (
+      {isLockModalOpen && !readOnlyManagement && (
         <Modal
           open={isLockModalOpen}
           onClose={() => {
@@ -2338,7 +2149,7 @@ export default function PoProductDetailPage() {
       )}
 
       {/* MODAL MỞ KHÓA SẢN PHẨM */}
-      {isUnlockModalOpen && (
+      {isUnlockModalOpen && !readOnlyManagement && (
         <Modal
           open={isUnlockModalOpen}
           onClose={() => setIsUnlockModalOpen(false)}
@@ -2402,17 +2213,19 @@ export default function PoProductDetailPage() {
       )}
 
       {/* ─── MODAL TẢI LÊN TÀI LIỆU SẢN PHẨM TRỰC TIẾP ──────────────────────────── */}
-      {isUploadDocOpen && (
+      {isUploadDocOpen && !isReadOnly && (
         <Modal
           open={isUploadDocOpen}
           onClose={() => {
             if (!uploadProductDocMutation.isPending) setIsUploadDocOpen(false);
           }}
           title={
-            docUploadCategory === "po_original"
+            docUploadCategory === "production_doc"
               ? "Tải lên file PO Chi Tiết"
               : docUploadCategory === "tech_pack"
               ? "Tải lên tài liệu TechPack"
+              : docUploadCategory === "color_card"
+              ? "Tải lên ảnh bảng màu"
               : "Tải lên tài liệu phụ trợ khác"
           }
           size="md"
@@ -2425,6 +2238,7 @@ export default function PoProductDetailPage() {
               <input
                 type="file"
                 required
+                accept={docUploadCategory === "color_card" ? "image/*" : undefined}
                 onChange={(e) => {
                   if (e.target.files && e.target.files[0]) {
                     setDocUploadFile(e.target.files[0]);
@@ -2433,7 +2247,9 @@ export default function PoProductDetailPage() {
                 className="w-full text-xs text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-blue-950/60 dark:file:text-blue-300 cursor-pointer"
               />
               <p className="text-[11px] text-gray-400 mt-1">
-                Hỗ trợ các định dạng: Excel (.xlsx, .xls), PDF, Word (.docx), hình ảnh (PNG, JPG, WebP), tối đa 25MB.
+                {docUploadCategory === "color_card"
+                  ? "Hỗ trợ hình ảnh (PNG, JPG, WebP), tối đa 25MB."
+                  : "Hỗ trợ các định dạng: Excel (.xlsx, .xls), PDF, Word (.docx), hình ảnh (PNG, JPG, WebP), tối đa 25MB."}
               </p>
             </div>
 
@@ -2471,7 +2287,7 @@ export default function PoProductDetailPage() {
       )}
 
       {/* ─── MODAL CẬP NHẬT PHIÊN BẢN MỚI CHO TÀI LIỆU ─────────────────────────── */}
-      {isUploadVersionOpen && versionTargetInfo && (
+      {isUploadVersionOpen && versionTargetInfo && !isReadOnly && (
         <Modal
           open={isUploadVersionOpen}
           onClose={() => {

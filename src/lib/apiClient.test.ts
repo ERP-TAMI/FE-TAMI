@@ -12,6 +12,7 @@ const authResponse = {
     roleCode: "SA",
     roleName: "Quản trị hệ thống",
     permissions: ["system.users.manage"],
+    purchaseOrderMode: "READ_ONLY" as const,
   },
 };
 

@@ -14,6 +14,7 @@ import { uploadsApi } from "@/api/uploads.api";
 interface ProductVersionedFileGroupProps {
   doc: ProductDocumentItem;
   canEdit: boolean;
+  canDownload?: boolean;
   onUploadVersion: (
     documentId: string,
     currentVersionNo: number,
@@ -51,6 +52,7 @@ function formatDate(dateStr?: string | null): string {
 export function ProductVersionedFileGroup({
   doc,
   canEdit,
+  canDownload = true,
   onUploadVersion,
   onDelete,
   onPreview,
@@ -84,7 +86,7 @@ export function ProductVersionedFileGroup({
   const [fullDownloadUrl, setFullDownloadUrl] = useState<string | undefined>(undefined);
   useEffect(() => {
     let isMounted = true;
-    if (!activeFileUrl) {
+    if (!canDownload || !activeFileUrl) {
       setFullDownloadUrl(undefined);
       return;
     }
@@ -104,7 +106,7 @@ export function ProductVersionedFileGroup({
     return () => {
       isMounted = false;
     };
-  }, [activeFileUrl, activeFileName]);
+  }, [activeFileUrl, activeFileName, canDownload]);
 
   return (
     <div className="rounded-xl border border-gray-200 bg-white shadow-xs dark:border-gray-800 dark:bg-gray-900 transition-all hover:border-gray-300 dark:hover:border-gray-700">
@@ -181,7 +183,7 @@ export function ProductVersionedFileGroup({
           </button>
 
           {/* Tải về */}
-          {fullDownloadUrl && (
+          {canDownload && fullDownloadUrl && (
             <a
               href={fullDownloadUrl}
               download={activeFileName}

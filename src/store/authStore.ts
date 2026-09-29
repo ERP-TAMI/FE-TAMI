@@ -8,7 +8,10 @@ export type AuthUser = {
   roleCode: string;
   roleName: string;
   permissions: string[];
+  purchaseOrderMode: PurchaseOrderMode;
 };
+
+export type PurchaseOrderMode = "READ_ONLY" | "FULL_ACCESS";
 
 export type AuthStatus = "idle" | "loading" | "authenticated" | "unauthenticated";
 
