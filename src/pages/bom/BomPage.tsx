@@ -1,17 +1,16 @@
 import { useState, useCallback, useEffect } from "react";
-import { useSearchParams, useNavigate, Link } from "react-router-dom";
-import { Plus, Layers } from "lucide-react";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { Pagination } from "@/components/shared/Pagination";
 import { Toast } from "@/components/shared/Toast";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { useAuthStore } from "@/store/authStore";
 import { useToast } from "@/hooks/useToast";
-import { useBoms, useBomStats, useDiscontinueBom } from "@/hooks/useBoms";
+import { useBoms, useDiscontinueBom } from "@/hooks/useBoms";
 import { canCreateBom, canViewBomCost, getCurrentMonthString } from "@/lib/bomAccess";
-import type { BomType, BomListItem, QueryBomStatsParams } from "@/types/bom";
+import type { BomType, BomListItem } from "@/types/bom";
 
-import { BomStatsCards, type PeriodMode } from "@/components/features/bom/BomStatsCards";
+import type { PeriodMode } from "@/components/features/bom/BomStatsCards";
 import { BomFilters } from "@/components/features/bom/BomFilters";
 import { BomTable } from "@/components/features/bom/BomTable";
 import { BomCreateWizardModal } from "@/components/features/bom/BomCreateWizardModal";
@@ -47,9 +46,18 @@ export default function BomPage() {
     setLocalSearch(searchParam);
   }, [searchParam]);
 
-  // Period filter state (default is current month)
+  // Period filter (month/year/date range) — only takes effect once the user
+  // actually picks a period; on first load nothing is sent to the BE and the
+  // full list shows, same as the other filters' "Tất cả" default.
   const currentMonth = getCurrentMonthString();
   const currentYear = String(new Date().getFullYear());
+  const hasPeriodFilter = Boolean(
+    searchParams.get("periodMode") ||
+      searchParams.get("month") ||
+      searchParams.get("year") ||
+      searchParams.get("startDate") ||
+      searchParams.get("endDate"),
+  );
   const periodModeParam =
     (searchParams.get("periodMode") as PeriodMode) || "month";
   const monthParam = searchParams.get("month") || currentMonth;
@@ -122,18 +130,20 @@ export default function BomPage() {
 
   const handlePeriodModeChange = (newMode: PeriodMode) => {
     updateQueryParams({
-      periodMode: newMode === "month" ? undefined : newMode,
+      periodMode: newMode,
       month: newMode === "month" ? monthParam : undefined,
       year: newMode === "year" ? yearParam : undefined,
       startDate: newMode === "dateRange" ? startDateParam : undefined,
       endDate: newMode === "dateRange" ? endDateParam : undefined,
+      page: 1,
     });
   };
 
   const handleMonthChange = (newMonth: string) => {
     updateQueryParams({
-      periodMode: undefined,
+      periodMode: "month",
       month: newMonth || undefined,
+      page: 1,
     });
   };
 
@@ -141,6 +151,7 @@ export default function BomPage() {
     updateQueryParams({
       periodMode: "year",
       year: newYear || undefined,
+      page: 1,
     });
   };
 
@@ -148,6 +159,7 @@ export default function BomPage() {
     updateQueryParams({
       periodMode: "dateRange",
       startDate: date || undefined,
+      page: 1,
     });
   };
 
@@ -155,6 +167,7 @@ export default function BomPage() {
     updateQueryParams({
       periodMode: "dateRange",
       endDate: date || undefined,
+      page: 1,
     });
   };
 
@@ -164,6 +177,11 @@ export default function BomPage() {
       type: undefined,
       status: undefined,
       search: undefined,
+      periodMode: undefined,
+      month: undefined,
+      year: undefined,
+      startDate: undefined,
+      endDate: undefined,
       page: 1,
     });
   };
@@ -195,32 +213,27 @@ export default function BomPage() {
     type: typeParam !== "all" ? typeParam : undefined,
     status: statusParam || undefined,
     search: searchParam || undefined,
+    month: hasPeriodFilter && periodModeParam === "month" ? monthParam : undefined,
+    year: hasPeriodFilter && periodModeParam === "year" ? yearParam : undefined,
+    startDate:
+      hasPeriodFilter && periodModeParam === "dateRange" ? startDateParam : undefined,
+    endDate:
+      hasPeriodFilter && periodModeParam === "dateRange" ? endDateParam : undefined,
     page: pageParam,
     limit: limitParam,
     sortBy: sortByParam,
     sortOrder: sortOrderParam,
   });
 
-  const statsQueryParams: QueryBomStatsParams = {
-    type: typeParam !== "all" ? typeParam : undefined,
-  };
-  if (periodModeParam === "month") {
-    statsQueryParams.month = monthParam;
-  } else if (periodModeParam === "year") {
-    statsQueryParams.year = yearParam;
-  } else if (periodModeParam === "dateRange") {
-    if (startDateParam) statsQueryParams.startDate = startDateParam;
-    if (endDateParam) statsQueryParams.endDate = endDateParam;
-  }
-
-  const { data: statsData, isLoading: isLoadingStats } = useBomStats(statsQueryParams);
-
   const items = bomsData?.data ?? [];
   const totalItems = bomsData?.meta.total ?? 0;
   const totalPages = bomsData?.meta.totalPages ?? 1;
 
   const isFiltering =
-    typeParam !== "all" || Boolean(statusParam) || Boolean(searchParam);
+    typeParam !== "all" ||
+    Boolean(statusParam) ||
+    Boolean(searchParam) ||
+    hasPeriodFilter;
 
   const handleViewDetail = (id: string, tab?: string) => {
     navigate(tab ? `/bom/${id}?tab=${tab}` : `/bom/${id}`);
@@ -262,44 +275,6 @@ export default function BomPage() {
         ]}
         title="Quản lý Nguyên phụ liệu"
         stats={[{ label: "bảng NPL", value: totalItems }]}
-        actions={
-          <div className="flex items-center gap-2.5">
-            <Link
-              to="/bom/aggregate"
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-300 bg-white px-3.5 py-2.5 text-xs font-semibold text-gray-700 shadow-xs transition-colors hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-brand-500/30 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-750"
-            >
-              <Layers className="h-4 w-4 text-brand-500" />
-              <span>Tổng hợp NPL</span>
-            </Link>
-            {canCreate && (
-              <button
-                type="button"
-                onClick={() => setIsCreateOpen(true)}
-                aria-label="Thêm nguyên liệu - Tạo BOM"
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-500 px-4 py-2.5 text-xs font-semibold text-white shadow-xs transition-colors hover:bg-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
-              >
-                <Plus className="h-4 w-4" />
-                <span>Thêm nguyên liệu</span>
-              </button>
-            )}
-          </div>
-        }
-      />
-
-      {/* Stats Cards & Period Selector */}
-      <BomStatsCards
-        stats={statsData}
-        isLoading={isLoadingStats}
-        periodMode={periodModeParam}
-        onPeriodModeChange={handlePeriodModeChange}
-        month={monthParam}
-        onMonthChange={handleMonthChange}
-        year={yearParam}
-        onYearChange={handleYearChange}
-        startDate={startDateParam}
-        onStartDateChange={handleStartDateChange}
-        endDate={endDateParam}
-        onEndDateChange={handleEndDateChange}
       />
 
       {/* Filters Toolbar */}
@@ -310,6 +285,18 @@ export default function BomPage() {
         onStatusChange={handleStatusChange}
         search={localSearch}
         onSearchChange={handleSearchChange}
+        periodMode={periodModeParam}
+        onPeriodModeChange={handlePeriodModeChange}
+        month={monthParam}
+        onMonthChange={handleMonthChange}
+        year={yearParam}
+        onYearChange={handleYearChange}
+        startDate={startDateParam}
+        onStartDateChange={handleStartDateChange}
+        endDate={endDateParam}
+        onEndDateChange={handleEndDateChange}
+        canCreate={canCreate}
+        onCreateClick={() => setIsCreateOpen(true)}
       />
 
       {/* Data Table */}

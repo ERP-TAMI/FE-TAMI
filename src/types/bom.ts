@@ -122,6 +122,10 @@ export interface QueryBomsParams {
   purchaseOrder?: string;
   product?: string;
   color?: string;
+  month?: string;
+  year?: string;
+  startDate?: string;
+  endDate?: string;
   page?: number;
   limit?: number;
   sortBy?: "bomCode" | "createdAt" | "updatedAt" | "deadline";

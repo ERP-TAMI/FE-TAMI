@@ -325,9 +325,6 @@ export function BomTable({
                 const mainCode = isFit
                   ? item.style?.styleCode || item.bomCode
                   : item.product?.productCode || item.bomCode;
-                const mainName = isFit
-                  ? item.style?.styleName || mainCode
-                  : item.product?.productName || mainCode;
 
                 // Color display
                 const colorName = isFit
@@ -360,16 +357,9 @@ export function BomTable({
                       <button
                         type="button"
                         onClick={() => onViewDetail(item.id)}
-                        className="flex flex-col items-start text-left"
+                        className="truncate text-left font-semibold text-gray-900 hover:text-brand-600 hover:underline dark:text-white dark:hover:text-brand-400"
                       >
-                        <span className="truncate font-semibold text-gray-900 hover:text-brand-600 hover:underline dark:text-white dark:hover:text-brand-400">
-                          {mainName}
-                        </span>
-                        {mainName !== mainCode && (
-                          <span className="font-mono text-[11px] text-gray-400 dark:text-gray-500">
-                            {mainCode}
-                          </span>
-                        )}
+                        {mainCode}
                       </button>
                     </td>
 

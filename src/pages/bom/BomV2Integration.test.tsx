@@ -554,15 +554,11 @@ describe("PR-11: BOM V2 Final Integration & E2E Regression", () => {
   // 1. FLOW A: BOM LIST & FILTERING
   // =======================================================================
   describe("FLOW A: BOM List & Filtering", () => {
-    it("1. renders statistics KPI cards accurately from backend response", () => {
+    it("1. renders the page title and total count from backend response", () => {
       renderWithRouter(<BomPage />, { initialEntries: ["/bom"] });
 
       expect(screen.getAllByText("Quản lý Nguyên phụ liệu")[0]).toBeTruthy();
-      expect(screen.getByText("Tổng NPL")).toBeTruthy();
-      expect(screen.getAllByText("12")[0]).toBeTruthy(); // total
-      expect(screen.getAllByText("3")[0]).toBeTruthy(); // draft
-      expect(screen.getAllByText("4")[0]).toBeTruthy(); // pending
-      expect(screen.getAllByText("5")[0]).toBeTruthy(); // approved
+      expect(screen.getByText("12 bảng NPL")).toBeTruthy();
     });
 
     it("2. filters by BOM type (FIT vs PO) and updates query state", () => {
