@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { BrowserRouter } from "react-router-dom";
 import BomAggregatePage from "./BomAggregatePage";
 import type { BomAggregateItem, BomAggregateResponse } from "@/types/bom";
+import { getCurrentMonthString } from "@/lib/bomAccess";
 
 // SearchParams mock variable
 let mockSearchParams = new URLSearchParams();
@@ -294,6 +295,21 @@ describe("BomAggregatePage", () => {
       expect(screen.getByTestId("bom-aggregate-table")).toBeTruthy();
     });
 
+    it("keeps the time filter in the page header action area", () => {
+      render(
+        <BrowserRouter>
+          <BomAggregatePage />
+        </BrowserRouter>,
+      );
+
+      const pageActions = screen.getByTestId("aggregate-page-actions");
+      const periodFilter = screen.getByTestId("aggregate-period-filter");
+      const businessFilters = screen.getByTestId("aggregate-filter-card");
+
+      expect(pageActions.contains(periodFilter)).toBe(true);
+      expect(pageActions.contains(businessFilters)).toBe(false);
+    });
+
     it("2. loading: displays skeleton when isLoading is true", () => {
       hooks.useBomAggregate.mockReturnValue({
         data: undefined,
@@ -402,6 +418,139 @@ describe("BomAggregatePage", () => {
       expect(clearBtn).toBeTruthy();
       fireEvent.click(clearBtn);
       expect(mockSetSearchParams).toHaveBeenCalled();
+    });
+  });
+
+  describe("MONTH FILTER", () => {
+    it("defaults the aggregate query and month input to the current month", () => {
+      render(
+        <BrowserRouter>
+          <BomAggregatePage />
+        </BrowserRouter>,
+      );
+
+      expect((screen.getByTestId("aggregate-month-input") as HTMLInputElement).value).toBe(
+        getCurrentMonthString(),
+      );
+      expect(hooks.useBomAggregate).toHaveBeenCalledWith(
+        expect.objectContaining({ month: getCurrentMonthString() }),
+      );
+    });
+
+    it("updates the month filter and resets pagination when a month is selected", () => {
+      mockSearchParams.set("page", "3");
+      const { rerender } = render(
+        <BrowserRouter>
+          <BomAggregatePage />
+        </BrowserRouter>,
+      );
+
+      fireEvent.change(screen.getByTestId("aggregate-month-input"), {
+        target: { value: "2026-12" },
+      });
+
+      expect(mockSearchParams.get("month")).toBe("2026-12");
+      expect(mockSearchParams.get("page")).toBe("1");
+
+      rerender(
+        <BrowserRouter>
+          <BomAggregatePage />
+        </BrowserRouter>,
+      );
+      expect(hooks.useBomAggregate).toHaveBeenLastCalledWith(
+        expect.objectContaining({ month: "2026-12", page: 1 }),
+      );
+    });
+  });
+
+  describe("YEAR AND DATE RANGE FILTERS", () => {
+    it("switches to year mode, updates the year query, and resets pagination", () => {
+      mockSearchParams.set("page", "3");
+      const { rerender } = render(
+        <BrowserRouter>
+          <BomAggregatePage />
+        </BrowserRouter>,
+      );
+
+      fireEvent.change(screen.getByLabelText("Chọn loại thời gian"), {
+        target: { value: "year" },
+      });
+      expect(mockSearchParams.get("periodMode")).toBe("year");
+      expect(mockSearchParams.get("month")).toBeNull();
+      expect(mockSearchParams.get("page")).toBe("1");
+
+      rerender(
+        <BrowserRouter>
+          <BomAggregatePage />
+        </BrowserRouter>,
+      );
+      fireEvent.change(screen.getByLabelText("Chọn năm thống kê"), {
+        target: { value: "2025" },
+      });
+
+      expect(mockSearchParams.get("year")).toBe("2025");
+      expect(mockSearchParams.get("page")).toBe("1");
+      rerender(
+        <BrowserRouter>
+          <BomAggregatePage />
+        </BrowserRouter>,
+      );
+
+      expect(hooks.useBomAggregate).toHaveBeenLastCalledWith(
+        expect.objectContaining({ year: "2025", page: 1 }),
+      );
+    });
+
+    it("sends a selected date range and removes stale month/year parameters", () => {
+      mockSearchParams.set("month", "2026-09");
+      mockSearchParams.set("page", "2");
+      const { rerender } = render(
+        <BrowserRouter>
+          <BomAggregatePage />
+        </BrowserRouter>,
+      );
+
+      fireEvent.change(screen.getByLabelText("Chọn loại thời gian"), {
+        target: { value: "dateRange" },
+      });
+      expect(mockSearchParams.get("month")).toBeNull();
+      expect(mockSearchParams.get("page")).toBe("1");
+
+      rerender(
+        <BrowserRouter>
+          <BomAggregatePage />
+        </BrowserRouter>,
+      );
+      fireEvent.change(screen.getByLabelText("Từ ngày"), {
+        target: { value: "2026-09-10" },
+      });
+      rerender(
+        <BrowserRouter>
+          <BomAggregatePage />
+        </BrowserRouter>,
+      );
+      fireEvent.change(screen.getByLabelText("Đến ngày"), {
+        target: { value: "2026-09-20" },
+      });
+
+      expect(mockSearchParams.get("periodMode")).toBe("dateRange");
+      expect(mockSearchParams.get("startDate")).toBe("2026-09-10");
+      expect(mockSearchParams.get("endDate")).toBe("2026-09-20");
+      expect(mockSearchParams.get("year")).toBeNull();
+      expect(mockSearchParams.get("page")).toBe("1");
+
+      rerender(
+        <BrowserRouter>
+          <BomAggregatePage />
+        </BrowserRouter>,
+      );
+      expect(hooks.useBomAggregate).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          startDate: "2026-09-10",
+          endDate: "2026-09-20",
+          page: 1,
+        }),
+      );
     });
   });
 
@@ -993,7 +1142,7 @@ describe("BomAggregatePage", () => {
       );
     });
 
-    it("38b. product filter uses purchaseOrderProductId without aliasing it to bomId", () => {
+    it("38b. product filter supports legacy single-product URLs", () => {
       mockSearchParams.set("purchaseOrderId", "po-1");
       mockSearchParams.set("purchaseOrderProductId", "prod-1");
 
@@ -1005,13 +1154,52 @@ describe("BomAggregatePage", () => {
 
       expect(hooks.useBomAggregate).toHaveBeenCalledWith(
         expect.objectContaining({
-          purchaseOrderProductId: "prod-1",
+          purchaseOrderProductIds: ["prod-1"],
           bomId: undefined,
         }),
       );
-      expect((screen.getByTestId("aggregate-product-select") as HTMLSelectElement).value).toBe(
-        "prod-1",
+      expect(screen.getByTestId("aggregate-product-select").textContent).toContain("1 sản phẩm");
+    });
+
+    it("selects multiple products in one PO and resets pagination", () => {
+      mockSearchParams.set("purchaseOrderId", "po-1");
+      mockSearchParams.set("page", "2");
+      const { rerender } = render(
+        <BrowserRouter>
+          <BomAggregatePage />
+        </BrowserRouter>,
       );
+
+      fireEvent.click(screen.getByTestId("aggregate-product-select"));
+      fireEvent.click(screen.getByRole("checkbox", { name: "PRD-01 - Áo Polo Nam" }));
+      rerender(
+        <BrowserRouter>
+          <BomAggregatePage />
+        </BrowserRouter>,
+      );
+      fireEvent.click(screen.getByRole("checkbox", { name: "PRD-02 - Quần Khaki" }));
+
+      expect(mockSearchParams.get("purchaseOrderProductIds")).toBe("prod-1,prod-2");
+      expect(mockSearchParams.get("page")).toBe("1");
+    });
+
+    it("closes the product menu on Escape and returns keyboard focus to its trigger", () => {
+      mockSearchParams.set("purchaseOrderId", "po-1");
+      render(
+        <BrowserRouter>
+          <BomAggregatePage />
+        </BrowserRouter>,
+      );
+
+      const trigger = screen.getByTestId("aggregate-product-select");
+      fireEvent.click(trigger);
+      const firstProduct = screen.getByRole("checkbox", { name: "PRD-01 - Áo Polo Nam" });
+      firstProduct.focus();
+
+      fireEvent.keyDown(document, { key: "Escape" });
+
+      expect(screen.queryByRole("checkbox", { name: "PRD-01 - Áo Polo Nam" })).toBeNull();
+      expect(document.activeElement).toBe(trigger);
     });
 
     it("39. filter changes reset page: selecting a new PO resets page to 1", () => {

@@ -354,11 +354,16 @@ export interface BomAggregateResponse {
 }
 
 export interface BomAggregateParams {
+  month?: string;
+  year?: string;
+  startDate?: string;
+  endDate?: string;
   bomId?: string;
   purchaseOrder?: string;
   purchaseOrderId?: string;
   product?: string;
   purchaseOrderProductId?: string;
+  purchaseOrderProductIds?: string[];
   style?: string;
   styleId?: string;
   materialId?: string;

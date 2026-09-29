@@ -37,6 +37,61 @@ describe("bomsApi contract & request mapping", () => {
     });
   });
 
+  describe("getBomAggregate filters", () => {
+    it("serializes month and multiple PO product IDs into the aggregate query", async () => {
+      vi.mocked(apiClient.get).mockResolvedValue({
+        data: { data: [], meta: { total: 0, page: 1, limit: 20, totalPages: 0 } },
+      });
+
+      await bomsApi.getBomAggregate({
+        month: "2026-09",
+        purchaseOrderProductIds: ["product-1", "product-2"],
+      });
+
+      expect(apiClient.get).toHaveBeenCalledWith("/boms/aggregate", {
+        params: {
+          month: "2026-09",
+          purchaseOrderProductIds: "product-1,product-2",
+        },
+      });
+    });
+
+    it("omits an empty product selection from the aggregate query", async () => {
+      vi.mocked(apiClient.get).mockResolvedValue({
+        data: { data: [], meta: { total: 0, page: 1, limit: 20, totalPages: 0 } },
+      });
+
+      await bomsApi.getBomAggregate({
+        month: "2026-09",
+        purchaseOrderProductIds: [],
+      });
+
+      expect(apiClient.get).toHaveBeenCalledWith("/boms/aggregate", {
+        params: { month: "2026-09" },
+      });
+    });
+
+    it("forwards the selected year or date-range period to the aggregate API", async () => {
+      vi.mocked(apiClient.get).mockResolvedValue({
+        data: { data: [], meta: { total: 0, page: 1, limit: 20, totalPages: 0 } },
+      });
+
+      await bomsApi.getBomAggregate({
+        year: "2025",
+        startDate: "2025-03-01",
+        endDate: "2025-03-31",
+      });
+
+      expect(apiClient.get).toHaveBeenCalledWith("/boms/aggregate", {
+        params: {
+          year: "2025",
+          startDate: "2025-03-01",
+          endDate: "2025-03-31",
+        },
+      });
+    });
+  });
+
   describe("getRevisionHistory contract normalization", () => {
     it("maps BE canonical contract (oldStatus, newStatus, changedAt, action, reason) to FE fields", async () => {
       const bePayload = [
