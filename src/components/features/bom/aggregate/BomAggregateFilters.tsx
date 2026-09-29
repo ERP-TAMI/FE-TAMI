@@ -152,12 +152,18 @@ export function BomAggregateFilters({
 
   const currentBomId = bomId;
 
-  const { data: styleResponse } = useStyles({ limit: 100 });
+  // Style/Vật tư/Nhóm NPL chỉ có mặt trong panel "Bộ lọc nâng cao" (collapsed
+  // mặc định) — không fetch cả 3 danh mục này ngay khi vào trang, chỉ bật
+  // khi người dùng thật sự mở panel ra.
+  const { data: styleResponse } = useStyles({ limit: 100 }, { enabled: isExtraOpen });
   const styleList: Style[] = styleResponse?.data || [];
 
-  const { data: materialResponse } = useMaterials({ limit: 100 });
+  const { data: materialResponse } = useMaterials({ limit: 100 }, { enabled: isExtraOpen });
   const materialList = materialResponse?.data ?? [];
-  const { data: materialGroupResponse } = useMaterialGroups({ limit: 100 });
+  const { data: materialGroupResponse } = useMaterialGroups(
+    { limit: 100 },
+    { enabled: isExtraOpen },
+  );
   const materialGroups = materialGroupResponse?.data ?? [];
 
   const handleBomSelect = (newBomId: string) => {

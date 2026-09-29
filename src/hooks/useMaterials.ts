@@ -10,10 +10,14 @@ import type {
   UnitQuery,
 } from "@/types/material";
 
-export function useMaterials(filters: MaterialFilters) {
+export function useMaterials(
+  filters: MaterialFilters,
+  options?: { enabled?: boolean },
+) {
   return useQuery({
     queryKey: materialKeys.list(filters),
     queryFn: () => materialApi.list(filters),
+    enabled: options?.enabled ?? true,
   });
 }
 

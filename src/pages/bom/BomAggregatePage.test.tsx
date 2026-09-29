@@ -59,15 +59,15 @@ vi.mock("@/hooks/usePurchaseOrders", () => ({
 }));
 
 vi.mock("@/hooks/useStyles", () => ({
-  useStyles: (query: unknown) => hooks.useStyles(query),
+  useStyles: (query: unknown, options?: unknown) => hooks.useStyles(query, options),
 }));
 
 vi.mock("@/hooks/useMaterials", () => ({
-  useMaterials: (query: unknown) => hooks.useMaterials(query),
+  useMaterials: (query: unknown, options?: unknown) => hooks.useMaterials(query, options),
 }));
 
 vi.mock("@/hooks/useMaterialGroups", () => ({
-  useMaterialGroups: () => hooks.useMaterialGroups(),
+  useMaterialGroups: (query: unknown, options?: unknown) => hooks.useMaterialGroups(query, options),
 }));
 
 // Mock data fixtures
@@ -600,6 +600,44 @@ describe("BomAggregatePage", () => {
       const bomSelect = screen.getByTestId("aggregate-bom-select");
       fireEvent.change(bomSelect, { target: { value: "bom-1" } });
       expect(mockSetSearchParams).toHaveBeenCalled();
+    });
+
+    it("does not fetch styles/materials/material-groups until 'Bộ lọc nâng cao' is opened", () => {
+      render(
+        <BrowserRouter>
+          <BomAggregatePage />
+        </BrowserRouter>,
+      );
+
+      // Style/Vật tư/Nhóm NPL chỉ dùng trong panel nâng cao (collapsed mặc
+      // định) — không được fetch ngay khi vào trang.
+      expect(hooks.useStyles).toHaveBeenLastCalledWith(
+        { limit: 100 },
+        { enabled: false },
+      );
+      expect(hooks.useMaterials).toHaveBeenLastCalledWith(
+        { limit: 100 },
+        { enabled: false },
+      );
+      expect(hooks.useMaterialGroups).toHaveBeenLastCalledWith(
+        { limit: 100 },
+        { enabled: false },
+      );
+
+      fireEvent.click(screen.getByRole("button", { name: /Bộ lọc nâng cao/i }));
+
+      expect(hooks.useStyles).toHaveBeenLastCalledWith(
+        { limit: 100 },
+        { enabled: true },
+      );
+      expect(hooks.useMaterials).toHaveBeenLastCalledWith(
+        { limit: 100 },
+        { enabled: true },
+      );
+      expect(hooks.useMaterialGroups).toHaveBeenLastCalledWith(
+        { limit: 100 },
+        { enabled: true },
+      );
     });
 
     it("10. Style filter: selecting a style sets styleId", () => {
