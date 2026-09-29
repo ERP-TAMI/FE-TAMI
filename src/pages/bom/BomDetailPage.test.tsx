@@ -1528,7 +1528,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
           <BomDetailPage />
         </BrowserRouter>,
       );
-      expect(screen.getByText(/Rev 2 \(Đang làm việc\)/i)).toBeTruthy();
+      expect(screen.getByText(/Phiên bản 2 \(Đang làm việc\)/i)).toBeTruthy();
     });
 
     it("68. selecting a historical revision displays historical lines and 'Revision lịch sử' banner", () => {

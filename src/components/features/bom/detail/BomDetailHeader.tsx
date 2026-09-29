@@ -204,7 +204,7 @@ export function BomDetailHeader({
                     const isCurrent = r.id === bom.currentRevision?.id || r.isCurrent;
                     return (
                       <option key={r.id} value={r.id}>
-                        Rev {r.revisionNo} ({isCurrent ? "Đang làm việc" : "Đã đóng"})
+                        Phiên bản {r.revisionNo} ({isCurrent ? "Đang làm việc" : "Đã đóng"})
                       </option>
                     );
                   })}
@@ -212,7 +212,7 @@ export function BomDetailHeader({
               </div>
             ) : bom.currentRevision ? (
               <span className="inline-flex items-center gap-1 rounded-full border border-gray-200/80 bg-gray-50 px-2.5 py-0.5 text-theme-xs font-semibold text-gray-600 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-300">
-                Rev {bom.currentRevision.revisionNo}
+                Phiên bản {bom.currentRevision.revisionNo}
               </span>
             ) : null}
           </div>

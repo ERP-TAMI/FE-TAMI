@@ -710,7 +710,7 @@ describe("PR-11: BOM V2 Final Integration & E2E Regression", () => {
       expect(screen.getByText("PO BOM: PRD-QUAN-01")).toBeTruthy();
       expect(screen.getByText("PO")).toBeTruthy();
       expect(screen.getByText("Nháp")).toBeTruthy();
-      expect(screen.getByText("Rev 1")).toBeTruthy();
+      expect(screen.getByText("Phiên bản 1")).toBeTruthy();
       expect(screen.getAllByText("PO-2026-888")[0]).toBeTruthy();
     });
 
