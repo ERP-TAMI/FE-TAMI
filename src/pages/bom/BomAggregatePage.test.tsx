@@ -288,7 +288,11 @@ describe("BomAggregatePage", () => {
         </BrowserRouter>,
       );
 
-      expect(screen.getByRole("heading", { name: "Tổng hợp nhu cầu NPL" })).toBeTruthy();
+      expect(
+        screen.getByRole("heading", { name: "Tổng hợp nhu cầu nguyên phụ liệu" }),
+      ).toBeTruthy();
+      expect(screen.getByRole("link", { name: "Dashboard" })).toBeTruthy();
+      expect(screen.getByRole("link", { name: "Quản lý Nguyên phụ liệu" })).toBeTruthy();
       expect(screen.getByText("Số lượng được tính theo dữ liệu PO hiện tại")).toBeTruthy();
       expect(screen.getByText("Tổng số loại NPL")).toBeTruthy();
       expect(screen.getByText("Chế độ phân rã")).toBeTruthy();
@@ -390,7 +394,7 @@ describe("BomAggregatePage", () => {
       expect(screen.getByText("Chưa có dữ liệu NPL")).toBeTruthy();
       expect(
         screen.getByText(
-          "Chưa có BOM PO nào ở trạng thái đã đóng (closed) để tổng hợp nhu cầu nguyên phụ liệu.",
+          "Chưa có bảng NPL nào của PO ở trạng thái đã đóng (closed) để tổng hợp nhu cầu nguyên phụ liệu.",
         ),
       ).toBeTruthy();
       expect(screen.queryByTestId("clear-filters-btn")).toBeNull();
@@ -1543,7 +1547,7 @@ describe("BomAggregatePage", () => {
 
       const bomSelect = screen.getByTestId("aggregate-bom-select") as HTMLSelectElement;
       expect(bomSelect.disabled).toBe(false);
-      expect(bomSelect.textContent).toContain("Tất cả BOM trong đơn");
+      expect(bomSelect.textContent).toContain("Tất cả bảng NPL trong đơn");
       expect(bomSelect.textContent).toContain("PRD-01");
       expect(bomSelect.textContent).toContain("PRD-02");
     });

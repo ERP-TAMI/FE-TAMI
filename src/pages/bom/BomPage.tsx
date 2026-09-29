@@ -1,9 +1,10 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useSearchParams, useNavigate, Link } from "react-router-dom";
 import { Plus, Layers } from "lucide-react";
 import { Pagination } from "@/components/shared/Pagination";
 import { Toast } from "@/components/shared/Toast";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
+import { PageHeader } from "@/components/shared/PageHeader";
 import { useAuthStore } from "@/store/authStore";
 import { useToast } from "@/hooks/useToast";
 import { useBoms, useBomStats, useDiscontinueBom } from "@/hooks/useBoms";
@@ -37,11 +38,15 @@ export default function BomPage() {
   const typeParam: BomType | "all" =
     rawType === "fit" || rawType === "po" ? rawType : "all";
   const statusParam = searchParams.get("status") || "";
-  const purchaseOrderParam = searchParams.get("purchaseOrder") || "";
-  const styleParam = searchParams.get("style") || "";
-  const productParam = searchParams.get("product") || "";
-  const colorParam = searchParams.get("color") || "";
-  
+  const searchParam = searchParams.get("search") || "";
+
+  // Local debounced search text, synced with the URL param
+  const [localSearch, setLocalSearch] = useState(searchParam);
+
+  useEffect(() => {
+    setLocalSearch(searchParam);
+  }, [searchParam]);
+
   // Period filter state (default is current month)
   const currentMonth = getCurrentMonthString();
   const currentYear = String(new Date().getFullYear());
@@ -99,16 +104,21 @@ export default function BomPage() {
     });
   };
 
-  const handleFiltersChange = useCallback(
-    (filters: { purchaseOrder: string; style: string; product: string; color: string }) => {
+  const handleSearchChange = (newSearch: string) => {
+    setLocalSearch(newSearch);
+  };
+
+  // Debounce the free-text search before pushing it into the URL/query.
+  useEffect(() => {
+    if (localSearch === searchParam) return;
+    const timer = setTimeout(() => {
       updateQueryParams({
-        ...filters,
-        search: undefined,
+        search: localSearch.trim() || undefined,
         page: 1,
       });
-    },
-    [updateQueryParams],
-  );
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [localSearch, searchParam, updateQueryParams]);
 
   const handlePeriodModeChange = (newMode: PeriodMode) => {
     updateQueryParams({
@@ -149,13 +159,10 @@ export default function BomPage() {
   };
 
   const handleClearFilters = () => {
+    setLocalSearch("");
     updateQueryParams({
       type: undefined,
       status: undefined,
-      purchaseOrder: undefined,
-      style: undefined,
-      product: undefined,
-      color: undefined,
       search: undefined,
       page: 1,
     });
@@ -187,10 +194,7 @@ export default function BomPage() {
   } = useBoms({
     type: typeParam !== "all" ? typeParam : undefined,
     status: statusParam || undefined,
-    purchaseOrder: purchaseOrderParam || undefined,
-    style: styleParam || undefined,
-    product: productParam || undefined,
-    color: colorParam || undefined,
+    search: searchParam || undefined,
     page: pageParam,
     limit: limitParam,
     sortBy: sortByParam,
@@ -216,8 +220,7 @@ export default function BomPage() {
   const totalPages = bomsData?.meta.totalPages ?? 1;
 
   const isFiltering =
-    typeParam !== "all" || Boolean(statusParam) || Boolean(purchaseOrderParam) ||
-    Boolean(styleParam) || Boolean(productParam) || Boolean(colorParam);
+    typeParam !== "all" || Boolean(statusParam) || Boolean(searchParam);
 
   const handleViewDetail = (id: string, tab?: string) => {
     navigate(tab ? `/bom/${id}?tab=${tab}` : `/bom/${id}`);
@@ -234,7 +237,7 @@ export default function BomPage() {
     try {
       const detail = await bomsApi.getBomById(deletingBom.id);
       await discontinueMutation.mutateAsync({
-        reason: "Ngừng sử dụng từ danh sách BOM",
+        reason: "Ngừng sử dụng từ danh sách NPL",
         expectedRowVersion: detail.rowVersion,
       });
       showToast(
@@ -244,63 +247,44 @@ export default function BomPage() {
       setDeletingBom(null);
     } catch {
       showToast(
-        "Không thể ngừng sử dụng bảng BOM này. Vui lòng kiểm tra quyền hạn của bạn.",
+        "Không thể ngừng sử dụng bảng NPL này. Vui lòng kiểm tra quyền hạn của bạn.",
         "error",
       );
     }
   };
 
   return (
-    <div className="flex flex-col gap-5 p-4 sm:p-6 lg:p-8">
-      {/* Header & Breadcrumb */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <nav className="mb-1.5 flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
+    <div className="flex flex-col gap-5">
+      <PageHeader
+        breadcrumb={[
+          { label: "Dashboard", to: "/dashboard" },
+          { label: "Quản lý Nguyên phụ liệu" },
+        ]}
+        title="Quản lý Nguyên phụ liệu"
+        stats={[{ label: "bảng NPL", value: totalItems }]}
+        actions={
+          <div className="flex items-center gap-2.5">
             <Link
-              to="/dashboard"
-              className="transition-colors hover:text-gray-700 dark:hover:text-gray-300"
+              to="/bom/aggregate"
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-300 bg-white px-3.5 py-2.5 text-xs font-semibold text-gray-700 shadow-xs transition-colors hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-brand-500/30 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-750"
             >
-              Dashboard
+              <Layers className="h-4 w-4 text-brand-500" />
+              <span>Tổng hợp NPL</span>
             </Link>
-            <span className="text-gray-400">&gt;</span>
-            <span className="font-medium text-gray-700 dark:text-gray-300">
-              Quản lý Nguyên phụ liệu
-            </span>
-          </nav>
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white sm:text-3xl">
-              Quản lý Nguyên phụ liệu
-            </h1>
-            <span className="inline-flex items-center rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-300">
-              {totalItems} bảng NPL
-            </span>
+            {canCreate && (
+              <button
+                type="button"
+                onClick={() => setIsCreateOpen(true)}
+                aria-label="Thêm nguyên liệu - Tạo BOM"
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-500 px-4 py-2.5 text-xs font-semibold text-white shadow-xs transition-colors hover:bg-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+              >
+                <Plus className="h-4 w-4" />
+                <span>Thêm nguyên liệu</span>
+              </button>
+            )}
           </div>
-          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-            Theo dõi và quản lý nguyên phụ liệu phục vụ sản xuất
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2.5">
-          <Link
-            to="/bom/aggregate"
-            className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-300 bg-white px-3.5 py-2.5 text-xs font-semibold text-gray-700 shadow-xs transition-colors hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-brand-500/30 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-750"
-          >
-            <Layers className="h-4 w-4 text-brand-500" />
-            <span>Tổng hợp NPL</span>
-          </Link>
-          {canCreate && (
-            <button
-              type="button"
-              onClick={() => setIsCreateOpen(true)}
-              aria-label="Thêm nguyên liệu - Tạo BOM"
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-500 px-4 py-2.5 text-xs font-semibold text-white shadow-xs transition-colors hover:bg-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
-            >
-              <Plus className="h-4 w-4" />
-              <span>Thêm nguyên liệu</span>
-            </button>
-          )}
-        </div>
-      </div>
+        }
+      />
 
       {/* Stats Cards & Period Selector */}
       <BomStatsCards
@@ -324,13 +308,8 @@ export default function BomPage() {
         onTypeChange={handleTypeChange}
         status={statusParam}
         onStatusChange={handleStatusChange}
-        purchaseOrder={purchaseOrderParam}
-        style={styleParam}
-        product={productParam}
-        color={colorParam}
-        onFiltersChange={handleFiltersChange}
-        isFiltering={isFiltering}
-        onClearFilters={handleClearFilters}
+        search={localSearch}
+        onSearchChange={handleSearchChange}
       />
 
       {/* Data Table */}
@@ -373,8 +352,8 @@ export default function BomPage() {
       {/* Discontinue Confirm Dialog */}
       <ConfirmDialog
         open={Boolean(deletingBom)}
-        title="Ngừng sử dụng BOM"
-        description={`Bạn có chắc chắn muốn ngừng sử dụng (khóa) bảng định mức "${deletingBom?.bomCode}"? Sau khi ngừng sử dụng, bảng BOM sẽ chuyển sang trạng thái Đã khóa và không thể chỉnh sửa.`}
+        title="Ngừng sử dụng NPL"
+        description={`Bạn có chắc chắn muốn ngừng sử dụng (khóa) bảng định mức "${deletingBom?.bomCode}"? Sau khi ngừng sử dụng, bảng NPL sẽ chuyển sang trạng thái Đã khóa và không thể chỉnh sửa.`}
         confirmLabel="Ngừng sử dụng"
         variant="danger"
         isSubmitting={discontinueMutation.isPending}

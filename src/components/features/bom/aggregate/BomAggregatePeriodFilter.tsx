@@ -32,11 +32,11 @@ export function BomAggregatePeriodFilter({
     <div
       data-testid="aggregate-period-filter"
       role="group"
-      aria-label="Thời gian BOM"
+      aria-label="Thời gian NPL"
       className="flex min-w-0 flex-col gap-1.5"
     >
       <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">
-        Thời gian BOM
+        Thời gian NPL
       </span>
       <div className="flex flex-wrap items-center gap-2">
         {periodMode === "month" && (

@@ -24,8 +24,10 @@ type PageHeaderAction = {
 export type PageHeaderProps = {
   breadcrumb: BreadcrumbItem[];
   title: string;
+  description?: string;
   stats?: PageHeaderStat[];
   action?: PageHeaderAction;
+  actions?: ReactNode;
 };
 
 const statToneClasses: Record<PageHeaderStatTone, string> = {
@@ -35,24 +37,36 @@ const statToneClasses: Record<PageHeaderStatTone, string> = {
   danger: "text-error-600 dark:text-error-400",
 };
 
-export function PageHeader({ breadcrumb, title, stats, action }: PageHeaderProps) {
+export function PageHeader({
+  breadcrumb,
+  title,
+  description,
+  stats,
+  action,
+  actions,
+}: PageHeaderProps) {
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-      <div className="flex flex-wrap items-center gap-3">
-        <h1 id="page-title" className="text-xl font-semibold text-gray-900 dark:text-white">
-          {title}
-        </h1>
-        {stats && stats.length > 0 && (
-          <div className="text-theme-xs flex items-center gap-2 rounded-full border border-gray-200/80 bg-gray-100 px-2.5 py-1 font-medium text-gray-500 dark:border-gray-700/80 dark:bg-gray-800/80 dark:text-gray-400">
-            {stats.map((stat, index) => (
-              <span key={stat.label} className="flex items-center gap-2">
-                {index > 0 && <span aria-hidden="true">•</span>}
-                <span className={statToneClasses[stat.tone ?? "neutral"]}>
-                  {stat.value} {stat.label}
+      <div className="flex flex-col gap-1">
+        <div className="flex flex-wrap items-center gap-3">
+          <h1 id="page-title" className="text-xl font-semibold text-gray-900 dark:text-white">
+            {title}
+          </h1>
+          {stats && stats.length > 0 && (
+            <div className="text-theme-xs flex items-center gap-2 rounded-full border border-gray-200/80 bg-gray-100 px-2.5 py-1 font-medium text-gray-500 dark:border-gray-700/80 dark:bg-gray-800/80 dark:text-gray-400">
+              {stats.map((stat, index) => (
+                <span key={stat.label} className="flex items-center gap-2">
+                  {index > 0 && <span aria-hidden="true">•</span>}
+                  <span className={statToneClasses[stat.tone ?? "neutral"]}>
+                    {stat.value} {stat.label}
+                  </span>
                 </span>
-              </span>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
+        </div>
+        {description && (
+          <p className="text-theme-xs text-gray-500 dark:text-gray-400">{description}</p>
         )}
       </div>
 
@@ -87,6 +101,7 @@ export function PageHeader({ breadcrumb, title, stats, action }: PageHeaderProps
             );
           })}
         </nav>
+        {actions}
         {action && (
           <Button onClick={action.onClick}>
             {action.icon}

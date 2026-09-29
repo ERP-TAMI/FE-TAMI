@@ -1,7 +1,8 @@
 import { useState, useCallback, useEffect } from "react";
-import { useSearchParams, Link } from "react-router-dom";
-import { RotateCw, ArrowLeft, AlertTriangle, Download, Search } from "lucide-react";
+import { useSearchParams } from "react-router-dom";
+import { RotateCw, AlertTriangle, Download, Search } from "lucide-react";
 import { Pagination } from "@/components/shared/Pagination";
+import { PageHeader } from "@/components/shared/PageHeader";
 import { useBomAggregate, useBoms } from "@/hooks/useBoms";
 import type { AggregateBreakdownType } from "@/types/bom";
 
@@ -442,7 +443,7 @@ export default function BomAggregatePage() {
       "Mã vật tư",
       "Nguyên phụ liệu",
       "ĐVT",
-      "Số BOM PO",
+      "Số bảng NPL",
       "Tổng nhu cầu NPL",
     ];
     const rows = items.map((it, idx) => [
@@ -472,85 +473,69 @@ export default function BomAggregatePage() {
   };
 
   return (
-    <div className="flex flex-col gap-5 p-4 sm:p-6 lg:p-8" data-testid="bom-aggregate-page">
-      {/* 1. Header & Navigation */}
-      <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-        <div className="flex items-start gap-3">
-          <Link
-            to="/bom"
-            className="mt-1 inline-flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white"
-            title="Quay lại danh sách BOM"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </Link>
+    <div className="flex flex-col gap-5" data-testid="bom-aggregate-page">
+      <PageHeader
+        breadcrumb={[
+          { label: "Dashboard", to: "/dashboard" },
+          { label: "Quản lý Nguyên phụ liệu", to: "/bom" },
+          { label: "Tổng hợp nhu cầu" },
+        ]}
+        title="Tổng hợp nhu cầu nguyên phụ liệu"
+        description="Tổng hợp nhu cầu nguyên phụ liệu từ các bảng NPL đã duyệt theo thời gian, sản phẩm và kích cỡ."
+      />
+      {/* Hidden for accessibility & test consistency */}
+      <span className="sr-only">Số lượng được tính theo dữ liệu PO hiện tại</span>
 
-          <div className="min-w-0">
-            <h1
-              className="text-xl font-bold tracking-tight text-gray-900 sm:text-2xl dark:text-white"
-              aria-label="Tổng hợp nhu cầu NPL"
-            >
-              Tổng hợp nhu cầu nguyên phụ liệu
-            </h1>
-            <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-              Tổng hợp nhu cầu nguyên phụ liệu từ các BOM đã duyệt theo thời gian, sản phẩm và kích
-              cỡ.
-            </p>
-            {/* Hidden for accessibility & test consistency */}
-            <span className="sr-only">Số lượng được tính theo dữ liệu PO hiện tại</span>
-          </div>
-        </div>
-
-        {/* Top-right: Time filter, search, and export actions */}
-        <div
-          data-testid="aggregate-page-actions"
-          className="flex w-full min-w-0 flex-wrap items-end justify-end gap-2 sm:gap-3 xl:flex-1"
+      {/* Time filter, search, and export actions */}
+      <div
+        data-testid="aggregate-page-actions"
+        className="flex w-full min-w-0 flex-wrap items-end justify-end gap-2 sm:gap-3"
+      >
+        {/* Accessible hidden refresh button for test 37 */}
+        <button
+          type="button"
+          data-testid="aggregate-refresh-btn"
+          onClick={() => refetch()}
+          className="sr-only"
         >
-          {/* Accessible hidden refresh button for test 37 */}
-          <button
-            type="button"
-            data-testid="aggregate-refresh-btn"
-            onClick={() => refetch()}
-            className="sr-only"
-          >
-            Làm mới
-          </button>
+          Làm mới
+        </button>
 
-          <BomAggregatePeriodFilter
-            periodMode={periodMode}
-            onPeriodModeChange={handlePeriodModeChange}
-            month={month}
-            onMonthChange={handleMonthChange}
-            year={year}
-            onYearChange={handleYearChange}
-            startDate={startDate}
-            onStartDateChange={handleStartDateChange}
-            endDate={endDate}
-            onEndDateChange={handleEndDateChange}
+        <BomAggregatePeriodFilter
+          periodMode={periodMode}
+          onPeriodModeChange={handlePeriodModeChange}
+          month={month}
+          onMonthChange={handleMonthChange}
+          year={year}
+          onYearChange={handleYearChange}
+          startDate={startDate}
+          onStartDateChange={handleStartDateChange}
+          endDate={endDate}
+          onEndDateChange={handleEndDateChange}
+        />
+
+        {/* Search Box */}
+        <div className="relative w-full min-w-[200px] sm:w-56 sm:flex-none xl:w-60">
+          <input
+            type="text"
+            data-testid="aggregate-search-input"
+            value={localSearch}
+            onChange={(e) => handleSearchChange(e.target.value)}
+            placeholder="Tìm mã, tên nguyên phụ liệu..."
+            className="w-full rounded-xl border border-gray-200 bg-white py-1.5 pr-3 pl-8 text-xs text-gray-700 shadow-2xs placeholder:text-gray-400 focus:border-blue-500 focus:outline-none dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300"
           />
-
-          {/* Search Box */}
-          <div className="relative w-full min-w-[200px] sm:w-56 sm:flex-none xl:w-60">
-            <input
-              type="text"
-              data-testid="aggregate-search-input"
-              value={localSearch}
-              onChange={(e) => handleSearchChange(e.target.value)}
-              placeholder="Tìm mã, tên nguyên phụ liệu..."
-              className="w-full rounded-xl border border-gray-200 bg-white py-1.5 pr-3 pl-8 text-xs text-gray-700 shadow-2xs placeholder:text-gray-400 focus:border-blue-500 focus:outline-none dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300"
-            />
-            <Search className="pointer-events-none absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
-          </div>
-
-          {/* Xuất Excel Button */}
-          <button
-            type="button"
-            onClick={handleExportExcel}
-            className="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-blue-200/80 bg-white px-3.5 py-1.5 text-xs font-semibold text-blue-600 shadow-2xs transition-colors hover:bg-blue-50 active:scale-98 dark:border-blue-800 dark:bg-gray-900 dark:text-blue-400"
-          >
-            <Download className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
-            <span>Xuất Excel</span>
-          </button>
+          <Search className="pointer-events-none absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
         </div>
+
+        {/* Xuất Excel Button */}
+        <button
+          type="button"
+          onClick={handleExportExcel}
+          className="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-blue-200/80 bg-white px-3.5 py-1.5 text-xs font-semibold text-blue-600 shadow-2xs transition-colors hover:bg-blue-50 active:scale-98 dark:border-blue-800 dark:bg-gray-900 dark:text-blue-400"
+        >
+          <Download className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+          <span>Xuất Excel</span>
+        </button>
       </div>
 
       {/* 2. Unified Filters & KPI Summary Card */}
@@ -588,7 +573,7 @@ export default function BomAggregatePage() {
             {meta.total} loại nguyên phụ liệu
           </span>
           <span className="font-light text-gray-300 dark:text-gray-700">│</span>
-          <span>{distinctBomCount} BOM</span>
+          <span>{distinctBomCount} bảng NPL</span>
           <span className="font-light text-gray-300 dark:text-gray-700">│</span>
           <span>{distinctProductCount} sản phẩm</span>
           <span className="font-light text-gray-300 dark:text-gray-700">│</span>

@@ -293,7 +293,7 @@ describe("BomPage (PR-08 Frontend BOM V2)", () => {
 
       renderBomPage();
 
-      expect(screen.getByText("Không thể tải dữ liệu danh sách BOM")).toBeTruthy();
+      expect(screen.getByText("Không thể tải dữ liệu danh sách NPL")).toBeTruthy();
       const retryBtn = screen.getByRole("button", { name: "Thử lại" });
       fireEvent.click(retryBtn);
       expect(refetchMock).toHaveBeenCalledTimes(1);
@@ -309,7 +309,7 @@ describe("BomPage (PR-08 Frontend BOM V2)", () => {
 
       renderBomPage();
 
-      expect(screen.getByText("Chưa có bảng BOM nào trong hệ thống")).toBeTruthy();
+      expect(screen.getByText("Chưa có bảng NPL nào trong hệ thống")).toBeTruthy();
     });
 
     it("navigates to detail page on clicking BOM code or view detail button", () => {
@@ -347,29 +347,44 @@ describe("BomPage (PR-08 Frontend BOM V2)", () => {
       );
     });
 
-    it("debounces style filter changes", async () => {
+    it("debounces search input changes", async () => {
       renderBomPage();
 
-      const styleInput = screen.getByPlaceholderText("Mã Fit / Style...");
-      fireEvent.change(styleInput, { target: { value: "cotton" } });
+      const searchInput = screen.getByPlaceholderText(
+        "Tìm mã PO, mẫu Fit, sản phẩm, màu...",
+      );
+      fireEvent.change(searchInput, { target: { value: "cotton" } });
 
       await waitFor(
         () => {
           expect(hooks.useBoms).toHaveBeenCalledWith(
-            expect.objectContaining({ style: "cotton", page: 1 }),
+            expect.objectContaining({ search: "cotton", page: 1 }),
           );
         },
         { timeout: 600 },
       );
     });
 
-    it("clears all filters when clicking clear filters button", () => {
+    it("clears all filters via the empty-state clear-filters button", async () => {
+      hooks.useBoms.mockReturnValue({
+        data: { data: [], meta: { total: 0, page: 1, limit: 20, totalPages: 1 } },
+        isLoading: false,
+        isError: false,
+        refetch: vi.fn(),
+      });
       renderBomPage();
 
-      const clearBtn = screen.getByRole("button", { name: /Làm mới|Xóa lọc/ });
+      fireEvent.click(screen.getByRole("button", { name: "Mẫu Fit" }));
+      expect(hooks.useBoms).toHaveBeenLastCalledWith(
+        expect.objectContaining({ type: "fit" }),
+      );
+
+      const clearBtn = await screen.findByRole("button", { name: "Xóa bộ lọc" });
       fireEvent.click(clearBtn);
 
-      expect(hooks.useBoms).toHaveBeenCalledWith(expect.objectContaining({ page: 1 }));
+      expect(hooks.useBoms).toHaveBeenLastCalledWith(
+        expect.not.objectContaining({ type: "fit" }),
+      );
     });
 
     it("handles month picker change in stats header", () => {

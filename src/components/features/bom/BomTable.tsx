@@ -4,7 +4,6 @@ import {
   Eye,
   Edit2,
   MoreHorizontal,
-  Box,
   PackageOpen,
   ArrowUpDown,
   ArrowUp,
@@ -68,8 +67,8 @@ function exportBomToCsv(item: BomListItem) {
   const created = formatDate(item.createdAt || item.updatedAt);
 
   const headers = [
-    "Mã BOM",
-    "Đối tượng",
+    "Mã NPL",
+    "Kiểu",
     "Sản phẩm / Mẫu",
     "Mã PO",
     "Màu sắc",
@@ -96,7 +95,7 @@ function exportBomToCsv(item: BomListItem) {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.setAttribute("href", url);
-  link.setAttribute("download", `BOM_${item.bomCode}_${Date.now()}.csv`);
+  link.setAttribute("download", `NPL_${item.bomCode}_${Date.now()}.csv`);
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
@@ -206,9 +205,6 @@ export function BomTable({
                   className="rounded border-gray-300 text-brand-600 focus:ring-brand-500"
                 />
               </th>
-              <th scope="col" className="px-4 py-3.5 font-semibold">
-                ĐỐI TƯỢNG
-              </th>
               <th
                 scope="col"
                 className="cursor-pointer px-4 py-3.5 font-semibold select-none hover:text-gray-900 dark:hover:text-white"
@@ -218,6 +214,9 @@ export function BomTable({
                   <span>SẢN PHẨM</span>
                   {renderSortIcon("bomCode")}
                 </div>
+              </th>
+              <th scope="col" className="px-4 py-3.5 font-semibold">
+                KIỂU
               </th>
               <th scope="col" className="px-4 py-3.5 font-semibold">
                 MÃ PO
@@ -263,7 +262,7 @@ export function BomTable({
                 <td colSpan={colCount} className="py-10 text-center">
                   <div className="flex flex-col items-center justify-center gap-2">
                     <p className="text-sm font-medium text-rose-600">
-                      Không thể tải dữ liệu danh sách BOM
+                      Không thể tải dữ liệu danh sách NPL
                     </p>
                     <p className="text-xs text-gray-500">
                       Vui lòng kiểm tra kết nối mạng hoặc thử lại
@@ -285,13 +284,13 @@ export function BomTable({
                     <PackageOpen className="h-8 w-8 text-gray-400" />
                     <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
                       {isFiltering
-                        ? "Không tìm thấy BOM phù hợp với bộ lọc"
-                        : "Chưa có bảng BOM nào trong hệ thống"}
+                        ? "Không tìm thấy NPL phù hợp với bộ lọc"
+                        : "Chưa có bảng NPL nào trong hệ thống"}
                     </p>
                     <p className="text-xs text-gray-400">
                       {isFiltering
                         ? "Thử xóa bộ lọc hoặc tìm kiếm với từ khóa khác"
-                        : "Bắt đầu bằng việc tạo BOM cho Mẫu Fit hoặc Đơn hàng PO"}
+                        : "Bắt đầu bằng việc tạo NPL cho Mẫu Fit hoặc Đơn hàng PO"}
                     </p>
                     {isFiltering ? (
                       <button
@@ -326,6 +325,9 @@ export function BomTable({
                 const mainCode = isFit
                   ? item.style?.styleCode || item.bomCode
                   : item.product?.productCode || item.bomCode;
+                const mainName = isFit
+                  ? item.style?.styleName || mainCode
+                  : item.product?.productName || mainCode;
 
                 // Color display
                 const colorName = isFit
@@ -353,25 +355,27 @@ export function BomTable({
                       />
                     </td>
 
-                    {/* Đối tượng */}
-                    <td className="px-4 py-3.5 whitespace-nowrap">
-                      <BomTypeBadge type={item.type} />
-                    </td>
-
                     {/* Sản phẩm */}
                     <td className="px-4 py-3.5">
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400">
-                          <Box className="h-4 w-4" />
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => onViewDetail(item.id)}
-                          className="truncate text-left font-semibold text-gray-900 hover:text-brand-600 hover:underline dark:text-white dark:hover:text-brand-400"
-                        >
-                          {mainCode}
-                        </button>
-                      </div>
+                      <button
+                        type="button"
+                        onClick={() => onViewDetail(item.id)}
+                        className="flex flex-col items-start text-left"
+                      >
+                        <span className="truncate font-semibold text-gray-900 hover:text-brand-600 hover:underline dark:text-white dark:hover:text-brand-400">
+                          {mainName}
+                        </span>
+                        {mainName !== mainCode && (
+                          <span className="font-mono text-[11px] text-gray-400 dark:text-gray-500">
+                            {mainCode}
+                          </span>
+                        )}
+                      </button>
+                    </td>
+
+                    {/* Kiểu */}
+                    <td className="px-4 py-3.5 whitespace-nowrap">
+                      <BomTypeBadge type={item.type} />
                     </td>
 
                     {/* Mã PO */}
@@ -519,7 +523,7 @@ export function BomTable({
               className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs font-medium text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-800"
             >
               <Eye className="h-3.5 w-3.5 text-gray-400" />
-              <span>Mở BOM</span>
+              <span>Mở bảng NPL</span>
             </button>
             <button
               type="button"

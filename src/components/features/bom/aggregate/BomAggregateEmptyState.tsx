@@ -22,8 +22,8 @@ export function BomAggregateEmptyState({
       </h3>
       <p className="mt-1.5 max-w-md text-xs text-gray-500 dark:text-gray-400">
         {isFiltered
-          ? "Không có BOM PO đã đóng phù hợp với điều kiện lọc."
-          : "Chưa có BOM PO nào ở trạng thái đã đóng (closed) để tổng hợp nhu cầu nguyên phụ liệu."}
+          ? "Không có bảng NPL của PO đã đóng phù hợp với điều kiện lọc."
+          : "Chưa có bảng NPL nào của PO ở trạng thái đã đóng (closed) để tổng hợp nhu cầu nguyên phụ liệu."}
       </p>
 
       {isFiltered && (

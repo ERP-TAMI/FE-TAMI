@@ -585,15 +585,17 @@ describe("PR-11: BOM V2 Final Integration & E2E Regression", () => {
       );
     });
 
-    it("4. debounces style filter updates before triggering query", async () => {
+    it("4. debounces search input updates before triggering query", async () => {
       renderWithRouter(<BomPage />, { initialEntries: ["/bom"] });
 
-      const styleInput = screen.getByPlaceholderText("Mã Fit / Style...");
-      fireEvent.change(styleInput, { target: { value: "Oxford" } });
+      const searchInput = screen.getByPlaceholderText(
+        "Tìm mã PO, mẫu Fit, sản phẩm, màu...",
+      );
+      fireEvent.change(searchInput, { target: { value: "Oxford" } });
 
       await waitFor(
         () => {
-          expect(hooks.useBoms).toHaveBeenCalledWith(expect.objectContaining({ style: "Oxford" }));
+          expect(hooks.useBoms).toHaveBeenCalledWith(expect.objectContaining({ search: "Oxford" }));
         },
         { timeout: 1500 },
       );
