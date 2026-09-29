@@ -22,7 +22,6 @@ import { StyleSampleRoundsTab } from "@/components/features/styles/StyleSampleRo
 import { getApiError, isConflictError } from "@/lib/apiError";
 import { validateImageFile } from "@/lib/validateImageFile";
 import type { StyleOperationStepItem } from "@/api/styleOperationStepsApi";
-import { InfoIcon, DocsIcon, PageIcon, FolderIcon, TaskIcon } from "@/icons";
 
 export default function StyleDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -305,71 +304,61 @@ export default function StyleDetailPage() {
           status={style.status}
         />
 
-        <div className="border-b border-gray-200 dark:border-gray-800">
-          <nav className="flex space-x-6" aria-label="Tabs">
+        <div className="-mt-1 border-b border-gray-200 dark:border-gray-800">
+          <nav className="-mb-px flex gap-6 text-theme-sm font-semibold">
             <button
               type="button"
               onClick={() => handleTabChange("general")}
-              className={`flex items-center gap-2 border-b-2 py-2.5 px-1 text-sm font-semibold transition-colors cursor-pointer ${
+              className={`border-b-2 py-2.5 transition-colors ${
                 activeTab === "general"
-                  ? "border-brand-500 text-brand-600 dark:text-brand-400"
-                  : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                  ? "border-brand-600 text-brand-600 dark:border-brand-400 dark:text-brand-400"
+                  : "border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400"
               }`}
             >
-              <InfoIcon className="w-4 h-4" />
               Thông tin mẫu Fit
             </button>
             <button
               type="button"
               onClick={() => handleTabChange("steps")}
-              className={`flex items-center gap-2 border-b-2 py-2.5 px-1 text-sm font-semibold transition-colors cursor-pointer ${
+              className={`border-b-2 py-2.5 transition-colors ${
                 activeTab === "steps"
-                  ? "border-brand-500 text-brand-600 dark:text-brand-400"
-                  : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                  ? "border-brand-600 text-brand-600 dark:border-brand-400 dark:text-brand-400"
+                  : "border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400"
               }`}
             >
-              <DocsIcon className="w-4 h-4" />
-              Quy trình công đoạn &amp; KIM
-              {(stepsQuery.data?.length ?? 0) > 0 && (
-                <span className="ml-1.5 rounded-full bg-brand-50 dark:bg-brand-950/60 px-2 py-0.5 text-xs text-brand-600 dark:text-brand-400">
-                  {stepsQuery.data?.length}
-                </span>
-              )}
+              Quy trình công đoạn
             </button>
             <button
               type="button"
               onClick={() => handleTabChange("production_doc")}
-              className={`flex items-center gap-2 border-b-2 py-2.5 px-1 text-sm font-semibold transition-colors cursor-pointer ${
+              className={`border-b-2 py-2.5 transition-colors ${
                 activeTab === "production_doc"
-                  ? "border-brand-500 text-brand-600 dark:text-brand-400"
-                  : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                  ? "border-brand-600 text-brand-600 dark:border-brand-400 dark:text-brand-400"
+                  : "border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400"
               }`}
             >
-              <PageIcon className="w-4 h-4" />
               Tài liệu sản xuất
             </button>
             <button
               type="button"
               onClick={() => handleTabChange("documents")}
-              className={`flex items-center gap-2 border-b-2 py-2.5 px-1 text-sm font-semibold transition-colors cursor-pointer ${
+              className={`border-b-2 py-2.5 transition-colors ${
                 activeTab === "documents"
-                  ? "border-brand-500 text-brand-600 dark:text-brand-400"
-                  : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                  ? "border-brand-600 text-brand-600 dark:border-brand-400 dark:text-brand-400"
+                  : "border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400"
               }`}
             >
-              <FolderIcon className="w-4 h-4" />
               Tài liệu đính kèm
             </button>
             <button
               type="button"
               onClick={() => handleTabChange("sample_rounds")}
-              className={`flex items-center gap-2 border-b-2 py-2.5 px-1 text-sm font-semibold transition-colors cursor-pointer ${
+              className={`border-b-2 py-2.5 transition-colors ${
                 activeTab === "sample_rounds"
-                  ? "border-brand-500 text-brand-600 dark:text-brand-400"
-                  : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                  ? "border-brand-600 text-brand-600 dark:border-brand-400 dark:text-brand-400"
+                  : "border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400"
               }`}
             >
-              <TaskIcon className="w-4 h-4" />
               Lần may mẫu
             </button>
           </nav>
