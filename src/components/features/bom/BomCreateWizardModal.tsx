@@ -114,10 +114,13 @@ export function BomCreateWizardModal({ open, onClose }: BomCreateWizardModalProp
     };
   }, [isPoDropdownOpen]);
 
-  // Query Styles for FIT BOM
-  const { data: stylesData, isLoading: isLoadingStyles } = useStyles({
-    limit: 100,
-  });
+  // Query Styles for FIT BOM — this modal is always mounted on BomPage
+  // (open just toggles visibility), so gate on `open` or it fetches on
+  // every page load even when the wizard was never clicked.
+  const { data: stylesData, isLoading: isLoadingStyles } = useStyles(
+    { limit: 100 },
+    { enabled: open },
+  );
 
   const allStyles = useMemo(() => stylesData?.data ?? [], [stylesData]);
 
@@ -163,10 +166,11 @@ export function BomCreateWizardModal({ open, onClose }: BomCreateWizardModalProp
     }));
   }, [allStyles]);
 
-  // Query Purchase Orders for PO BOM
-  const { data: posData, isLoading: isLoadingPos } = usePurchaseOrders({
-    limit: 100,
-  });
+  // Query Purchase Orders for PO BOM — same reasoning as useStyles above.
+  const { data: posData, isLoading: isLoadingPos } = usePurchaseOrders(
+    { limit: 100 },
+    { enabled: open },
+  );
 
   const allPos = useMemo(() => posData?.items ?? [], [posData]);
 

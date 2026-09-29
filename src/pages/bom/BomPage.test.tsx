@@ -558,6 +558,34 @@ describe("BomPage (PR-08 Frontend BOM V2)", () => {
       expect(screen.getByText("Chọn loại BOM")).toBeTruthy();
     });
 
+    it("does not fetch styles/purchase-orders for the wizard until it's opened", () => {
+      renderBomPage();
+
+      // BomCreateWizardModal is always mounted (only its visibility toggles),
+      // so its own queries must stay off until the user actually opens it —
+      // otherwise every visit to /bom fires styles?limit=100 and
+      // purchase-orders?limit=100 for a modal nobody opened.
+      expect(hooks.useStyles).toHaveBeenLastCalledWith(
+        { limit: 100 },
+        { enabled: false },
+      );
+      expect(hooks.usePurchaseOrders).toHaveBeenLastCalledWith(
+        { limit: 100 },
+        { enabled: false },
+      );
+
+      fireEvent.click(screen.getByRole("button", { name: /Tạo BOM/i }));
+
+      expect(hooks.useStyles).toHaveBeenLastCalledWith(
+        { limit: 100 },
+        { enabled: true },
+      );
+      expect(hooks.usePurchaseOrders).toHaveBeenLastCalledWith(
+        { limit: 100 },
+        { enabled: true },
+      );
+    });
+
     it("creates FIT BOM successfully: selects FIT, chooses Style, and submits", async () => {
       hooks.createBom.mutateAsync.mockResolvedValueOnce({
         id: "new-bom-fit-123",

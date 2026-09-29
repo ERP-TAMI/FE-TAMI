@@ -38,10 +38,14 @@ export const PO_KEYS = {
   fitPreview: (styleId: string) => ["styles", "fitPreview", styleId] as const,
 };
 
-export function usePurchaseOrders(query: PoQuery = {}) {
+export function usePurchaseOrders(
+  query: PoQuery = {},
+  options?: { enabled?: boolean },
+) {
   return useQuery({
     queryKey: PO_KEYS.list(query),
     queryFn: () => poApi.findAll(query),
+    enabled: options?.enabled ?? true,
   });
 }
 
