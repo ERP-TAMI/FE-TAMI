@@ -10,6 +10,7 @@ import {
   EyeIcon,
   PencilIcon,
 } from "@/icons";
+import { EntityHistoryButton } from "@/components/features/audit/EntityHistoryButton";
 
 
 import { Button } from "@/components/shared/Button";
@@ -863,6 +864,11 @@ export function StyleOperationStepTable({
                     <CopyIcon className="w-4 h-4" />
                     Sao chép công đoạn
                   </Button>}
+                  <EntityHistoryButton
+                    aggregateType="StyleOperationStep"
+                    parentId={styleId}
+                    title="Lịch sử: Quy trình công đoạn"
+                  />
                   {showEditButton && (
                     <Button variant="primary" size="sm" onClick={handleEditStart}>
                       <PencilIcon className="w-4 h-4" />

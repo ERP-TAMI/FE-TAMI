@@ -9,7 +9,7 @@ import {
 } from "@/icons";
 import { useSidebar } from "@/context/SidebarContext";
 import { useAuthStore } from "@/store/authStore";
-import { canAccessEditablePurchaseOrderModule } from "@/lib/areaAccess";
+import { canAccessEditablePurchaseOrderModule, canViewAuditLog } from "@/lib/areaAccess";
 
 type NavChild = {
   name: string;
@@ -45,7 +45,7 @@ const ALL_NAV_ITEMS: NavItem[] = [
       { name: "Bảng Size", path: "/masters/size-charts" },
     ],
   },
-  { name: "Audit log", path: "/audit-log", icon: <ListIcon /> },
+  { name: "Nhật ký hệ thống", path: "/audit-log", icon: <ListIcon /> },
 ];
 
 export default function AppSidebar() {
@@ -60,9 +60,11 @@ export default function AppSidebar() {
   // hợp đó, nên ẩn luôn mục này thay vì để một nút bấm vào là bị đá đi.
   const navItems = useMemo(
     () =>
-      canAccessEditablePurchaseOrderModule(user)
-        ? ALL_NAV_ITEMS
-        : ALL_NAV_ITEMS.filter((item) => item.path !== "/po"),
+      ALL_NAV_ITEMS.filter((item) => {
+        if (item.path === "/po") return canAccessEditablePurchaseOrderModule(user);
+        if (item.path === "/audit-log") return canViewAuditLog(user);
+        return true;
+      }),
     [user],
   );
 

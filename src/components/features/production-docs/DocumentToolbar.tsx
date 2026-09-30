@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, type ReactNode } from "react";
 import type { ProductionDocStatus } from "@/types/production-doc";
 
 interface Props {
@@ -18,6 +18,8 @@ interface Props {
   onExportExcelClick?: () => void;
   onResyncClick?: () => void;
   onCopyClick?: () => void;
+  /** Nút "Lịch sử" — chỉ hiện khi không đang chỉnh sửa. */
+  historySlot?: ReactNode;
 }
 
 export function DocumentToolbar({
@@ -37,6 +39,7 @@ export function DocumentToolbar({
   onExportExcelClick,
   onResyncClick,
   onCopyClick,
+  historySlot,
 }: Props) {
   const [overflowOpen, setOverflowOpen] = useState(false);
   const overflowRef = useRef<HTMLDivElement>(null);
@@ -78,13 +81,16 @@ export function DocumentToolbar({
       {/* Action Hierarchy */}
       <div className="flex flex-wrap items-center justify-end gap-2">
         {readOnly ? (
-          <button
-            type="button"
-            onClick={onPreviewClick}
-            className="inline-flex min-h-10 cursor-pointer items-center justify-center rounded-xl border border-gray-300 bg-white px-4 text-sm font-semibold text-gray-900 transition-colors hover:bg-gray-50 focus:ring-4 focus:ring-gray-200 focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-white"
-          >
-            Xem trước
-          </button>
+          <>
+            {historySlot}
+            <button
+              type="button"
+              onClick={onPreviewClick}
+              className="inline-flex min-h-10 cursor-pointer items-center justify-center rounded-xl border border-gray-300 bg-white px-4 text-sm font-semibold text-gray-900 transition-colors hover:bg-gray-50 focus:ring-4 focus:ring-gray-200 focus:outline-none dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+            >
+              Xem trước
+            </button>
+          </>
         ) : isEditing ? (
           <>
             <button
@@ -106,6 +112,7 @@ export function DocumentToolbar({
           </>
         ) : (
           <>
+            {historySlot}
             {/* Tertiary Actions */}
             <button
               type="button"

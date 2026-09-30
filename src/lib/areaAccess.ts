@@ -4,6 +4,7 @@ import { canAccessManagement } from "@/lib/managementAccess";
 export { canAccessManagement };
 
 const USER_MANAGEMENT_PERMISSION = "system.users.manage";
+const AUDIT_LOG_PERMISSION = "system.audit.view";
 
 export function canAccessItArea(user: AuthUser | null): boolean {
   return user?.roleCode === "IT";
@@ -11,6 +12,10 @@ export function canAccessItArea(user: AuthUser | null): boolean {
 
 export function canManageUsers(user: AuthUser | null): boolean {
   return user?.permissions.includes(USER_MANAGEMENT_PERMISSION) ?? false;
+}
+
+export function canViewAuditLog(user: AuthUser | null): boolean {
+  return user?.permissions.includes(AUDIT_LOG_PERMISSION) ?? false;
 }
 
 export function canManagePurchaseOrders(user: AuthUser | null): boolean {

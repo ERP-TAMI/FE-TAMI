@@ -1,10 +1,10 @@
-import { Menu, PanelLeftClose, PanelLeftOpen, UsersRound, X } from "lucide-react";
+import { History, Menu, PanelLeftClose, PanelLeftOpen, UsersRound, X } from "lucide-react";
 import { NavLink, Outlet } from "react-router-dom";
 import { ThemeToggleButton } from "@/components/shared/ThemeToggleButton";
 import { SidebarProvider, useSidebar } from "@/context/SidebarContext";
 import AccountMenu from "@/layout/AccountMenu";
 import Backdrop from "@/layout/Backdrop";
-import { canManageUsers, getLandingPath } from "@/lib/areaAccess";
+import { canManageUsers, canViewAuditLog, getLandingPath } from "@/lib/areaAccess";
 import { useAuthStore } from "@/store/authStore";
 
 function ItLayoutContent() {
@@ -87,6 +87,25 @@ function ItLayoutContent() {
             >
               <UsersRound aria-hidden="true" className="h-6 w-6 shrink-0" />
               {showLabels && <span className="menu-item-text">Quản trị người dùng</span>}
+            </NavLink>
+          )}
+          {canViewAuditLog(user) && (
+            <NavLink
+              to="/audit-log"
+              aria-label="Nhật ký hệ thống"
+              onClick={() => {
+                if (isMobileOpen) toggleMobileSidebar();
+              }}
+              className={({ isActive }) =>
+                `menu-item group focus-visible:outline-brand-500 cursor-pointer transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 ${
+                  isActive
+                    ? "bg-brand-50 text-brand-700 dark:bg-brand-500/[0.12] dark:text-brand-300"
+                    : "menu-item-inactive"
+                } ${showLabels ? "justify-start" : "justify-center"}`
+              }
+            >
+              <History aria-hidden="true" className="h-6 w-6 shrink-0" />
+              {showLabels && <span className="menu-item-text">Nhật ký hệ thống</span>}
             </NavLink>
           )}
         </nav>

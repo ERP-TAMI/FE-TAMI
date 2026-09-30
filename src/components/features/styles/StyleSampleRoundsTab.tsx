@@ -18,6 +18,7 @@ import {
   ChevronLeftIcon,
 } from "@/icons";
 import { styleSampleRoundsApi } from "@/api/style-sample-rounds.api";
+import { EntityHistoryButton } from "@/components/features/audit/EntityHistoryButton";
 import { useToast } from "@/hooks/useToast";
 import { useUploadStore } from "@/hooks/useUploadStore";
 import { getApiError } from "@/lib/apiError";
@@ -268,10 +269,17 @@ export function StyleSampleRoundsTab({ styleId }: Props) {
         <h3 className="text-theme-base font-bold text-gray-900 dark:text-white">
           Lần may mẫu ({rounds.length})
         </h3>
-        <Button size="sm" onClick={openCreateForm}>
-          <PlusIcon className="h-4 w-4" />
-          Thêm lần may mẫu
-        </Button>
+        <div className="flex items-center gap-2">
+          <EntityHistoryButton
+            aggregateType="StyleSampleRound"
+            parentId={styleId}
+            title="Lịch sử: Lần may mẫu"
+          />
+          <Button size="sm" onClick={openCreateForm}>
+            <PlusIcon className="h-4 w-4" />
+            Thêm lần may mẫu
+          </Button>
+        </div>
       </div>
 
       {roundsQuery.isLoading ? (
