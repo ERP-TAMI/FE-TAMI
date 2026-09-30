@@ -52,16 +52,6 @@ export interface PoDocumentPreviewResponse {
   text?: string;
 }
 
-export interface PurchaseOrderStatusHistoryItem {
-  id: string;
-  oldStatus: PoStatus | null;
-  newStatus: PoStatus;
-  action: string;
-  reason: string | null;
-  changedBy: string | null;
-  changedAt: string;
-}
-
 export interface PurchaseOrderListItem {
   id: string;
   poCode: string;
@@ -382,22 +372,12 @@ export interface PurchaseOrderProductDetail extends PurchaseOrderProductItem {
   sampleRounds: ProductSampleRound[];
   productionDocument: ProductProductionDoc | null;
   documents: ProductDocumentItem[];
-  statusHistory: Array<{
-    id: string;
-    productId: string;
-    oldStatus: string | null;
-    newStatus: string;
-    action: string;
-    reason: string | null;
-    changedBy: string | null;
-    changedAt: string;
-  }>;
 }
 
 /**
  * Thông tin chung của PO.
  *
- * BE cố ý không trả kèm products / documents / statusHistory nữa — mỗi tab gọi
+ * BE cố ý không trả kèm products / documents nữa — mỗi tab gọi
  * endpoint riêng. Hai trường *Count dùng để hiện số trên nhãn tab mà không phải
  * tải cả danh sách.
  */

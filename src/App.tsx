@@ -115,7 +115,6 @@ export function AppRoutes() {
               <Route path="purchase-orders/:id/lines" element={<ManagementPoDetailRoute />} />
               <Route path="purchase-orders/:id/documents" element={<ManagementPoDetailRoute />} />
               <Route path="purchase-orders/:id/files" element={<ManagementPoDetailRoute />} />
-              <Route path="purchase-orders/:id/history" element={<ManagementPoDetailRoute />} />
               <Route path="profile" element={<ProfilePage />} />
               <Route element={<UserManagementRoute />}>
                 <Route path="users" element={<UsersPage />} />
@@ -155,7 +154,6 @@ export function AppRoutes() {
               <Route path="po/:id/lines" element={<PoDetailPage />} />
               <Route path="po/:id/documents" element={<PoDetailPage />} />
               <Route path="po/:id/files" element={<PoDetailPage />} />
-              <Route path="po/:id/history" element={<PoDetailPage />} />
               <Route path="po/:id/products/:productId" element={<PoProductDetailPage />} />
               <Route path="po/:id/products/:productId/:tab" element={<PoProductDetailPage />} />
               <Route path="po/:id/line/:productId" element={<PoProductDetailPage />} />

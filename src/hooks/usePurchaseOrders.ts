@@ -19,8 +19,6 @@ export const PO_KEYS = {
   list: (query: PoQuery) => [...PO_KEYS.lists(), query] as const,
   details: () => [...PO_KEYS.all, "detail"] as const,
   detail: (id: string) => [...PO_KEYS.details(), id] as const,
-  histories: () => [...PO_KEYS.all, "history"] as const,
-  history: (id: string) => [...PO_KEYS.histories(), id] as const,
   documentsOf: (id: string) => [...PO_KEYS.all, "documents", id] as const,
   documents: (id: string, query: PoDocumentQuery = {}) =>
     [...PO_KEYS.documentsOf(id), query] as const,

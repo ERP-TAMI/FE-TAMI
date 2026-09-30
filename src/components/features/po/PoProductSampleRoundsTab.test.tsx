@@ -1,6 +1,16 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render as rtlRender, screen } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type { ReactElement } from "react";
 import { PoProductSampleRoundsTab } from "./PoProductSampleRoundsTab";
+
+// EntityHistoryButton (rendered in the tab's toolbar) reaches a real
+// useQuery internally, which this component previously never needed.
+function render(ui: ReactElement) {
+  return rtlRender(
+    <QueryClientProvider client={new QueryClient()}>{ui}</QueryClientProvider>,
+  );
+}
 
 const hooks = vi.hoisted(() => ({
   useCreateProductSampleRound: vi.fn(),

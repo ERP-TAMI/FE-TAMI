@@ -4,6 +4,7 @@ import { FileIcon, DownloadIcon, TrashBinIcon, EyeIcon } from "@/icons";
 import type { PurchaseOrderDocumentItem } from "@/types/po";
 import type { UploadProgress } from "@/api/po.api";
 import { useUploadStore } from "@/hooks/useUploadStore";
+import { EntityHistoryButton } from "@/components/features/audit/EntityHistoryButton";
 
 interface Props {
   poId?: string;
@@ -44,6 +45,7 @@ import { PoDocumentCategoryPicker } from "./PoDocumentCategoryPicker";
 import { PoUploadDocumentsModal } from "./PoUploadDocumentsModal";
 
 export function PoDocumentsSection({
+  poId,
   poCode,
   documents,
   isLocked,
@@ -140,11 +142,18 @@ export function PoDocumentsSection({
           <h3 className="text-theme-base font-bold text-gray-900 dark:text-white">
             Tài liệu ({documents.length})
           </h3>
-          {!isLocked && (
-            <Button size="sm" onClick={() => setIsUploadOpen(true)} disabled={isPending}>
-              + Tải tài liệu lên
-            </Button>
-          )}
+          <div className="flex items-center gap-2">
+            <EntityHistoryButton
+              aggregateType="PurchaseOrderDocument"
+              parentId={poId}
+              title="Lịch sử: Tài liệu PO"
+            />
+            {!isLocked && (
+              <Button size="sm" onClick={() => setIsUploadOpen(true)} disabled={isPending}>
+                + Tải tài liệu lên
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Category Filter Tabs */}

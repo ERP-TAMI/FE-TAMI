@@ -778,15 +778,15 @@ export function StyleProductionDocTab({
         onResyncClick={isProductMode ? undefined : () => setResyncOpen(true)}
         onCopyClick={isProductMode ? undefined : () => setCopyOpen(true)}
         historySlot={
-          isProductMode || !styleId ? undefined : (
+          isProductMode || styleId ? (
             <EntityHistoryButton
-              aggregateType="ProductionDocument"
-              parentId={styleId}
+              aggregateType={isProductMode ? "PurchaseOrderProductionDocument" : "ProductionDocument"}
+              parentId={isProductMode ? productId : styleId}
               title="Lịch sử: Tài liệu sản xuất"
               size="md"
               className="!font-semibold"
             />
-          )
+          ) : undefined
         }
       />
 

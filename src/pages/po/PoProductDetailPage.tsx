@@ -41,6 +41,7 @@ import { ProductVersionedFileGroup } from "@/components/features/po/ProductVersi
 import { PoSplitDocumentPreview } from "@/components/features/po/PoSplitDocumentPreview";
 import { PoProductBomTab } from "@/components/features/po/PoProductBomTab";
 import { PoProductSampleRoundsTab } from "@/components/features/po/PoProductSampleRoundsTab";
+import { EntityHistoryButton } from "@/components/features/audit/EntityHistoryButton";
 import { ArrowLeft } from "lucide-react";
 import type {
   ProductColorItem,
@@ -1256,10 +1257,17 @@ export default function PoProductDetailPage({
             </div>
 
             {/* Metadata Footer */}
-            <div className="text-xs text-gray-400 dark:text-gray-500 flex flex-wrap gap-3">
+            <div className="text-xs text-gray-400 dark:text-gray-500 flex flex-wrap items-center gap-3">
               <span>Tạo lúc {formatDateTime(product.createdAt)}</span>
               <span>•</span>
               <span>Cập nhật {formatDateTime(product.updatedAt)}</span>
+              <EntityHistoryButton
+                aggregateType="PurchaseOrderProduct"
+                aggregateId={product.id}
+                title="Lịch sử: Thông tin sản phẩm"
+                size="xs"
+                className="ml-auto !font-semibold"
+              />
             </div>
           </div>
         </div>
@@ -1276,16 +1284,23 @@ export default function PoProductDetailPage({
               Bảng phân bổ Size &amp; Phối màu sản phẩm
             </h3>
 
-            {!isReadOnly && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleOpenEditModal}
-                className="text-xs font-semibold text-gray-700 border-gray-200 bg-white hover:bg-gray-50 shrink-0"
-              >
-                Chỉnh sửa màu &amp; size
-              </Button>
-            )}
+            <div className="flex items-center gap-2">
+              <EntityHistoryButton
+                aggregateType="PurchaseOrderProduct"
+                aggregateId={product.id}
+                title="Lịch sử: Bảng size"
+              />
+              {!isReadOnly && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleOpenEditModal}
+                  className="text-xs font-semibold text-gray-700 border-gray-200 bg-white hover:bg-gray-50 shrink-0"
+                >
+                  Chỉnh sửa màu &amp; size
+                </Button>
+              )}
+            </div>
           </div>
 
           {/* Ma trận bảng Size + Màu */}
@@ -1391,16 +1406,23 @@ export default function PoProductDetailPage({
               Bảng màu sản phẩm
             </h3>
 
-            {!isReadOnly && (
-              <Button
-                size="sm"
-                onClick={() => handleOpenUploadDoc("color_card")}
-                className="text-xs font-semibold shrink-0"
-              >
-                <PlusIcon className="w-4 h-4 mr-1.5" />
-                Tải ảnh bảng màu lên
-              </Button>
-            )}
+            <div className="flex items-center gap-2">
+              <EntityHistoryButton
+                aggregateType="PurchaseOrderProductDocument"
+                parentId={product.id}
+                title="Lịch sử: Tài liệu sản phẩm"
+              />
+              {!isReadOnly && (
+                <Button
+                  size="sm"
+                  onClick={() => handleOpenUploadDoc("color_card")}
+                  className="text-xs font-semibold shrink-0"
+                >
+                  <PlusIcon className="w-4 h-4 mr-1.5" />
+                  Tải ảnh bảng màu lên
+                </Button>
+              )}
+            </div>
           </div>
 
           {/* Thư viện hình ảnh bảng màu đã tải lên */}
@@ -1518,6 +1540,7 @@ export default function PoProductDetailPage({
           styleCode={product.productCode}
           styleName={product.productName}
           onImageChange={isReadOnly ? undefined : (file) => void handleUploadAndSaveImage(file)}
+          historyAggregateType="PurchaseOrderProductOperationStep"
         />
       )}
 
@@ -1571,16 +1594,23 @@ export default function PoProductDetailPage({
               Tài liệu đính kèm
             </h3>
 
-            {!isReadOnly && (
-              <Button
-                size="sm"
-                onClick={() => openLinkPoDocModal(null)}
-                className="shrink-0"
-              >
-                <PlusIcon className="w-4 h-4 mr-1" />
-                Gán tài liệu từ kho PO
-              </Button>
-            )}
+            <div className="flex items-center gap-2">
+              <EntityHistoryButton
+                aggregateType="PurchaseOrderProductDocument"
+                parentId={product.id}
+                title="Lịch sử: Tài liệu sản phẩm"
+              />
+              {!isReadOnly && (
+                <Button
+                  size="sm"
+                  onClick={() => openLinkPoDocModal(null)}
+                  className="shrink-0"
+                >
+                  <PlusIcon className="w-4 h-4 mr-1" />
+                  Gán tài liệu từ kho PO
+                </Button>
+              )}
+            </div>
           </div>
 
           {/* Banner thông báo khi sản phẩm bị khóa */}

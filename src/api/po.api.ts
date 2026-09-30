@@ -13,7 +13,6 @@ import type {
   PurchaseOrderDetail,
   PurchaseOrderDocumentItem,
   PurchaseOrderProductItem,
-  PurchaseOrderStatusHistoryItem,
   UpdatePoInput,
   UpdatePoProductInput,
   UpdatePoStatusInput,
@@ -117,13 +116,6 @@ export const poApi = {
     const response = await apiClient.patch<PurchaseOrderDetail>(
       `/purchase-orders/${id}/status`,
       input,
-    );
-    return response.data;
-  },
-
-  async getHistory(id: string): Promise<PurchaseOrderStatusHistoryItem[]> {
-    const response = await apiClient.get<PurchaseOrderStatusHistoryItem[]>(
-      `/purchase-orders/${id}/history`,
     );
     return response.data;
   },

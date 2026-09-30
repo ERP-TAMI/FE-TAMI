@@ -61,6 +61,8 @@ export interface StyleOperationStepTableProps {
   styleCode?: string;
   styleName?: string;
   onImageChange?: (file: File) => void;
+  /** Bảng này dùng chung cho sản phẩm PO — lịch sử phải đọc đúng loại dữ liệu. */
+  historyAggregateType?: string;
 }
 
 export function StyleOperationStepTable({
@@ -75,6 +77,7 @@ export function StyleOperationStepTable({
   styleCode,
   styleName,
   onImageChange,
+  historyAggregateType = "StyleOperationStep",
 }: StyleOperationStepTableProps) {
   const { toast, showToast, hideToast } = useToast();
   const [rows, setRows] = useState<Partial<StyleOperationStepItem>[]>(steps);
@@ -865,7 +868,7 @@ export function StyleOperationStepTable({
                     Sao chép công đoạn
                   </Button>}
                   <EntityHistoryButton
-                    aggregateType="StyleOperationStep"
+                    aggregateType={historyAggregateType}
                     parentId={styleId}
                     title="Lịch sử: Quy trình công đoạn"
                   />

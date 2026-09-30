@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { EntityHistoryButton } from "@/components/features/audit/EntityHistoryButton";
 import {
   Button,
   ConfirmDialog,
@@ -286,12 +287,19 @@ export function PoProductSampleRoundsTab({ poId, productId, readOnly = false }: 
         <h3 className="text-theme-base font-bold text-gray-900 dark:text-white">
           Đợt may mẫu ({rounds.length})
         </h3>
-        {!readOnly && (
-          <Button size="sm" onClick={openCreateForm}>
-            <PlusIcon className="h-4 w-4" />
-            Thêm đợt may mẫu
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          <EntityHistoryButton
+            aggregateType="PurchaseOrderProductSampleRound"
+            parentId={productId}
+            title="Lịch sử: Đợt may mẫu"
+          />
+          {!readOnly && (
+            <Button size="sm" onClick={openCreateForm}>
+              <PlusIcon className="h-4 w-4" />
+              Thêm đợt may mẫu
+            </Button>
+          )}
+        </div>
       </div>
 
       {roundsQuery.isLoading ? (
