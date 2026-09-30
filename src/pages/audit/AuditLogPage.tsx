@@ -129,13 +129,46 @@ const BODY_KEY_LABELS: Record<string, string> = {
   fullName: "Họ tên",
   roleCode: "Vai trò",
   note: "Ghi chú",
+  section1Description: "Mô tả hình dáng",
+  section1ImageUrl: "Ảnh mô tả hình dáng",
+  section2Accessories: "Phụ liệu",
+  section3Notes: "Ghi chú sản xuất",
+  section4CustomerFeedback: "Phản hồi khách hàng",
+  sections: "Các mục",
+  sizeData: "Ảnh thông số",
+  sizeRows: "Dòng thông số",
+  stageId: "Công đoạn (Stage)",
+  groupId: "Nhóm công đoạn",
+  timePerPiece: "Thời gian/SP (giây)",
+  ssv: "% công đoạn (SSV)",
+  targetTotal: "SP/1H",
+  orderIndex: "Thứ tự",
+  isGroup: "Là nhóm công đoạn",
+  parentStepId: "Công đoạn cha",
+  groupItems: "Công đoạn con",
 };
 
-function formatBodyValue(value: unknown): string {
+/** Mã trạng thái nội bộ → tiếng Việt, cùng từ vựng với các màn khác. */
+const STATUS_VALUE_LABELS: Record<string, string> = {
+  draft: "Nháp",
+  active: "Hoạt động",
+  in_progress: "Đang thực hiện",
+  completed: "Hoàn thành",
+  working: "Đang may",
+  needs_revision: "Cần chỉnh sửa",
+  approved: "Đã duyệt",
+  rejected: "Từ chối",
+  closed: "Khóa",
+};
+
+function formatBodyValue(key: string, value: unknown): string {
   if (value === null || value === undefined || value === "") return "—";
   if (typeof value === "boolean") return value ? "Có" : "Không";
-  if (Array.isArray(value)) return `${value.length} mục`;
+  if (Array.isArray(value)) return value.length === 0 ? "Trống" : `${value.length} mục`;
   if (typeof value === "object") return JSON.stringify(value);
+  if (key === "status" && typeof value === "string") {
+    return STATUS_VALUE_LABELS[value] ?? value;
+  }
   return String(value);
 }
 
@@ -168,14 +201,16 @@ function ResultIndicator({ log }: { log: HttpAuditLog }) {
 }
 
 /** 1 ô trong lưới chi tiết: nhãn nhỏ bên trái, giá trị bên phải, gạch chân. */
-function Field({ label, value, title }: { label: string; value: ReactNode; title?: string }) {
+// Khung chi tiết là chỗ để kiểm tra — luôn hiện đủ nội dung (xuống dòng, ô tự
+// giãn), không cắt "..." như ở bảng danh sách. [overflow-wrap:anywhere] để
+// chuỗi liền không dấu cách (đường dẫn, mã UUID) vẫn xuống dòng được.
+function Field({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div className="flex min-w-0 items-baseline gap-3 border-b border-gray-100 py-2 dark:border-gray-800">
-      <span className="w-28 shrink-0 text-xs text-gray-500 dark:text-gray-400">{label}</span>
-      <span
-        className="min-w-0 flex-1 truncate text-sm text-gray-900 dark:text-gray-100"
-        title={title ?? (typeof value === "string" ? value : undefined)}
-      >
+      <span className="w-28 shrink-0 text-xs [overflow-wrap:anywhere] text-gray-500 dark:text-gray-400">
+        {label}
+      </span>
+      <span className="min-w-0 flex-1 text-sm whitespace-pre-line [overflow-wrap:anywhere] text-gray-900 dark:text-gray-100">
         {value}
       </span>
     </div>
@@ -247,7 +282,7 @@ function LogDetail({ log }: { log: HttpAuditLog }) {
           </p>
           <FieldGrid count={bodyEntries.length}>
             {bodyEntries.map(([key, value]) => (
-              <Field key={key} label={BODY_KEY_LABELS[key] ?? key} value={formatBodyValue(value)} />
+              <Field key={key} label={BODY_KEY_LABELS[key] ?? key} value={formatBodyValue(key, value)} />
             ))}
           </FieldGrid>
         </>
