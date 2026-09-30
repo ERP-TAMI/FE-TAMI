@@ -1,7 +1,7 @@
 import { NavLink, Outlet } from "react-router-dom";
 import { ThemeToggleButton } from "@/components/shared/ThemeToggleButton";
 import AccountMenu from "@/layout/AccountMenu";
-import { canManageUsers } from "@/lib/areaAccess";
+import { canManageUsers, canViewAuditLog } from "@/lib/areaAccess";
 import { useAuthStore } from "@/store/authStore";
 import { PurchaseOrderModeToggle } from "@/components/features/po/PurchaseOrderModeToggle";
 
@@ -11,6 +11,7 @@ export default function ManagementLayout() {
     ["/management/dashboard", "Dashboard quản lý"],
     ["/management/purchase-orders", "Tổng quan PO"],
     ...(canManageUsers(user) ? [["/management/users", "Quản trị người dùng"]] : []),
+    ...(canViewAuditLog(user) ? [["/audit-log", "Audit log"]] : []),
   ];
 
   return (

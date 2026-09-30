@@ -15,6 +15,7 @@ import ManagementPoOverviewPage from "@/pages/management/ManagementPoOverviewPag
 import { ManagementRoute } from "@/routes/ManagementRoute";
 import { ItRoute } from "@/routes/ItRoute";
 import { UserManagementRoute } from "@/routes/UserManagementRoute";
+import { AuditLogRoute } from "@/routes/AuditLogRoute";
 import { UserManagementAlias } from "@/routes/UserManagementAlias";
 import { PurchaseOrderModuleRoute } from "@/routes/PurchaseOrderModuleRoute";
 import { canManagePurchaseOrders, getLandingPath } from "@/lib/areaAccess";
@@ -168,7 +169,9 @@ export function AppRoutes() {
             <Route path="masters/stages/groups" element={<StagesHubPage />} />
             <Route path="masters/workshops" element={<WorkshopListPage />} />
             <Route path="masters/size-charts" element={<SizeChartListPage />} />
-            <Route path="audit-log" element={<AuditLogPage />} />
+            <Route element={<AuditLogRoute />}>
+              <Route path="audit-log" element={<AuditLogPage />} />
+            </Route>
           </Route>
           <Route element={<UserManagementRoute />}>
             <Route path="admin" element={<UserManagementAlias />} />
