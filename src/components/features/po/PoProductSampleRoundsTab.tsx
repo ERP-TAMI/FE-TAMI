@@ -65,9 +65,16 @@ interface Props {
   poId: string;
   productId: string;
   readOnly?: boolean;
+  /** Tách khỏi readOnly: sản phẩm/PO đã khóa vẫn tải ảnh được, chỉ khu Quản lý thì không. */
+  canDownload?: boolean;
 }
 
-export function PoProductSampleRoundsTab({ poId, productId, readOnly = false }: Props) {
+export function PoProductSampleRoundsTab({
+  poId,
+  productId,
+  readOnly = false,
+  canDownload = !readOnly,
+}: Props) {
   const { toast, showToast, hideToast } = useToast();
   const roundsQuery = useProductSampleRounds(poId, productId);
   const rounds = roundsQuery.data ?? [];
@@ -262,7 +269,7 @@ export function PoProductSampleRoundsTab({ poId, productId, readOnly = false }: 
   };
 
   const handleDownloadImage = async (roundId: string, image: ProductSampleImage) => {
-    if (readOnly) return;
+    if (!canDownload) return;
     // No noopener/noreferrer: those make window.open() return null, so we couldn't navigate it later.
     const popup = window.open("", "_blank");
     try {
@@ -424,23 +431,23 @@ export function PoProductSampleRoundsTab({ poId, productId, readOnly = false }: 
                             className="h-full w-full object-cover"
                           />
                         </button>
-                        {!readOnly && <div className="absolute right-1.5 top-1.5 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                          <button
+                        {(canDownload || !readOnly) && <div className="absolute right-1.5 top-1.5 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                          {canDownload && <button
                             type="button"
                             onClick={() => void handleDownloadImage(round.id, image)}
                             className="rounded-lg bg-black/50 p-1.5 text-white hover:bg-black/70"
                             title="Tải ảnh về"
                           >
                             <DownloadIcon className="h-4 w-4" />
-                          </button>
-                          <button
+                          </button>}
+                          {!readOnly && <button
                             type="button"
                             onClick={() => setPendingRemoveImage({ roundId: round.id, image })}
                             className="rounded-lg bg-black/50 p-1.5 text-white hover:bg-error-600"
                             title="Gỡ ảnh"
                           >
                             <TrashBinIcon className="h-4 w-4" />
-                          </button>
+                          </button>}
                         </div>}
                       </div>
                     ))}
@@ -608,7 +615,7 @@ export function PoProductSampleRoundsTab({ poId, productId, readOnly = false }: 
                 </span>
               )}
 
-              {!readOnly && (
+              {canDownload && (
                 <button
                   type="button"
                   onClick={() => void handleDownloadImage(viewingImage.roundId, viewingImage.image)}

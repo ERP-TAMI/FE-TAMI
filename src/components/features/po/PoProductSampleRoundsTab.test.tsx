@@ -88,4 +88,55 @@ describe("PoProductSampleRoundsTab read-only mode", () => {
     expect(screen.getByRole("dialog")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Tải xuống" })).toBeNull();
   });
+
+  it("keeps image download for a locked product while hiding every write action", () => {
+    hooks.useProductSampleRounds.mockReturnValue({
+      data: [
+        {
+          id: "round-1",
+          roundNo: 1,
+          sampleDate: "2026-09-12",
+          feedback: null,
+          status: "approved",
+          images: [
+            {
+              id: "image-1",
+              url: "https://files.example.test/sample.jpg",
+              fileName: "sample.jpg",
+              mimeType: "image/jpeg",
+              orderIndex: 0,
+              colorName: null,
+              uploadedAt: "2026-09-12T00:00:00.000Z",
+            },
+          ],
+        },
+      ],
+      isLoading: false,
+    });
+    for (const hook of [
+      hooks.useCreateProductSampleRound,
+      hooks.useRemoveProductSampleImage,
+      hooks.useUpdateProductSampleRound,
+      hooks.useUploadProductSampleImage,
+    ]) {
+      hook.mockReturnValue({ isPending: false, mutateAsync: vi.fn() });
+    }
+
+    render(
+      <PoProductSampleRoundsTab
+        poId="po-1"
+        productId="product-1"
+        readOnly
+        canDownload
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "Tải ảnh về" })).toBeTruthy();
+    for (const action of ["Thêm đợt may mẫu", "Sửa", "Gỡ ảnh", "Thêm ảnh"]) {
+      expect(screen.queryByRole("button", { name: action })).toBeNull();
+    }
+
+    fireEvent.click(screen.getByRole("button", { name: "sample.jpg" }));
+    expect(screen.getByRole("button", { name: "Tải xuống" })).toBeTruthy();
+  });
 });

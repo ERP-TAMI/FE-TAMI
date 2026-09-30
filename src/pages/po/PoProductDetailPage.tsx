@@ -247,7 +247,9 @@ export default function PoProductDetailPage({
     isError,
   } = usePoProductDetail(poId, productId);
   const isProductLocked = product?.status === "closed";
-  const isReadOnly = isProductLocked || readOnlyManagement;
+  // PO đã khóa/hủy thì mọi sản phẩm bên trong cũng chỉ đọc (BE cũng chặn).
+  const isPoLocked = po?.status === "closed" || po?.status === "cancelled";
+  const isReadOnly = isProductLocked || isPoLocked || readOnlyManagement;
 
   // Màu & size dùng ở tab Thông tin (tóm tắt) và tab Bảng size (bảng sửa).
   const { data: colorsData } = useProductColors(poId, productId, {
@@ -938,7 +940,7 @@ export default function PoProductDetailPage({
 
           {/* Cột phải: Nhóm nút hành động */}
           <div className="flex flex-wrap items-center gap-2 shrink-0">
-            {!readOnlyManagement &&
+            {!readOnlyManagement && !isPoLocked &&
               (isProductLocked ? (
                 <Button
                   variant="outline"
@@ -976,7 +978,7 @@ export default function PoProductDetailPage({
         </div>
 
         {/* Lock Banner notification khi sản phẩm bị khóa */}
-        {isProductLocked && (
+        {isProductLocked && !isPoLocked && (
           <div className="rounded-xl border border-rose-200 bg-rose-50/80 p-3.5 text-xs text-rose-800 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300 flex items-center justify-between gap-3">
             <div className="flex items-center gap-2.5">
               <span className="flex h-5 w-5 items-center justify-center rounded-full bg-rose-500 text-white shrink-0">
@@ -986,7 +988,7 @@ export default function PoProductDetailPage({
                 Sản phẩm này đã được <strong>Khoá</strong> sau khi xử lý hoàn tất. Quy trình công đoạn và các thông tin đã được chốt và chuyển sang chế độ <strong>Chỉ đọc</strong>.
               </span>
             </div>
-            {!readOnlyManagement && (
+            {!readOnlyManagement && !isPoLocked && (
               <button
                 type="button"
                 onClick={() => setIsUnlockModalOpen(true)}
@@ -996,6 +998,16 @@ export default function PoProductDetailPage({
                 Mở khoá để tiếp tục xử lý
               </button>
             )}
+          </div>
+        )}
+        {isPoLocked && (
+          <div className="rounded-xl border border-rose-200 bg-rose-50/80 p-3.5 text-xs text-rose-800 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300 flex items-center gap-2.5">
+            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-rose-500 text-white shrink-0">
+              <LockIcon className="w-3 h-3" />
+            </span>
+            <span>
+              Đơn hàng PO này đã <strong>{po?.status === "cancelled" ? "Hủy" : "Khoá"}</strong>, nên toàn bộ sản phẩm bên trong chỉ ở chế độ <strong>Chỉ đọc</strong>.
+            </span>
           </div>
         )}
         {readOnlyManagement && (
@@ -1600,7 +1612,7 @@ export default function PoProductDetailPage({
           productId={productId}
           styleName={product.productName}
           styleImageUrl={imageUrl || product.structureImageVersionId || undefined}
-          readOnly={readOnlyManagement}
+          readOnly={isReadOnly}
           onEditingChange={setIsProductionDocEditing}
         />
       )}
@@ -1612,7 +1624,8 @@ export default function PoProductDetailPage({
         <PoProductSampleRoundsTab
           poId={poId}
           productId={productId}
-          readOnly={readOnlyManagement}
+          readOnly={isReadOnly}
+          canDownload={!readOnlyManagement}
         />
       )}
 
