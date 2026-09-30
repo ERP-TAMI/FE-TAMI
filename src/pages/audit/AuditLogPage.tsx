@@ -67,6 +67,30 @@ function formatTime(value: string): string {
   });
 }
 
+/** Rút gọn chuỗi User-Agent thô (dài, kỹ thuật) thành "Trình duyệt · Hệ điều
+ * hành" dễ đọc — chuỗi gốc vẫn xem được qua tooltip khi cần đối chiếu chính
+ * xác. HeadlessChrome (Playwright/automation) tách riêng vì đó không phải
+ * người dùng thật đang duyệt web. */
+function summarizeUserAgent(ua: string | null): string {
+  if (!ua) return "—";
+  if (/HeadlessChrome/i.test(ua)) return "Trình duyệt tự động (headless)";
+
+  let browser = "Không xác định";
+  if (/Edg\//.test(ua)) browser = "Edge";
+  else if (/Chrome\//.test(ua)) browser = "Chrome";
+  else if (/Firefox\//.test(ua)) browser = "Firefox";
+  else if (/Safari\//.test(ua) && !/Chrome/.test(ua)) browser = "Safari";
+
+  let os = "";
+  if (/Windows/.test(ua)) os = "Windows";
+  else if (/Mac OS X|Macintosh/.test(ua)) os = "macOS";
+  else if (/Android/.test(ua)) os = "Android";
+  else if (/iPhone|iPad|iOS/.test(ua)) os = "iOS";
+  else if (/Linux/.test(ua)) os = "Linux";
+
+  return os ? `${browser} · ${os}` : browser;
+}
+
 function formatParamValue(value: unknown): string {
   if (value === null || value === undefined || value === "") return "—";
   if (typeof value === "object") return JSON.stringify(value);
@@ -236,7 +260,10 @@ export default function AuditLogPage() {
                 </div>
               )}
               <p className="text-gray-400 dark:text-gray-500">
-                IP: {row.ipAddress ?? "—"} · Trình duyệt/thiết bị: {row.userAgent ?? "—"}
+                IP: {row.ipAddress ?? "—"} · Trình duyệt/thiết bị:{" "}
+                <span title={row.userAgent ?? undefined}>
+                  {summarizeUserAgent(row.userAgent)}
+                </span>
               </p>
             </div>
           )}
