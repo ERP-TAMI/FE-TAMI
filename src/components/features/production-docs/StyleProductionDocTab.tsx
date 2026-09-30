@@ -20,6 +20,7 @@ import { getApiError } from "@/lib/apiError";
 import { validateImageFile } from "@/lib/validateImageFile";
 
 import { DocumentToolbar } from "./DocumentToolbar";
+import { EntityHistoryButton } from "@/components/features/audit/EntityHistoryButton";
 import { SizeSpecTable } from "./SizeSpecTable";
 import { PreviewModal } from "./PreviewModal";
 import { ResyncDialog } from "./ResyncDialog";
@@ -776,6 +777,15 @@ export function StyleProductionDocTab({
         onExportExcelClick={isProductMode ? undefined : () => void handleExportExcel()}
         onResyncClick={isProductMode ? undefined : () => setResyncOpen(true)}
         onCopyClick={isProductMode ? undefined : () => setCopyOpen(true)}
+        historySlot={
+          isProductMode || !styleId ? undefined : (
+            <EntityHistoryButton
+              aggregateType="ProductionDocument"
+              parentId={styleId}
+              title="Lịch sử: Tài liệu sản xuất"
+            />
+          )
+        }
       />
 
       {/* Document Workspace Structure */}

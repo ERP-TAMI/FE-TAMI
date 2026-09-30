@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
-import { Search } from "lucide-react";
+import { ChevronDown, History, Search } from "lucide-react";
 import { Modal } from "@/components/shared/Modal";
 import { Input } from "@/components/shared/Input";
 import { Pagination } from "@/components/shared/Pagination";
 import { useEntityHistory } from "@/hooks/useEntityHistory";
-import { EntityEventBadge } from "./EntityEventBadge";
+import { EntityEventDot, getEventVerb } from "./EntityEventBadge";
 import type { EntityHistoryChange, EntityHistoryEvent } from "@/api/audit.api";
 
 const PAGE_SIZE = 20;
@@ -26,7 +26,7 @@ function formatDate(value: string): string {
 }
 
 function formatValue(value: unknown): string {
-  if (value === null || value === undefined || value === "") return "—";
+  if (value === null || value === undefined || value === "") return "Trống";
   if (typeof value === "boolean") return value ? "Có" : "Không";
   if (typeof value === "object") return JSON.stringify(value);
   return String(value);
@@ -46,16 +46,16 @@ function summarizeChanges(event: EntityHistoryEvent): string | null {
 
 function ChangeRow({ change }: { change: EntityHistoryChange }) {
   return (
-    <div className="flex items-start justify-between gap-3 py-1 text-xs">
-      <span className="shrink-0 font-medium text-gray-600 dark:text-gray-400">
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2.5">
+      <span className="w-full shrink-0 text-theme-xs font-semibold text-gray-600 sm:w-36 dark:text-gray-400">
         {change.fieldLabel}
       </span>
-      <span className="min-w-0 flex-1 text-right text-gray-500 dark:text-gray-400">
-        <span className="line-through">{formatValue(change.oldValue)}</span>
-        <span className="mx-1.5 text-gray-300 dark:text-gray-600">→</span>
-        <span className="font-semibold text-gray-800 dark:text-gray-200">
-          {formatValue(change.newValue)}
-        </span>
+      <span className="inline-flex min-w-0 items-center gap-1.5 rounded-md bg-rose-50 px-2 py-0.5 text-theme-xs text-rose-700 line-through decoration-rose-400/70 dark:bg-rose-950/30 dark:text-rose-400">
+        {formatValue(change.oldValue)}
+      </span>
+      <ChevronDown className="h-3.5 w-3.5 shrink-0 -rotate-90 text-gray-300 dark:text-gray-600" />
+      <span className="inline-flex min-w-0 items-center gap-1.5 rounded-md bg-emerald-50 px-2 py-0.5 text-theme-xs font-semibold text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400">
+        {formatValue(change.newValue)}
       </span>
     </div>
   );
@@ -124,115 +124,165 @@ export function EntityHistoryDrawer({
   };
 
   const items = historyQuery.data?.items ?? [];
+  const total = historyQuery.data?.total ?? 0;
 
   return (
-    <Modal open={open} onClose={onClose} title={title} size="xl">
-      {isBulkView && (
-        <div className="relative mb-3">
-          <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-gray-400">
-            <Search className="h-4 w-4" aria-hidden="true" />
-          </span>
-          <Input
-            type="search"
-            aria-label="Tìm trong lịch sử"
-            placeholder="Tìm theo tên bản ghi..."
-            value={search}
-            className="border-gray-300 bg-white pl-9 text-sm dark:border-gray-600 dark:bg-gray-900"
-            onChange={(event) => setSearch(event.target.value)}
-          />
+    <Modal
+      open={open}
+      onClose={onClose}
+      title={title}
+      size="2xl"
+      closeOnClickOutside
+    >
+      <div className="overflow-hidden rounded-2xl border border-gray-200/80 bg-white dark:border-gray-800 dark:bg-gray-900/40">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 bg-gray-50/75 px-5 py-3.5 dark:border-gray-800 dark:bg-gray-800/40">
+          <div>
+            <h3 className="text-base font-bold text-gray-900 dark:text-white">
+              Nhật ký thay đổi
+            </h3>
+            <p className="mt-0.5 text-theme-xs text-gray-500 dark:text-gray-400">
+              {total > 0
+                ? `${total} thay đổi được ghi nhận`
+                : "Chưa có thay đổi nào được ghi nhận"}
+            </p>
+          </div>
+          {isBulkView && (
+            <div className="relative w-full max-w-xs">
+              <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-gray-400">
+                <Search className="h-4 w-4" aria-hidden="true" />
+              </span>
+              <Input
+                type="search"
+                aria-label="Tìm trong lịch sử"
+                placeholder="Tìm theo tên bản ghi..."
+                value={search}
+                className="border-gray-300 bg-white pl-9 text-theme-sm dark:border-gray-600 dark:bg-gray-900"
+                onChange={(event) => setSearch(event.target.value)}
+              />
+            </div>
+          )}
         </div>
-      )}
 
-      {historyQuery.isLoading ? (
-        <p className="py-6 text-center text-sm text-gray-500 dark:text-gray-400">
-          Đang tải lịch sử...
-        </p>
-      ) : historyQuery.isError ? (
-        <p className="py-6 text-center text-sm text-rose-600 dark:text-rose-400">
-          Không tải được lịch sử thay đổi.
-        </p>
-      ) : items.length === 0 ? (
-        <p className="py-6 text-center text-sm text-gray-500 dark:text-gray-400">
-          {debouncedSearch
-            ? "Không tìm thấy thay đổi nào khớp."
-            : "Chưa có thay đổi nào được ghi nhận."}
-        </p>
-      ) : (
-        <ul className="divide-y divide-gray-100 dark:divide-gray-800">
-          {items.map((event) => {
-            const isExpanded = expandedIds.has(event.id);
-            const hasChanges = event.changes.length > 0;
-            const summary = summarizeChanges(event);
-            return (
-              <li key={event.id} className="py-3.5">
-                <button
-                  type="button"
-                  onClick={() => hasChanges && toggle(event.id)}
-                  className={`flex w-full items-center gap-4 rounded-lg px-2 py-1.5 text-left transition-colors ${
-                    hasChanges
-                      ? "cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/40"
-                      : "cursor-default"
-                  }`}
-                >
-                  {/* Giờ nổi bật — cột đầu tiên, cố định độ rộng */}
-                  <div className="w-20 shrink-0">
-                    <div className="font-mono text-base font-bold text-gray-900 dark:text-white">
-                      {formatTime(event.occurredAt)}
+        <div className="px-5 py-5">
+          {historyQuery.isLoading ? (
+            <div className="flex flex-col gap-4 py-4">
+              {[0, 1, 2].map((i) => (
+                <div key={i} className="flex items-start gap-4">
+                  <div className="h-8 w-8 shrink-0 animate-pulse rounded-full bg-gray-200 dark:bg-gray-700" />
+                  <div className="flex-1 space-y-2 pt-1">
+                    <div className="h-3.5 w-2/3 animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
+                    <div className="h-3 w-1/3 animate-pulse rounded bg-gray-100 dark:bg-gray-800" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : historyQuery.isError ? (
+            <p className="py-8 text-center text-theme-sm text-rose-600 dark:text-rose-400">
+              Không tải được lịch sử thay đổi.
+            </p>
+          ) : items.length === 0 ? (
+            <div className="py-10 text-center">
+              <History className="mx-auto h-9 w-9 text-gray-300 dark:text-gray-600" />
+              <p className="mt-3 text-theme-sm text-gray-500 dark:text-gray-400">
+                {debouncedSearch
+                  ? "Không tìm thấy thay đổi nào khớp."
+                  : "Chưa có thay đổi nào được ghi nhận."}
+              </p>
+            </div>
+          ) : (
+            <ul className="relative">
+              <div
+                className="absolute top-2 bottom-2 left-4 w-px bg-gray-200 dark:bg-gray-800"
+                aria-hidden="true"
+              />
+              {items.map((event) => {
+                const isExpanded = expandedIds.has(event.id);
+                const hasChanges = event.changes.length > 0;
+                const summary = summarizeChanges(event);
+                return (
+                  <li key={event.id} className="relative flex gap-4 pb-5 last:pb-0">
+                    <EntityEventDot eventType={event.eventType} />
+                    <div className="min-w-0 flex-1">
+                      <button
+                        type="button"
+                        onClick={() => hasChanges && toggle(event.id)}
+                        aria-expanded={hasChanges ? isExpanded : undefined}
+                        className={`flex w-full flex-wrap items-start justify-between gap-x-4 gap-y-1 rounded-xl border border-transparent px-3 py-2 text-left transition-colors focus-visible:ring-brand-500/40 focus-visible:outline-none focus-visible:ring-2 ${
+                          hasChanges
+                            ? "cursor-pointer hover:border-gray-200 hover:bg-gray-50 dark:hover:border-gray-800 dark:hover:bg-gray-800/40"
+                            : "cursor-default"
+                        }`}
+                      >
+                        <div className="min-w-0">
+                          <p className="text-theme-sm text-gray-800 dark:text-gray-200">
+                            <span className="font-semibold text-gray-900 dark:text-white">
+                              {event.actorName ?? "Hệ thống"}
+                            </span>{" "}
+                            {getEventVerb(event.eventType)}
+                            {isBulkView && event.targetLabel && (
+                              <>
+                                {" "}
+                                <span className="font-semibold text-gray-900 dark:text-white">
+                                  {event.targetLabel}
+                                </span>
+                              </>
+                            )}
+                          </p>
+                          {summary && (
+                            <p className="mt-0.5 truncate text-theme-xs text-gray-500 dark:text-gray-400">
+                              {summary}
+                            </p>
+                          )}
+                        </div>
+
+                        <div className="flex shrink-0 items-center gap-2">
+                          <div className="text-right">
+                            <div className="font-mono text-theme-sm font-bold text-gray-900 dark:text-white">
+                              {formatTime(event.occurredAt)}
+                            </div>
+                            <div className="text-theme-xs text-gray-400 dark:text-gray-500">
+                              {formatDate(event.occurredAt)}
+                            </div>
+                          </div>
+                          {hasChanges && (
+                            <ChevronDown
+                              className={`h-4 w-4 text-gray-400 transition-transform dark:text-gray-500 ${
+                                isExpanded ? "rotate-180" : ""
+                              }`}
+                              aria-hidden="true"
+                            />
+                          )}
+                        </div>
+                      </button>
+
+                      {isExpanded && hasChanges && (
+                        <div className="mt-1.5 ml-3 divide-y divide-gray-100 overflow-hidden rounded-xl border border-gray-100 bg-gray-50/60 dark:divide-gray-800 dark:border-gray-800 dark:bg-gray-800/30">
+                          {event.changes.map((change) => (
+                            <ChangeRow key={change.fieldName} change={change} />
+                          ))}
+                        </div>
+                      )}
                     </div>
-                    <div className="text-xs text-gray-400 dark:text-gray-500">
-                      {formatDate(event.occurredAt)}
-                    </div>
-                  </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
 
-                  <div className="shrink-0">
-                    <EntityEventBadge eventType={event.eventType} />
-                  </div>
-
-                  <div className="min-w-0 flex-1">
-                    {isBulkView && event.targetLabel && (
-                      <p className="truncate text-sm font-semibold text-gray-800 dark:text-gray-200">
-                        {event.targetLabel}
-                      </p>
-                    )}
-                    <p className="truncate text-xs text-gray-500 dark:text-gray-400">
-                      <span className="font-medium text-gray-700 dark:text-gray-300">
-                        bởi {event.actorName ?? "Hệ thống"}
-                      </span>
-                      {summary && <span> · {summary}</span>}
-                    </p>
-                  </div>
-
-                  {hasChanges && (
-                    <span className="shrink-0 text-xs font-medium text-brand-600 dark:text-brand-400">
-                      {isExpanded ? "− Thu gọn" : "+ Chi tiết"}
-                    </span>
-                  )}
-                </button>
-                {isExpanded && hasChanges && (
-                  <div className="mt-2 ml-24 rounded-lg bg-gray-50 px-4 py-3 dark:bg-gray-800/50">
-                    {event.changes.map((change) => (
-                      <ChangeRow key={change.fieldName} change={change} />
-                    ))}
-                  </div>
-                )}
-              </li>
-            );
-          })}
-        </ul>
-      )}
-
-      {historyQuery.data && historyQuery.data.totalPages > 1 && (
-        <div className="mt-3">
-          <Pagination
-            page={page}
-            pageSize={PAGE_SIZE}
-            totalItems={historyQuery.data.total}
-            totalPages={historyQuery.data.totalPages}
-            itemLabel="thay đổi"
-            onPageChange={setPage}
-          />
+          {historyQuery.data && historyQuery.data.totalPages > 1 && (
+            <div className="mt-4 border-t border-gray-100 pt-4 dark:border-gray-800">
+              <Pagination
+                page={page}
+                pageSize={PAGE_SIZE}
+                totalItems={historyQuery.data.total}
+                totalPages={historyQuery.data.totalPages}
+                itemLabel="thay đổi"
+                onPageChange={setPage}
+              />
+            </div>
+          )}
         </div>
-      )}
+      </div>
     </Modal>
   );
 }
