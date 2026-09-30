@@ -35,6 +35,25 @@ export interface EntityHistoryEvent {
   changes: EntityHistoryChange[];
 }
 
+export interface PaginatedEntityHistory {
+  items: EntityHistoryEvent[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+export interface QueryEntityHistoryParams {
+  aggregateType: string;
+  aggregateId?: string;
+  parentId?: string;
+  search?: string;
+  from?: string;
+  to?: string;
+  page?: number;
+  limit?: number;
+}
+
 export interface HttpAuditLog {
   id: string;
   occurredAt: string;
@@ -73,11 +92,10 @@ export interface QueryHttpAuditLogsParams {
 
 export const auditApi = {
   getEntityHistory: async (
-    aggregateType: string,
-    aggregateId: string,
-  ): Promise<EntityHistoryEvent[]> => {
-    const res = await apiClient.get<EntityHistoryEvent[]>("/audit/history", {
-      params: { aggregateType, aggregateId },
+    params: QueryEntityHistoryParams,
+  ): Promise<PaginatedEntityHistory> => {
+    const res = await apiClient.get<PaginatedEntityHistory>("/audit/history", {
+      params,
     });
     return res.data;
   },

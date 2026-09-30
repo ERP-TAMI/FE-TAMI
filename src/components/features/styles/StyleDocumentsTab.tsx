@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { Button, ConfirmDialog, FileTypeIcon } from "@/components/shared";
 import { DownloadIcon, EyeIcon, FileIcon, PlusIcon, TrashBinIcon } from "@/icons";
 import { styleDocumentsApi } from "@/api/style-documents.api";
+import { EntityHistoryButton } from "@/components/features/audit/EntityHistoryButton";
 import {
   useRemoveStyleDocument,
   useStyleDocuments,
@@ -161,10 +162,17 @@ export function StyleDocumentsTab({ styleId }: Props) {
           <h3 className="text-theme-base font-bold text-gray-900 dark:text-white">
             Danh sách tài liệu ({documents.length})
           </h3>
-          <Button size="sm" onClick={() => fileInputRef.current?.click()}>
-            <PlusIcon className="h-4 w-4" />
-            Tải tài liệu lên
-          </Button>
+          <div className="flex items-center gap-2">
+            <EntityHistoryButton
+              aggregateType="StyleDocument"
+              parentId={styleId}
+              title="Lịch sử: Tài liệu"
+            />
+            <Button size="sm" onClick={() => fileInputRef.current?.click()}>
+              <PlusIcon className="h-4 w-4" />
+              Tải tài liệu lên
+            </Button>
+          </div>
           <input
             ref={fileInputRef}
             type="file"

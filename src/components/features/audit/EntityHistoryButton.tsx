@@ -1,41 +1,42 @@
 import { useState } from "react";
+import { Button } from "@/components/shared/Button";
 import { TimeIcon } from "@/icons";
 import { EntityHistoryDrawer } from "./EntityHistoryDrawer";
 
 export interface EntityHistoryButtonProps {
   aggregateType: string;
+  /** Lịch sử của đúng 1 bản ghi. Bỏ trống nếu dùng parentId. */
   aggregateId?: string;
+  /** Lịch sử của mọi bản ghi con thuộc 1 cha (VD mọi công đoạn của 1 Style). */
+  parentId?: string;
   title?: string;
   label?: string;
 }
 
-/** Small icon trigger + drawer bundle — drop into any row/detail header to expose "who changed this, when". */
+/** Nút mở lịch sử thay đổi — đặt ở toolbar của 1 tab/khu vực để xem "ai sửa gì lúc mấy giờ". */
 export function EntityHistoryButton({
   aggregateType,
   aggregateId,
+  parentId,
   title,
-  label = "Xem lịch sử thay đổi",
+  label = "Lịch sử",
 }: EntityHistoryButtonProps) {
   const [open, setOpen] = useState(false);
 
-  if (!aggregateId) return null;
+  if (!aggregateId && !parentId) return null;
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 transition-none hover:border-brand-300 hover:bg-brand-50 hover:text-brand-600 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-400 dark:hover:border-brand-900/50 dark:hover:bg-brand-950/30 dark:hover:text-brand-400"
-        title={label}
-        aria-label={label}
-      >
+      <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
         <TimeIcon className="h-4 w-4" />
-      </button>
+        {label}
+      </Button>
       <EntityHistoryDrawer
         open={open}
         onClose={() => setOpen(false)}
         aggregateType={aggregateType}
         aggregateId={aggregateId}
+        parentId={parentId}
         title={title}
       />
     </>

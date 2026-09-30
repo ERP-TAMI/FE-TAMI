@@ -1,21 +1,25 @@
 import { useQuery } from "@tanstack/react-query";
-import { auditApi, type QueryHttpAuditLogsParams } from "@/api/audit.api";
+import {
+  auditApi,
+  type QueryEntityHistoryParams,
+  type QueryHttpAuditLogsParams,
+} from "@/api/audit.api";
 
 export const entityHistoryKeys = {
   all: ["entity-history"] as const,
-  byEntity: (aggregateType: string, aggregateId: string) =>
-    [...entityHistoryKeys.all, aggregateType, aggregateId] as const,
+  list: (params: QueryEntityHistoryParams) =>
+    [...entityHistoryKeys.all, params] as const,
 };
 
 export function useEntityHistory(
-  aggregateType: string,
-  aggregateId?: string,
+  params: QueryEntityHistoryParams,
   options?: { enabled?: boolean },
 ) {
+  const hasScope = Boolean(params.aggregateId || params.parentId);
   return useQuery({
-    queryKey: entityHistoryKeys.byEntity(aggregateType, aggregateId ?? ""),
-    queryFn: () => auditApi.getEntityHistory(aggregateType, aggregateId as string),
-    enabled: Boolean(aggregateId) && (options?.enabled ?? true),
+    queryKey: entityHistoryKeys.list(params),
+    queryFn: () => auditApi.getEntityHistory(params),
+    enabled: hasScope && (options?.enabled ?? true),
   });
 }
 

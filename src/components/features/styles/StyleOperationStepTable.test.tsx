@@ -1,7 +1,23 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render as rtlRender,
+  screen,
+  waitFor,
+} from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type { ReactElement } from "react";
 import { StyleOperationStepTable } from "./StyleOperationStepTable";
 import type { StyleOperationStepItem } from "@/api/styleOperationStepsApi";
+
+// EntityHistoryButton (rendered in the table's toolbar) reaches a real
+// useQuery internally, which this component previously never needed.
+function render(ui: ReactElement) {
+  return rtlRender(
+    <QueryClientProvider client={new QueryClient()}>{ui}</QueryClientProvider>,
+  );
+}
 
 const showToastMock = vi.hoisted(() => vi.fn());
 

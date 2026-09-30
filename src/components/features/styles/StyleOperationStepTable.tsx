@@ -11,7 +11,6 @@ import {
   PencilIcon,
 } from "@/icons";
 import { EntityHistoryButton } from "@/components/features/audit/EntityHistoryButton";
-import { isUuid } from "@/lib/tempId";
 
 
 import { Button } from "@/components/shared/Button";
@@ -865,6 +864,11 @@ export function StyleOperationStepTable({
                     <CopyIcon className="w-4 h-4" />
                     Sao chép công đoạn
                   </Button>}
+                  <EntityHistoryButton
+                    aggregateType="StyleOperationStep"
+                    parentId={styleId}
+                    title="Lịch sử: Quy trình công đoạn"
+                  />
                   {showEditButton && (
                     <Button variant="primary" size="sm" onClick={handleEditStart}>
                       <PencilIcon className="w-4 h-4" />
@@ -904,7 +908,6 @@ export function StyleOperationStepTable({
               <thead className="sticky top-0 z-20 bg-gray-50/95 dark:bg-gray-800/95 shadow-xs">
                 <tr className="border-b border-gray-200 dark:border-gray-800 text-gray-500 dark:text-gray-400 font-semibold">
                   <th className="py-2 px-2 text-center w-10">#</th>
-                  <th className="py-2 px-1 text-center w-9" aria-label="Lịch sử thay đổi" />
                   <th className={`w-[180px] px-2 py-2 ${editable ? "bg-brand-50/40 dark:bg-brand-950/15" : ""}`}>Tên công đoạn quy trình</th>
                   <th className={`w-[80px] px-1.5 py-2 text-center ${editable ? "bg-brand-50/40 dark:bg-brand-950/15" : "bg-amber-50/40 dark:bg-amber-950/10"}`}>
                     Thời gian (giây/SP)
@@ -1065,16 +1068,6 @@ export function StyleOperationStepTable({
                       >
                         <td className={`${rowPaddingY} px-2 text-center font-mono font-semibold text-gray-700 dark:text-gray-300`}>
                           {isChildRow ? "" : visibleRowCount}
-                        </td>
-
-                        <td className={`${rowPaddingY} px-1 text-center`}>
-                          {isUuid(row.id) && (
-                            <EntityHistoryButton
-                              aggregateType="StyleOperationStep"
-                              aggregateId={row.id}
-                              title={`Lịch sử: ${row.stepName || "Công đoạn"}`}
-                            />
-                          )}
                         </td>
 
                         <td className={`${rowPaddingY} ${rowPaddingX} overflow-hidden`}>
