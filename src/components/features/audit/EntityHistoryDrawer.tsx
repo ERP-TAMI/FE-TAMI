@@ -25,9 +25,25 @@ function formatDate(value: string): string {
   });
 }
 
+const ISO_DATETIME_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$/;
+
 function formatValue(value: unknown): string {
   if (value === null || value === undefined || value === "") return "Trống";
   if (typeof value === "boolean") return value ? "Có" : "Không";
+  if (typeof value === "string" && ISO_DATETIME_RE.test(value)) {
+    const [datePart, timePart] = value.split("T");
+    const [year, month, day] = datePart.split("-");
+    // Cột kiểu date (VD ngày may mẫu) được serialize thành nửa đêm UTC — chỉ
+    // hiện ngày, không hiện giờ 00:00 gây hiểu nhầm là "có thời điểm cụ thể".
+    if (timePart.startsWith("00:00:00")) return `${day}/${month}/${year}`;
+    return new Date(value).toLocaleString("vi-VN", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  }
   if (typeof value === "object") return JSON.stringify(value);
   return String(value);
 }
