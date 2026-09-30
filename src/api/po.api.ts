@@ -315,6 +315,28 @@ export const poApi = {
     return response.data;
   },
 
+  async getProductColors(
+    poId: string,
+    productId: string,
+  ): Promise<import("@/types/po").ProductColorsResponse> {
+    const response = await apiClient.get<import("@/types/po").ProductColorsResponse>(
+      `/purchase-orders/${poId}/products/${productId}/colors`,
+    );
+    return response.data;
+  },
+
+  async getProductDocuments(
+    poId: string,
+    productId: string,
+    purpose?: string,
+  ): Promise<import("@/types/po").ProductDocumentItem[]> {
+    const response = await apiClient.get<import("@/types/po").ProductDocumentItem[]>(
+      `/purchase-orders/${poId}/products/${productId}/documents`,
+      { params: purpose ? { purpose } : undefined },
+    );
+    return response.data;
+  },
+
   async updateProductStatus(
     poId: string,
     productId: string,

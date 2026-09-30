@@ -367,11 +367,19 @@ export interface ProductDocumentItem {
   linkedAt: string;
 }
 
-export interface PurchaseOrderProductDetail extends PurchaseOrderProductItem {
-  operationSteps: ProductOperationStep[];
-  sampleRounds: ProductSampleRound[];
-  productionDocument: ProductProductionDoc | null;
-  documents: ProductDocumentItem[];
+/**
+ * Thông tin chung của sản phẩm PO (tab Thông tin).
+ *
+ * BE cố ý không trả kèm màu/size, quy trình công đoạn, đợt may mẫu, tài liệu
+ * SX, tài liệu đính kèm nữa — mỗi tab gọi endpoint riêng (useProductColors,
+ * useProductOperationSteps, useProductSampleRounds, useProductProductionDoc,
+ * useProductDocuments).
+ */
+export type PurchaseOrderProductDetail = PurchaseOrderProductItem;
+
+export interface ProductColorsResponse {
+  colors: ProductColorItem[];
+  totalQuantity: number;
 }
 
 /**

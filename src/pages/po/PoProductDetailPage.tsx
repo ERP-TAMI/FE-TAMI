@@ -5,6 +5,9 @@ import {
   usePurchaseOrder,
   usePoDocuments,
   usePoProductDetail,
+  useProductColors,
+  useProductDocuments,
+  useProductOperationSteps,
   useUpdatePoProduct,
   useUpdateProductStatus,
   useSaveProductOperationSteps,
@@ -246,6 +249,38 @@ export default function PoProductDetailPage({
   const isProductLocked = product?.status === "closed";
   const isReadOnly = isProductLocked || readOnlyManagement;
 
+  // Màu & size dùng ở tab Thông tin (tóm tắt) và tab Bảng size (bảng sửa).
+  const { data: colorsData } = useProductColors(poId, productId, {
+    enabled: activeTab === "general" || activeTab === "sizes",
+  });
+  const productColors = useMemo(() => colorsData?.colors ?? [], [colorsData]);
+  const productTotalQuantity = colorsData?.totalQuantity ?? 0;
+
+  // Tab Bảng màu chỉ cần ảnh purpose=color_card — lọc ngay từ BE, không kéo
+  // về rồi lọc ở FE (tránh ký lại URL cho mọi phiên bản của tài liệu khác).
+  const { data: colorCardDocumentsData } = useProductDocuments(poId, productId, {
+    enabled: activeTab === "colors",
+    purpose: "color_card",
+  });
+  const paletteDocuments = useMemo(
+    () => colorCardDocumentsData ?? [],
+    [colorCardDocumentsData],
+  );
+
+  // Tab Tài liệu đính kèm cần nhiều purpose (PO chi tiết, TechPack, Khác) nên
+  // vẫn lấy trọn danh sách rồi nhóm ở FE.
+  const { data: productDocumentsData } = useProductDocuments(poId, productId, {
+    enabled: activeTab === "documents",
+  });
+  const productDocuments = useMemo(
+    () => productDocumentsData ?? [],
+    [productDocumentsData],
+  );
+
+  const { data: productSteps } = useProductOperationSteps(poId, productId, {
+    enabled: activeTab === "steps",
+  });
+
   const updateProductMutation = useUpdatePoProduct();
   const updateStatusMutation = useUpdateProductStatus();
   const saveStepsMutation = useSaveProductOperationSteps();
@@ -357,7 +392,7 @@ export default function PoProductDetailPage({
   const uniqueSizes = useMemo(() => {
     const set = new Set<string>();
     const list: string[] = [];
-    (product?.colors || []).forEach((c) => {
+    productColors.forEach((c) => {
       (c.sizes || []).forEach((s) => {
         if (s.sizeLabel && !set.has(s.sizeLabel)) {
           set.add(s.sizeLabel);
@@ -366,19 +401,19 @@ export default function PoProductDetailPage({
       });
     });
     return list;
-  }, [product?.colors]);
+  }, [productColors]);
 
   // Gom nhóm các sự kiện lịch sử theo từng loại thao tác chung
 
   const totalBySize = useMemo(() => {
     const map: Record<string, number> = {};
-    (product?.colors || []).forEach((c) => {
+    productColors.forEach((c) => {
       (c.sizes || []).forEach((s) => {
         map[s.sizeLabel] = (map[s.sizeLabel] || 0) + (Number(s.quantity) || 0);
       });
     });
     return map;
-  }, [product?.colors]);
+  }, [productColors]);
 
   const handleOpenEditModal = () => {
     if (!product || isReadOnly) return;
@@ -389,8 +424,8 @@ export default function PoProductDetailPage({
     setEditDeadline(product.deadline ? product.deadline.split("T")[0] : "");
     setEditCmBaseDays(product.as3bCmBaseDays || 30);
     setEditColors(
-      product.colors && product.colors.length > 0
-        ? JSON.parse(JSON.stringify(product.colors))
+      productColors.length > 0
+        ? JSON.parse(JSON.stringify(productColors))
         : [],
     );
     setEditFieldErrors({});
@@ -809,7 +844,7 @@ export default function PoProductDetailPage({
 
 
   // Chuyển đổi dữ liệu công đoạn cho StyleOperationStepTable
-  const mappedSteps: StyleOperationStepItem[] = (product.operationSteps || []).map(
+  const mappedSteps: StyleOperationStepItem[] = (productSteps || []).map(
     (step, idx) => ({
       id: String(step.id),
       stepName: step.stepName || "",
@@ -836,16 +871,14 @@ export default function PoProductDetailPage({
   const isColorCardPurpose = (purpose?: string | null) => purpose === "color_card";
 
   // Phân nhóm tài liệu đính kèm: PO Chi Tiết, TechPack, Khác
-  const poDocuments = (product.documents || []).filter((d) =>
+  // (color_card không nằm trong đây nữa — nó có query riêng ở tab Bảng màu.)
+  const poDocuments = productDocuments.filter((d) =>
     isPoDetailPurpose(d.purpose),
   );
-  const techPackDocuments = (product.documents || []).filter((d) =>
+  const techPackDocuments = productDocuments.filter((d) =>
     isTechPackPurpose(d.purpose),
   );
-  const paletteDocuments = (product.documents || []).filter((d) =>
-    isColorCardPurpose(d.purpose),
-  );
-  const otherDocuments = (product.documents || []).filter(
+  const otherDocuments = productDocuments.filter(
     (d) =>
       !isPoDetailPurpose(d.purpose) &&
       !isTechPackPurpose(d.purpose) &&
@@ -1231,7 +1264,7 @@ export default function PoProductDetailPage({
                 <div className="min-w-0">
                   <span className="text-sm font-semibold text-gray-900 dark:text-white">Màu sắc &amp; Kích cỡ</span>
                   <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">
-                    {product.colors?.length || 0} màu · {uniqueSizes.length} size · {(product.totalQuantity || 0).toLocaleString()} pcs
+                    {productColors.length} màu · {uniqueSizes.length} size · {productTotalQuantity.toLocaleString()} pcs
                   </span>
                 </div>
                 <button
@@ -1304,7 +1337,7 @@ export default function PoProductDetailPage({
           </div>
 
           {/* Ma trận bảng Size + Màu */}
-          {!product.colors || product.colors.length === 0 ? (
+          {productColors.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-gray-300 p-12 text-center dark:border-gray-700 bg-white dark:bg-gray-900">
               <TableIcon className="w-10 h-10 mx-auto text-gray-400 mb-3" />
               <h4 className="text-sm font-bold text-gray-800 dark:text-gray-200">Chưa có bảng size &amp; màu sắc</h4>
@@ -1340,7 +1373,7 @@ export default function PoProductDetailPage({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                    {product.colors.map((color, idx) => {
+                    {productColors.map((color, idx) => {
                       const rowTotal = (color.sizes || []).reduce(
                         (sum, s) => sum + (Number(s.quantity) || 0),
                         0,
@@ -1384,7 +1417,7 @@ export default function PoProductDetailPage({
                         </td>
                       ))}
                       <td className="px-5 py-3.5 text-right font-mono text-sm font-extrabold text-brand-600 dark:text-brand-400">
-                        {(product.totalQuantity || 0).toLocaleString()}
+                        {productTotalQuantity.toLocaleString()}
                       </td>
                     </tr>
                   </tfoot>
@@ -2051,7 +2084,7 @@ export default function PoProductDetailPage({
               return (
               <div className="max-h-80 overflow-y-auto space-y-2">
                 {visibleDocs.map((d) => {
-                  const alreadyLinked = product.documents?.some((doc) => doc.documentId === d.documentId);
+                  const alreadyLinked = productDocuments.some((doc) => doc.documentId === d.documentId);
                   const isPo = isPoDetailPurpose(d.purpose);
                   const isTp = isTechPackPurpose(d.purpose);
                   const categoryName = isPo ? "PO Chi Tiết" : isTp ? "TechPack" : "Khác";
