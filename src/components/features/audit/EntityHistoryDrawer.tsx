@@ -5,17 +5,23 @@ import { Input } from "@/components/shared/Input";
 import { Pagination } from "@/components/shared/Pagination";
 import { useEntityHistory } from "@/hooks/useEntityHistory";
 import { EntityEventBadge } from "./EntityEventBadge";
-import type { EntityHistoryChange } from "@/api/audit.api";
+import type { EntityHistoryChange, EntityHistoryEvent } from "@/api/audit.api";
 
 const PAGE_SIZE = 20;
+const MAX_SUMMARY_FIELDS = 3;
 
-function formatOccurredAt(value: string): string {
-  return new Date(value).toLocaleString("vi-VN", {
+function formatTime(value: string): string {
+  return new Date(value).toLocaleTimeString("vi-VN", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function formatDate(value: string): string {
+  return new Date(value).toLocaleDateString("vi-VN", {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
   });
 }
 
@@ -24,6 +30,18 @@ function formatValue(value: unknown): string {
   if (typeof value === "boolean") return value ? "Có" : "Không";
   if (typeof value === "object") return JSON.stringify(value);
   return String(value);
+}
+
+/** Tóm tắt field nào đổi ngay ở dòng thu gọn — quan trọng khi 2 sự kiện cùng
+ * eventType + targetLabel (VD "tạo lần may mẫu" và "thêm ảnh vào lần may mẫu
+ * đó" đều là CREATED trên cùng 1 round) chỉ phân biệt được nhờ dòng này. */
+function summarizeChanges(event: EntityHistoryEvent): string | null {
+  if (event.reason) return event.reason;
+  if (event.changes.length === 0) return null;
+  const labels = event.changes.map((change) => change.fieldLabel);
+  if (labels.length <= MAX_SUMMARY_FIELDS) return labels.join(", ");
+  const shown = labels.slice(0, MAX_SUMMARY_FIELDS).join(", ");
+  return `${shown} và ${labels.length - MAX_SUMMARY_FIELDS} mục khác`;
 }
 
 function ChangeRow({ change }: { change: EntityHistoryChange }) {
@@ -144,40 +162,45 @@ export function EntityHistoryDrawer({
           {items.map((event) => {
             const isExpanded = expandedIds.has(event.id);
             const hasChanges = event.changes.length > 0;
+            const summary = summarizeChanges(event);
             return (
               <li key={event.id} className="py-3">
                 <button
                   type="button"
                   onClick={() => hasChanges && toggle(event.id)}
-                  className={`flex w-full items-start justify-between gap-3 text-left ${
+                  className={`flex w-full flex-col gap-1.5 text-left ${
                     hasChanges ? "cursor-pointer" : "cursor-default"
                   }`}
                 >
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <EntityEventBadge eventType={event.eventType} />
-                      {isBulkView && event.targetLabel && (
-                        <span className="truncate text-sm font-semibold text-gray-700 dark:text-gray-300">
-                          {event.targetLabel}
-                        </span>
-                      )}
-                      <span className="text-sm font-medium text-gray-800 dark:text-gray-200">
-                        {event.actorName ?? "Hệ thống"}
+                  {/* Hàng 1: giờ nổi bật bên trái, badge loại sự kiện bên phải */}
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="font-mono text-sm font-bold text-gray-900 dark:text-white">
+                      {formatTime(event.occurredAt)}
+                      <span className="ml-1.5 text-xs font-normal text-gray-400 dark:text-gray-500">
+                        {formatDate(event.occurredAt)}
                       </span>
-                    </div>
-                    {event.reason && (
-                      <p className="mt-1 truncate text-xs text-gray-500 dark:text-gray-400">
-                        {event.reason}
-                      </p>
-                    )}
-                  </div>
-                  <div className="flex shrink-0 items-center gap-2">
-                    <span className="whitespace-nowrap text-xs text-gray-400 dark:text-gray-500">
-                      {formatOccurredAt(event.occurredAt)}
                     </span>
+                    <EntityEventBadge eventType={event.eventType} />
+                  </div>
+
+                  {/* Hàng 2: bản ghi nào (nếu xem gộp nhiều bản ghi) */}
+                  {isBulkView && event.targetLabel && (
+                    <span className="truncate text-sm font-semibold text-gray-700 dark:text-gray-300">
+                      {event.targetLabel}
+                    </span>
+                  )}
+
+                  {/* Hàng 3: người sửa + tóm tắt field đổi, tách rõ bằng "bởi" */}
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="min-w-0 text-xs text-gray-500 dark:text-gray-400">
+                      <span className="font-medium text-gray-700 dark:text-gray-300">
+                        bởi {event.actorName ?? "Hệ thống"}
+                      </span>
+                      {summary && <span> · {summary}</span>}
+                    </p>
                     {hasChanges && (
-                      <span className="text-gray-400 dark:text-gray-500">
-                        {isExpanded ? "−" : "+"}
+                      <span className="shrink-0 text-gray-400 dark:text-gray-500">
+                        {isExpanded ? "− Thu gọn" : "+ Chi tiết"}
                       </span>
                     )}
                   </div>
