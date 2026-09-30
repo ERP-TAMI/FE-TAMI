@@ -73,6 +73,17 @@ export interface HttpAuditLog {
   queryParams: Record<string, unknown> | null;
   requestBody: Record<string, unknown> | null;
   errorMessage: string | null;
+  /** Hành động đã phân loại ở backend (login, update, delete, upload...). */
+  action: string | null;
+  actionLabel: string | null;
+  resourceType: string | null;
+  resourceLabel: string | null;
+  resourceId: string | null;
+  /** Tên đối tượng bị tác động, VD tên công đoạn hoặc tên tệp vừa tải lên. */
+  targetName: string | null;
+  /** Đối tượng cha ngoài cùng, VD Mẫu Fit chứa công đoạn đó. */
+  contextLabel: string | null;
+  contextName: string | null;
 }
 
 export interface PaginatedHttpAuditLogs {
@@ -84,6 +95,7 @@ export interface PaginatedHttpAuditLogs {
 }
 
 export interface QueryHttpAuditLogsParams {
+  action?: string;
   method?: string;
   path?: string;
   actorUserId?: string;
