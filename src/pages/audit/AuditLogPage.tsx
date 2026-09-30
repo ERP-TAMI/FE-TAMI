@@ -1,8 +1,23 @@
-import { Fragment, useEffect, useMemo, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useState, type ReactNode } from "react";
 import { ChevronRight, RefreshCw, Search, ScrollText } from "lucide-react";
 import { PageHeader, Pagination } from "@/components/shared";
 import PageMeta from "@/components/shared/PageMeta";
 import { USER_ROLE_OPTIONS } from "@/components/features/user-management/userRoleOptions";
+import {
+  BADGE_AMBER,
+  BADGE_BASE,
+  BADGE_BLUE,
+  BADGE_GREEN,
+  BADGE_NEUTRAL,
+  BADGE_PURPLE,
+  BADGE_RED,
+  CONTROL_CLASS,
+  DATE_PRESET_OPTIONS,
+  formatClock,
+  formatDay,
+  useDateRange,
+  type DatePreset,
+} from "@/components/features/audit/auditShared";
 import { useHttpAuditLogs } from "@/hooks/useEntityHistory";
 import type { HttpAuditLog } from "@/api/audit.api";
 
@@ -22,42 +37,25 @@ const ACTION_FILTER_OPTIONS = [
   { value: "password_change", label: "Đổi mật khẩu" },
 ];
 
-type DatePreset = "today" | "7d" | "30d" | "all" | "custom";
-
-const DATE_PRESET_OPTIONS: { value: DatePreset; label: string }[] = [
-  { value: "today", label: "Hôm nay" },
-  { value: "7d", label: "7 ngày qua" },
-  { value: "30d", label: "30 ngày qua" },
-  { value: "all", label: "Tất cả thời gian" },
-  { value: "custom", label: "Tùy chọn..." },
-];
-
 // Đăng nhập/đăng xuất chiếm phần lớn số dòng nên để xám trung tính — màu
 // dành cho thao tác thật sự đổi dữ liệu và cho những gì cần chú ý (đỏ).
-const NEUTRAL = "bg-gray-50 text-gray-600 ring-gray-500/20 dark:bg-gray-800 dark:text-gray-300 dark:ring-gray-400/20";
-const GREEN = "bg-emerald-50 text-emerald-700 ring-emerald-600/20 dark:bg-emerald-950/40 dark:text-emerald-300 dark:ring-emerald-400/20";
-const BLUE = "bg-blue-50 text-blue-700 ring-blue-600/20 dark:bg-blue-950/40 dark:text-blue-300 dark:ring-blue-400/20";
-const RED = "bg-red-50 text-red-700 ring-red-600/20 dark:bg-red-950/40 dark:text-red-300 dark:ring-red-400/20";
-const PURPLE = "bg-purple-50 text-purple-700 ring-purple-600/20 dark:bg-purple-950/40 dark:text-purple-300 dark:ring-purple-400/20";
-const AMBER = "bg-amber-50 text-amber-800 ring-amber-600/20 dark:bg-amber-950/40 dark:text-amber-300 dark:ring-amber-400/20";
-
 const ACTION_COLORS: Record<string, string> = {
-  login: NEUTRAL,
-  logout: NEUTRAL,
-  login_failed: RED,
-  create: GREEN,
-  update: BLUE,
-  delete: RED,
-  upload: PURPLE,
-  status_change: AMBER,
-  approve: GREEN,
-  reject: RED,
-  password_change: AMBER,
-  password_reset: AMBER,
-  password_reset_request: AMBER,
-  password_setup: AMBER,
+  login: BADGE_NEUTRAL,
+  logout: BADGE_NEUTRAL,
+  login_failed: BADGE_RED,
+  create: BADGE_GREEN,
+  update: BADGE_BLUE,
+  delete: BADGE_RED,
+  upload: BADGE_PURPLE,
+  status_change: BADGE_AMBER,
+  approve: BADGE_GREEN,
+  reject: BADGE_RED,
+  password_change: BADGE_AMBER,
+  password_reset: BADGE_AMBER,
+  password_reset_request: BADGE_AMBER,
+  password_setup: BADGE_AMBER,
 };
-const DEFAULT_ACTION_COLOR = BLUE;
+const DEFAULT_ACTION_COLOR = BADGE_BLUE;
 
 const ROLE_LABELS = new Map(USER_ROLE_OPTIONS.map((option) => [option.value, option.label]));
 
@@ -72,22 +70,6 @@ function resourceLabelOf(log: HttpAuditLog): string {
 
 function isSuccess(log: HttpAuditLog): boolean {
   return log.statusCode !== null && log.statusCode < 400;
-}
-
-function formatClock(value: string): string {
-  return new Date(value).toLocaleTimeString("vi-VN", {
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  });
-}
-
-function formatDay(value: string): string {
-  return new Date(value).toLocaleDateString("vi-VN", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  });
 }
 
 function browserOf(ua: string | null): string {
@@ -157,37 +139,11 @@ function formatBodyValue(value: unknown): string {
   return String(value);
 }
 
-/** Khoảng thời gian theo giờ máy người dùng — tính trong useMemo để queryKey
- * không đổi mỗi lần render (new Date() khác nhau từng mili-giây). */
-function useDateRange(preset: DatePreset, customFrom: string, customTo: string) {
-  return useMemo(() => {
-    const now = new Date();
-    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const daysAgo = (days: number) =>
-      new Date(startOfToday.getTime() - days * 24 * 60 * 60 * 1000).toISOString();
-    switch (preset) {
-      case "today":
-        return { from: startOfToday.toISOString(), to: undefined };
-      case "7d":
-        return { from: daysAgo(6), to: undefined };
-      case "30d":
-        return { from: daysAgo(29), to: undefined };
-      case "custom":
-        return {
-          from: customFrom ? new Date(`${customFrom}T00:00:00`).toISOString() : undefined,
-          to: customTo ? new Date(`${customTo}T23:59:59.999`).toISOString() : undefined,
-        };
-      default:
-        return { from: undefined, to: undefined };
-    }
-  }, [preset, customFrom, customTo]);
-}
-
 function ActionBadge({ log }: { log: HttpAuditLog }) {
   const color = (log.action && ACTION_COLORS[log.action]) || DEFAULT_ACTION_COLOR;
   return (
     <span
-      className={`inline-block max-w-full truncate rounded-md px-2 py-1 align-middle text-xs leading-none font-medium whitespace-nowrap ring-1 ring-inset ${color}`}
+      className={`${BADGE_BASE} ${color}`}
       title={log.actionLabel ?? log.method}
     >
       {log.actionLabel ?? log.method}
@@ -344,8 +300,7 @@ export default function AuditLogPage() {
     setPage(1);
   };
 
-  const controlClass =
-    "h-9 rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-700 outline-none focus:border-brand-400 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200";
+  const controlClass = CONTROL_CLASS;
 
   return (
     <>

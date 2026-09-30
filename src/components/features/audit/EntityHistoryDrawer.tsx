@@ -1,29 +1,21 @@
-import { useEffect, useState } from "react";
-import { ChevronDown, History, Search } from "lucide-react";
+import { Fragment, useEffect, useState } from "react";
+import { ChevronRight, History, Search } from "lucide-react";
 import { Modal } from "@/components/shared/Modal";
-import { Input } from "@/components/shared/Input";
 import { Pagination } from "@/components/shared/Pagination";
 import { useEntityHistory } from "@/hooks/useEntityHistory";
-import { EntityEventDot, getEventVerb } from "./EntityEventBadge";
 import type { EntityHistoryChange, EntityHistoryEvent } from "@/api/audit.api";
+import { EntityEventBadge } from "./EntityEventBadge";
+import {
+  CONTROL_CLASS,
+  DATE_PRESET_OPTIONS,
+  formatClock,
+  formatDay,
+  useDateRange,
+  type DatePreset,
+} from "./auditShared";
 
 const PAGE_SIZE = 20;
 const MAX_SUMMARY_FIELDS = 3;
-
-function formatTime(value: string): string {
-  return new Date(value).toLocaleTimeString("vi-VN", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
-function formatDate(value: string): string {
-  return new Date(value).toLocaleDateString("vi-VN", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  });
-}
 
 const ISO_DATETIME_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$/;
 
@@ -44,55 +36,95 @@ function formatValue(value: unknown): string {
       minute: "2-digit",
     });
   }
+  if (Array.isArray(value)) return `${value.length} mục`;
   if (typeof value === "object") return JSON.stringify(value);
   return String(value);
 }
 
-/** Tóm tắt field nào đổi ngay ở dòng thu gọn — quan trọng khi 2 sự kiện cùng
- * eventType + targetLabel (VD "tạo lần may mẫu" và "thêm ảnh vào lần may mẫu
- * đó" đều là CREATED trên cùng 1 round) chỉ phân biệt được nhờ dòng này. */
-function summarizeChanges(event: EntityHistoryEvent): string | null {
+/** Tóm tắt ngay ở dòng thu gọn — 2 sự kiện cùng loại trên cùng bản ghi (VD
+ * tạo lần may mẫu và thêm ảnh vào nó) chỉ phân biệt được nhờ dòng này. */
+function summarizeChanges(event: EntityHistoryEvent): string {
   if (event.reason) return event.reason;
-  if (event.changes.length === 0) return null;
-  const labels = event.changes.map((change) => change.fieldLabel);
+  if (event.changes.length === 0) return "—";
+  const labels = [...new Set(event.changes.map((change) => change.fieldLabel))];
   if (labels.length <= MAX_SUMMARY_FIELDS) return labels.join(", ");
-  const shown = labels.slice(0, MAX_SUMMARY_FIELDS).join(", ");
-  return `${shown} và ${labels.length - MAX_SUMMARY_FIELDS} mục khác`;
+  return `${labels.slice(0, MAX_SUMMARY_FIELDS).join(", ")} và ${labels.length - MAX_SUMMARY_FIELDS} mục khác`;
 }
 
-/** Nhóm các thay đổi theo `groupLabel` (dòng nào, trong 1 lần lưu hàng loạt)
- * để hiện 1 tiêu đề dùng chung cho cả nhóm thay vì lặp lại tên dòng ở mỗi
- * field — danh sách phẳng lặp lại tên dòng rất khó lướt khi có nhiều dòng. */
+/** Gom thay đổi theo dòng (lần lưu hàng loạt) để mỗi dòng có 1 tiêu đề riêng. */
 function groupChanges(
   changes: EntityHistoryChange[],
 ): { groupLabel: string | null; items: EntityHistoryChange[] }[] {
-  const groups: { groupLabel: string | null; items: EntityHistoryChange[] }[] =
-    [];
+  const groups: { groupLabel: string | null; items: EntityHistoryChange[] }[] = [];
   for (const change of changes) {
     const label = change.groupLabel ?? null;
     const last = groups.at(-1);
-    if (last && last.groupLabel === label) {
-      last.items.push(change);
-    } else {
-      groups.push({ groupLabel: label, items: [change] });
-    }
+    if (last && last.groupLabel === label) last.items.push(change);
+    else groups.push({ groupLabel: label, items: [change] });
   }
   return groups;
 }
 
-function ChangeRow({ change }: { change: EntityHistoryChange }) {
+function isEmptyValue(value: unknown): boolean {
+  return value === null || value === undefined || value === "";
+}
+
+function ChangesTable({ changes }: { changes: EntityHistoryChange[] }) {
+  // Tạo mới thì mọi giá trị cũ đều trống — cả cột "Trống" chỉ gây nhiễu.
+  const showOld = changes.some((change) => !isEmptyValue(change.oldValue));
+  const columnCount = showOld ? 3 : 2;
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2.5">
-      <span className="w-full shrink-0 text-theme-xs font-semibold text-gray-600 sm:w-36 dark:text-gray-400">
-        {change.fieldLabel}
-      </span>
-      <span className="inline-flex min-w-0 items-center gap-1.5 rounded-md bg-rose-50 px-2 py-0.5 text-theme-xs text-rose-700 line-through decoration-rose-400/70 dark:bg-rose-950/30 dark:text-rose-400">
-        {formatValue(change.oldValue)}
-      </span>
-      <ChevronDown className="h-3.5 w-3.5 shrink-0 -rotate-90 text-gray-300 dark:text-gray-600" />
-      <span className="inline-flex min-w-0 items-center gap-1.5 rounded-md bg-emerald-50 px-2 py-0.5 text-theme-xs font-semibold text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400">
-        {formatValue(change.newValue)}
-      </span>
+    <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-xs dark:border-gray-800 dark:bg-gray-900">
+      <table className="w-full table-fixed text-left text-sm">
+        <colgroup>
+          <col className="w-[26%]" />
+          {showOld && <col className="w-[37%]" />}
+          <col />
+        </colgroup>
+        <thead className="bg-gray-50 text-xs text-gray-500 dark:bg-gray-800/60 dark:text-gray-400">
+          <tr>
+            <th className="px-4 py-2 font-medium">Trường</th>
+            {showOld && <th className="px-4 py-2 font-medium">Giá trị cũ</th>}
+            <th className="px-4 py-2 font-medium">{showOld ? "Giá trị mới" : "Giá trị"}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {groupChanges(changes).map((group, groupIndex) => (
+            // 2 công đoạn cùng tên trong 1 lần lưu → groupLabel trùng, nên
+            // phải kèm vị trí để key luôn duy nhất.
+            <Fragment key={`${groupIndex}:${group.groupLabel ?? ""}`}>
+              {group.groupLabel && (
+                <tr className="border-t border-gray-100 bg-gray-50/60 dark:border-gray-800 dark:bg-gray-800/30">
+                  <td
+                    colSpan={columnCount}
+                    className="px-4 py-1.5 text-xs font-semibold text-gray-700 dark:text-gray-300"
+                  >
+                    {group.groupLabel}
+                  </td>
+                </tr>
+              )}
+              {group.items.map((change, itemIndex) => (
+                <tr
+                  key={`${itemIndex}:${change.fieldName}`}
+                  className="border-t border-gray-100 align-top dark:border-gray-800"
+                >
+                  <td className="px-4 py-2 text-xs text-gray-500 dark:text-gray-400">
+                    {change.fieldLabel}
+                  </td>
+                  {showOld && (
+                    <td className="px-4 py-2 break-words text-gray-400 line-through decoration-gray-300 dark:text-gray-500 dark:decoration-gray-600">
+                      {formatValue(change.oldValue)}
+                    </td>
+                  )}
+                  <td className="px-4 py-2 font-medium break-words text-gray-900 dark:text-gray-100">
+                    {formatValue(change.newValue)}
+                  </td>
+                </tr>
+              ))}
+            </Fragment>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
@@ -116,22 +148,26 @@ export function EntityHistoryDrawer({
   parentId,
   title = "Lịch sử thay đổi",
 }: EntityHistoryDrawerProps) {
+  // Xem theo cha thì mỗi sự kiện có thể thuộc 1 bản ghi con khác nhau → cần
+  // cột "Đối tượng"; xem 1 bản ghi thì cột đó luôn giống nhau nên bỏ.
   const isBulkView = Boolean(parentId);
-  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
+  const [datePreset, setDatePreset] = useState<DatePreset>("all");
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo] = useState("");
 
   useEffect(() => {
     if (!open) return;
     setPage(1);
     setSearch("");
     setDebouncedSearch("");
-    setDateFrom("");
-    setDateTo("");
-    setExpandedIds(new Set());
+    setDatePreset("all");
+    setCustomFrom("");
+    setCustomTo("");
+    setExpandedId(null);
   }, [open, aggregateId, parentId]);
 
   useEffect(() => {
@@ -142,7 +178,7 @@ export function EntityHistoryDrawer({
     return () => window.clearTimeout(timer);
   }, [search]);
 
-  const isDateFiltering = dateFrom !== "" || dateTo !== "";
+  const { from, to } = useDateRange(datePreset, customFrom, customTo);
 
   const historyQuery = useEntityHistory(
     {
@@ -150,226 +186,227 @@ export function EntityHistoryDrawer({
       aggregateId,
       parentId,
       search: debouncedSearch || undefined,
-      // occurredAt là timestamp đầy đủ (không chỉ ngày) — "đến" phải là cuối
-      // ngày đã chọn, không thì các thay đổi xảy ra sau 00:00 cùng ngày sẽ bị
-      // loại khỏi kết quả.
-      from: dateFrom ? `${dateFrom}T00:00:00.000Z` : undefined,
-      to: dateTo ? `${dateTo}T23:59:59.999Z` : undefined,
+      from,
+      to,
       page,
       limit: PAGE_SIZE,
     },
     { enabled: open },
   );
 
-  const toggle = (id: string) => {
-    setExpandedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+  const items = historyQuery.data?.items ?? [];
+  const columnCount = isBulkView ? 6 : 5;
+  const isFiltering = search !== "" || datePreset !== "all";
+
+  const clearFilters = () => {
+    setSearch("");
+    setDebouncedSearch("");
+    setDatePreset("all");
+    setCustomFrom("");
+    setCustomTo("");
+    setPage(1);
   };
 
-  const items = historyQuery.data?.items ?? [];
-
   return (
-    <Modal
-      open={open}
-      onClose={onClose}
-      title={title}
-      size="2xl"
-      closeOnClickOutside
-    >
-      <div className="overflow-hidden rounded-2xl border border-gray-200/80 bg-white dark:border-gray-800 dark:bg-gray-900/40">
-        <div className="flex flex-wrap items-center gap-2 border-b border-gray-100 bg-gray-50/75 px-5 py-3 dark:border-gray-800 dark:bg-gray-800/40">
-          <h3 className="shrink-0 text-base font-bold text-gray-900 dark:text-white">
-            Nhật ký thay đổi
-          </h3>
+    <Modal open={open} onClose={onClose} title={title} size="2xl" closeOnClickOutside>
+      <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
+        <div className="flex flex-wrap items-center gap-2 border-b border-gray-100 px-4 py-3 dark:border-gray-800">
           <div className="relative w-64">
-            <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-gray-400">
-              <Search className="h-4 w-4" aria-hidden="true" />
-            </span>
-            <Input
+            <Search
+              className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400"
+              aria-hidden="true"
+            />
+            <input
               type="search"
               aria-label="Tìm trong lịch sử"
               placeholder="Tìm theo tên bản ghi..."
               value={search}
-              className="border-gray-300 bg-white pl-9 text-theme-sm dark:border-gray-600 dark:bg-gray-900"
               onChange={(event) => setSearch(event.target.value)}
+              className={`${CONTROL_CLASS} w-full pl-9`}
             />
           </div>
-          <input
-            type="date"
-            aria-label="Từ ngày"
-            value={dateFrom}
+          <select
+            aria-label="Khoảng thời gian"
+            value={datePreset}
             onChange={(event) => {
-              setDateFrom(event.target.value);
+              setDatePreset(event.target.value as DatePreset);
               setPage(1);
             }}
-            className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-theme-sm text-gray-900 outline-none dark:border-gray-800 dark:bg-gray-800 dark:text-white"
-          />
-          <span className="text-theme-xs text-gray-400">đến</span>
-          <input
-            type="date"
-            aria-label="Đến ngày"
-            value={dateTo}
-            onChange={(event) => {
-              setDateTo(event.target.value);
-              setPage(1);
-            }}
-            className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-theme-sm text-gray-900 outline-none dark:border-gray-800 dark:bg-gray-800 dark:text-white"
-          />
-          {isDateFiltering && (
+            className={CONTROL_CLASS}
+          >
+            {DATE_PRESET_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          {datePreset === "custom" && (
+            <>
+              <input
+                type="date"
+                aria-label="Từ ngày"
+                value={customFrom}
+                onChange={(event) => {
+                  setCustomFrom(event.target.value);
+                  setPage(1);
+                }}
+                className={CONTROL_CLASS}
+              />
+              <span className="text-xs text-gray-400">đến</span>
+              <input
+                type="date"
+                aria-label="Đến ngày"
+                value={customTo}
+                onChange={(event) => {
+                  setCustomTo(event.target.value);
+                  setPage(1);
+                }}
+                className={CONTROL_CLASS}
+              />
+            </>
+          )}
+          {isFiltering && (
             <button
               type="button"
-              onClick={() => {
-                setDateFrom("");
-                setDateTo("");
-                setPage(1);
-              }}
-              className="cursor-pointer text-theme-xs font-medium text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              onClick={clearFilters}
+              className="cursor-pointer px-1 text-sm text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"
             >
-              Xóa lọc ngày
+              Xóa lọc
             </button>
           )}
         </div>
 
-        <div className="px-5 py-5">
-          {historyQuery.isLoading ? (
-            <div className="flex flex-col gap-4 py-4">
-              {[0, 1, 2].map((i) => (
-                <div key={i} className="flex items-start gap-4">
-                  <div className="h-8 w-8 shrink-0 animate-pulse rounded-full bg-gray-200 dark:bg-gray-700" />
-                  <div className="flex-1 space-y-2 pt-1">
-                    <div className="h-3.5 w-2/3 animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
-                    <div className="h-3 w-1/3 animate-pulse rounded bg-gray-100 dark:bg-gray-800" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : historyQuery.isError ? (
-            <p className="py-8 text-center text-theme-sm text-rose-600 dark:text-rose-400">
-              Không tải được lịch sử thay đổi.
-            </p>
-          ) : items.length === 0 ? (
-            <div className="py-10 text-center">
-              <History className="mx-auto h-9 w-9 text-gray-300 dark:text-gray-600" />
-              <p className="mt-3 text-theme-sm text-gray-500 dark:text-gray-400">
-                {debouncedSearch || isDateFiltering
-                  ? "Không tìm thấy thay đổi nào khớp."
-                  : "Chưa có thay đổi nào được ghi nhận."}
-              </p>
-            </div>
-          ) : (
-            <ul className="relative">
-              <div
-                className="absolute top-2 bottom-2 left-4 w-px bg-gray-200 dark:bg-gray-800"
-                aria-hidden="true"
-              />
-              {items.map((event) => {
-                const isExpanded = expandedIds.has(event.id);
+        <table className="w-full table-fixed text-left text-sm">
+          <colgroup>
+            <col className="w-10" />
+            <col className="w-[110px]" />
+            <col className="w-[130px]" />
+            <col className="w-[18%]" />
+            {isBulkView && <col className="w-[20%]" />}
+            <col />
+          </colgroup>
+          <thead className="bg-gray-50 text-xs text-gray-500 dark:bg-gray-800/60 dark:text-gray-400">
+            <tr>
+              <th className="py-2.5" />
+              <th className="px-3 py-2.5 font-medium">Thời gian</th>
+              <th className="px-3 py-2.5 font-medium">Hành động</th>
+              <th className="px-3 py-2.5 font-medium">Người thực hiện</th>
+              {isBulkView && <th className="px-3 py-2.5 font-medium">Đối tượng</th>}
+              <th className="px-3 py-2.5 font-medium">Nội dung thay đổi</th>
+            </tr>
+          </thead>
+          <tbody>
+            {historyQuery.isLoading ? (
+              Array.from({ length: 4 }, (_, index) => (
+                <tr key={index} className="border-t border-gray-100 dark:border-gray-800">
+                  <td colSpan={columnCount} className="px-4 py-3">
+                    <div className="h-5 w-full animate-pulse rounded bg-gray-100 dark:bg-gray-800" />
+                  </td>
+                </tr>
+              ))
+            ) : historyQuery.isError ? (
+              <tr>
+                <td colSpan={columnCount} className="px-4 py-10 text-center text-sm text-red-600">
+                  Không tải được lịch sử thay đổi.
+                </td>
+              </tr>
+            ) : items.length === 0 ? (
+              <tr>
+                <td colSpan={columnCount} className="px-4 py-12 text-center">
+                  <History className="mx-auto h-9 w-9 text-gray-300 dark:text-gray-600" />
+                  <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                    {isFiltering
+                      ? "Không có thay đổi nào khớp bộ lọc."
+                      : "Chưa có thay đổi nào được ghi nhận."}
+                  </p>
+                </td>
+              </tr>
+            ) : (
+              items.map((event) => {
                 const hasChanges = event.changes.length > 0;
+                const isExpanded = expandedId === event.id;
                 const summary = summarizeChanges(event);
                 return (
-                  <li key={event.id} className="relative flex gap-4 pb-5 last:pb-0">
-                    <EntityEventDot eventType={event.eventType} />
-                    <div className="min-w-0 flex-1">
-                      <button
-                        type="button"
-                        onClick={() => hasChanges && toggle(event.id)}
-                        aria-expanded={hasChanges ? isExpanded : undefined}
-                        className={`flex w-full flex-wrap items-start justify-between gap-x-4 gap-y-1 rounded-xl border border-transparent px-3 py-2 text-left transition-colors focus-visible:ring-brand-500/40 focus-visible:outline-none focus-visible:ring-2 ${
-                          hasChanges
-                            ? "cursor-pointer hover:border-gray-200 hover:bg-gray-50 dark:hover:border-gray-800 dark:hover:bg-gray-800/40"
-                            : "cursor-default"
-                        }`}
-                      >
-                        <div className="min-w-0">
-                          <p className="text-theme-sm text-gray-800 dark:text-gray-200">
-                            <span className="font-semibold text-gray-900 dark:text-white">
-                              {event.actorName ?? "Hệ thống"}
-                            </span>{" "}
-                            {getEventVerb(event.eventType)}
-                            {isBulkView && event.targetLabel && (
-                              <>
-                                {" "}
-                                <span className="font-semibold text-gray-900 dark:text-white">
-                                  {event.targetLabel}
-                                </span>
-                              </>
-                            )}
-                          </p>
-                          {summary && (
-                            <p className="mt-0.5 truncate text-theme-xs text-gray-500 dark:text-gray-400">
-                              {summary}
-                            </p>
-                          )}
+                  <Fragment key={event.id}>
+                    <tr
+                      onClick={() => hasChanges && setExpandedId(isExpanded ? null : event.id)}
+                      aria-expanded={hasChanges ? isExpanded : undefined}
+                      className={`border-t border-gray-100 transition-colors dark:border-gray-800 ${
+                        hasChanges
+                          ? "cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/40"
+                          : ""
+                      } ${isExpanded ? "bg-gray-50/70 dark:bg-gray-800/30" : ""}`}
+                    >
+                      <td className="py-2.5 pl-4">
+                        {hasChanges && (
+                          <ChevronRight
+                            className={`h-4 w-4 text-gray-400 transition-transform ${isExpanded ? "rotate-90" : ""}`}
+                            aria-hidden="true"
+                          />
+                        )}
+                      </td>
+                      <td className="px-3 py-2.5">
+                        <div className="text-gray-900 dark:text-gray-100">
+                          {formatClock(event.occurredAt)}
                         </div>
-
-                        <div className="flex shrink-0 items-center gap-2">
-                          <div className="text-right">
-                            <div className="font-mono text-theme-sm font-bold text-gray-900 dark:text-white">
-                              {formatTime(event.occurredAt)}
-                            </div>
-                            <div className="text-theme-xs text-gray-400 dark:text-gray-500">
-                              {formatDate(event.occurredAt)}
-                            </div>
+                        <div className="text-xs text-gray-400">{formatDay(event.occurredAt)}</div>
+                      </td>
+                      <td className="px-3 py-2.5">
+                        <EntityEventBadge eventType={event.eventType} />
+                      </td>
+                      <td className="px-3 py-2.5">
+                        <div
+                          className="truncate text-gray-700 dark:text-gray-300"
+                          title={event.actorName ?? undefined}
+                        >
+                          {event.actorName ?? "Hệ thống"}
+                        </div>
+                      </td>
+                      {isBulkView && (
+                        <td className="px-3 py-2.5">
+                          <div
+                            className="truncate font-medium text-gray-900 dark:text-gray-100"
+                            title={event.targetLabel ?? undefined}
+                          >
+                            {event.targetLabel ?? "—"}
                           </div>
-                          {hasChanges && (
-                            <ChevronDown
-                              className={`h-4 w-4 text-gray-400 transition-transform dark:text-gray-500 ${
-                                isExpanded ? "rotate-180" : ""
-                              }`}
-                              aria-hidden="true"
-                            />
-                          )}
-                        </div>
-                      </button>
-
-                      {isExpanded && hasChanges && (
-                        <div className="mt-1.5 ml-3 space-y-2">
-                          {groupChanges(event.changes).map((group, index) => (
-                            <div
-                              key={group.groupLabel ?? `_ungrouped_${index}`}
-                              className="overflow-hidden rounded-xl border border-gray-100 bg-gray-50/60 dark:border-gray-800 dark:bg-gray-800/30"
-                            >
-                              {group.groupLabel && (
-                                <div className="border-b border-gray-100 bg-gray-100/60 px-4 py-1.5 text-theme-xs font-semibold text-gray-700 dark:border-gray-800 dark:bg-gray-800/60 dark:text-gray-300">
-                                  {group.groupLabel}
-                                </div>
-                              )}
-                              <div className="divide-y divide-gray-100 dark:divide-gray-800">
-                                {group.items.map((change) => (
-                                  <ChangeRow
-                                    key={change.fieldName}
-                                    change={change}
-                                  />
-                                ))}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
+                        </td>
                       )}
-                    </div>
-                  </li>
+                      <td className="px-3 py-2.5">
+                        <div className="truncate text-gray-600 dark:text-gray-400" title={summary}>
+                          {summary}
+                        </div>
+                      </td>
+                    </tr>
+                    {isExpanded && (
+                      <tr className="bg-gray-50/70 dark:bg-gray-800/30">
+                        <td colSpan={columnCount} className="px-4 pt-1 pb-4">
+                          <ChangesTable changes={event.changes} />
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
                 );
-              })}
-            </ul>
-          )}
+              })
+            )}
+          </tbody>
+        </table>
 
-          {historyQuery.data && historyQuery.data.totalPages > 1 && (
-            <div className="mt-4 border-t border-gray-100 pt-4 dark:border-gray-800">
-              <Pagination
-                page={page}
-                pageSize={PAGE_SIZE}
-                totalItems={historyQuery.data.total}
-                totalPages={historyQuery.data.totalPages}
-                itemLabel="thay đổi"
-                onPageChange={setPage}
-              />
-            </div>
-          )}
-        </div>
+        {historyQuery.data && historyQuery.data.totalPages > 1 && (
+          <div className="border-t border-gray-100 px-4 py-3 dark:border-gray-800">
+            <Pagination
+              page={page}
+              pageSize={PAGE_SIZE}
+              totalItems={historyQuery.data.total}
+              totalPages={historyQuery.data.totalPages}
+              itemLabel="thay đổi"
+              onPageChange={(next) => {
+                setPage(next);
+                setExpandedId(null);
+              }}
+            />
+          </div>
+        )}
       </div>
     </Modal>
   );
