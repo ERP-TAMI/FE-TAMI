@@ -19,6 +19,9 @@ export type AuditEventType =
 export interface EntityHistoryChange {
   fieldName: string;
   fieldLabel: string;
+  /** Chỉ có ở các entry đến từ 1 lần lưu hàng loạt — tên dòng (VD "Cắt vải")
+   * mà field này thuộc về, dùng để nhóm hiển thị theo dòng. */
+  groupLabel?: string;
   oldValue: unknown;
   newValue: unknown;
 }

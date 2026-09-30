@@ -60,6 +60,26 @@ function summarizeChanges(event: EntityHistoryEvent): string | null {
   return `${shown} và ${labels.length - MAX_SUMMARY_FIELDS} mục khác`;
 }
 
+/** Nhóm các thay đổi theo `groupLabel` (dòng nào, trong 1 lần lưu hàng loạt)
+ * để hiện 1 tiêu đề dùng chung cho cả nhóm thay vì lặp lại tên dòng ở mỗi
+ * field — danh sách phẳng lặp lại tên dòng rất khó lướt khi có nhiều dòng. */
+function groupChanges(
+  changes: EntityHistoryChange[],
+): { groupLabel: string | null; items: EntityHistoryChange[] }[] {
+  const groups: { groupLabel: string | null; items: EntityHistoryChange[] }[] =
+    [];
+  for (const change of changes) {
+    const label = change.groupLabel ?? null;
+    const last = groups.at(-1);
+    if (last && last.groupLabel === label) {
+      last.items.push(change);
+    } else {
+      groups.push({ groupLabel: label, items: [change] });
+    }
+  }
+  return groups;
+}
+
 function ChangeRow({ change }: { change: EntityHistoryChange }) {
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2.5">
@@ -319,9 +339,26 @@ export function EntityHistoryDrawer({
                       </button>
 
                       {isExpanded && hasChanges && (
-                        <div className="mt-1.5 ml-3 divide-y divide-gray-100 overflow-hidden rounded-xl border border-gray-100 bg-gray-50/60 dark:divide-gray-800 dark:border-gray-800 dark:bg-gray-800/30">
-                          {event.changes.map((change) => (
-                            <ChangeRow key={change.fieldName} change={change} />
+                        <div className="mt-1.5 ml-3 space-y-2">
+                          {groupChanges(event.changes).map((group, index) => (
+                            <div
+                              key={group.groupLabel ?? `_ungrouped_${index}`}
+                              className="overflow-hidden rounded-xl border border-gray-100 bg-gray-50/60 dark:border-gray-800 dark:bg-gray-800/30"
+                            >
+                              {group.groupLabel && (
+                                <div className="border-b border-gray-100 bg-gray-100/60 px-4 py-1.5 text-theme-xs font-semibold text-gray-700 dark:border-gray-800 dark:bg-gray-800/60 dark:text-gray-300">
+                                  {group.groupLabel}
+                                </div>
+                              )}
+                              <div className="divide-y divide-gray-100 dark:divide-gray-800">
+                                {group.items.map((change) => (
+                                  <ChangeRow
+                                    key={change.fieldName}
+                                    change={change}
+                                  />
+                                ))}
+                              </div>
+                            </div>
                           ))}
                         </div>
                       )}
