@@ -255,6 +255,7 @@ export default function PoProductDetailPage({
   const { data: colorsData } = useProductColors(poId, productId, {
     enabled: activeTab === "general" || activeTab === "sizes",
   });
+  const colorsLoaded = colorsData !== undefined;
   const productColors = useMemo(() => colorsData?.colors ?? [], [colorsData]);
   const productTotalQuantity = colorsData?.totalQuantity ?? 0;
 
@@ -294,6 +295,7 @@ export default function PoProductDetailPage({
 
   // Modal edit basic product info (phong cách StyleFormModal)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editMode, setEditMode] = useState<"info" | "colors">("info");
   const [editProductCode, setEditProductCode] = useState("");
   const [editProductName, setEditProductName] = useState("");
   const [editCategory, setEditCategory] = useState("");
@@ -417,32 +419,40 @@ export default function PoProductDetailPage({
     return map;
   }, [productColors]);
 
+  // Nút "Chỉnh sửa" chỉ sửa thông tin chung, không đụng màu/size — màu chỉ
+  // được tải ở tab Thông tin/Bảng size, gửi kèm từ tab khác sẽ xoá màu cũ.
   const handleOpenEditModal = () => {
     if (!product || isReadOnly) return;
+    setEditMode("info");
     setEditProductCode(product.productCode);
     setEditProductName(product.productName);
     setEditCategory(product.category || "");
     setEditMaterialNote(product.materialNote || "");
     setEditDeadline(product.deadline ? product.deadline.split("T")[0] : "");
     setEditCmBaseDays(product.as3bCmBaseDays || 30);
-    setEditColors(
-      productColors.length > 0
-        ? JSON.parse(JSON.stringify(productColors))
-        : [],
-    );
+    setEditFieldErrors({});
+    setIsEditModalOpen(true);
+  };
+
+  const handleOpenColorsModal = () => {
+    if (!product || isReadOnly || !colorsLoaded) return;
+    setEditMode("colors");
+    setEditColors(JSON.parse(JSON.stringify(productColors)));
     setEditFieldErrors({});
     setIsEditModalOpen(true);
   };
 
   const validateEditFields = (): boolean => {
     const errors: typeof editFieldErrors = {};
-    if (!editProductCode.trim()) errors.productCode = "Mã sản phẩm không được để trống.";
-    if (!editProductName.trim()) errors.productName = "Tên sản phẩm không được để trống.";
+    if (editMode === "info") {
+      if (!editProductCode.trim()) errors.productCode = "Mã sản phẩm không được để trống.";
+      if (!editProductName.trim()) errors.productName = "Tên sản phẩm không được để trống.";
+    }
 
     const namedColors = editColors.filter((c) => c.colorName.trim().length > 0);
-    if (namedColors.length === 0) {
+    if (editMode === "colors" && namedColors.length === 0) {
       errors.colors = "Vui lòng nhập ít nhất một màu sắc sản phẩm.";
-    } else {
+    } else if (editMode === "colors") {
       const seenNames = new Set<string>();
       for (const c of namedColors) {
         const name = c.colorName.trim();
@@ -512,17 +522,23 @@ export default function PoProductDetailPage({
       await updateProductMutation.mutateAsync({
         id: poId,
         productId,
-        input: {
-          productCode: editProductCode.trim(),
-          productName: editProductName.trim(),
-          category: editCategory.trim() || undefined,
-          materialNote: editMaterialNote.trim() || undefined,
-          deadline: editDeadline || undefined,
-          as3bCmBaseDays: Number(editCmBaseDays) || 30,
-          colors: cleanColors,
-        },
+        input:
+          editMode === "colors"
+            ? { colors: cleanColors }
+            : {
+                productCode: editProductCode.trim(),
+                productName: editProductName.trim(),
+                category: editCategory.trim() || undefined,
+                materialNote: editMaterialNote.trim() || undefined,
+                deadline: editDeadline || undefined,
+                as3bCmBaseDays: Number(editCmBaseDays) || 30,
+              },
       });
-      showToast("Đã cập nhật thông tin sản phẩm thành công.");
+      showToast(
+        editMode === "colors"
+          ? "Đã cập nhật màu & size thành công."
+          : "Đã cập nhật thông tin sản phẩm thành công.",
+      );
       setIsEditModalOpen(false);
     } catch (err: unknown) {
       const apiErr = getApiError(err, "Cập nhật sản phẩm thất bại.");
@@ -1339,7 +1355,8 @@ export default function PoProductDetailPage({
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={handleOpenEditModal}
+                  onClick={handleOpenColorsModal}
+                  disabled={!colorsLoaded}
                   className="text-xs font-semibold text-gray-700 border-gray-200 bg-white hover:bg-gray-50 shrink-0"
                 >
                   Chỉnh sửa màu &amp; size
@@ -1349,7 +1366,11 @@ export default function PoProductDetailPage({
           </div>
 
           {/* Ma trận bảng Size + Màu */}
-          {productColors.length === 0 ? (
+          {!colorsLoaded ? (
+            <div className="rounded-2xl border border-gray-200 bg-white p-12 text-center text-xs text-gray-500 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400">
+              Đang tải bảng size &amp; màu...
+            </div>
+          ) : productColors.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-gray-300 p-12 text-center dark:border-gray-700 bg-white dark:bg-gray-900">
               <TableIcon className="w-10 h-10 mx-auto text-gray-400 mb-3" />
               <h4 className="text-sm font-bold text-gray-800 dark:text-gray-200">Chưa có bảng size &amp; màu sắc</h4>
@@ -1359,7 +1380,7 @@ export default function PoProductDetailPage({
               {!isReadOnly && (
                 <Button
                   size="sm"
-                  onClick={handleOpenEditModal}
+                  onClick={handleOpenColorsModal}
                   className="mt-4 text-xs font-semibold"
                 >
                   + Thiết lập Bảng Size &amp; Màu
@@ -1892,13 +1913,17 @@ export default function PoProductDetailPage({
           onClose={() => {
             if (!updateProductMutation.isPending) setIsEditModalOpen(false);
           }}
-          title="Chỉnh sửa thông tin sản phẩm"
+          title={editMode === "colors" ? "Chỉnh sửa màu & size" : "Chỉnh sửa thông tin sản phẩm"}
           size="lg"
         >
           <p className="-mt-2 mb-4 text-xs text-gray-500 dark:text-gray-400">
-            Cập nhật các thông số chi tiết và cơ cấu màu sắc / size của sản phẩm.
+            {editMode === "colors"
+              ? "Cập nhật cơ cấu màu sắc / size và số lượng của sản phẩm."
+              : "Cập nhật các thông số chi tiết của sản phẩm."}
           </p>
           <form onSubmit={handleSaveEditProduct} className="space-y-4">
+            {editMode === "info" && (
+            <>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
               <div>
                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -2007,12 +2032,12 @@ export default function PoProductDetailPage({
                 placeholder="Nhập chất liệu, thành phần sợi, lưu ý may hoặc đặc điểm của sản phẩm..."
               />
             </div>
+            </>
+            )}
 
             {/* Trình soạn thảo Phân bổ Màu sắc & Cỡ số */}
-            <div
-              ref={editColorsCardRef}
-              className="pt-2 border-t border-gray-100 dark:border-gray-800"
-            >
+            {editMode === "colors" && (
+            <div ref={editColorsCardRef}>
               <ProductColorSizeEditor
                 colors={editColors}
                 onChange={(next) => {
@@ -2028,6 +2053,7 @@ export default function PoProductDetailPage({
                 </p>
               )}
             </div>
+            )}
 
             <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-gray-100 dark:border-gray-800">
               <Button

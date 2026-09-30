@@ -281,7 +281,6 @@ export interface ProductSampleRound {
 }
 
 export interface CreateProductSampleRoundInput {
-  roundNo?: number;
   sampleDate?: string;
   feedback?: string;
   status?: SampleStatus;
