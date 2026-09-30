@@ -152,11 +152,11 @@ function KeyValueList({ data }: { data: Record<string, unknown> }) {
  * gọn hơn nhiều so với liệt kê "Nhãn: giá trị" theo từng dòng dài. */
 function DetailCell({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div className="min-w-0">
-      <p className="text-[11px] font-semibold tracking-wide text-gray-400 uppercase dark:text-gray-500">
-        {label}
-      </p>
-      <p className="mt-0.5 truncate text-xs text-gray-700 dark:text-gray-300">{value}</p>
+    <div className="flex min-w-0 items-baseline gap-2">
+      <span className="w-28 shrink-0 text-xs text-gray-400 dark:text-gray-500">{label}</span>
+      <span className="min-w-0 truncate text-xs font-medium text-gray-800 dark:text-gray-200">
+        {value}
+      </span>
     </div>
   );
 }
@@ -395,7 +395,7 @@ export default function AuditLogPage() {
                 </p>
               )}
 
-              <div className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3 lg:grid-cols-4">
+              <div className="grid grid-cols-2 gap-x-6 gap-y-2 sm:grid-cols-3 lg:grid-cols-4">
                 <DetailCell
                   label="Người thực hiện"
                   value={row.actorIdentifier ?? row.actorUserId ?? "Ẩn danh"}
