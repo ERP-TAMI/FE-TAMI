@@ -784,6 +784,7 @@ export function StyleProductionDocTab({
               parentId={styleId}
               title="Lịch sử: Tài liệu sản xuất"
               size="md"
+              className="!font-semibold"
             />
           )
         }

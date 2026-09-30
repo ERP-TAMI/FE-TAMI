@@ -2,6 +2,7 @@ import { RefObject } from "react";
 import type { Style } from "@/types/style";
 import { StyleStatusBadge } from "./StyleStatusBadge";
 import { StyleImagePlaceholder } from "./StyleImagePlaceholder";
+import { EntityHistoryButton } from "@/components/features/audit/EntityHistoryButton";
 
 interface Props {
   style: Style;
@@ -121,15 +122,24 @@ export function GeneralTab({
             <h3 className="text-sm font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
               Thông tin mẫu
             </h3>
-            {onEditClick && (
-              <button
-                type="button"
-                onClick={onEditClick}
-                className="inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white px-3.5 py-1.5 text-xs font-semibold text-gray-700 shadow-xs hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700 transition-colors shrink-0"
-              >
-                Chỉnh sửa
-              </button>
-            )}
+            <div className="flex items-center gap-2">
+              <EntityHistoryButton
+                aggregateType="Style"
+                aggregateId={style.id}
+                title="Lịch sử: Thông tin mẫu Fit"
+                size="xs"
+                className="!font-semibold"
+              />
+              {onEditClick && (
+                <button
+                  type="button"
+                  onClick={onEditClick}
+                  className="inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white px-3.5 py-1.5 text-xs font-semibold text-gray-700 shadow-xs hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700 transition-colors shrink-0"
+                >
+                  Chỉnh sửa
+                </button>
+              )}
+            </div>
           </div>
           <dl className="divide-y divide-gray-100 dark:divide-gray-800/80 border-t border-b border-gray-100 dark:border-gray-800/80">
             <div className="flex items-center py-2 text-sm">
