@@ -11,6 +11,9 @@ export interface EntityHistoryButtonProps {
   parentId?: string;
   title?: string;
   label?: string;
+  /** Khớp với size của các nút khác trong cùng toolbar — mỗi khu vực có
+   * thể dùng size khác nhau (VD DocumentToolbar dùng nút to hơn "md"). */
+  size?: "xs" | "sm" | "md" | "lg";
 }
 
 /** Nút mở lịch sử thay đổi — đặt ở toolbar của 1 tab/khu vực để xem "ai sửa gì lúc mấy giờ". */
@@ -20,6 +23,7 @@ export function EntityHistoryButton({
   parentId,
   title,
   label = "Lịch sử",
+  size = "sm",
 }: EntityHistoryButtonProps) {
   const [open, setOpen] = useState(false);
 
@@ -27,7 +31,7 @@ export function EntityHistoryButton({
 
   return (
     <>
-      <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
+      <Button variant="outline" size={size} onClick={() => setOpen(true)}>
         <TimeIcon className="h-4 w-4" />
         {label}
       </Button>

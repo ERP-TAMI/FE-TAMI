@@ -783,6 +783,7 @@ export function StyleProductionDocTab({
               aggregateType="ProductionDocument"
               parentId={styleId}
               title="Lịch sử: Tài liệu sản xuất"
+              size="md"
             />
           )
         }
