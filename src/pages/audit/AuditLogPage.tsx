@@ -395,7 +395,7 @@ export default function AuditLogPage() {
                 </p>
               )}
 
-              <div className="grid grid-cols-2 gap-x-6 gap-y-2 sm:grid-cols-3 lg:grid-cols-4">
+              <div className="grid grid-cols-2 gap-x-6 gap-y-2 lg:grid-cols-3">
                 <DetailCell
                   label="Người thực hiện"
                   value={row.actorIdentifier ?? row.actorUserId ?? "Ẩn danh"}
