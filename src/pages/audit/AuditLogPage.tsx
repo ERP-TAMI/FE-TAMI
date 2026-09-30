@@ -67,6 +67,34 @@ function formatTime(value: string): string {
   });
 }
 
+function formatParamValue(value: unknown): string {
+  if (value === null || value === undefined || value === "") return "—";
+  if (typeof value === "object") return JSON.stringify(value);
+  return String(value);
+}
+
+/** Danh sách key-value gọn thay vì dump nguyên khối JSON — dễ đọc hơn và
+ * nhất quán với cách các bảng khác trong hệ thống hiện dữ liệu. */
+function KeyValueList({ data }: { data: Record<string, unknown> }) {
+  return (
+    <div className="divide-y divide-gray-100 overflow-hidden rounded-lg border border-gray-100 dark:divide-gray-800 dark:border-gray-800">
+      {Object.entries(data).map(([key, value]) => (
+        <div
+          key={key}
+          className="flex flex-wrap items-start gap-x-3 gap-y-0.5 bg-gray-50/60 px-3 py-1.5 dark:bg-gray-800/30"
+        >
+          <span className="w-36 shrink-0 font-mono text-[11px] font-semibold text-gray-500 dark:text-gray-400">
+            {key}
+          </span>
+          <span className="min-w-0 flex-1 break-all font-mono text-[11px] text-gray-700 dark:text-gray-300">
+            {formatParamValue(value)}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function AuditLogPage() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -101,7 +129,9 @@ export default function AuditLogPage() {
       key: "path",
       header: "Đường dẫn",
       render: (row: HttpAuditLog) => (
-        <span className="font-mono text-xs text-gray-700 dark:text-gray-300">{row.path}</span>
+        <span className="font-mono text-xs break-all text-gray-700 dark:text-gray-300">
+          {row.path}
+        </span>
       ),
     },
     {
@@ -191,22 +221,18 @@ export default function AuditLogPage() {
               )}
               {row.queryParams && Object.keys(row.queryParams).length > 0 && (
                 <div>
-                  <p className="font-semibold text-gray-600 dark:text-gray-400">
+                  <p className="mb-1 font-semibold text-gray-600 dark:text-gray-400">
                     Tham số truy vấn
                   </p>
-                  <pre className="mt-1 overflow-x-auto rounded-lg bg-gray-50 p-2 dark:bg-gray-800/50">
-                    {JSON.stringify(row.queryParams, null, 2)}
-                  </pre>
+                  <KeyValueList data={row.queryParams} />
                 </div>
               )}
               {row.requestBody && Object.keys(row.requestBody).length > 0 && (
                 <div>
-                  <p className="font-semibold text-gray-600 dark:text-gray-400">
+                  <p className="mb-1 font-semibold text-gray-600 dark:text-gray-400">
                     Nội dung yêu cầu
                   </p>
-                  <pre className="mt-1 overflow-x-auto rounded-lg bg-gray-50 p-2 dark:bg-gray-800/50">
-                    {JSON.stringify(row.requestBody, null, 2)}
-                  </pre>
+                  <KeyValueList data={row.requestBody} />
                 </div>
               )}
               <p className="text-gray-400 dark:text-gray-500">
