@@ -1,5 +1,5 @@
-import { render, screen, fireEvent } from "@testing-library/react";
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { cleanup, render, screen, fireEvent } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { MemoryRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import PoListPage from "./PoListPage";
@@ -13,6 +13,13 @@ vi.mock("@/hooks/usePurchaseOrders", () => ({
 
 describe("PoListPage", () => {
   let queryClient: QueryClient;
+
+  // Without this, PoListPage's 300ms search-debounce timer outlives the test
+  // (the component is never unmounted) and fires after Vitest tears down the
+  // jsdom environment, throwing "window is not defined" and failing the run.
+  afterEach(() => {
+    cleanup();
+  });
 
   beforeEach(() => {
     queryClient = new QueryClient({

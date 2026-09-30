@@ -8,7 +8,7 @@ import type { HttpAuditLog } from "@/api/audit.api";
 const PAGE_SIZE = 20;
 
 const METHOD_OPTIONS = [
-  { value: "", label: "Tất cả method" },
+  { value: "", label: "Tất cả phương thức" },
   { value: "GET", label: "GET" },
   { value: "POST", label: "POST" },
   { value: "PATCH", label: "PATCH" },
@@ -93,8 +93,8 @@ export default function AuditLogPage() {
     },
     {
       key: "method",
-      header: "Method",
-      width: "w-[90px]",
+      header: "Phương thức",
+      width: "w-[130px]",
       render: (row: HttpAuditLog) => <MethodBadge method={row.method} />,
     },
     {
@@ -136,11 +136,11 @@ export default function AuditLogPage() {
 
   return (
     <>
-      <PageMeta title="Audit log | TAMI ERP" description="Nhật ký hoạt động hệ thống" />
+      <PageMeta title="Nhật ký hệ thống | TAMI ERP" description="Nhật ký hoạt động hệ thống" />
       <PageHeader
-        breadcrumb={[{ label: "Dashboard", to: "/dashboard" }, { label: "Audit log" }]}
-        title="Audit log"
-        description="Nhật ký toàn bộ request trong hệ thống — dùng để tra cứu, điều tra sự cố hoặc hoạt động bất thường."
+        breadcrumb={[{ label: "Dashboard", to: "/dashboard" }, { label: "Nhật ký hệ thống" }]}
+        title="Nhật ký hệ thống"
+        description="Nhật ký toàn bộ yêu cầu trong hệ thống — dùng để tra cứu, điều tra sự cố hoặc hoạt động bất thường."
       />
 
       <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-[minmax(280px,1fr)_200px]">
@@ -165,7 +165,7 @@ export default function AuditLogPage() {
           />
         </div>
         <Select
-          aria-label="Lọc theo method"
+          aria-label="Lọc theo phương thức"
           value={method}
           options={METHOD_OPTIONS}
           onChange={(event) => {
@@ -191,7 +191,9 @@ export default function AuditLogPage() {
               )}
               {row.queryParams && Object.keys(row.queryParams).length > 0 && (
                 <div>
-                  <p className="font-semibold text-gray-600 dark:text-gray-400">Query params</p>
+                  <p className="font-semibold text-gray-600 dark:text-gray-400">
+                    Tham số truy vấn
+                  </p>
                   <pre className="mt-1 overflow-x-auto rounded-lg bg-gray-50 p-2 dark:bg-gray-800/50">
                     {JSON.stringify(row.queryParams, null, 2)}
                   </pre>
@@ -199,14 +201,16 @@ export default function AuditLogPage() {
               )}
               {row.requestBody && Object.keys(row.requestBody).length > 0 && (
                 <div>
-                  <p className="font-semibold text-gray-600 dark:text-gray-400">Request body</p>
+                  <p className="font-semibold text-gray-600 dark:text-gray-400">
+                    Nội dung yêu cầu
+                  </p>
                   <pre className="mt-1 overflow-x-auto rounded-lg bg-gray-50 p-2 dark:bg-gray-800/50">
                     {JSON.stringify(row.requestBody, null, 2)}
                   </pre>
                 </div>
               )}
               <p className="text-gray-400 dark:text-gray-500">
-                IP: {row.ipAddress ?? "—"} · User-Agent: {row.userAgent ?? "—"}
+                IP: {row.ipAddress ?? "—"} · Trình duyệt/thiết bị: {row.userAgent ?? "—"}
               </p>
             </div>
           )}
@@ -220,7 +224,7 @@ export default function AuditLogPage() {
             pageSize={PAGE_SIZE}
             totalItems={auditLogs.data.total}
             totalPages={auditLogs.data.totalPages}
-            itemLabel="request"
+            itemLabel="yêu cầu"
             onPageChange={setPage}
           />
         </div>

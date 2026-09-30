@@ -45,7 +45,7 @@ const ALL_NAV_ITEMS: NavItem[] = [
       { name: "Bảng Size", path: "/masters/size-charts" },
     ],
   },
-  { name: "Audit log", path: "/audit-log", icon: <ListIcon /> },
+  { name: "Nhật ký hệ thống", path: "/audit-log", icon: <ListIcon /> },
 ];
 
 export default function AppSidebar() {

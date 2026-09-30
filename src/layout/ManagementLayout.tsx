@@ -11,7 +11,7 @@ export default function ManagementLayout() {
     ["/management/dashboard", "Dashboard quản lý"],
     ["/management/purchase-orders", "Tổng quan PO"],
     ...(canManageUsers(user) ? [["/management/users", "Quản trị người dùng"]] : []),
-    ...(canViewAuditLog(user) ? [["/audit-log", "Audit log"]] : []),
+    ...(canViewAuditLog(user) ? [["/audit-log", "Nhật ký hệ thống"]] : []),
   ];
 
   return (

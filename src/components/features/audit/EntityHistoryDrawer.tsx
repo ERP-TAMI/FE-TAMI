@@ -126,7 +126,7 @@ export function EntityHistoryDrawer({
   const items = historyQuery.data?.items ?? [];
 
   return (
-    <Modal open={open} onClose={onClose} title={title} size="md">
+    <Modal open={open} onClose={onClose} title={title} size="xl">
       {isBulkView && (
         <div className="relative mb-3">
           <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-gray-400">
@@ -164,49 +164,52 @@ export function EntityHistoryDrawer({
             const hasChanges = event.changes.length > 0;
             const summary = summarizeChanges(event);
             return (
-              <li key={event.id} className="py-3">
+              <li key={event.id} className="py-3.5">
                 <button
                   type="button"
                   onClick={() => hasChanges && toggle(event.id)}
-                  className={`flex w-full flex-col gap-1.5 text-left ${
-                    hasChanges ? "cursor-pointer" : "cursor-default"
+                  className={`flex w-full items-center gap-4 rounded-lg px-2 py-1.5 text-left transition-colors ${
+                    hasChanges
+                      ? "cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/40"
+                      : "cursor-default"
                   }`}
                 >
-                  {/* Hàng 1: giờ nổi bật bên trái, badge loại sự kiện bên phải */}
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="font-mono text-sm font-bold text-gray-900 dark:text-white">
+                  {/* Giờ nổi bật — cột đầu tiên, cố định độ rộng */}
+                  <div className="w-20 shrink-0">
+                    <div className="font-mono text-base font-bold text-gray-900 dark:text-white">
                       {formatTime(event.occurredAt)}
-                      <span className="ml-1.5 text-xs font-normal text-gray-400 dark:text-gray-500">
-                        {formatDate(event.occurredAt)}
-                      </span>
-                    </span>
+                    </div>
+                    <div className="text-xs text-gray-400 dark:text-gray-500">
+                      {formatDate(event.occurredAt)}
+                    </div>
+                  </div>
+
+                  <div className="shrink-0">
                     <EntityEventBadge eventType={event.eventType} />
                   </div>
 
-                  {/* Hàng 2: bản ghi nào (nếu xem gộp nhiều bản ghi) */}
-                  {isBulkView && event.targetLabel && (
-                    <span className="truncate text-sm font-semibold text-gray-700 dark:text-gray-300">
-                      {event.targetLabel}
-                    </span>
-                  )}
-
-                  {/* Hàng 3: người sửa + tóm tắt field đổi, tách rõ bằng "bởi" */}
-                  <div className="flex items-start justify-between gap-3">
-                    <p className="min-w-0 text-xs text-gray-500 dark:text-gray-400">
+                  <div className="min-w-0 flex-1">
+                    {isBulkView && event.targetLabel && (
+                      <p className="truncate text-sm font-semibold text-gray-800 dark:text-gray-200">
+                        {event.targetLabel}
+                      </p>
+                    )}
+                    <p className="truncate text-xs text-gray-500 dark:text-gray-400">
                       <span className="font-medium text-gray-700 dark:text-gray-300">
                         bởi {event.actorName ?? "Hệ thống"}
                       </span>
                       {summary && <span> · {summary}</span>}
                     </p>
-                    {hasChanges && (
-                      <span className="shrink-0 text-gray-400 dark:text-gray-500">
-                        {isExpanded ? "− Thu gọn" : "+ Chi tiết"}
-                      </span>
-                    )}
                   </div>
+
+                  {hasChanges && (
+                    <span className="shrink-0 text-xs font-medium text-brand-600 dark:text-brand-400">
+                      {isExpanded ? "− Thu gọn" : "+ Chi tiết"}
+                    </span>
+                  )}
                 </button>
                 {isExpanded && hasChanges && (
-                  <div className="mt-2 rounded-lg bg-gray-50 px-3 py-2 dark:bg-gray-800/50">
+                  <div className="mt-2 ml-24 rounded-lg bg-gray-50 px-4 py-3 dark:bg-gray-800/50">
                     {event.changes.map((change) => (
                       <ChangeRow key={change.fieldName} change={change} />
                     ))}

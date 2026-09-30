@@ -92,7 +92,7 @@ function ItLayoutContent() {
           {canViewAuditLog(user) && (
             <NavLink
               to="/audit-log"
-              aria-label="Audit log"
+              aria-label="Nhật ký hệ thống"
               onClick={() => {
                 if (isMobileOpen) toggleMobileSidebar();
               }}
@@ -105,7 +105,7 @@ function ItLayoutContent() {
               }
             >
               <History aria-hidden="true" className="h-6 w-6 shrink-0" />
-              {showLabels && <span className="menu-item-text">Audit log</span>}
+              {showLabels && <span className="menu-item-text">Nhật ký hệ thống</span>}
             </NavLink>
           )}
         </nav>
