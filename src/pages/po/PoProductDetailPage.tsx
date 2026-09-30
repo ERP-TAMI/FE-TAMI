@@ -1598,7 +1598,7 @@ export default function PoProductDetailPage({
           productCode={product.productCode}
           productName={product.productName}
           poId={poId || ""}
-          isProductLocked={isProductLocked}
+          isProductLocked={isProductLocked || isPoLocked}
           readOnly={readOnlyManagement}
         />
       )}

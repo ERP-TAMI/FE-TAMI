@@ -612,6 +612,31 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       expect(screen.queryByText("Phê duyệt BOM")).toBeNull();
     });
 
+    it.each([
+      ["PO đã hủy", { purchaseOrder: { id: "po-1", poCode: "PO-2026-001", status: "cancelled" } }, "Đơn hàng PO đã Hủy"],
+      ["PO đã khoá", { purchaseOrder: { id: "po-1", poCode: "PO-2026-001", status: "closed" } }, "Đơn hàng PO đã Khoá"],
+      ["sản phẩm đã khoá", { product: { ...mockPoBom.product!, status: "closed" } }, "Sản phẩm đã Khoá"],
+    ])("hides PO BOM write actions when %s, even for full-access users", (_label, patch, banner) => {
+      hooks.mockUser = { roleCode: "SA", fullName: "Ban Giám Đốc", purchaseOrderMode: "FULL_ACCESS" };
+      hooks.useBom.mockReturnValue({ data: mockPoBom, isLoading: false });
+      const { unmount } = render(
+        <BrowserRouter>
+          <BomDetailPage />
+        </BrowserRouter>,
+      );
+      expect(screen.getByText("Sửa Header")).toBeTruthy();
+      unmount();
+
+      hooks.useBom.mockReturnValue({ data: { ...mockPoBom, ...patch }, isLoading: false });
+      render(
+        <BrowserRouter>
+          <BomDetailPage />
+        </BrowserRouter>,
+      );
+      expect(screen.queryByText("Sửa Header")).toBeNull();
+      expect(screen.getByText(new RegExp(banner))).toBeTruthy();
+    });
+
     it("preserves SA Fit BOM permissions while PO mode is READ_ONLY", () => {
       hooks.mockUser = {
         roleCode: "SA",
