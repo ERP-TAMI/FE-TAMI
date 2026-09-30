@@ -87,6 +87,7 @@ export interface QueryHttpAuditLogsParams {
   method?: string;
   path?: string;
   actorUserId?: string;
+  actorIdentifier?: string;
   from?: string;
   to?: string;
   page?: number;
