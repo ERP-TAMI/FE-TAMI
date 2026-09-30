@@ -101,12 +101,16 @@ export function EntityHistoryDrawer({
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
 
   useEffect(() => {
     if (!open) return;
     setPage(1);
     setSearch("");
     setDebouncedSearch("");
+    setDateFrom("");
+    setDateTo("");
     setExpandedIds(new Set());
   }, [open, aggregateId, parentId]);
 
@@ -118,12 +122,19 @@ export function EntityHistoryDrawer({
     return () => window.clearTimeout(timer);
   }, [search]);
 
+  const isDateFiltering = dateFrom !== "" || dateTo !== "";
+
   const historyQuery = useEntityHistory(
     {
       aggregateType,
       aggregateId,
       parentId,
       search: isBulkView ? debouncedSearch || undefined : undefined,
+      // occurredAt là timestamp đầy đủ (không chỉ ngày) — "đến" phải là cuối
+      // ngày đã chọn, không thì các thay đổi xảy ra sau 00:00 cùng ngày sẽ bị
+      // loại khỏi kết quả.
+      from: dateFrom ? `${dateFrom}T00:00:00.000Z` : undefined,
+      to: dateTo ? `${dateTo}T23:59:59.999Z` : undefined,
       page,
       limit: PAGE_SIZE,
     },
@@ -151,7 +162,7 @@ export function EntityHistoryDrawer({
       closeOnClickOutside
     >
       <div className="overflow-hidden rounded-2xl border border-gray-200/80 bg-white dark:border-gray-800 dark:bg-gray-900/40">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 bg-gray-50/75 px-5 py-3.5 dark:border-gray-800 dark:bg-gray-800/40">
+        <div className="border-b border-gray-100 bg-gray-50/75 px-5 py-3.5 dark:border-gray-800 dark:bg-gray-800/40">
           <div>
             <h3 className="text-base font-bold text-gray-900 dark:text-white">
               Nhật ký thay đổi
@@ -162,21 +173,57 @@ export function EntityHistoryDrawer({
                 : "Chưa có thay đổi nào được ghi nhận"}
             </p>
           </div>
-          {isBulkView && (
-            <div className="relative w-full max-w-xs">
-              <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-gray-400">
-                <Search className="h-4 w-4" aria-hidden="true" />
-              </span>
-              <Input
-                type="search"
-                aria-label="Tìm trong lịch sử"
-                placeholder="Tìm theo tên bản ghi..."
-                value={search}
-                className="border-gray-300 bg-white pl-9 text-theme-sm dark:border-gray-600 dark:bg-gray-900"
-                onChange={(event) => setSearch(event.target.value)}
-              />
-            </div>
-          )}
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            {isBulkView && (
+              <div className="relative w-64">
+                <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-gray-400">
+                  <Search className="h-4 w-4" aria-hidden="true" />
+                </span>
+                <Input
+                  type="search"
+                  aria-label="Tìm trong lịch sử"
+                  placeholder="Tìm theo tên bản ghi..."
+                  value={search}
+                  className="border-gray-300 bg-white pl-9 text-theme-sm dark:border-gray-600 dark:bg-gray-900"
+                  onChange={(event) => setSearch(event.target.value)}
+                />
+              </div>
+            )}
+            <input
+              type="date"
+              aria-label="Từ ngày"
+              value={dateFrom}
+              onChange={(event) => {
+                setDateFrom(event.target.value);
+                setPage(1);
+              }}
+              className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-theme-sm text-gray-900 outline-none dark:border-gray-800 dark:bg-gray-800 dark:text-white"
+            />
+            <span className="text-theme-xs text-gray-400">đến</span>
+            <input
+              type="date"
+              aria-label="Đến ngày"
+              value={dateTo}
+              onChange={(event) => {
+                setDateTo(event.target.value);
+                setPage(1);
+              }}
+              className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-theme-sm text-gray-900 outline-none dark:border-gray-800 dark:bg-gray-800 dark:text-white"
+            />
+            {isDateFiltering && (
+              <button
+                type="button"
+                onClick={() => {
+                  setDateFrom("");
+                  setDateTo("");
+                  setPage(1);
+                }}
+                className="cursor-pointer text-theme-xs font-medium text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              >
+                Xóa lọc ngày
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="px-5 py-5">
@@ -200,7 +247,7 @@ export function EntityHistoryDrawer({
             <div className="py-10 text-center">
               <History className="mx-auto h-9 w-9 text-gray-300 dark:text-gray-600" />
               <p className="mt-3 text-theme-sm text-gray-500 dark:text-gray-400">
-                {debouncedSearch
+                {debouncedSearch || isDateFiltering
                   ? "Không tìm thấy thay đổi nào khớp."
                   : "Chưa có thay đổi nào được ghi nhận."}
               </p>
