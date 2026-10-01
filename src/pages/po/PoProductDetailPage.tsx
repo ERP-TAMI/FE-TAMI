@@ -1666,7 +1666,7 @@ export default function PoProductDetailPage({
           poId={poId}
           productId={productId}
           styleName={product.productName}
-          styleImageUrl={imageUrl || product.structureImageVersionId || undefined}
+          styleImageUrl={imageUrl || undefined}
           readOnly={isReadOnly}
           onEditingChange={setIsProductionDocEditing}
         />
