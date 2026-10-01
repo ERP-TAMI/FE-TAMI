@@ -22,6 +22,10 @@ export function canManagePurchaseOrders(user: AuthUser | null): boolean {
   return user?.roleCode === "SA" && user.purchaseOrderMode === "FULL_ACCESS";
 }
 
+export function canManagePurchaseOrderProductStatus(user: AuthUser | null): boolean {
+  return user?.roleCode === "SA" || user?.roleCode === "TPKH";
+}
+
 export function canAccessEditablePurchaseOrderModule(user: AuthUser | null): boolean {
   if (!user) return false;
   if (user.roleCode === "SA") return canManagePurchaseOrders(user);

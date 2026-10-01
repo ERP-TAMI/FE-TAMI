@@ -20,6 +20,7 @@ import { useUploadImage } from "@/hooks/useUploadImage";
 import { uploadsApi } from "@/api/uploads.api";
 import { useToast } from "@/hooks/useToast";
 import { getApiError } from "@/lib/apiError";
+import { canManagePurchaseOrderProductStatus } from "@/lib/areaAccess";
 import { getDeadlineInfo, deadlineValueClasses } from "@/lib/poDeadline";
 import { validateImageFile } from "@/lib/validateImageFile";
 import { resolveImageUrl } from "@/lib/imageUtils";
@@ -54,6 +55,7 @@ import type {
 } from "@/types/po";
 import type { StyleOperationStepItem } from "@/api/styleOperationStepsApi";
 import { createTempIdResolver } from "@/lib/tempId";
+import { useAuthStore } from "@/store/authStore";
 
 function formatDate(dateStr: string | null | undefined): string {
   if (!dateStr) return "—";
@@ -89,6 +91,8 @@ export default function PoProductDetailPage({
   const navigate = useNavigate();
   const location = useLocation();
   const { toast, showToast, hideToast } = useToast();
+  const currentUser = useAuthStore((state) => state.user);
+  const canManageProductStatus = canManagePurchaseOrderProductStatus(currentUser);
   const productPath = managementContext
     ? `/management/purchase-orders/${encodeURIComponent(poId ?? "")}/products/${encodeURIComponent(productId ?? "")}`
     : `/po/${poId ?? ""}/products/${productId ?? ""}`;
@@ -646,7 +650,7 @@ export default function PoProductDetailPage({
 
   const handleConfirmLockProduct = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!poId || !productId || !product || isReadOnly) return;
+    if (!poId || !productId || !product || isReadOnly || !canManageProductStatus) return;
     try {
       await updateStatusMutation.mutateAsync({
         poId,
@@ -665,7 +669,7 @@ export default function PoProductDetailPage({
 
   const handleConfirmUnlockProduct = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!poId || !productId || !product || readOnlyManagement) return;
+    if (!poId || !productId || !product || readOnlyManagement || !canManageProductStatus) return;
     try {
       await updateStatusMutation.mutateAsync({
         poId,
@@ -989,7 +993,7 @@ export default function PoProductDetailPage({
 
           {/* Cột phải: Nhóm nút hành động */}
           <div className="flex flex-wrap items-center gap-2 shrink-0">
-            {!readOnlyManagement && !isPoLocked &&
+            {canManageProductStatus && !readOnlyManagement && !isPoLocked &&
               (isProductLocked ? (
                 <Button
                   variant="outline"
@@ -1037,7 +1041,7 @@ export default function PoProductDetailPage({
                 Sản phẩm này đã được <strong>Khoá</strong> sau khi xử lý hoàn tất. Quy trình công đoạn và các thông tin đã được chốt và chuyển sang chế độ <strong>Chỉ đọc</strong>.
               </span>
             </div>
-            {!readOnlyManagement && !isPoLocked && (
+            {canManageProductStatus && !readOnlyManagement && !isPoLocked && (
               <button
                 type="button"
                 onClick={() => setIsUnlockModalOpen(true)}
@@ -2224,7 +2228,7 @@ export default function PoProductDetailPage({
       )}
 
       {/* ─── MODAL XÁC NHẬN KHÓA SẢN PHẨM (ĐANG XỬ LÝ -> KHÓA) ───────────────── */}
-      {isLockModalOpen && !readOnlyManagement && (
+      {isLockModalOpen && canManageProductStatus && !readOnlyManagement && !isPoLocked && !isProductLocked && (
         <Modal
           open={isLockModalOpen}
           onClose={lockGuard.requestClose}
@@ -2286,7 +2290,7 @@ export default function PoProductDetailPage({
       )}
 
       {/* MODAL MỞ KHÓA SẢN PHẨM */}
-      {isUnlockModalOpen && !readOnlyManagement && (
+      {isUnlockModalOpen && canManageProductStatus && !readOnlyManagement && !isPoLocked && isProductLocked && (
         <Modal
           open={isUnlockModalOpen}
           onClose={unlockGuard.requestClose}
