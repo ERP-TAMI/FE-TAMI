@@ -17,7 +17,7 @@ const user: AuthUser = {
 afterEach(cleanup);
 
 describe("EditProfileModal", () => {
-  it("shows email and role as protected read-only fields", () => {
+  it("only shows fields that the profile endpoint allows updating", () => {
     render(
       <EditProfileModal
         open={true}
@@ -28,12 +28,10 @@ describe("EditProfileModal", () => {
       />,
     );
 
-    const email = screen.getByLabelText("Địa chỉ email") as HTMLInputElement;
-    const role = screen.getByLabelText("Vai trò") as HTMLInputElement;
-    expect(email.disabled).toBe(true);
-    expect(email.value).toBe("it@tami.test");
-    expect(role.disabled).toBe(true);
-    expect(role.value).toBe("Công nghệ thông tin");
+    expect(screen.getByLabelText("Họ và tên")).toBeTruthy();
+    expect(screen.getByLabelText("Số điện thoại")).toBeTruthy();
+    expect(screen.queryByLabelText("Địa chỉ email")).toBeNull();
+    expect(screen.queryByLabelText("Vai trò")).toBeNull();
   });
 
   it("cannot be dismissed while the profile request is running", () => {
@@ -70,7 +68,7 @@ describe("EditProfileModal", () => {
       />,
     );
 
-    expect(screen.getByRole("heading", { name: "Chỉnh sửa thông tin cá nhân" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Chỉnh sửa hồ sơ" })).toBeTruthy();
     expect((screen.getByLabelText("Họ và tên") as HTMLInputElement).value).toBe(
       "Công nghệ thông tin",
     );
