@@ -154,21 +154,12 @@ export default function AppSidebar() {
                         to={child.path}
                         end={child.path === "/bom"}
                         className={({ isActive }) =>
-                          `menu-dropdown-item flex items-center gap-2 ${
+                          `menu-dropdown-item ${
                             isActive ? "menu-dropdown-item-active font-semibold" : "menu-dropdown-item-inactive"
                           }`
                         }
                       >
-                        {({ isActive }) => (
-                          <>
-                            <span
-                              className={`h-1.5 w-1.5 rounded-full shrink-0 transition-colors ${
-                                isActive ? "bg-brand-500 ring-2 ring-brand-500/20" : "bg-gray-300 dark:bg-gray-700"
-                              }`}
-                            />
-                            <span>{child.name}</span>
-                          </>
-                        )}
+                        {child.name}
                       </NavLink>
                     ))}
                   </div>
