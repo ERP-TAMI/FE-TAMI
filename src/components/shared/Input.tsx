@@ -3,12 +3,13 @@ import { forwardRef, useId, type InputHTMLAttributes, type ReactNode } from "rea
 export type InputProps = InputHTMLAttributes<HTMLInputElement> & {
   label?: ReactNode;
   labelAction?: ReactNode;
+  rightAction?: ReactNode;
   hint?: string;
   error?: string;
 };
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
-  { id, label, labelAction, hint, error, className = "", ...props },
+  { id, label, labelAction, rightAction, hint, error, className = "", ...props },
   ref,
 ) {
   const generatedId = useId();
@@ -29,18 +30,25 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
           {labelAction}
         </div>
       )}
-      <input
-        ref={ref}
-        id={inputId}
-        aria-invalid={Boolean(error)}
-        aria-describedby={error ? errorId : hint ? hintId : undefined}
-        className={`text-theme-sm h-11 w-full rounded-lg border bg-transparent px-4 text-gray-900 transition outline-none placeholder:text-gray-400 focus:ring-3 dark:text-white ${
-          error
-            ? "border-error-500 focus:border-error-500 focus:ring-error-500/10"
-            : "focus:border-brand-500 focus:ring-brand-500/10 border-gray-200 dark:border-gray-700"
-        } ${className}`}
-        {...props}
-      />
+      <div className="relative">
+        <input
+          ref={ref}
+          id={inputId}
+          aria-invalid={Boolean(error)}
+          aria-describedby={error ? errorId : hint ? hintId : undefined}
+          className={`text-theme-sm h-11 w-full rounded-lg border bg-transparent px-4 text-gray-900 transition outline-none placeholder:text-gray-400 focus:ring-3 dark:text-white ${
+            error
+              ? "border-error-500 focus:border-error-500 focus:ring-error-500/10"
+              : "focus:border-brand-500 focus:ring-brand-500/10 border-gray-200 dark:border-gray-700"
+          } ${className} ${rightAction ? "pr-11" : ""}`}
+          {...props}
+        />
+        {rightAction && (
+          <div className="absolute top-1/2 right-2.5 -translate-y-1/2">
+            {rightAction}
+          </div>
+        )}
+      </div>
       {error && (
         <p id={errorId} className="text-theme-xs text-error-500" role="alert">
           {error}
