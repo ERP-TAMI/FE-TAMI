@@ -663,7 +663,7 @@ export function BomPromoteRevisionModal({
               Đặt Phiên bản {targetRevisionNo} làm hiện hành
             </h3>
             <p className="text-theme-xs text-gray-500 dark:text-gray-400">
-              Phiên bản {currentRevisionNo} được giữ nguyên, chỉ thôi là bản hiện hành
+              Phiên bản {currentRevisionNo} vẫn được giữ nguyên, chỉ không còn là bản hiện hành
             </p>
           </div>
         </div>
