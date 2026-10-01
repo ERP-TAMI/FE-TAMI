@@ -125,7 +125,7 @@ export function canForwardBom(
 
   switch (status) {
     case "wait_nvkh":
-      return role === "nvkh";
+      return role === "nvkh" || role === "tpkh";
     case "wait_rd":
       return role === "rd";
     case "wait_tpkh_confirm":
@@ -246,25 +246,25 @@ export function getForwardActionInfo(status: string): {
     case "wait_nvkh":
       return {
         buttonLabel: "Chuyển RD",
-        prompt: "Nộp BOM cho RD?",
+        prompt: "Nộp NPL cho RD?",
         targetDescription: "N2 - Chuyển sang bộ phận R&D định mức tiêu hao",
       };
     case "wait_rd":
       return {
         buttonLabel: "Chuyển TPKH",
-        prompt: "Nộp BOM cho TPKH?",
+        prompt: "Nộp NPL cho TPKH?",
         targetDescription: "N3 - Chuyển sang Trưởng phòng Kế hoạch (TPKH) xác nhận",
       };
     case "wait_tpkh_confirm":
       return {
         buttonLabel: "Chuyển Kế toán",
-        prompt: "Chuyển BOM sang Kế toán?",
+        prompt: "Chuyển NPL sang Kế toán?",
         targetDescription: "N4 - Chuyển sang bộ phận Kế toán nhập đơn giá",
       };
     case "wait_accounting":
       return {
         buttonLabel: "Chuyển SA",
-        prompt: "Nộp BOM cho SA?",
+        prompt: "Nộp NPL cho SA?",
         targetDescription: "N5 - Chuyển sang Ban Giám Đốc (SA) phê duyệt",
       };
     default:
@@ -289,11 +289,7 @@ export function formatYield(value: number | string | null | undefined): string {
   if (value == null || value === "" || isNaN(Number(value))) return "-";
   const num = Number(value);
   if (num <= 0) return "-";
-  const str = String(value);
-  if (str.includes(".") && str.split(".")[1].length > 2) {
-    return num.toLocaleString("en-US", { minimumFractionDigits: 4, maximumFractionDigits: 4 });
-  }
-  return num.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+  return num.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 export function formatVND(value: number | null | undefined): string {

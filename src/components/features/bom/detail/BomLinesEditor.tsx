@@ -21,8 +21,9 @@ interface BomLinesEditorProps {
   readOnly?: boolean;
   currentStatus: string;
   isHistorical?: boolean;
-  /** Revision đang xem — dùng cho nút Lịch sử. */
+  /** Revision đang xem — bỏ bản nháp khi đổi phiên bản. */
   revisionId?: string;
+  revisionNo?: number;
   costPerUnit?: number | null;
   currentOrderQuantity?: number | null;
   currentOrderCost?: number | null;
@@ -41,6 +42,7 @@ export function BomLinesEditor({
   currentStatus,
   isHistorical = false,
   revisionId,
+  revisionNo,
   costPerUnit,
   currentOrderQuantity,
   currentOrderCost,
@@ -125,7 +127,8 @@ export function BomLinesEditor({
             <EntityHistoryButton
               aggregateType="BomRevision"
               parentId={revisionId}
-              title="Lịch sử: Định mức nguyên phụ liệu"
+              title={`Lịch sử sửa đổi phiên bản ${revisionNo ?? "đang xem"}`}
+              label={`Lịch sử phiên bản ${revisionNo ?? "đang xem"}`}
               size="md"
             />
           ) : undefined
@@ -153,6 +156,7 @@ export function BomLinesEditor({
         title="Dữ liệu chưa lưu"
         description={`${UNSAVED_MESSAGE} Vui lòng bấm Lưu để không bị mất dữ liệu!`}
         confirmLabel="Rời khỏi trang (Bỏ thay đổi)"
+        closeOnClickOutside
         cancelLabel="Tiếp tục chỉnh sửa"
         variant="danger"
         onClose={() => {

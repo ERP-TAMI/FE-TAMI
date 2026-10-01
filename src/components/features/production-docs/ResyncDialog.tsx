@@ -18,7 +18,7 @@ export function ResyncDialog({ isPending, onConfirm, onClose }: Props) {
         </h3>
         <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
           Nội dung <strong>Section 1 (Mô tả hình dáng)</strong> và{" "}
-          <strong>Section 2 (Phụ liệu)</strong> sẽ được cập nhật lại từ BOM và Mẫu
+          <strong>Section 2 (Phụ liệu)</strong> sẽ được cập nhật lại từ NPL và Mẫu
           Fit gốc. Các thay đổi chỉnh sửa thủ công tại hai phần này có thể bị ghi đè.
         </p>
         <div className="flex justify-end gap-3 pt-2">

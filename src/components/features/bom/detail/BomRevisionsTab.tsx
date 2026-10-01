@@ -2,8 +2,10 @@ import { GitBranch, GitCompare, CheckCircle2, RotateCcw } from "lucide-react";
 import type { RevisionListItem } from "@/types/bom";
 import { BomStatusBadge } from "../BomStatusBadge";
 import { formatDate } from "@/lib/bomAccess";
+import { EntityHistoryButton } from "@/components/features/audit/EntityHistoryButton";
 
 interface BomRevisionsTabProps {
+  bomId: string;
   revisions: RevisionListItem[];
   isLoading: boolean;
   currentRevisionId?: string;
@@ -13,6 +15,7 @@ interface BomRevisionsTabProps {
 }
 
 export function BomRevisionsTab({
+  bomId,
   revisions,
   isLoading,
   currentRevisionId,
@@ -44,22 +47,29 @@ export function BomRevisionsTab({
   return (
     <div className="flex flex-col gap-4">
       <div className="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-xs dark:border-gray-800 dark:bg-gray-900">
-        <div className="border-b border-gray-100 p-4 dark:border-gray-800">
+        <div className="flex items-center justify-between gap-3 border-b border-gray-100 p-4 dark:border-gray-800">
           <h3 className="text-base font-bold text-gray-900 dark:text-white">
             Lịch sử các phiên bản định mức
           </h3>
+          <EntityHistoryButton
+            aggregateType="BomTimeline"
+            parentId={bomId}
+            title="Lịch sử thay đổi NPL và các phiên bản"
+            label="Lịch sử NPL"
+            size="sm"
+          />
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-left text-theme-sm">
+          <table className="text-theme-sm w-full border-collapse text-left">
             <thead>
-              <tr className="border-b border-gray-200/80 bg-gray-50/75 text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:border-gray-800 dark:bg-gray-800/60 dark:text-gray-400">
-                <th className="py-3.5 pl-4 pr-2">Phiên bản</th>
+              <tr className="border-b border-gray-200/80 bg-gray-50/75 text-[11px] font-semibold tracking-wider text-gray-500 uppercase dark:border-gray-800 dark:bg-gray-800/60 dark:text-gray-400">
+                <th className="py-3.5 pr-2 pl-4">Phiên bản</th>
                 <th className="px-3.5 py-3.5">Trạng thái</th>
                 <th className="px-3.5 py-3.5">Lý do thay đổi</th>
                 <th className="px-3.5 py-3.5">Thời điểm tạo</th>
                 <th className="px-3.5 py-3.5">Phê duyệt</th>
-                <th className="py-3.5 pl-2 pr-4 text-center">Thao tác</th>
+                <th className="py-3.5 pr-4 pl-2 text-center">Thao tác</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
@@ -74,13 +84,13 @@ export function BomRevisionsTab({
                     }`}
                   >
                     {/* Rev No */}
-                    <td className="py-3.5 pl-4 pr-2">
+                    <td className="py-3.5 pr-2 pl-4">
                       <div className="flex items-center gap-2">
                         <span className="font-mono text-sm font-bold text-gray-900 dark:text-white">
                           Phiên bản {rev.revisionNo}
                         </span>
                         {isCurrent && (
-                          <span className="inline-flex items-center rounded-full bg-brand-100 px-2 py-0.5 text-[10px] font-semibold text-brand-700 dark:bg-brand-950 dark:text-brand-300">
+                          <span className="bg-brand-100 text-brand-700 dark:bg-brand-950 dark:text-brand-300 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold">
                             Hiện tại
                           </span>
                         )}
@@ -93,17 +103,17 @@ export function BomRevisionsTab({
                     </td>
 
                     {/* Change Reason */}
-                    <td className="max-w-[260px] truncate px-3.5 py-3.5 text-theme-xs text-gray-600 dark:text-gray-300">
+                    <td className="text-theme-xs max-w-[260px] truncate px-3.5 py-3.5 text-gray-600 dark:text-gray-300">
                       {rev.changeReason || "—"}
                     </td>
 
                     {/* Created Date */}
-                    <td className="px-3.5 py-3.5 text-theme-xs text-gray-500 dark:text-gray-400">
+                    <td className="text-theme-xs px-3.5 py-3.5 text-gray-500 dark:text-gray-400">
                       {formatDate(rev.createdAt)}
                     </td>
 
                     {/* Approved Info */}
-                    <td className="px-3.5 py-3.5 text-theme-xs text-gray-500 dark:text-gray-400">
+                    <td className="text-theme-xs px-3.5 py-3.5 text-gray-500 dark:text-gray-400">
                       {rev.approvedAt ? (
                         <div className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
                           <CheckCircle2 className="h-3.5 w-3.5" />
@@ -115,22 +125,22 @@ export function BomRevisionsTab({
                     </td>
 
                     {/* Actions */}
-                    <td className="py-3.5 pl-2 pr-4 text-center">
+                    <td className="py-3.5 pr-4 pl-2 text-center">
                       <div className="flex items-center justify-center gap-1.5">
                         <button
                           type="button"
                           onClick={() => onOpenDiff(rev.id)}
-                          className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-theme-xs font-medium text-gray-700 shadow-2xs hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+                          className="text-theme-xs inline-flex cursor-pointer items-center gap-1 rounded-lg border border-gray-200 bg-white px-2.5 py-1 font-medium text-gray-700 shadow-2xs hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
                           title="So sánh với phiên bản khác"
                         >
-                          <GitCompare className="h-3.5 w-3.5 text-brand-600 dark:text-brand-400" />
+                          <GitCompare className="text-brand-600 dark:text-brand-400 h-3.5 w-3.5" />
                           <span>So sánh</span>
                         </button>
                         {canPromote && !isCurrent && onPromote && (
                           <button
                             type="button"
                             onClick={() => onPromote(rev.id)}
-                            className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-brand-200 bg-brand-50 px-2.5 py-1 text-theme-xs font-medium text-brand-700 shadow-2xs hover:bg-brand-100 dark:border-brand-900 dark:bg-brand-950/40 dark:text-brand-300"
+                            className="border-brand-200 bg-brand-50 text-theme-xs text-brand-700 hover:bg-brand-100 dark:border-brand-900 dark:bg-brand-950/40 dark:text-brand-300 inline-flex cursor-pointer items-center gap-1 rounded-lg border px-2.5 py-1 font-medium shadow-2xs"
                             title="Đặt làm phiên bản hiện hành"
                           >
                             <RotateCcw className="h-3.5 w-3.5" />

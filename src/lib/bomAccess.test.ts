@@ -29,10 +29,10 @@ describe("bomAccess - Permission Matrix & Workflow Guards", () => {
   };
 
   describe("canForwardBom - Strict State-Role Matrix", () => {
-    it("at wait_nvkh (N1): ONLY nvkh can forward, tpkh/sa/admin cannot forward", () => {
+    it("at wait_nvkh (N1): nvkh and tpkh can forward", () => {
       expect(canForwardBom(roles.nvkh, "wait_nvkh")).toBe(true);
       expect(canForwardBom(roles.rd, "wait_nvkh")).toBe(false);
-      expect(canForwardBom(roles.tpkh, "wait_nvkh")).toBe(false);
+      expect(canForwardBom(roles.tpkh, "wait_nvkh")).toBe(true);
       expect(canForwardBom(roles.kt, "wait_nvkh")).toBe(false);
       expect(canForwardBom(roles.sa, "wait_nvkh")).toBe(false);
       expect(canForwardBom(roles.admin, "wait_nvkh")).toBe(false);
@@ -208,7 +208,7 @@ describe("bomAccess - Permission Matrix & Workflow Guards", () => {
   });
 
   describe("canCopyFitBom", () => {
-    it("allows copying from fit only for empty PO BOM at N1", () => {
+    it("allows copying from fit only for empty PO NPL at N1", () => {
       const validPoBom = { type: "po", status: "wait_nvkh", lines: [] };
       expect(canCopyFitBom(roles.nvkh, validPoBom)).toBe(true);
       expect(canCopyFitBom(roles.tpkh, validPoBom)).toBe(true);

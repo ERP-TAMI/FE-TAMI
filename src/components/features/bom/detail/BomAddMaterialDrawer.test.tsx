@@ -109,6 +109,24 @@ describe("BomAddMaterialDrawer", () => {
     ).toBe(true);
   });
 
+  it("asks before closing the drawer when materials are selected", () => {
+    const onClose = vi.fn();
+    const { container } = render(
+      <BomAddMaterialDrawer
+        isOpen
+        onClose={onClose}
+        existingMaterialIds={new Set()}
+        onAdd={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByLabelText("Chọn Vải một"));
+    fireEvent.click(container.firstElementChild as HTMLElement);
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.getByText("Bạn có thay đổi chưa được lưu")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Bỏ thay đổi" }));
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
   it("only asks the server for active materials and filters by the chosen group", () => {
     render(
       <BomAddMaterialDrawer

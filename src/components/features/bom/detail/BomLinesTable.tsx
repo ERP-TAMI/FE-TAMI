@@ -11,6 +11,7 @@ import {
   Download,
 } from "lucide-react";
 import { formatUSD, formatYield, canViewBomCost } from "@/lib/bomAccess";
+import { normalizeDecimalInput } from "@/lib/bomDecimal";
 import { parseDecimal, type BomDraftMode, type DraftLine } from "@/hooks/useBomLinesDraft";
 import { useAuthStore } from "@/store/authStore";
 
@@ -35,15 +36,6 @@ interface BomLinesTableProps {
   onChangeField: (key: string, field: EditableField, value: string) => void;
   onRemove: (key: string) => void;
   onMove: (key: string, delta: -1 | 1) => void;
-}
-
-function normalizeDecimalInput(raw: string): string {
-  let val = raw.replace(/,/g, ".").replace(/[^0-9.]/g, "");
-  const parts = val.split(".");
-  if (parts.length > 2) val = parts[0] + "." + parts.slice(1).join("");
-  const decimals = val.split(".")[1];
-  if (decimals && decimals.length > 4) val = val.split(".")[0] + "." + decimals.slice(0, 4);
-  return val;
 }
 
 function exportRowsToCsv(rows: DraftLine[], bomCode: string, canViewCost: boolean) {
@@ -198,10 +190,11 @@ const LineRow = memo(function LineRow({
             type="text"
             inputMode="decimal"
             placeholder="-"
+            title="Định mức tối đa 2 chữ số thập phân"
             data-testid={`consumption-input-${row.key}`}
             value={row.consumption}
             onChange={(e) =>
-              onChangeField(row.key, "consumption", normalizeDecimalInput(e.target.value))
+              onChangeField(row.key, "consumption", normalizeDecimalInput(e.target.value, 2))
             }
             className="border-brand-500 w-20 rounded-lg border bg-white px-2 py-1 text-center font-mono text-xs font-bold text-gray-900 focus:outline-none dark:bg-gray-800 dark:text-white"
           />
@@ -230,7 +223,7 @@ const LineRow = memo(function LineRow({
                 data-line-id={row.key}
                 value={row.unitCost}
                 onChange={(e) =>
-                  onChangeField(row.key, "unitCost", normalizeDecimalInput(e.target.value))
+                  onChangeField(row.key, "unitCost", normalizeDecimalInput(e.target.value, 4))
                 }
                 className="focus:border-brand-500 focus:ring-brand-500 w-28 rounded-lg border border-gray-300 bg-white px-2.5 py-1 text-right font-mono text-xs font-bold text-gray-900 focus:ring-1 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-white"
                 title="Nhập đơn giá ($)"

@@ -2,6 +2,11 @@ import { expect, test } from "@playwright/test";
 
 const SA = { email: "sa@tami.test", password: "123456" };
 
+async function signOut(page: import("@playwright/test").Page) {
+  await page.getByRole("button", { name: "Tài khoản" }).click();
+  await page.getByRole("button", { name: "Đăng xuất" }).click();
+}
+
 test.describe("Authentication flow (real browser, real BE)", () => {
   test("redirects an unauthenticated visitor from a protected route to /login", async ({
     page,
@@ -13,7 +18,7 @@ test.describe("Authentication flow (real browser, real BE)", () => {
   test("shows a Vietnamese error for wrong credentials", async ({ page }) => {
     await page.goto("/login");
     await page.getByLabel("Email").fill(SA.email);
-    await page.getByLabel("Mật khẩu").fill("wrong-password");
+    await page.getByLabel("Mật khẩu", { exact: true }).fill("wrong-password");
     await page.getByRole("button", { name: "Đăng nhập" }).click();
 
     await expect(page.getByText("Email hoặc mật khẩu không đúng.")).toBeVisible();
@@ -23,7 +28,7 @@ test.describe("Authentication flow (real browser, real BE)", () => {
   test("logs in, survives a full page reload, and logs out cleanly", async ({ page }) => {
     await page.goto("/login");
     await page.getByLabel("Email").fill(SA.email);
-    await page.getByLabel("Mật khẩu").fill(SA.password);
+    await page.getByLabel("Mật khẩu", { exact: true }).fill(SA.password);
     await page.getByRole("button", { name: "Đăng nhập" }).click();
 
     await expect(page).toHaveURL(/\/dashboard$/);
@@ -40,7 +45,7 @@ test.describe("Authentication flow (real browser, real BE)", () => {
     await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
     await expect(page).toHaveURL(/\/dashboard$/);
 
-    await page.getByRole("button", { name: "Đăng xuất" }).click();
+    await signOut(page);
     await expect(page).toHaveURL(/\/login$/);
 
     // A direct visit to a protected route after logout must not restore the
@@ -55,7 +60,7 @@ test.describe("Authentication flow (real browser, real BE)", () => {
   }) => {
     await page.goto("/login");
     await page.getByLabel("Email").fill(SA.email);
-    await page.getByLabel("Mật khẩu").fill(SA.password);
+    await page.getByLabel("Mật khẩu", { exact: true }).fill(SA.password);
     await page.getByRole("button", { name: "Đăng nhập" }).click();
     await expect(page).toHaveURL(/\/dashboard$/);
 
@@ -78,7 +83,7 @@ test.describe("Authentication flow (real browser, real BE)", () => {
     expect(refreshCookie?.httpOnly).toBe(true);
     expect(refreshCookie?.sameSite).toBe("Lax");
 
-    await page.getByRole("button", { name: "Đăng xuất" }).click();
+    await signOut(page);
     await expect(page).toHaveURL(/\/login$/);
 
     const afterLogout = await page.evaluate(() => window.localStorage.getItem("tami_session"));
@@ -90,7 +95,7 @@ test.describe("Authentication flow (real browser, real BE)", () => {
   }) => {
     await page.goto("/login");
     await page.getByLabel("Email").fill(SA.email);
-    await page.getByLabel("Mật khẩu").fill(SA.password);
+    await page.getByLabel("Mật khẩu", { exact: true }).fill(SA.password);
     await page.getByRole("button", { name: "Đăng nhập" }).click();
     await expect(page).toHaveURL(/\/dashboard$/);
 
@@ -103,19 +108,19 @@ test.describe("Authentication flow (real browser, real BE)", () => {
     await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
     expect(refreshCalls).toBe(0);
 
-    await page.getByRole("button", { name: "Đăng xuất" }).click();
+    await signOut(page);
   });
 
   test("sends an already-authenticated visitor away from /login", async ({ page }) => {
     await page.goto("/login");
     await page.getByLabel("Email").fill(SA.email);
-    await page.getByLabel("Mật khẩu").fill(SA.password);
+    await page.getByLabel("Mật khẩu", { exact: true }).fill(SA.password);
     await page.getByRole("button", { name: "Đăng nhập" }).click();
     await expect(page).toHaveURL(/\/dashboard$/);
 
     await page.goto("/login");
     await expect(page).toHaveURL(/\/dashboard$/);
 
-    await page.getByRole("button", { name: "Đăng xuất" }).click();
+    await signOut(page);
   });
 });

@@ -372,9 +372,9 @@ function renderWithRouter(
 }
 
 // =========================================================================
-// TEST SUITE: PR-11 BOM V2 FINAL INTEGRATION & E2E REGRESSION
+// TEST SUITE: PR-11 NPL V2 FINAL INTEGRATION & E2E REGRESSION
 // =========================================================================
-describe("PR-11: BOM V2 Final Integration & E2E Regression", () => {
+describe("PR-11: NPL V2 Final Integration & E2E Regression", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     hooks.mockUser = { roleCode: "TPKH", fullName: "Trưởng phòng Kế hoạch" };
@@ -535,9 +535,9 @@ describe("PR-11: BOM V2 Final Integration & E2E Regression", () => {
   });
 
   // =======================================================================
-  // 1. FLOW A: BOM LIST & FILTERING
+  // 1. FLOW A: NPL LIST & FILTERING
   // =======================================================================
-  describe("FLOW A: BOM List & Filtering", () => {
+  describe("FLOW A: NPL List & Filtering", () => {
     it("1. renders the page title and total count from backend response", () => {
       renderWithRouter(<BomPage />, { initialEntries: ["/bom"] });
 
@@ -545,7 +545,7 @@ describe("PR-11: BOM V2 Final Integration & E2E Regression", () => {
       expect(screen.getByText("12 bảng NPL")).toBeTruthy();
     });
 
-    it("2. filters by BOM type (FIT vs PO) and updates query state", () => {
+    it("2. filters by NPL type (FIT vs PO) and updates query state", () => {
       renderWithRouter(<BomPage />, { initialEntries: ["/bom"] });
 
       const fitBtn = screen.getByRole("button", { name: "Mẫu Fit" });
@@ -591,7 +591,7 @@ describe("PR-11: BOM V2 Final Integration & E2E Regression", () => {
       expect(hooks.useBoms).toHaveBeenCalledWith(expect.objectContaining({ page: 2 }));
     });
 
-    it("6. clicking on a BOM row navigates cleanly to /bom/:id", () => {
+    it("6. clicking on a NPL row navigates cleanly to /bom/:id", () => {
       renderWithRouter(<BomPage />, { initialEntries: ["/bom"] });
 
       const bomCodeLink = screen.getByText("ST-POLO");
@@ -602,31 +602,31 @@ describe("PR-11: BOM V2 Final Integration & E2E Regression", () => {
   });
 
   // =======================================================================
-  // 2. FLOW B: CREATE BOM WIZARD
+  // 2. FLOW B: CREATE NPL WIZARD
   // =======================================================================
-  describe("FLOW B: Create BOM Wizard", () => {
-    it("7. opens create modal on clicking '+ Tạo BOM'", () => {
+  describe("FLOW B: Create NPL Wizard", () => {
+    it("7. opens create modal on clicking '+ Tạo NPL'", () => {
       renderWithRouter(<BomPage />, { initialEntries: ["/bom"] });
 
-      const createBtn = screen.getByLabelText("Thêm nguyên liệu - Tạo BOM");
+      const createBtn = screen.getByLabelText("Thêm nguyên liệu - Tạo NPL");
       fireEvent.click(createBtn);
 
-      expect(screen.getByText("Tạo mới Định mức Nguyên phụ liệu (BOM)")).toBeTruthy();
-      expect(screen.getByText("Chọn loại BOM")).toBeTruthy();
+      expect(screen.getByText("Tạo mới NPL")).toBeTruthy();
+      expect(screen.getByText("Chọn loại NPL")).toBeTruthy();
     });
 
-    it("8. successfully creates FIT BOM with selected style and redirects to detail", async () => {
+    it("8. successfully creates FIT NPL with selected style and redirects to detail", async () => {
       hooks.useCreateBom.mutateAsync.mockResolvedValueOnce({
         id: "new-fit-bom-123",
-        bomCode: "BOM-FIT-ST01",
+        bomCode: "NPL-FIT-ST01",
       });
 
       renderWithRouter(<BomPage />, { initialEntries: ["/bom"] });
 
-      fireEvent.click(screen.getByLabelText("Thêm nguyên liệu - Tạo BOM"));
+      fireEvent.click(screen.getByLabelText("Thêm nguyên liệu - Tạo NPL"));
 
-      // Step 1: Select FIT BOM
-      fireEvent.click(screen.getByText("FIT BOM (Mẫu Fit)"));
+      // Step 1: Select FIT NPL
+      fireEvent.click(screen.getByText("FIT NPL (Mẫu Fit)"));
       fireEvent.click(screen.getByRole("button", { name: /Tiếp tục/i }));
 
       // Step 2: Select Style ST-01
@@ -634,7 +634,7 @@ describe("PR-11: BOM V2 Final Integration & E2E Regression", () => {
       fireEvent.click(screen.getByRole("button", { name: /Tiếp tục/i }));
 
       // Step 3: Confirm Create
-      const submitBtn = screen.getByRole("button", { name: /Xác nhận tạo BOM/i });
+      const submitBtn = screen.getByRole("button", { name: /Xác nhận tạo NPL/i });
       fireEvent.click(submitBtn);
 
       await waitFor(() => {
@@ -648,17 +648,17 @@ describe("PR-11: BOM V2 Final Integration & E2E Regression", () => {
       });
     });
 
-    it("9. successfully creates PO BOM with selected purchase order and product", async () => {
+    it("9. successfully creates PO NPL with selected purchase order and product", async () => {
       hooks.useCreateBom.mutateAsync.mockResolvedValueOnce({
         id: "new-po-bom-456",
-        bomCode: "BOM-PO-NEW",
+        bomCode: "NPL-PO-NEW",
       });
 
       renderWithRouter(<BomPage />, { initialEntries: ["/bom"] });
 
-      fireEvent.click(screen.getByLabelText("Thêm nguyên liệu - Tạo BOM"));
+      fireEvent.click(screen.getByLabelText("Thêm nguyên liệu - Tạo NPL"));
 
-      // Step 1: PO BOM is selected by default, click Tiếp tục
+      // Step 1: PO NPL is selected by default, click Tiếp tục
       fireEvent.click(screen.getByRole("button", { name: /Tiếp tục/i }));
 
       // Step 2: Select PO and Product
@@ -669,7 +669,7 @@ describe("PR-11: BOM V2 Final Integration & E2E Regression", () => {
       fireEvent.click(screen.getByRole("button", { name: /Tiếp tục/i }));
 
       // Step 3: Confirm Create
-      const submitBtn = screen.getByRole("button", { name: /Xác nhận tạo BOM/i });
+      const submitBtn = screen.getByRole("button", { name: /Xác nhận tạo NPL/i });
       fireEvent.click(submitBtn);
 
       await waitFor(() => {
@@ -685,10 +685,10 @@ describe("PR-11: BOM V2 Final Integration & E2E Regression", () => {
   });
 
   // =======================================================================
-  // 3. FLOW C: BOM DETAIL & PERMISSIONS
+  // 3. FLOW C: NPL DETAIL & PERMISSIONS
   // =======================================================================
-  describe("FLOW C: BOM Detail & Permissions", () => {
-    it("10. header renders BOM code, type badge, status badge, revision number, and PO info", () => {
+  describe("FLOW C: NPL Detail & Permissions", () => {
+    it("10. header renders NPL code, type badge, status badge, revision number, and PO info", () => {
       renderWithRouter(<BomDetailPage />, { initialEntries: ["/bom/bom-v2-test-id"] });
 
       expect(screen.getByText("NPL PO: PRD-QUAN-01")).toBeTruthy();
@@ -752,7 +752,7 @@ describe("PR-11: BOM V2 Final Integration & E2E Regression", () => {
       expect(forwardBtn).toBeTruthy();
       fireEvent.click(forwardBtn);
 
-      expect(screen.getByText("Nộp BOM cho RD?")).toBeTruthy();
+      expect(screen.getByText("Nộp NPL cho RD?")).toBeTruthy();
       fireEvent.click(screen.getByText("Xác nhận chuyển bước"));
 
       await waitFor(() => {
@@ -773,7 +773,7 @@ describe("PR-11: BOM V2 Final Integration & E2E Regression", () => {
 
       fireEvent.click(screen.getByText("Trả lại"));
 
-      expect(screen.getByText("Từ chối / Trả lại BOM")).toBeTruthy();
+      expect(screen.getByText("Từ chối / Trả lại NPL")).toBeTruthy();
 
       const confirmBtn = screen.getByText("Xác nhận trả lại");
       // Reason empty -> disabled
@@ -797,7 +797,7 @@ describe("PR-11: BOM V2 Final Integration & E2E Regression", () => {
     it("15. handles 409 stale revision error gracefully by triggering refetch and alert", async () => {
       hooks.mockUser = { roleCode: "NVKH", fullName: "NVKH" };
       hooks.useForwardBom.mutateAsync.mockRejectedValueOnce({
-        response: { status: 409, data: { message: "BOM đã được cập nhật bởi người khác" } },
+        response: { status: 409, data: { message: "NPL đã được cập nhật bởi người khác" } },
       });
 
       renderWithRouter(<BomDetailPage />, { initialEntries: ["/bom/bom-v2-test-id"] });
@@ -825,11 +825,11 @@ describe("PR-11: BOM V2 Final Integration & E2E Regression", () => {
 
       renderWithRouter(<BomDetailPage />, { initialEntries: ["/bom/bom-v2-test-id"] });
 
-      const approveBtn = screen.getByText("Phê duyệt BOM");
+      const approveBtn = screen.getByText("Phê duyệt NPL");
       fireEvent.click(approveBtn);
 
-      expect(screen.getByText("Phê duyệt & Đóng BOM")).toBeTruthy();
-      fireEvent.click(screen.getByText("Phê duyệt đóng BOM"));
+      expect(screen.getByText("Phê duyệt & Đóng NPL")).toBeTruthy();
+      fireEvent.click(screen.getByText("Phê duyệt đóng NPL"));
 
       await waitFor(() => {
         expect(hooks.useApproveBom.mutateAsync).toHaveBeenCalled();
@@ -841,7 +841,7 @@ describe("PR-11: BOM V2 Final Integration & E2E Regression", () => {
   // 5. FLOW E: REVISION MANAGEMENT & DEEP-LINKING
   // =======================================================================
   describe("FLOW E: Revision Management & Deep-Linking", () => {
-    it("17. only current closed BOM allows creating a new revision", () => {
+    it("17. only current closed NPL allows creating a new revision", () => {
       // In wait_nvkh: create revision button is hidden
       renderWithRouter(<BomDetailPage />, { initialEntries: ["/bom/bom-v2-test-id"] });
       expect(screen.queryByText("Tạo phiên bản mới")).toBeNull();
@@ -872,14 +872,14 @@ describe("PR-11: BOM V2 Final Integration & E2E Regression", () => {
 
       fireEvent.click(screen.getByText("Tạo phiên bản mới"));
 
-      expect(screen.getByText("Tạo Phiên Bản Mới (Rev 2)")).toBeTruthy();
+      expect(screen.getByRole("heading", { name: "Tạo phiên bản 2" })).toBeTruthy();
 
       const reasonInput = screen.getByPlaceholderText(/Thay thế phụ liệu/i);
       fireEvent.change(reasonInput, {
         target: { value: "Thay đổi nhà cung cấp chỉ" },
       });
 
-      fireEvent.click(screen.getByText("Tạo Rev 2"));
+      fireEvent.click(screen.getByRole("button", { name: "Tạo phiên bản 2" }));
 
       await waitFor(() => {
         expect(hooks.useCreateRevision.mutateAsync).toHaveBeenCalledWith({
@@ -903,7 +903,7 @@ describe("PR-11: BOM V2 Final Integration & E2E Regression", () => {
       renderWithRouter(<BomDetailPage />, { initialEntries: ["/bom/bom-v2-test-id"] });
 
       // Switch to Revisions tab
-      fireEvent.click(screen.getByText(/Lịch sử phiên bản/i));
+      fireEvent.click(screen.getByRole("button", { name: /^Lịch sử$/ }));
 
       const diffBtn = screen.getByText("So sánh");
       fireEvent.click(diffBtn);
@@ -912,19 +912,21 @@ describe("PR-11: BOM V2 Final Integration & E2E Regression", () => {
       expect(screen.getByText("Keo dựng vải")).toBeTruthy();
     });
 
-    it("21. history is opened from the shared audit buttons, not from a hidden tab", () => {
+    it("21. version audit is beside its lines and combined NPL audit is in the history tab", () => {
       renderWithRouter(<BomDetailPage />, { initialEntries: ["/bom/bom-v2-test-id"] });
 
       expect(screen.queryByRole("button", { name: "Nhật ký duyệt" })).toBeNull();
+      expect(screen.getAllByTestId("entity-history-button").length).toBe(1);
+      fireEvent.click(screen.getByRole("button", { name: /^Lịch sử$/ }));
       expect(screen.getAllByTestId("entity-history-button").length).toBe(2);
     });
   });
 
   // =======================================================================
-  // 6. FLOW F: COPY FIT BOM TO PO BOM
+  // 6. FLOW F: COPY FIT NPL TO PO NPL
   // =======================================================================
-  describe("FLOW F: Copy FIT BOM to PO BOM", () => {
-    it("22. allows copying FIT BOM lines when PO BOM is at N1 with zero lines", async () => {
+  describe("FLOW F: Copy FIT NPL to PO NPL", () => {
+    it("22. allows copying FIT NPL lines when PO NPL is at N1 with zero lines", async () => {
       hooks.useBom.mockReturnValue({
         data: { ...mockDetailBom, lines: [] },
         isLoading: false,
@@ -937,15 +939,15 @@ describe("PR-11: BOM V2 Final Integration & E2E Regression", () => {
       const moreBtn = screen.getByLabelText("Thao tác khác");
       fireEvent.click(moreBtn);
 
-      const copyFitOption = screen.getByText("Nhập từ Fit BOM");
+      const copyFitOption = screen.getByText("Nhập từ Fit NPL");
       fireEvent.click(copyFitOption);
 
       await waitFor(() => {
-        expect(screen.getByText("Sao chép từ Fit BOM")).toBeTruthy();
+        expect(screen.getByText("Sao chép từ Fit NPL")).toBeTruthy();
       });
 
       // The confirm button stays disabled until the modal's async fetch of
-      // the Fit BOM's closed revisions resolves and auto-selects one
+      // the Fit NPL's closed revisions resolves and auto-selects one
       // (BomCopyFitModal's useEffect). Clicking a disabled button is a
       // no-op, so wait for it to become enabled first — otherwise this test
       // races that fetch and only passes when the microtask timing happens
@@ -967,22 +969,22 @@ describe("PR-11: BOM V2 Final Integration & E2E Regression", () => {
       });
     });
 
-    it("23. hides copy fit action once BOM lines exist or state is beyond N1", () => {
-      // BOM lines exist: lines.length > 0
+    it("23. hides copy fit action once NPL lines exist or state is beyond N1", () => {
+      // NPL lines exist: lines.length > 0
       renderWithRouter(<BomDetailPage />, { initialEntries: ["/bom/bom-v2-test-id"] });
 
       // When lines exist and status is wait_nvkh, only discontinue is
       // available, rendered directly (not behind a dropdown).
       expect(screen.getByText("Ngừng sử dụng")).toBeTruthy();
-      expect(screen.queryByText("Nhập từ Fit BOM")).toBeNull();
+      expect(screen.queryByText("Nhập từ Fit NPL")).toBeNull();
     });
   });
 
   // =======================================================================
-  // 7. FLOW G: DISCONTINUE BOM
+  // 7. FLOW G: DISCONTINUE NPL
   // =======================================================================
-  describe("FLOW G: Discontinue BOM", () => {
-    it("24. discontinues BOM with mandatory reason and locks all mutations", async () => {
+  describe("FLOW G: Discontinue NPL", () => {
+    it("24. discontinues NPL with mandatory reason and locks all mutations", async () => {
       renderWithRouter(<BomDetailPage />, { initialEntries: ["/bom/bom-v2-test-id"] });
 
       const discontinueOption = screen.getByText("Ngừng sử dụng");
@@ -1003,7 +1005,7 @@ describe("PR-11: BOM V2 Final Integration & E2E Regression", () => {
       });
     });
 
-    it("25. discontinued BOM disables mutation controls and renders status badge cleanly", () => {
+    it("25. discontinued NPL disables mutation controls and renders status badge cleanly", () => {
       hooks.useBom.mockReturnValue({
         data: {
           ...mockDetailBom,

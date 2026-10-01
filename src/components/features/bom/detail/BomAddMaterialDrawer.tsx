@@ -5,6 +5,7 @@ import { useMaterialGroups } from "@/hooks/useMaterialGroups";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import type { DraftMaterial } from "@/hooks/useBomLinesDraft";
 import type { Material } from "@/types/material";
+import { useDiscardChangesGuard } from "@/hooks/useDiscardChangesGuard";
 
 export interface BomAddMaterialDrawerProps {
   isOpen: boolean;
@@ -26,6 +27,7 @@ export function BomAddMaterialDrawer({
   const [materialSearch, setMaterialSearch] = useState("");
   const [selectedGroupId, setSelectedGroupId] = useState("all");
   const [selected, setSelected] = useState<Map<string, Material>>(new Map());
+  const { requestClose, discardDialog } = useDiscardChangesGuard(selected.size > 0, onClose);
 
   const debouncedSearch = useDebouncedValue(materialSearch.trim(), 300);
 
@@ -101,7 +103,7 @@ export function BomAddMaterialDrawer({
 
   return (
     <>
-      <div className="fixed inset-0 z-40 bg-black/20 lg:hidden" onClick={onClose} />
+      <div className="fixed inset-0 z-40 bg-black/20" onClick={requestClose} />
 
       <aside
         className="fixed inset-y-0 right-0 z-40 flex w-full flex-col border-l border-[#EAECF0] bg-white shadow-xl transition-all duration-300 sm:w-[480px] dark:border-gray-800 dark:bg-gray-900"
@@ -114,7 +116,7 @@ export function BomAddMaterialDrawer({
           </h2>
           <button
             type="button"
-            onClick={onClose}
+            onClick={requestClose}
             className="cursor-pointer rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-800 dark:hover:text-gray-200"
             title="Đóng"
           >
@@ -287,7 +289,7 @@ export function BomAddMaterialDrawer({
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                onClick={onClose}
+                onClick={requestClose}
                 className="h-10 cursor-pointer rounded-lg border border-[#EAECF0] px-4 text-xs font-semibold text-[#344054] hover:bg-gray-50 dark:border-gray-800 dark:text-gray-300 dark:hover:bg-gray-800"
               >
                 Hủy
@@ -304,6 +306,7 @@ export function BomAddMaterialDrawer({
           </div>
         </div>
       </aside>
+      {discardDialog}
     </>
   );
 }

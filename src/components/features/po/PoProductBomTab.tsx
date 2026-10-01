@@ -52,12 +52,12 @@ export function PoProductBomTab({
         type: "po",
         purchaseOrderProductId: productId,
       });
-      showToast(`Đã tạo bảng BOM thành công cho sản phẩm ${productCode}`, "success");
+      showToast(`Đã tạo bảng NPL thành công cho sản phẩm ${productCode}`, "success");
       void refetchBomsList();
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { message?: string } }; message?: string };
       showToast(
-        axiosErr?.response?.data?.message || axiosErr?.message || "Lỗi khi tạo BOM",
+        axiosErr?.response?.data?.message || axiosErr?.message || "Lỗi khi tạo NPL",
         "error",
       );
     }
@@ -87,12 +87,12 @@ export function PoProductBomTab({
             <Layers className="h-8 w-8" />
           </div>
           <h3 className="mt-4 text-base font-bold text-gray-900 dark:text-white">
-            Chưa có Bảng định mức Nguyên phụ liệu (BOM)
+            Chưa có Bảng định mức Nguyên phụ liệu (NPL)
           </h3>
           <p className="mt-1.5 max-w-md text-xs text-gray-500 dark:text-gray-400">
-            Sản phẩm <strong>{productCode}</strong> ({productName}) chưa được thiết lập bảng BOM.
+            Sản phẩm <strong>{productCode}</strong> ({productName}) chưa được thiết lập bảng NPL.
             {!readOnly &&
-              " Khởi tạo BOM để nhập định mức vải, phụ liệu, chỉ may và tính toán giá thành."}
+              " Khởi tạo NPL để nhập định mức vải, phụ liệu, chỉ may và tính toán giá thành."}
           </p>
           {!readOnly && (
             <button
@@ -104,8 +104,8 @@ export function PoProductBomTab({
               <Plus className="h-4 w-4" />
               <span>
                 {createBomMutation.isPending
-                  ? "Đang khởi tạo BOM..."
-                  : "Tạo bảng BOM cho sản phẩm này"}
+                  ? "Đang khởi tạo NPL..."
+                  : "Tạo bảng NPL cho sản phẩm này"}
               </span>
             </button>
           )}
@@ -132,10 +132,10 @@ export function PoProductBomTab({
           <div>
             <div className="flex items-center gap-2">
               <span className="font-mono text-xs font-bold text-gray-900 dark:text-white">
-                Mã BOM: {bom.bomCode}
+                Mã NPL: {bom.bomCode}
               </span>
               <span className="bg-brand-50 text-brand-600 dark:bg-brand-950/50 dark:text-brand-400 rounded-md px-2 py-0.5 text-[10px] font-bold">
-                Rev {bom.currentRevision?.revisionNo || 1}
+                Phiên bản {bom.currentRevision?.revisionNo || 1}
               </span>
               {currentStatus === "discontinued" && (
                 <span className="rounded-md bg-rose-50 px-2 py-0.5 text-[10px] font-bold text-rose-600 dark:bg-rose-950/50 dark:text-rose-400">
@@ -160,7 +160,7 @@ export function PoProductBomTab({
             to={`/bom/${bom.id}`}
             className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-gray-200/80 bg-gray-50 px-3.5 py-2 text-xs font-semibold text-gray-700 transition-colors hover:bg-gray-100 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
           >
-            <span>Mở trang BOM đầy đủ &amp; Luân chuyển duyệt</span>
+            <span>Mở trang NPL đầy đủ &amp; Luân chuyển duyệt</span>
             <ExternalLink className="h-3.5 w-3.5 text-gray-400" />
           </Link>
         )}

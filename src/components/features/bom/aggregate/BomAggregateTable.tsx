@@ -60,7 +60,7 @@ export function BomAggregateTable({
               <th className="w-36 px-4 py-3.5 font-semibold">Nhóm NPL</th>
               <th className="min-w-[260px] px-4 py-3.5 font-semibold">Nguyên phụ liệu</th>
               <th className="w-24 px-4 py-3.5 text-center font-semibold">ĐVT</th>
-              <th className="w-36 px-4 py-3.5 text-center font-semibold">Số BOM sử dụng</th>
+              <th className="w-36 px-4 py-3.5 text-center font-semibold">Số NPL sử dụng</th>
               <th className="w-44 px-4 py-3.5 pr-6 text-right font-bold text-gray-900 dark:text-white">
                 Tổng nhu cầu
               </th>

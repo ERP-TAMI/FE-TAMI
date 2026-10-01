@@ -23,10 +23,7 @@ import type {
   CopyFitToPoPayload,
 } from "@/types/bom";
 
-export function useBoms(
-  params: QueryBomsParams = {},
-  options?: { enabled?: boolean }
-) {
+export function useBoms(params: QueryBomsParams = {}, options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: bomKeys.list(params),
     queryFn: () => bomsApi.getBoms(params),
@@ -124,8 +121,13 @@ export function useSaveBomCosts(bomId: string) {
 export function usePromoteBomRevision(bomId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ revisionId, payload }: { revisionId: string; payload: PromoteRevisionPayload }) =>
-      bomsApi.promoteRevision(bomId, revisionId, payload),
+    mutationFn: ({
+      revisionId,
+      payload,
+    }: {
+      revisionId: string;
+      payload: PromoteRevisionPayload;
+    }) => bomsApi.promoteRevision(bomId, revisionId, payload),
     onSuccess: () => {
       // Promote đổi bản hiện hành của cả BOM nên làm mới mọi thứ thuộc BOM
       void queryClient.invalidateQueries({ queryKey: bomKeys.all });
@@ -198,21 +200,20 @@ export function useBomRevisionDetail(bomId: string | undefined, revisionId: stri
     queryKey: bomKeys.revisionDetail(bomId || "", revisionId || ""),
     queryFn: () => bomsApi.getRevisionDetail(bomId!, revisionId!),
     enabled: Boolean(bomId && revisionId),
-    // Phiên bản không phải hiện hành là bất biến — chỉ đổi khi SA promote (đã làm mới ở đó)
-    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: true,
   });
 }
 
 export function useBomRevisionDiff(
   bomId: string | undefined,
   revisionId: string | undefined,
-  compareWithId?: string
+  compareWithId?: string,
 ) {
   return useQuery({
     queryKey: bomKeys.revisionDiff(bomId || "", revisionId || "", compareWithId),
     queryFn: () => bomsApi.getRevisionDiff(bomId!, revisionId!, compareWithId),
     enabled: Boolean(bomId && revisionId),
-    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: true,
   });
 }
 
@@ -229,13 +230,11 @@ export function useCopyFitToPoBom(bomId: string) {
 
 export function useBomAggregate(
   idOrParams?: string | import("@/types/bom").BomAggregateParams,
-  params?: Record<string, unknown>
+  params?: Record<string, unknown>,
 ) {
   const bomId = typeof idOrParams === "string" ? idOrParams : idOrParams?.bomId;
   const queryParams =
-    typeof idOrParams === "object"
-      ? (idOrParams as Record<string, unknown>)
-      : params;
+    typeof idOrParams === "object" ? (idOrParams as Record<string, unknown>) : params;
 
   return useQuery({
     queryKey: bomKeys.aggregate(bomId, queryParams),

@@ -23,6 +23,7 @@ export function useDiscardChangesGuard(isDirty: boolean, onClose: () => void) {
       cancelLabel="Tiếp tục chỉnh sửa"
       confirmLabel="Bỏ thay đổi"
       variant="danger"
+      closeOnClickOutside
       onClose={() => setIsConfirming(false)}
       onConfirm={() => {
         setIsConfirming(false);

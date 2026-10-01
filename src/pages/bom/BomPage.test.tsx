@@ -104,7 +104,7 @@ const mockBomFitItem: BomListItem = {
     createdAt: "2026-03-01T00:00:00Z",
   },
   revisionNo: 1,
-  costPerUnit: null, // Fit BOM always has cost = null
+  costPerUnit: null, // Fit NPL always has cost = null
   currentOrderQuantity: null,
   currentOrderCost: null,
   colorNameSnapshot: null,
@@ -176,7 +176,7 @@ function renderBomPage() {
   );
 }
 
-describe("BomPage (PR-08 Frontend BOM V2)", () => {
+describe("BomPage (PR-08 Frontend NPL V2)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     hooks.mockUser = { roleCode: "TPKH", fullName: "Trưởng phòng KH" };
@@ -250,7 +250,7 @@ describe("BomPage (PR-08 Frontend BOM V2)", () => {
       expect(screen.getAllByText(/2 bảng NPL/).length).toBeGreaterThanOrEqual(1);
     });
 
-    it("loads and displays BOM list table rows", () => {
+    it("loads and displays NPL list table rows", () => {
       renderBomPage();
 
       expect(screen.getByText("PO-2026-001")).toBeTruthy();
@@ -301,7 +301,7 @@ describe("BomPage (PR-08 Frontend BOM V2)", () => {
       expect(screen.getByText("Chưa có bảng NPL nào trong hệ thống")).toBeTruthy();
     });
 
-    it("navigates to detail page on clicking BOM code or view detail button", () => {
+    it("navigates to detail page on clicking NPL code or view detail button", () => {
       renderBomPage();
 
       const bomCodeBtn = screen.getByText("ST-POLO");
@@ -447,7 +447,7 @@ describe("BomPage (PR-08 Frontend BOM V2)", () => {
       hooks.mockUser = { roleCode: "SA", fullName: "Quản trị" };
       renderBomPage();
 
-      // PO BOM cost: $125
+      // PO NPL cost: $125
       expect(screen.getByText("$125,000.0000")).toBeTruthy();
     });
 
@@ -502,11 +502,11 @@ describe("BomPage (PR-08 Frontend BOM V2)", () => {
       expect(screen.getByText("$0.0000")).toBeTruthy();
     });
 
-    it("renders dash (—) for FIT BOM cost regardless of role", () => {
+    it("renders dash (—) for FIT NPL cost regardless of role", () => {
       hooks.mockUser = { roleCode: "SA", fullName: "Ban Giám đốc" };
       renderBomPage();
 
-      // FIT BOM row has cost displayed as "—"
+      // FIT NPL row has cost displayed as "—"
       const rows = screen.getAllByRole("row");
       expect(rows.length).toBeGreaterThan(1);
     });
@@ -516,39 +516,61 @@ describe("BomPage (PR-08 Frontend BOM V2)", () => {
   // 5. CREATE BUTTON PERMISSIONS
   // ──────────────────────────────────────────────────────────────────────────
   describe("5. Create Button Permissions", () => {
-    it("shows '+ Tạo BOM' button for NVKH, TPKH, and SA roles", () => {
+    it("shows '+ Tạo NPL' button for NVKH, TPKH, and SA roles", () => {
       const allowedRoles = ["NVKH", "TPKH", "SA"];
       for (const role of allowedRoles) {
         hooks.mockUser = { roleCode: role, fullName: `User ${role}` };
         const { unmount } = renderBomPage();
-        expect(screen.getByRole("button", { name: /Tạo BOM/i })).toBeTruthy();
+        expect(screen.getByRole("button", { name: /Tạo NPL/i })).toBeTruthy();
         unmount();
       }
     });
 
-    it("hides '+ Tạo BOM' button for unauthorized roles (RD, ACCOUNTING, IT)", () => {
+    it("hides '+ Tạo NPL' button for unauthorized roles (RD, ACCOUNTING, IT)", () => {
       const disallowedRoles = ["RD", "ACCOUNTING", "IT", "GUEST"];
       for (const role of disallowedRoles) {
         hooks.mockUser = { roleCode: role, fullName: `User ${role}` };
         const { unmount } = renderBomPage();
-        expect(screen.queryByRole("button", { name: /Tạo BOM/i })).toBeNull();
+        expect(screen.queryByRole("button", { name: /Tạo NPL/i })).toBeNull();
         unmount();
       }
     });
   });
 
   // ──────────────────────────────────────────────────────────────────────────
-  // 6. CREATE BOM WIZARD MODAL FLOW
+  // 6. CREATE NPL WIZARD MODAL FLOW
   // ──────────────────────────────────────────────────────────────────────────
-  describe("6. Create BOM Wizard Modal Flow", () => {
-    it("opens wizard modal on clicking '+ Tạo BOM'", () => {
+  describe("6. Create NPL Wizard Modal Flow", () => {
+    it("closes on backdrop click and confirms discarding wizard selections", () => {
+      renderBomPage();
+      fireEvent.click(screen.getByRole("button", { name: /Thêm nguyên liệu/i }));
+      fireEvent.click(document.querySelector('[data-modal-backdrop="true"]') as HTMLElement);
+      expect(screen.queryByText("Tạo mới NPL")).toBeNull();
+
+      fireEvent.click(screen.getByRole("button", { name: /Thêm nguyên liệu/i }));
+      fireEvent.click(screen.getByText("FIT NPL (Mẫu Fit)"));
+      fireEvent.click(document.querySelector('[data-modal-backdrop="true"]') as HTMLElement);
+
+      expect(screen.getByText("Bạn có thay đổi chưa được lưu")).toBeTruthy();
+      expect(screen.getByRole("button", { name: "Bỏ thay đổi" }).className).toContain(
+        "bg-error-500",
+      );
+      fireEvent.click(screen.getByRole("button", { name: "Tiếp tục chỉnh sửa" }));
+      expect(screen.getByText("Tạo mới NPL")).toBeTruthy();
+
+      fireEvent.click(document.querySelector('[data-modal-backdrop="true"]') as HTMLElement);
+      fireEvent.click(screen.getByRole("button", { name: "Bỏ thay đổi" }));
+      expect(screen.queryByText("Tạo mới NPL")).toBeNull();
+    });
+
+    it("opens wizard modal on clicking '+ Tạo NPL'", () => {
       renderBomPage();
 
-      const createBtn = screen.getByRole("button", { name: /Tạo BOM/i });
+      const createBtn = screen.getByRole("button", { name: /Tạo NPL/i });
       fireEvent.click(createBtn);
 
-      expect(screen.getByText("Tạo mới Định mức Nguyên phụ liệu (BOM)")).toBeTruthy();
-      expect(screen.getByText("Chọn loại BOM")).toBeTruthy();
+      expect(screen.getByText("Tạo mới NPL")).toBeTruthy();
+      expect(screen.getByText("Chọn loại NPL")).toBeTruthy();
     });
 
     it("does not fetch styles/purchase-orders for the wizard until it's opened", () => {
@@ -567,7 +589,7 @@ describe("BomPage (PR-08 Frontend BOM V2)", () => {
         { enabled: false },
       );
 
-      fireEvent.click(screen.getByRole("button", { name: /Tạo BOM/i }));
+      fireEvent.click(screen.getByRole("button", { name: /Tạo NPL/i }));
 
       expect(hooks.useStyles).toHaveBeenLastCalledWith(
         { limit: 100 },
@@ -579,19 +601,19 @@ describe("BomPage (PR-08 Frontend BOM V2)", () => {
       );
     });
 
-    it("creates FIT BOM successfully: selects FIT, chooses Style, and submits", async () => {
+    it("creates FIT NPL successfully: selects FIT, chooses Style, and submits", async () => {
       hooks.createBom.mutateAsync.mockResolvedValueOnce({
         id: "new-bom-fit-123",
-        bomCode: "BOM-FIT-ST01",
+        bomCode: "NPL-FIT-ST01",
       });
 
       renderBomPage();
 
       // Open Modal
-      fireEvent.click(screen.getByRole("button", { name: /Tạo BOM/i }));
+      fireEvent.click(screen.getByRole("button", { name: /Tạo NPL/i }));
 
-      // Step 1: Select FIT BOM (default is fit)
-      fireEvent.click(screen.getByText("FIT BOM (Mẫu Fit)"));
+      // Step 1: Select FIT NPL (default is fit)
+      fireEvent.click(screen.getByText("FIT NPL (Mẫu Fit)"));
       fireEvent.click(screen.getByRole("button", { name: /Tiếp tục/i }));
 
       // Step 2: Select Style
@@ -608,8 +630,8 @@ describe("BomPage (PR-08 Frontend BOM V2)", () => {
       fireEvent.click(screen.getByRole("button", { name: /Tiếp tục/i }));
 
       // Step 3: Review & Submit
-      expect(screen.getByText("Thông tin bảng BOM sắp tạo:")).toBeTruthy();
-      const submitBtn = screen.getByRole("button", { name: /Xác nhận tạo BOM/i });
+      expect(screen.getByText("Thông tin bảng NPL sắp tạo:")).toBeTruthy();
+      const submitBtn = screen.getByRole("button", { name: /Xác nhận tạo NPL/i });
       fireEvent.click(submitBtn);
 
       await waitFor(() => {
@@ -620,24 +642,24 @@ describe("BomPage (PR-08 Frontend BOM V2)", () => {
           rdNote: undefined,
         });
         expect(hooks.mockToast.showToast).toHaveBeenCalledWith(
-          expect.stringContaining("BOM-FIT-ST01"),
+          expect.stringContaining("NPL-FIT-ST01"),
         );
         expect(hooks.mockNavigate).toHaveBeenCalledWith("/bom/new-bom-fit-123");
       });
     });
 
-    it("creates PO BOM successfully: selects PO, chooses Product from multi-select list, and submits", async () => {
+    it("creates PO NPL successfully: selects PO, chooses Product from multi-select list, and submits", async () => {
       hooks.createBom.mutateAsync.mockResolvedValueOnce({
         id: "new-bom-po-456",
-        bomCode: "BOM-PO01-P02",
+        bomCode: "NPL-PO01-P02",
       });
 
       renderBomPage();
 
-      // Open Modal (default is PO BOM)
-      fireEvent.click(screen.getByRole("button", { name: /Tạo BOM/i }));
+      // Open Modal (default is PO NPL)
+      fireEvent.click(screen.getByRole("button", { name: /Tạo NPL/i }));
 
-      // Step 1: Default is PO BOM, click Tiếp tục
+      // Step 1: Default is PO NPL, click Tiếp tục
       fireEvent.click(screen.getByRole("button", { name: /Tiếp tục/i }));
 
       // Step 2: Pick PO
@@ -645,7 +667,7 @@ describe("BomPage (PR-08 Frontend BOM V2)", () => {
       fireEvent.click(poTrigger);
       fireEvent.click(screen.getByRole("option", { name: /PO-2026-001/ }));
 
-      // PRD-POLO-BLUE (pop-2, no BOM) should be visible in modal; PRD-POLO-RED (pop-1, has BOM) should be filtered out
+      // PRD-POLO-BLUE (pop-2, no NPL) should be visible in modal; PRD-POLO-RED (pop-1, has NPL) should be filtered out
       const modal = screen.getByRole("dialog");
       await waitFor(() => {
         expect(within(modal).getByText("PRD-POLO-BLUE")).toBeTruthy();
@@ -659,9 +681,9 @@ describe("BomPage (PR-08 Frontend BOM V2)", () => {
       fireEvent.click(within(modal).getByRole("button", { name: /Tiếp tục/i }));
 
       // Step 3: Review & Submit
-      expect(within(modal).getByText("PO BOM (Sản phẩm PO)")).toBeTruthy();
+      expect(within(modal).getByText("PO NPL (Sản phẩm PO)")).toBeTruthy();
       expect(within(modal).getByText("PRD-POLO-BLUE")).toBeTruthy();
-      const submitBtn = within(modal).getByRole("button", { name: /Xác nhận tạo BOM/i });
+      const submitBtn = within(modal).getByRole("button", { name: /Xác nhận tạo NPL/i });
       fireEvent.click(submitBtn);
 
       await waitFor(() => {
@@ -675,8 +697,8 @@ describe("BomPage (PR-08 Frontend BOM V2)", () => {
       });
     });
 
-    it("filters out products that already have a BOM and displays empty state when all have BOM", async () => {
-      // Mock PO products with ONLY pop-1 (which already has a BOM in mockBomPoItem)
+    it("filters out products that already have a NPL and displays empty state when all have NPL", async () => {
+      // Mock PO products with ONLY pop-1 (which already has a NPL in mockBomPoItem)
       hooks.usePoProducts.mockReturnValue({
         data: {
           items: [
@@ -693,19 +715,82 @@ describe("BomPage (PR-08 Frontend BOM V2)", () => {
 
       renderBomPage();
 
-      fireEvent.click(screen.getByRole("button", { name: /Tạo BOM/i }));
+      fireEvent.click(screen.getByRole("button", { name: /Tạo NPL/i }));
       fireEvent.click(screen.getByRole("button", { name: /Tiếp tục/i }));
 
       fireEvent.click(screen.getByText("-- Chọn Đơn hàng PO --"));
       fireEvent.click(screen.getByRole("option", { name: /PO-2026-001/ }));
 
       await waitFor(() => {
-        expect(screen.getByText("Tất cả sản phẩm đã có bảng BOM")).toBeTruthy();
+        expect(screen.getByText("Không có sản phẩm đủ điều kiện tạo NPL")).toBeTruthy();
       });
 
       // Tiếp tục button should be disabled
       const nextBtn = screen.getByRole("button", { name: /Tiếp tục/i });
       expect(nextBtn.hasAttribute("disabled")).toBe(true);
+    });
+
+    it("only offers open POs and products when creating PO NPL", async () => {
+      hooks.usePurchaseOrders.mockReturnValue({
+        data: {
+          items: [
+            { id: "po-1", poCode: "PO-ACTIVE-1", status: "draft" },
+            { id: "po-2", poCode: "PO-ACTIVE-2", status: "in_progress" },
+            { id: "po-3", poCode: "PO-CLOSED", status: "closed" },
+            { id: "po-4", poCode: "PO-CANCELLED", status: "cancelled" },
+          ],
+        },
+        isLoading: false,
+      });
+      hooks.usePoProducts.mockImplementation((id: string) => ({
+        data: {
+          items:
+            id === "po-1"
+              ? [
+                  { id: "pop-valid", productCode: "PRD-VALID", status: "draft" },
+                  { id: "pop-closed", productCode: "PRD-CLOSED", status: "closed" },
+                  { id: "pop-cancelled", productCode: "PRD-CANCELLED", status: "cancelled" },
+                ]
+              : [{ id: "pop-valid-2", productCode: "PRD-VALID-2", status: "in_progress" }],
+        },
+        isLoading: false,
+      }));
+      hooks.useBoms.mockReturnValue({
+        data: { data: [], meta: { total: 0, page: 1, limit: 20, totalPages: 1 } },
+        isLoading: false,
+        isError: false,
+      });
+
+      renderBomPage();
+      fireEvent.click(screen.getByRole("button", { name: /Thêm nguyên liệu/i }));
+      fireEvent.click(screen.getByRole("button", { name: /Tiếp tục/i }));
+      const modal = screen.getByRole("dialog");
+      fireEvent.click(within(modal).getByText("-- Chọn Đơn hàng PO --"));
+      expect(within(modal).getAllByRole("option")).toHaveLength(2);
+      expect(within(modal).queryByRole("option", { name: /PO-CANCELLED|PO-CLOSED/ })).toBeNull();
+      fireEvent.click(within(modal).getByRole("button", { name: /Chọn toàn bộ PO \(2\)/i }));
+
+      await waitFor(() => {
+        expect(within(modal).getByText("PRD-VALID")).toBeTruthy();
+        expect(within(modal).getByText("PRD-VALID-2")).toBeTruthy();
+      });
+      expect(within(modal).queryByText("PRD-CLOSED")).toBeNull();
+      expect(within(modal).queryByText("PRD-CANCELLED")).toBeNull();
+      expect(within(modal).getByText(/Đã chọn 0 \/ 2/)).toBeTruthy();
+
+      hooks.createBom.mutateAsync
+        .mockResolvedValueOnce({ id: "npl-1", bomCode: "NPL-ACTIVE-1" })
+        .mockResolvedValueOnce({ id: "npl-2", bomCode: "NPL-ACTIVE-2" });
+      fireEvent.click(within(modal).getByRole("button", { name: /Chọn tất cả/i }));
+      fireEvent.click(within(modal).getByRole("button", { name: /Tiếp tục/i }));
+      fireEvent.click(within(modal).getByRole("button", { name: /Xác nhận tạo 2 NPL/i }));
+      await waitFor(() => expect(hooks.createBom.mutateAsync).toHaveBeenCalledTimes(2));
+      expect(hooks.createBom.mutateAsync).toHaveBeenCalledWith(
+        expect.objectContaining({ purchaseOrderProductId: "pop-valid" }),
+      );
+      expect(hooks.createBom.mutateAsync).toHaveBeenCalledWith(
+        expect.objectContaining({ purchaseOrderProductId: "pop-valid-2" }),
+      );
     });
 
     it("supports selecting multiple products and creating BOMs in batch", async () => {
@@ -732,12 +817,12 @@ describe("BomPage (PR-08 Frontend BOM V2)", () => {
       });
 
       hooks.createBom.mutateAsync
-        .mockResolvedValueOnce({ id: "bom-new-2", bomCode: "BOM-PO01-P02" })
-        .mockResolvedValueOnce({ id: "bom-new-3", bomCode: "BOM-PO01-P03" });
+        .mockResolvedValueOnce({ id: "bom-new-2", bomCode: "NPL-PO01-P02" })
+        .mockResolvedValueOnce({ id: "bom-new-3", bomCode: "NPL-PO01-P03" });
 
       renderBomPage();
 
-      fireEvent.click(screen.getByRole("button", { name: /Tạo BOM/i }));
+      fireEvent.click(screen.getByRole("button", { name: /Tạo NPL/i }));
       fireEvent.click(screen.getByRole("button", { name: /Tiếp tục/i }));
 
       fireEvent.click(screen.getByText("-- Chọn Đơn hàng PO --"));
@@ -755,32 +840,32 @@ describe("BomPage (PR-08 Frontend BOM V2)", () => {
       fireEvent.click(screen.getByRole("button", { name: /Tiếp tục/i }));
 
       // Step 3 shows 2 products
-      expect(screen.getByText(/2 sản phẩm \(sẽ tạo 2 bảng BOM\)/)).toBeTruthy();
-      const submitBtn = screen.getByRole("button", { name: /Xác nhận tạo 2 BOM/i });
+      expect(screen.getByText(/2 sản phẩm \(sẽ tạo 2 bảng NPL\)/)).toBeTruthy();
+      const submitBtn = screen.getByRole("button", { name: /Xác nhận tạo 2 NPL/i });
       fireEvent.click(submitBtn);
 
       await waitFor(() => {
         expect(hooks.createBom.mutateAsync).toHaveBeenCalledTimes(2);
         expect(hooks.mockToast.showToast).toHaveBeenCalledWith(
-          expect.stringContaining("Đã tạo thành công 2 bảng BOM"),
+          expect.stringContaining("Đã tạo thành công 2 bảng NPL"),
         );
       });
     });
 
     it("supports selecting multiple FIT styles and creating FIT BOMs in batch", async () => {
       hooks.createBom.mutateAsync
-        .mockResolvedValueOnce({ id: "bom-fit-new-1", bomCode: "BOM-FIT-01" })
-        .mockResolvedValueOnce({ id: "bom-fit-new-2", bomCode: "BOM-FIT-02" });
+        .mockResolvedValueOnce({ id: "bom-fit-new-1", bomCode: "NPL-FIT-01" })
+        .mockResolvedValueOnce({ id: "bom-fit-new-2", bomCode: "NPL-FIT-02" });
 
       renderBomPage();
 
       // Open Modal
-      fireEvent.click(screen.getByRole("button", { name: /Tạo BOM/i }));
+      fireEvent.click(screen.getByRole("button", { name: /Tạo NPL/i }));
 
       const modal = screen.getByRole("dialog");
 
-      // Step 1: Select FIT BOM
-      fireEvent.click(within(modal).getByText("FIT BOM (Mẫu Fit)"));
+      // Step 1: Select FIT NPL
+      fireEvent.click(within(modal).getByText("FIT NPL (Mẫu Fit)"));
       fireEvent.click(within(modal).getByRole("button", { name: /Tiếp tục/i }));
 
       // Step 2: Multi-select FIT styles
@@ -795,39 +880,39 @@ describe("BomPage (PR-08 Frontend BOM V2)", () => {
       fireEvent.click(within(modal).getByRole("button", { name: /Tiếp tục/i }));
 
       // Step 3: Review & Submit
-      expect(within(modal).getByText(/2 mẫu Fit \(sẽ tạo 2 bảng BOM\)/)).toBeTruthy();
-      const submitBtn = within(modal).getByRole("button", { name: /Xác nhận tạo 2 BOM/i });
+      expect(within(modal).getByText(/2 mẫu Fit \(sẽ tạo 2 bảng NPL\)/)).toBeTruthy();
+      const submitBtn = within(modal).getByRole("button", { name: /Xác nhận tạo 2 NPL/i });
       fireEvent.click(submitBtn);
 
       await waitFor(() => {
         expect(hooks.createBom.mutateAsync).toHaveBeenCalledTimes(2);
         expect(hooks.mockToast.showToast).toHaveBeenCalledWith(
-          expect.stringContaining("Đã tạo thành công 2 bảng BOM"),
+          expect.stringContaining("Đã tạo thành công 2 bảng NPL"),
         );
       });
     });
 
-    it("displays clear conflict error when creating duplicate FIT BOM (409 Conflict)", async () => {
+    it("displays clear conflict error when creating duplicate FIT NPL (409 Conflict)", async () => {
       hooks.createBom.mutateAsync.mockRejectedValueOnce(
-        createAxiosError({ code: "CONFLICT", message: "A BOM for this style already exists" }, 409),
+        createAxiosError({ code: "CONFLICT", message: "A NPL for this style already exists" }, 409),
       );
 
       renderBomPage();
 
       // Open Modal -> Step 1: Pick FIT -> Step 2 -> Pick Style -> Step 3 -> Submit
-      fireEvent.click(screen.getByRole("button", { name: /Tạo BOM/i }));
-      fireEvent.click(screen.getByText("FIT BOM (Mẫu Fit)"));
+      fireEvent.click(screen.getByRole("button", { name: /Tạo NPL/i }));
+      fireEvent.click(screen.getByText("FIT NPL (Mẫu Fit)"));
       fireEvent.click(screen.getByRole("button", { name: /Tiếp tục/i }));
 
       fireEvent.click(screen.getByText("-- Chọn Mẫu Fit (Style) --"));
       fireEvent.click(screen.getByRole("option", { name: /ST-POLO/ }));
       fireEvent.click(screen.getByRole("button", { name: /Tiếp tục/i }));
 
-      fireEvent.click(screen.getByRole("button", { name: /Xác nhận tạo BOM/i }));
+      fireEvent.click(screen.getByRole("button", { name: /Xác nhận tạo NPL/i }));
 
       await waitFor(() => {
         expect(
-          screen.getByText("Mẫu Fit này đã có BOM. Mỗi Style chỉ có tối đa 1 Fit BOM."),
+          screen.getByText("Mẫu Fit này đã có NPL. Mỗi Style chỉ có tối đa 1 Fit NPL."),
         ).toBeTruthy();
       });
     });
@@ -835,8 +920,8 @@ describe("BomPage (PR-08 Frontend BOM V2)", () => {
     it("prevents advancing from Step 2 if required PO or products are not selected", async () => {
       renderBomPage();
 
-      fireEvent.click(screen.getByRole("button", { name: /Tạo BOM/i }));
-      // Step 1: click Next (PO BOM default)
+      fireEvent.click(screen.getByRole("button", { name: /Tạo NPL/i }));
+      // Step 1: click Next (PO NPL default)
       fireEvent.click(screen.getByRole("button", { name: /Tiếp tục/i }));
 
       // Step 2 without selecting PO: click Next
@@ -867,15 +952,15 @@ describe("BomPage (PR-08 Frontend BOM V2)", () => {
 
       renderBomPage();
 
-      fireEvent.click(screen.getByRole("button", { name: /Tạo BOM/i }));
-      fireEvent.click(screen.getByText("FIT BOM (Mẫu Fit)"));
+      fireEvent.click(screen.getByRole("button", { name: /Tạo NPL/i }));
+      fireEvent.click(screen.getByText("FIT NPL (Mẫu Fit)"));
       fireEvent.click(screen.getByRole("button", { name: /Tiếp tục/i }));
 
       fireEvent.click(screen.getByText("-- Chọn Mẫu Fit (Style) --"));
       fireEvent.click(screen.getByRole("option", { name: /ST-POLO/ }));
       fireEvent.click(screen.getByRole("button", { name: /Tiếp tục/i }));
 
-      fireEvent.click(screen.getByRole("button", { name: /Xác nhận tạo BOM/i }));
+      fireEvent.click(screen.getByRole("button", { name: /Xác nhận tạo NPL/i }));
 
       await waitFor(() => {
         expect(screen.getByText("Máy chủ đang gặp sự cố. Vui lòng thử lại sau.")).toBeTruthy();
@@ -885,7 +970,7 @@ describe("BomPage (PR-08 Frontend BOM V2)", () => {
     it("displays product colors as informational badges in multi-select cards", async () => {
       renderBomPage();
 
-      fireEvent.click(screen.getByRole("button", { name: /Tạo BOM/i }));
+      fireEvent.click(screen.getByRole("button", { name: /Tạo NPL/i }));
       fireEvent.click(screen.getByRole("button", { name: /Tiếp tục/i }));
 
       fireEvent.click(screen.getByText("-- Chọn Đơn hàng PO --"));
@@ -898,14 +983,14 @@ describe("BomPage (PR-08 Frontend BOM V2)", () => {
       // Check informational note
       expect(
         screen.getByText(
-          "* Mỗi sản phẩm được chọn sẽ được tạo một bảng BOM riêng (dùng chung cho mọi màu sắc và kích cỡ).",
+          "* Mỗi sản phẩm được chọn sẽ được tạo một bảng NPL riêng (dùng chung cho mọi màu sắc và kích cỡ).",
         ),
       ).toBeTruthy();
       // Check color pills are displayed as informational badges
       expect(screen.getByText("Xanh")).toBeTruthy();
     });
 
-    it("renders discontinued BOM status badge and allows row navigation", () => {
+    it("renders discontinued NPL status badge and allows row navigation", () => {
       const discontinuedItem: BomListItem = {
         ...mockBomPoItem,
         id: "bom-disc-1",
@@ -936,9 +1021,9 @@ describe("BomPage (PR-08 Frontend BOM V2)", () => {
   });
 
   // ──────────────────────────────────────────────────────────────────────────
-  // 7. MULTI-PO BOM CREATION FLOW
+  // 7. MULTI-PO NPL CREATION FLOW
   // ──────────────────────────────────────────────────────────────────────────
-  describe("7. Multi-PO BOM Creation Flow", () => {
+  describe("7. Multi-PO NPL Creation Flow", () => {
     it("supports selecting multiple POs, renders products grouped by PO, and creates BOMs in batch", async () => {
       hooks.usePurchaseOrders.mockReturnValue({
         data: {
@@ -996,9 +1081,9 @@ describe("BomPage (PR-08 Frontend BOM V2)", () => {
       });
 
       hooks.createBom.mutateAsync
-        .mockResolvedValueOnce({ id: "bom-new-2", bomCode: "BOM-PO01-P02" })
-        .mockResolvedValueOnce({ id: "bom-new-3", bomCode: "BOM-PO02-P03" })
-        .mockResolvedValueOnce({ id: "bom-new-4", bomCode: "BOM-PO02-P04" });
+        .mockResolvedValueOnce({ id: "bom-new-2", bomCode: "NPL-PO01-P02" })
+        .mockResolvedValueOnce({ id: "bom-new-3", bomCode: "NPL-PO02-P03" })
+        .mockResolvedValueOnce({ id: "bom-new-4", bomCode: "NPL-PO02-P04" });
 
       renderBomPage();
 
@@ -1018,10 +1103,10 @@ describe("BomPage (PR-08 Frontend BOM V2)", () => {
         expect(within(modal).getAllByText("PO-2026-002").length).toBeGreaterThanOrEqual(1);
       });
 
-      // Check product strict filtering: pop-1 (PRD-POLO-RED) has BOM so it MUST NOT be shown in modal
+      // Check product strict filtering: pop-1 (PRD-POLO-RED) has NPL so it MUST NOT be shown in modal
       expect(within(modal).queryByText("PRD-POLO-RED")).toBeNull();
 
-      // Available products without BOM must be shown
+      // Available products without NPL must be shown
       expect(within(modal).getByText("PRD-POLO-BLUE")).toBeTruthy();
       expect(within(modal).getByText("PRD-ZARA-JEAN")).toBeTruthy();
       expect(within(modal).getByText("PRD-ZARA-JACKET")).toBeTruthy();
@@ -1038,15 +1123,15 @@ describe("BomPage (PR-08 Frontend BOM V2)", () => {
 
       // Review step should list both POs and selected products
       expect(within(modal).getByText("PO-2026-001, PO-2026-002")).toBeTruthy();
-      expect(within(modal).getByText(/3 sản phẩm \(sẽ tạo 3 bảng BOM\)/)).toBeTruthy();
+      expect(within(modal).getByText(/3 sản phẩm \(sẽ tạo 3 bảng NPL\)/)).toBeTruthy();
 
       // Submit
-      fireEvent.click(within(modal).getByRole("button", { name: /Xác nhận tạo 3 BOM/i }));
+      fireEvent.click(within(modal).getByRole("button", { name: /Xác nhận tạo 3 NPL/i }));
 
       await waitFor(() => {
         expect(hooks.createBom.mutateAsync).toHaveBeenCalledTimes(3);
         expect(hooks.mockToast.showToast).toHaveBeenCalledWith(
-          "Đã tạo thành công 3 bảng BOM cho 2 đơn hàng PO.",
+          "Đã tạo thành công 3 bảng NPL cho 2 đơn hàng PO.",
         );
       });
     });

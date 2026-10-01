@@ -31,10 +31,10 @@ export function BomAggregateTab({ bomId }: BomAggregateTabProps) {
       <div className="rounded-2xl border border-dashed border-gray-200 bg-white p-12 text-center dark:border-gray-800 dark:bg-gray-900">
         <Layers className="mx-auto h-10 w-10 text-gray-300 dark:text-gray-600" />
         <p className="mt-3 font-medium text-gray-700 dark:text-gray-300">
-          Chưa có dữ liệu tổng hợp nhu cầu NPL cho BOM này
+          Chưa có dữ liệu tổng hợp nhu cầu NPL cho NPL này
         </p>
         <p className="mt-1 text-theme-xs text-gray-500">
-          Dữ liệu tổng hợp chỉ khả dụng khi BOM đã được phê duyệt đóng (closed).
+          Dữ liệu tổng hợp chỉ khả dụng khi NPL đã được phê duyệt đóng (closed).
         </p>
       </div>
     );

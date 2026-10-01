@@ -1,4 +1,4 @@
-import { BrowserRouter } from "react-router-dom";
+import { BrowserRouter, createMemoryRouter, RouterProvider } from "react-router-dom";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import BomDetailPage from "./BomDetailPage";
@@ -6,6 +6,7 @@ import type { BomDetail, RevisionDetail } from "@/types/bom";
 
 // SearchParams mock variable
 let mockSearchParams = new URLSearchParams();
+let useRealRouter = false;
 const mockSetSearchParams = vi.fn((params: unknown) => {
   mockSearchParams = new URLSearchParams(params as Record<string, string>);
 });
@@ -43,12 +44,13 @@ const hooks = vi.hoisted(() => ({
 }));
 
 vi.mock("react-router-dom", async () => {
-  const actual = await vi.importActual("react-router-dom");
+  const actual = await vi.importActual<typeof import("react-router-dom")>("react-router-dom");
   return {
     ...actual,
     useNavigate: () => hooks.mockNavigate,
     useParams: () => ({ id: "bom-test-uuid" }),
-    useSearchParams: () => [mockSearchParams, mockSetSearchParams],
+    useSearchParams: () =>
+      useRealRouter ? actual.useSearchParams() : [mockSearchParams, mockSetSearchParams],
   };
 });
 
@@ -316,6 +318,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockSearchParams = new URLSearchParams();
+    useRealRouter = false;
     hooks.mockUser = { roleCode: "NVKH", fullName: "Nhân viên Kế hoạch" };
     hooks.useBom.mockReturnValue({
       data: mockFitBom,
@@ -403,6 +406,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
 
   afterEach(() => {
     cleanup();
+    useRealRouter = false;
   });
 
   // ==========================================
@@ -432,7 +436,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
           <BomDetailPage />
         </BrowserRouter>,
       );
-      expect(screen.getByText("Không thể tải chi tiết BOM")).toBeTruthy();
+      expect(screen.getByText("Không thể tải chi tiết NPL")).toBeTruthy();
       expect(screen.getByText("Không thể kết nối máy chủ")).toBeTruthy();
       expect(screen.getByText("Thử lại")).toBeTruthy();
     });
@@ -442,7 +446,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
         data: null,
         isLoading: false,
         isError: true,
-        error: { response: { status: 404, data: { message: "BOM không tồn tại" } } },
+        error: { response: { status: 404, data: { message: "NPL không tồn tại" } } },
         refetch: vi.fn(),
       });
       render(
@@ -450,13 +454,13 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
           <BomDetailPage />
         </BrowserRouter>,
       );
-      expect(screen.getByText("BOM không tồn tại")).toBeTruthy();
+      expect(screen.getByText("NPL không tồn tại")).toBeTruthy();
       const backBtn = screen.getByText("Về danh sách");
       fireEvent.click(backBtn);
       expect(hooks.mockNavigate).toHaveBeenCalledWith("/bom");
     });
 
-    it("4. renders FIT BOM with Style information (Style Code, Style Name)", () => {
+    it("4. renders FIT NPL with Style information (Style Code, Style Name)", () => {
       render(
         <BrowserRouter>
           <BomDetailPage />
@@ -473,15 +477,14 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
         </BrowserRouter>,
       );
       expect(screen.getByRole("link", { name: "Dashboard" })).toBeTruthy();
-      expect(
-        screen.getByRole("link", { name: "Quản lý Nguyên phụ liệu" }),
-      ).toBeTruthy();
-      expect(
-        screen.getByRole("link", { name: /Danh sách NPL/ }),
-      ).toHaveProperty("href", expect.stringContaining("/bom"));
+      expect(screen.getByRole("link", { name: "Quản lý Nguyên phụ liệu" })).toBeTruthy();
+      expect(screen.getByRole("link", { name: /Danh sách NPL/ })).toHaveProperty(
+        "href",
+        expect.stringContaining("/bom"),
+      );
     });
 
-    it("5. renders PO BOM with PO and Product information", () => {
+    it("5. renders PO NPL with PO and Product information", () => {
       hooks.useBom.mockReturnValue({ data: mockPoBom, isLoading: false });
       render(
         <BrowserRouter>
@@ -493,7 +496,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       expect(screen.getAllByText("PO-2026-001").length).toBeGreaterThan(0);
     });
 
-    it("6. renders PO BOM informational color chips", () => {
+    it("6. renders PO NPL informational color chips", () => {
       hooks.useBom.mockReturnValue({ data: mockPoBom, isLoading: false });
       render(
         <BrowserRouter>
@@ -503,7 +506,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       expect(screen.getByText(/Màu: Đỏ/i)).toBeTruthy();
     });
 
-    it("falls back to the live PO product's colors and deadline when the BOM's own snapshot fields are null", () => {
+    it("falls back to the live PO product's colors and deadline when the NPL's own snapshot fields are null", () => {
       hooks.useBom.mockReturnValue({
         data: {
           ...mockPoBom,
@@ -570,7 +573,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       expect(screen.getAllByText("$150,000.0000").length).toBeGreaterThan(0);
     });
 
-    it("hides PO BOM write actions for SA in READ_ONLY mode on direct detail", () => {
+    it("hides PO NPL write actions for SA in READ_ONLY mode on direct detail", () => {
       hooks.mockUser = {
         roleCode: "SA",
         fullName: "Giám đốc điều hành",
@@ -584,11 +587,11 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
         </BrowserRouter>,
       );
 
-      expect(screen.queryByText("Sửa Header")).toBeNull();
+      expect(screen.queryByText("Sửa thông tin")).toBeNull();
       expect(screen.queryByRole("button", { name: "Thao tác khác" })).toBeNull();
     });
 
-    it("hides PO BOM approval for SA in READ_ONLY mode", () => {
+    it("hides PO NPL approval for SA in READ_ONLY mode", () => {
       hooks.mockUser = {
         roleCode: "SA",
         fullName: "Giám đốc điều hành",
@@ -605,35 +608,54 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
         </BrowserRouter>,
       );
 
-      expect(screen.queryByText("Phê duyệt BOM")).toBeNull();
+      expect(screen.queryByText("Phê duyệt NPL")).toBeNull();
     });
 
     it.each([
-      ["PO đã hủy", { purchaseOrder: { id: "po-1", poCode: "PO-2026-001", status: "cancelled" } }, "Đơn hàng PO đã Hủy"],
-      ["PO đã khoá", { purchaseOrder: { id: "po-1", poCode: "PO-2026-001", status: "closed" } }, "Đơn hàng PO đã Khoá"],
-      ["sản phẩm đã khoá", { product: { ...mockPoBom.product!, status: "closed" } }, "Sản phẩm đã Khoá"],
-    ])("hides PO BOM write actions when %s, even for full-access users", (_label, patch, banner) => {
-      hooks.mockUser = { roleCode: "SA", fullName: "Ban Giám Đốc", purchaseOrderMode: "FULL_ACCESS" };
-      hooks.useBom.mockReturnValue({ data: mockPoBom, isLoading: false });
-      const { unmount } = render(
-        <BrowserRouter>
-          <BomDetailPage />
-        </BrowserRouter>,
-      );
-      expect(screen.getByText("Sửa Header")).toBeTruthy();
-      unmount();
+      [
+        "PO đã hủy",
+        { purchaseOrder: { id: "po-1", poCode: "PO-2026-001", status: "cancelled" } },
+        "Đơn hàng PO đã Hủy",
+      ],
+      [
+        "PO đã khoá",
+        { purchaseOrder: { id: "po-1", poCode: "PO-2026-001", status: "closed" } },
+        "Đơn hàng PO đã Khoá",
+      ],
+      [
+        "sản phẩm đã khoá",
+        { product: { ...mockPoBom.product!, status: "closed" } },
+        "Sản phẩm đã Khoá",
+      ],
+    ])(
+      "hides PO NPL write actions when %s, even for full-access users",
+      (_label, patch, banner) => {
+        hooks.mockUser = {
+          roleCode: "SA",
+          fullName: "Ban Giám Đốc",
+          purchaseOrderMode: "FULL_ACCESS",
+        };
+        hooks.useBom.mockReturnValue({ data: mockPoBom, isLoading: false });
+        const { unmount } = render(
+          <BrowserRouter>
+            <BomDetailPage />
+          </BrowserRouter>,
+        );
+        expect(screen.getByText("Sửa thông tin")).toBeTruthy();
+        unmount();
 
-      hooks.useBom.mockReturnValue({ data: { ...mockPoBom, ...patch }, isLoading: false });
-      render(
-        <BrowserRouter>
-          <BomDetailPage />
-        </BrowserRouter>,
-      );
-      expect(screen.queryByText("Sửa Header")).toBeNull();
-      expect(screen.getByText(new RegExp(banner))).toBeTruthy();
-    });
+        hooks.useBom.mockReturnValue({ data: { ...mockPoBom, ...patch }, isLoading: false });
+        render(
+          <BrowserRouter>
+            <BomDetailPage />
+          </BrowserRouter>,
+        );
+        expect(screen.queryByText("Sửa thông tin")).toBeNull();
+        expect(screen.getByText(new RegExp(banner))).toBeTruthy();
+      },
+    );
 
-    it("preserves SA Fit BOM permissions while PO mode is READ_ONLY", () => {
+    it("preserves SA Fit NPL permissions while PO mode is READ_ONLY", () => {
       hooks.mockUser = {
         roleCode: "SA",
         fullName: "Giám đốc điều hành",
@@ -646,7 +668,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
         </BrowserRouter>,
       );
 
-      expect(screen.getByText("Sửa Header")).toBeTruthy();
+      expect(screen.getByText("Sửa thông tin")).toBeTruthy();
     });
 
     it("11. masks Cost Per Unit and Order Cost for NVKH role", () => {
@@ -702,6 +724,33 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
   // Category 2: Header Editing & Discontinued State
   // ==========================================
   describe("Category 2: Header Editing & Discontinued State", () => {
+    it("closes a clean header modal on outside click and confirms unsaved edits", () => {
+      hooks.mockUser = { roleCode: "TPKH", fullName: "Trưởng phòng KH" };
+      render(
+        <BrowserRouter>
+          <BomDetailPage />
+        </BrowserRouter>,
+      );
+      fireEvent.click(screen.getByText("Sửa thông tin"));
+      fireEvent.click(document.querySelector('[data-modal-backdrop="true"]') as HTMLElement);
+      expect(screen.queryByText("Chỉnh sửa thông tin NPL")).toBeNull();
+
+      fireEvent.click(screen.getByText("Sửa thông tin"));
+      const deadlineInput = document.querySelector('input[type="date"]') as HTMLInputElement;
+      fireEvent.change(deadlineInput, { target: { value: "2026-12-31" } });
+      fireEvent.click(document.querySelector('[data-modal-backdrop="true"]') as HTMLElement);
+      expect(screen.getByText("Bạn có thay đổi chưa được lưu")).toBeTruthy();
+      expect(screen.getByRole("button", { name: "Bỏ thay đổi" }).className).toContain(
+        "bg-error-500",
+      );
+      fireEvent.click(screen.getByRole("button", { name: "Tiếp tục chỉnh sửa" }));
+      expect(deadlineInput.value).toBe("2026-12-31");
+      fireEvent.click(document.querySelector('[data-modal-backdrop="true"]') as HTMLElement);
+      fireEvent.click(screen.getByRole("button", { name: "Bỏ thay đổi" }));
+      expect(screen.queryByText("Chỉnh sửa thông tin NPL")).toBeNull();
+      expect(hooks.useUpdateBom.mutateAsync).not.toHaveBeenCalled();
+    });
+
     it("15. NVKH can open Header edit modal and sees deadline editable but rdNote readonly", () => {
       hooks.mockUser = { roleCode: "NVKH", fullName: "Nhân viên KH" };
       render(
@@ -709,10 +758,10 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
           <BomDetailPage />
         </BrowserRouter>,
       );
-      const editHeaderBtn = screen.getByText("Sửa Header");
+      const editHeaderBtn = screen.getByText("Sửa thông tin");
       fireEvent.click(editHeaderBtn);
 
-      expect(screen.getByText("Chỉnh sửa thông tin Header")).toBeTruthy();
+      expect(screen.getByText("Chỉnh sửa thông tin NPL")).toBeTruthy();
       expect(screen.getByText(/Hạn hoàn thành \(Deadline\)/i)).toBeTruthy();
       expect(
         screen.getByText(/Ghi chú kỹ thuật R&D \(Chỉ đọc với vai trò hiện tại\)/i),
@@ -728,7 +777,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
           <BomDetailPage />
         </BrowserRouter>,
       );
-      const editHeaderBtn = screen.getByText("Sửa Header");
+      const editHeaderBtn = screen.getByText("Sửa thông tin");
       fireEvent.click(editHeaderBtn);
 
       expect(screen.getByText(/Hạn hoàn thành \(Chỉ đọc với vai trò hiện tại\)/i)).toBeTruthy();
@@ -742,7 +791,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
           <BomDetailPage />
         </BrowserRouter>,
       );
-      const editHeaderBtn = screen.getByText("Sửa Header");
+      const editHeaderBtn = screen.getByText("Sửa thông tin");
       fireEvent.click(editHeaderBtn);
 
       expect(screen.getByText(/Hạn hoàn thành \(Deadline\)/i)).toBeTruthy();
@@ -763,21 +812,21 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
           <BomDetailPage />
         </BrowserRouter>,
       );
-      const editHeaderBtn = screen.getByText("Sửa Header");
+      const editHeaderBtn = screen.getByText("Sửa thông tin");
       expect(editHeaderBtn).toBeTruthy();
     });
 
-    it("19. Accounting cannot edit header fields (Sửa Header button hidden)", () => {
+    it("19. Accounting cannot edit header fields (Sửa thông tin button hidden)", () => {
       hooks.mockUser = { roleCode: "ACCOUNTING", fullName: "Kế toán" };
       render(
         <BrowserRouter>
           <BomDetailPage />
         </BrowserRouter>,
       );
-      expect(screen.queryByText("Sửa Header")).toBeNull();
+      expect(screen.queryByText("Sửa thông tin")).toBeNull();
     });
 
-    it("20. Discontinued BOM displays discontinued banner with reason and timestamp", () => {
+    it("20. Discontinued NPL displays discontinued banner with reason and timestamp", () => {
       const discBom: BomDetail = {
         ...mockFitBom,
         status: "discontinued",
@@ -795,7 +844,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       expect(screen.getAllByText(/ĐÃ KHÓA/i).length).toBeGreaterThan(0);
     });
 
-    it("21. Discontinued BOM suppresses header edit button and all mutations", () => {
+    it("21. Discontinued NPL suppresses header edit button and all mutations", () => {
       const discBom: BomDetail = {
         ...mockFitBom,
         status: "discontinued",
@@ -808,12 +857,12 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
           <BomDetailPage />
         </BrowserRouter>,
       );
-      expect(screen.queryByText("Sửa Header")).toBeNull();
+      expect(screen.queryByText("Sửa thông tin")).toBeNull();
       expect(screen.queryByText("Thêm nguyên liệu")).toBeNull();
       expect(screen.queryByText("Chuyển bước")).toBeNull();
     });
 
-    it("22. Closed BOM suppresses header edit button", () => {
+    it("22. Closed NPL suppresses header edit button", () => {
       const closedBom: BomDetail = {
         ...mockFitBom,
         status: "closed",
@@ -824,7 +873,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
           <BomDetailPage />
         </BrowserRouter>,
       );
-      expect(screen.queryByText("Sửa Header")).toBeNull();
+      expect(screen.queryByText("Sửa thông tin")).toBeNull();
     });
   });
 
@@ -898,7 +947,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       expect(screen.getByText("Vải Cotton 100%")).toBeTruthy();
     });
 
-    it("25. shows empty state when BOM has no material lines", () => {
+    it("25. shows empty state when NPL has no material lines", () => {
       const emptyBom: BomDetail = { ...mockFitBom, lines: [] };
       hooks.useBom.mockReturnValue({ data: emptyBom, isLoading: false });
       render(
@@ -997,7 +1046,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       expect(screen.getByRole("button", { name: /Thêm vật tư/ })).toBeTruthy();
     });
 
-    it("30. the picker hides materials that are already in the BOM", () => {
+    it("30. the picker hides materials that are already in the NPL", () => {
       renderPage();
       fireEvent.click(screen.getByRole("button", { name: /Chỉnh sửa/ }));
       fireEvent.click(screen.getByRole("button", { name: /Thêm vật tư/ }));
@@ -1318,8 +1367,27 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
   // Category 7: Workflow Transitions
   // ==========================================
   describe("Category 7: Workflow Transitions", () => {
-    it("51. N1 (wait_nvkh): NVKH sees 'Chuyển RD' and submits forward", async () => {
-      hooks.mockUser = { roleCode: "NVKH", fullName: "NVKH" };
+    it("confirms before dismissing a filled transfer modal", () => {
+      hooks.mockUser = { roleCode: "TPKH", fullName: "Trưởng phòng KH" };
+      render(
+        <BrowserRouter>
+          <BomDetailPage />
+        </BrowserRouter>,
+      );
+      fireEvent.click(screen.getByText("Chuyển RD"));
+      fireEvent.change(
+        screen.getByPlaceholderText("Nhập ghi chú hoặc yêu cầu đối với bộ phận tiếp theo..."),
+        { target: { value: "Giao cho RD" } },
+      );
+      fireEvent.click(document.querySelector('[data-modal-backdrop="true"]') as HTMLElement);
+      expect(screen.getByText("Bạn có thay đổi chưa được lưu")).toBeTruthy();
+      fireEvent.click(screen.getByRole("button", { name: "Bỏ thay đổi" }));
+      expect(screen.queryByText("Ghi chú bàn giao (Tùy chọn)")).toBeNull();
+      expect(hooks.forwardBom.mutateAsync).not.toHaveBeenCalled();
+    });
+
+    it.each(["NVKH", "TPKH"])("51. N1 (wait_nvkh): %s sees 'Chuyển RD' and submits forward", async (roleCode) => {
+      hooks.mockUser = { roleCode, fullName: roleCode };
       render(
         <BrowserRouter>
           <BomDetailPage />
@@ -1328,7 +1396,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       const fwdBtn = screen.getByText("Chuyển RD");
       fireEvent.click(fwdBtn);
 
-      expect(screen.getByText("Nộp BOM cho RD?")).toBeTruthy();
+      expect(screen.getByText("Nộp NPL cho RD?")).toBeTruthy();
       fireEvent.click(screen.getByText("Xác nhận chuyển bước"));
 
       await waitFor(() => {
@@ -1348,12 +1416,52 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       const fwdBtn = screen.getByText("Chuyển TPKH");
       fireEvent.click(fwdBtn);
 
-      expect(screen.getByText("Nộp BOM cho TPKH?")).toBeTruthy();
+      expect(screen.getByText("Nộp NPL cho TPKH?")).toBeTruthy();
       fireEvent.click(screen.getByText("Xác nhận chuyển bước"));
 
       await waitFor(() => {
         expect(hooks.forwardBom.mutateAsync).toHaveBeenCalled();
       });
+    });
+
+    it("RD saves an incomplete technical draft with two decimals without forwarding", async () => {
+      hooks.mockUser = { roleCode: "RD", fullName: "RD" };
+      hooks.useBom.mockReturnValue({
+        data: {
+          ...mockFitBom,
+          status: "wait_rd" as const,
+          lines: [mockFitBom.lines[0], { ...mockFitBom.lines[1], consumption: 0 }],
+        },
+        isLoading: false,
+      });
+      hooks.saveLines.mutateAsync.mockResolvedValue({ rowVersion: 2, lines: [] });
+      render(
+        <BrowserRouter>
+          <BomDetailPage />
+        </BrowserRouter>,
+      );
+      expect(screen.getAllByTestId("entity-history-button")).toHaveLength(1);
+      fireEvent.click(screen.getByRole("button", { name: "Chỉnh sửa" }));
+      fireEvent.change(screen.getByTestId("consumption-input-line-1"), {
+        target: { value: "1.2345" },
+      });
+      expect((screen.getByTestId("consumption-input-line-1") as HTMLInputElement).value).toBe(
+        "1.23",
+      );
+      fireEvent.click(screen.getByRole("button", { name: "Chuyển TPKH" }));
+      expect(hooks.forwardBom.mutateAsync).not.toHaveBeenCalled();
+      fireEvent.click(screen.getAllByRole("button", { name: "Lưu" })[0]);
+      await waitFor(() =>
+        expect(hooks.saveLines.mutateAsync).toHaveBeenCalledWith(
+          expect.objectContaining({
+            lines: expect.arrayContaining([
+              expect.objectContaining({ lineId: "line-1", consumption: 1.23 }),
+              expect.objectContaining({ lineId: "line-2", consumption: 0 }),
+            ]),
+          }),
+        ),
+      );
+      expect(hooks.forwardBom.mutateAsync).not.toHaveBeenCalled();
     });
 
     it("53. N3 (wait_tpkh_confirm): TPKH sees 'Chuyển Kế toán' and submits forward", async () => {
@@ -1368,7 +1476,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       const fwdBtn = screen.getByText("Chuyển Kế toán");
       fireEvent.click(fwdBtn);
 
-      expect(screen.getByText("Chuyển BOM sang Kế toán?")).toBeTruthy();
+      expect(screen.getByText("Chuyển NPL sang Kế toán?")).toBeTruthy();
       fireEvent.click(screen.getByText("Xác nhận chuyển bước"));
 
       await waitFor(() => {
@@ -1387,7 +1495,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       const fwdBtn = screen.getByText("Chuyển SA");
       fireEvent.click(fwdBtn);
 
-      expect(screen.getByText("Nộp BOM cho SA?")).toBeTruthy();
+      expect(screen.getByText("Nộp NPL cho SA?")).toBeTruthy();
       fireEvent.click(screen.getByText("Xác nhận chuyển bước"));
 
       await waitFor(() => {
@@ -1395,7 +1503,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       });
     });
 
-    it("55. N5 (wait_sa_approve): SA sees 'Phê duyệt BOM' and submits approve", async () => {
+    it("55. N5 (wait_sa_approve): SA sees 'Phê duyệt NPL' and submits approve", async () => {
       hooks.mockUser = { roleCode: "SA", fullName: "Ban Giám Đốc" };
       const waitSaBom = { ...mockPoBom, status: "wait_sa_approve" as const };
       hooks.useBom.mockReturnValue({ data: waitSaBom, isLoading: false });
@@ -1404,11 +1512,11 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
           <BomDetailPage />
         </BrowserRouter>,
       );
-      const approveBtn = screen.getByText("Phê duyệt BOM");
+      const approveBtn = screen.getByText("Phê duyệt NPL");
       fireEvent.click(approveBtn);
 
-      expect(screen.getByText("Phê duyệt & Đóng BOM")).toBeTruthy();
-      fireEvent.click(screen.getByText("Phê duyệt đóng BOM"));
+      expect(screen.getByText("Phê duyệt & Đóng NPL")).toBeTruthy();
+      fireEvent.click(screen.getByText("Phê duyệt đóng NPL"));
 
       await waitFor(() => {
         expect(hooks.approveBom.mutateAsync).toHaveBeenCalled();
@@ -1426,7 +1534,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       );
       fireEvent.click(screen.getByText("Trả lại"));
 
-      expect(screen.getByText("Từ chối / Trả lại BOM")).toBeTruthy();
+      expect(screen.getByText("Từ chối / Trả lại NPL")).toBeTruthy();
       expect(screen.getByText("N1 - Trả về NVKH")).toBeTruthy();
       expect(screen.queryByText("N3 - Trả về TPKH")).toBeNull();
     });
@@ -1502,7 +1610,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
         refetch: refetchSpy,
       });
       hooks.forwardBom.mutateAsync.mockRejectedValueOnce({
-        response: { status: 409, data: { message: "BOM đã được cập nhật bởi người khác" } },
+        response: { status: 409, data: { message: "NPL đã được cập nhật bởi người khác" } },
       });
 
       render(
@@ -1629,7 +1737,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
         </BrowserRouter>,
       );
 
-      expect(screen.getByText(/Revision lịch sử \(Chế độ chỉ đọc\)/i)).toBeTruthy();
+      expect(screen.getByText(/Phiên bản lịch sử \(Chế độ chỉ đọc\)/i)).toBeTruthy();
       expect(screen.getByText("Vải Thô Cũ")).toBeTruthy();
     });
 
@@ -1653,7 +1761,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       expect(screen.queryByTitle("Xóa dòng vật tư")).toBeNull();
     });
 
-    it("70. Closed BOM shows 'Tạo phiên bản mới' button for authorized role", () => {
+    it("70. Closed NPL shows 'Tạo phiên bản mới' button for authorized role", () => {
       const closedBom = { ...mockFitBom, status: "closed" as const };
       hooks.useBom.mockReturnValue({ data: closedBom, isLoading: false });
       render(
@@ -1672,9 +1780,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
           <BomDetailPage />
         </BrowserRouter>,
       );
-      expect(
-        screen.getByText("Đã hoàn tất toàn bộ quy trình (Khởi tạo → Phê duyệt)"),
-      ).toBeTruthy();
+      expect(screen.getByText("Đã hoàn tất toàn bộ quy trình (Khởi tạo → Phê duyệt)")).toBeTruthy();
       expect(screen.queryByText("Khởi tạo")).toBeNull();
       expect(screen.queryByText("Phê duyệt")).toBeNull();
     });
@@ -1689,12 +1795,12 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       );
       fireEvent.click(screen.getByText("Tạo phiên bản mới"));
 
-      expect(screen.getByText(/Tạo Phiên Bản Mới \(Rev 2\)/i)).toBeTruthy();
+      expect(screen.getByRole("heading", { name: "Tạo phiên bản 2" })).toBeTruthy();
 
       const reasonInput = screen.getByPlaceholderText(/Thay thế phụ liệu cúc/i);
       fireEvent.change(reasonInput, { target: { value: "Thay đổi chất liệu ren" } });
 
-      fireEvent.click(screen.getByText("Tạo Rev 2"));
+      fireEvent.click(screen.getByRole("button", { name: "Tạo phiên bản 2" }));
 
       await waitFor(() => {
         expect(hooks.createRevision.mutateAsync).toHaveBeenCalledWith({
@@ -1709,21 +1815,25 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
           <BomDetailPage />
         </BrowserRouter>,
       );
-      fireEvent.click(screen.getByText(/Lịch sử phiên bản/i));
+      fireEvent.click(screen.getByRole("button", { name: /^Lịch sử$/ }));
 
       expect(screen.getByText("Lịch sử các phiên bản định mức")).toBeTruthy();
       expect(screen.getByText("So sánh")).toBeTruthy();
     });
 
-    it("73. history is the shared audit drawer: one button for the BOM, one for its lines", () => {
+    it("73. revision history stays with its line table; NPL history is under the history tab", () => {
       render(
         <BrowserRouter>
           <BomDetailPage />
         </BrowserRouter>,
       );
       const titles = screen.getAllByTestId("entity-history-button").map((el) => el.textContent);
-      expect(titles).toContain("Lịch sử: Thông tin BOM");
-      expect(titles).toContain("Lịch sử: Định mức nguyên phụ liệu");
+      expect(titles).toEqual(["Lịch sử sửa đổi phiên bản 1"]);
+      fireEvent.click(screen.getByRole("button", { name: /^Lịch sử$/ }));
+      const historyTitles = screen
+        .getAllByTestId("entity-history-button")
+        .map((button) => button.textContent);
+      expect(historyTitles).toContain("Lịch sử thay đổi NPL và các phiên bản");
       expect(screen.queryByText(/Nhật ký duyệt/i)).toBeNull();
     });
 
@@ -1732,8 +1842,20 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       hooks.promote.mutateAsync.mockResolvedValue({});
       hooks.useBomRevisions.mockReturnValue({
         data: [
-          { id: "rev-1", bomId: "bom-test-uuid", revisionNo: 2, status: "wait_nvkh", isCurrent: true },
-          { id: "rev-0", bomId: "bom-test-uuid", revisionNo: 1, status: "closed", isCurrent: false },
+          {
+            id: "rev-1",
+            bomId: "bom-test-uuid",
+            revisionNo: 2,
+            status: "wait_nvkh",
+            isCurrent: true,
+          },
+          {
+            id: "rev-0",
+            bomId: "bom-test-uuid",
+            revisionNo: 1,
+            status: "closed",
+            isCurrent: false,
+          },
         ],
         isLoading: false,
       });
@@ -1742,7 +1864,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
           <BomDetailPage />
         </BrowserRouter>,
       );
-      fireEvent.click(screen.getByText(/Lịch sử phiên bản/i));
+      fireEvent.click(screen.getByRole("button", { name: /^Lịch sử$/ }));
       fireEvent.click(screen.getByRole("button", { name: /Đặt làm hiện hành/ }));
 
       const submit = screen.getByRole("button", { name: /Đặt Phiên bản 1 làm hiện hành/ });
@@ -1764,8 +1886,20 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       hooks.mockUser = { roleCode: "TPKH", fullName: "TPKH" };
       hooks.useBomRevisions.mockReturnValue({
         data: [
-          { id: "rev-1", bomId: "bom-test-uuid", revisionNo: 2, status: "wait_nvkh", isCurrent: true },
-          { id: "rev-0", bomId: "bom-test-uuid", revisionNo: 1, status: "closed", isCurrent: false },
+          {
+            id: "rev-1",
+            bomId: "bom-test-uuid",
+            revisionNo: 2,
+            status: "wait_nvkh",
+            isCurrent: true,
+          },
+          {
+            id: "rev-0",
+            bomId: "bom-test-uuid",
+            revisionNo: 1,
+            status: "closed",
+            isCurrent: false,
+          },
         ],
         isLoading: false,
       });
@@ -1774,7 +1908,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
           <BomDetailPage />
         </BrowserRouter>,
       );
-      fireEvent.click(screen.getByText(/Lịch sử phiên bản/i));
+      fireEvent.click(screen.getByRole("button", { name: /^Lịch sử$/ }));
       expect(screen.queryByRole("button", { name: /Đặt làm hiện hành/ })).toBeNull();
     });
 
@@ -1784,7 +1918,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
           <BomDetailPage />
         </BrowserRouter>,
       );
-      fireEvent.click(screen.getByText(/Lịch sử phiên bản/i));
+      fireEvent.click(screen.getByRole("button", { name: /^Lịch sử$/ }));
       fireEvent.click(screen.getByText("So sánh"));
 
       expect(screen.getByText("So sánh biến động định mức")).toBeTruthy();
@@ -1800,7 +1934,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
           <BomDetailPage />
         </BrowserRouter>,
       );
-      fireEvent.click(screen.getByText(/Lịch sử phiên bản/i));
+      fireEvent.click(screen.getByRole("button", { name: /^Lịch sử$/ }));
       fireEvent.click(screen.getByText("So sánh"));
 
       expect(screen.queryByText(/35\.000/i)).toBeNull();
@@ -1808,10 +1942,10 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
   });
 
   // ==========================================
-  // Category 10: Copy Fit -> PO BOM
+  // Category 10: Copy Fit -> PO NPL
   // ==========================================
-  describe("Category 10: Copy Fit -> PO BOM", () => {
-    it("76. PO BOM with 0 lines at N1 shows 'Nhập từ Fit BOM' in menu", () => {
+  describe("Category 10: Copy Fit -> PO NPL", () => {
+    it("76. PO NPL with 0 lines at N1 shows 'Nhập từ Fit NPL' in menu", () => {
       const emptyPoBom: BomDetail = {
         ...mockPoBom,
         status: "wait_nvkh",
@@ -1830,10 +1964,10 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
           <BomDetailPage />
         </BrowserRouter>,
       );
-      expect(screen.getByText("Nhập từ Fit BOM")).toBeTruthy();
+      expect(screen.getByText("Nhập từ Fit NPL")).toBeTruthy();
     });
 
-    it("77. PO BOM with existing lines hides Copy action", () => {
+    it("77. PO NPL with existing lines hides Copy action", () => {
       const nonEmptyPoBom: BomDetail = {
         ...mockPoBom,
         status: "wait_nvkh",
@@ -1852,7 +1986,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
           <BomDetailPage />
         </BrowserRouter>,
       );
-      expect(screen.queryByText("Nhập từ Fit BOM")).toBeNull();
+      expect(screen.queryByText("Nhập từ Fit NPL")).toBeNull();
     });
 
     it("shows a clear message instead of blank/loading state when the PO product isn't linked to any Fit style", () => {
@@ -1877,7 +2011,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
         </BrowserRouter>,
       );
 
-      fireEvent.click(screen.getByText("Nhập từ Fit BOM"));
+      fireEvent.click(screen.getByText("Nhập từ Fit NPL"));
 
       expect(
         screen.getByText(
@@ -1886,13 +2020,13 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       ).toBeTruthy();
     });
 
-    it("78. FIT BOM hides Copy action", () => {
+    it("78. FIT NPL hides Copy action", () => {
       render(
         <BrowserRouter>
           <BomDetailPage />
         </BrowserRouter>,
       );
-      expect(screen.queryByText("Nhập từ Fit BOM")).toBeNull();
+      expect(screen.queryByText("Nhập từ Fit NPL")).toBeNull();
     });
 
     it("79. Copy Fit modal allows selecting source revision and calls copy mutation", async () => {
@@ -1914,12 +2048,12 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
           <BomDetailPage />
         </BrowserRouter>,
       );
-      fireEvent.click(screen.getByText("Nhập từ Fit BOM"));
+      fireEvent.click(screen.getByText("Nhập từ Fit NPL"));
 
-      expect(screen.getByText("Sao chép từ Fit BOM")).toBeTruthy();
+      expect(screen.getByText("Sao chép từ Fit NPL")).toBeTruthy();
 
       await waitFor(() => {
-        expect(screen.getByText(/Fit BOM: BOM-FIT-ST101/i)).toBeTruthy();
+        expect(screen.getByText(/Fit NPL: BOM-FIT-ST101/i)).toBeTruthy();
       });
 
       fireEvent.click(screen.getByText("Xác nhận sao chép"));
@@ -1932,7 +2066,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       });
     });
 
-    it("80. Copy Fit action is hidden when BOM is discontinued", () => {
+    it("80. Copy Fit action is hidden when NPL is discontinued", () => {
       const discPoBom: BomDetail = {
         ...mockPoBom,
         status: "discontinued",
@@ -1945,7 +2079,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
           <BomDetailPage />
         </BrowserRouter>,
       );
-      expect(screen.queryByText("Nhập từ Fit BOM")).toBeNull();
+      expect(screen.queryByText("Nhập từ Fit NPL")).toBeNull();
     });
 
     const multiLinePoBom: BomDetail = {
@@ -2179,6 +2313,76 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
         // Now dirty: preview shows and contains "Dự kiến"
         expect(screen.getAllByText("Dự kiến").length).toBeGreaterThanOrEqual(1);
       });
+    });
+  });
+
+  describe("draft navigation with a Data Router", () => {
+    const renderWithRouter = () => {
+      useRealRouter = true;
+      const router = createMemoryRouter([{ path: "/bom/:id", element: <BomDetailPage /> }], {
+        initialEntries: ["/bom/bom-test-uuid"],
+      });
+      render(<RouterProvider router={router} />);
+      return router;
+    };
+
+    it("keeps a two-decimal technical draft across tab changes and saves it", async () => {
+      hooks.saveLines.mutateAsync.mockResolvedValue({ rowVersion: 2, lines: [] });
+      renderWithRouter();
+      fireEvent.click(screen.getByRole("button", { name: /Chỉnh sửa/ }));
+      fireEvent.change(screen.getByTestId("consumption-input-line-1"), {
+        target: { value: "1.239876" },
+      });
+      expect((screen.getByTestId("consumption-input-line-1") as HTMLInputElement).value).toBe(
+        "1.23",
+      );
+      fireEvent.click(screen.getByRole("button", { name: /^Lịch sử$/ }));
+      fireEvent.click(screen.getByRole("button", { name: /Nguyên liệu/ }));
+      expect((screen.getByTestId("consumption-input-line-1") as HTMLInputElement).value).toBe(
+        "1.23",
+      );
+      fireEvent.click(screen.getByTestId("save-all-costs-floating-btn"));
+      await waitFor(() =>
+        expect(hooks.saveLines.mutateAsync).toHaveBeenCalledWith(
+          expect.objectContaining({
+            lines: expect.arrayContaining([
+              expect.objectContaining({ lineId: "line-1", consumption: 1.23 }),
+            ]),
+          }),
+        ),
+      );
+    });
+
+    it("blocks revision changes until the draft is discarded", async () => {
+      hooks.useBomRevisions.mockReturnValue({
+        data: [
+          { id: "rev-1", revisionNo: 2, status: "wait_nvkh", isCurrent: true },
+          { id: "rev-hist-1", revisionNo: 1, status: "closed", isCurrent: false },
+        ],
+        isLoading: false,
+      });
+      hooks.useBomRevisionDetail.mockReturnValue({
+        data: mockHistoricalRevDetail,
+        isLoading: false,
+      });
+      const router = renderWithRouter();
+      fireEvent.click(screen.getByRole("button", { name: /Chỉnh sửa/ }));
+      fireEvent.change(screen.getByTestId("consumption-input-line-1"), {
+        target: { value: "2.25" },
+      });
+      fireEvent.change(screen.getByTitle("Chọn phiên bản để xem"), {
+        target: { value: "rev-hist-1" },
+      });
+      expect(router.state.location.search).toBe("");
+      fireEvent.click(screen.getByRole("button", { name: "Tiếp tục chỉnh sửa" }));
+      expect((screen.getByTestId("consumption-input-line-1") as HTMLInputElement).value).toBe(
+        "2.25",
+      );
+      fireEvent.change(screen.getByTitle("Chọn phiên bản để xem"), {
+        target: { value: "rev-hist-1" },
+      });
+      fireEvent.click(screen.getByRole("button", { name: /Rời khỏi trang/ }));
+      await waitFor(() => expect(router.state.location.search).toBe("?revision=rev-hist-1"));
     });
   });
 });

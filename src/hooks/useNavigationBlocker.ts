@@ -1,9 +1,5 @@
 import { useContext, useEffect, useCallback } from "react";
-import {
-  useBlocker,
-  UNSAFE_DataRouterContext,
-  type BlockerFunction,
-} from "react-router-dom";
+import { useBlocker, UNSAFE_DataRouterContext, type BlockerFunction } from "react-router-dom";
 
 export function useSafeBlocker(shouldBlock: BlockerFunction | boolean) {
   const dataRouterContext = useContext(UNSAFE_DataRouterContext);
@@ -25,7 +21,7 @@ export function useSafeBlocker(shouldBlock: BlockerFunction | boolean) {
 
 export function useUnsavedChangesWarning(
   isDirty: boolean,
-  message = "Bạn có dữ liệu chưa được lưu. Vui lòng bấm lưu trước khi rời khỏi trang!"
+  message = "Bạn có dữ liệu chưa được lưu. Vui lòng bấm lưu trước khi rời khỏi trang!",
 ) {
   // 1. Browser unload / reload / close / external navigation
   useEffect(() => {
@@ -42,8 +38,10 @@ export function useUnsavedChangesWarning(
   // 2. React Router in-app navigation blocker
   const shouldBlock = useCallback<BlockerFunction>(
     ({ currentLocation, nextLocation }) =>
-      isDirty && currentLocation.pathname !== nextLocation.pathname,
-    [isDirty]
+      isDirty &&
+      (currentLocation.pathname !== nextLocation.pathname ||
+        currentLocation.search !== nextLocation.search),
+    [isDirty],
   );
 
   const blocker = useSafeBlocker(shouldBlock);
