@@ -96,6 +96,29 @@ describe("StyleOperationStepTable", () => {
     expect(screen.getByRole("button", { name: /Thêm công đoạn/i })).toBeTruthy();
   });
 
+  it("keeps long operation names readable in the editor", () => {
+    const longName = "Chạy kansai lưng + căng vải tự động";
+    render(
+      <StyleOperationStepTable
+        styleId="style-1"
+        steps={[{ ...mockSteps[0], stepName: longName }]}
+        canEdit={true}
+        onSave={vi.fn().mockResolvedValue(undefined)}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Chỉnh sửa" }));
+
+    const nameInput = screen.getByPlaceholderText("Tìm công đoạn...") as HTMLInputElement;
+    expect(nameInput.value).toBe(longName);
+    expect(nameInput.getAttribute("title")).toBe(longName);
+
+    const nameColumn = screen.getByRole("columnheader", {
+      name: "Tên công đoạn quy trình",
+    });
+    expect((nameColumn as HTMLElement).classList.contains("min-w-[280px]")).toBe(true);
+  });
+
   it("keeps delete local until the final save", async () => {
     const onSave = vi.fn().mockResolvedValue(undefined);
     render(

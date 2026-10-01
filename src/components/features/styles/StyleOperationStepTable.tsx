@@ -907,11 +907,15 @@ export function StyleOperationStepTable({
           </div>
 
           <div className="min-h-0 flex-1 overflow-auto">
-            <table className="w-full min-w-[720px] 2xl:min-w-[980px] table-fixed text-left text-xs">
+            <table className="w-full min-w-[860px] 2xl:min-w-[980px] table-fixed text-left text-xs">
               <thead className="sticky top-0 z-20 bg-gray-50/95 dark:bg-gray-800/95 shadow-xs">
                 <tr className="border-b border-gray-200 dark:border-gray-800 text-gray-500 dark:text-gray-400 font-semibold">
                   <th className="py-2 px-2 text-center w-10">#</th>
-                  <th className={`w-[180px] px-2 py-2 ${editable ? "bg-brand-50/40 dark:bg-brand-950/15" : ""}`}>Tên công đoạn quy trình</th>
+                  <th
+                    className={`w-[280px] min-w-[280px] px-2 py-2 ${editable ? "bg-brand-50/40 dark:bg-brand-950/15" : ""}`}
+                  >
+                    Tên công đoạn quy trình
+                  </th>
                   <th className={`w-[80px] px-1.5 py-2 text-center ${editable ? "bg-brand-50/40 dark:bg-brand-950/15" : "bg-amber-50/40 dark:bg-amber-950/10"}`}>
                     Thời gian (giây/SP)
                   </th>
@@ -1100,7 +1104,10 @@ export function StyleOperationStepTable({
                             {editable ? (
                               isGroupRow ? (
                                 <div className="flex min-w-0 items-center gap-2 flex-1">
-                                  <span className="min-w-0 truncate font-bold text-gray-800 dark:text-gray-200">
+                                  <span
+                                    title={row.stepName || undefined}
+                                    className="min-w-0 truncate font-bold text-gray-800 dark:text-gray-200"
+                                  >
                                     {row.stepName}
                                   </span>
                                   <span className="rounded bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 px-1.5 py-0.5 text-[10px] font-bold">
@@ -1164,7 +1171,10 @@ export function StyleOperationStepTable({
                                 </div>
                               )
                             ) : (
-                              <span className="truncate font-medium text-gray-900 dark:text-white">
+                              <span
+                                title={row.stepName || undefined}
+                                className="truncate font-medium text-gray-900 dark:text-white"
+                              >
                                 {row.stepName}
                               </span>
                             )}
