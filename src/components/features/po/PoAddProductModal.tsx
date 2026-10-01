@@ -3,6 +3,7 @@ import { Modal, Button, SearchableSelect } from "@/components/shared";
 import { CheckLineIcon, DocsIcon, FileIcon } from "@/icons";
 import { useInfiniteStyles } from "@/hooks/useStyles";
 import { useImportFitPreview } from "@/hooks/usePurchaseOrders";
+import { useDiscardChangesGuard } from "@/hooks/useDiscardChangesGuard";
 import type {
   CreatePoProductInput,
   ImportFitOptions,
@@ -224,6 +225,24 @@ export function PoAddProductModal({
     onClose();
   };
 
+  const isDirty =
+    sourceStyleId !== "" ||
+    [selectFields, manualFields].some((f) =>
+      Object.values(f).some((v) => v.trim() !== ""),
+    ) ||
+    materialNote.trim() !== "" ||
+    deadline !== "" ||
+    colors.some(
+      (c) =>
+        c.colorName.trim() !== "" ||
+        (c.sizes || []).some((s) => Number(s.quantity) > 0),
+    ) ||
+    selectedPoDocIds.length > 0;
+  const { requestClose, discardDialog } = useDiscardChangesGuard(
+    isDirty,
+    handleClose,
+  );
+
   // Điều kiện colors hợp lệ để hiện dấu tick "hoàn thành" ở Step 1 — phải khớp
   // với phần colors-check trong validateStep1 bên dưới, nếu không dấu tick sẽ
   // nói "xong" trong khi bấm Tiếp tục vẫn bị chặn.
@@ -378,9 +397,12 @@ export function PoAddProductModal({
   };
 
   return (
+    <>
     <Modal
       open={isOpen}
-      onClose={handleClose}
+      onClose={requestClose}
+      closeDisabled={isPending}
+      closeOnClickOutside
       title="Thêm sản phẩm vào đơn hàng PO"
       size="xl"
     >
@@ -868,7 +890,7 @@ export function PoAddProductModal({
 
             {/* Step 1 Footer */}
             <div className="flex items-center justify-end gap-3 pt-2">
-              <Button variant="outline" size="md" onClick={handleClose}>
+              <Button variant="outline" size="md" onClick={requestClose}>
                 Hủy
               </Button>
               <Button size="md" type="button" onClick={handleNextToStep2}>
@@ -1259,5 +1281,7 @@ export function PoAddProductModal({
         )}
       </div>
     </Modal>
+    {discardDialog}
+    </>
   );
 }

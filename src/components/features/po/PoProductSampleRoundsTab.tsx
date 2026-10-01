@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { EntityHistoryButton } from "@/components/features/audit/EntityHistoryButton";
+import { useDiscardChangesGuard } from "@/hooks/useDiscardChangesGuard";
 import {
   Button,
   ConfirmDialog,
@@ -288,6 +289,23 @@ export function PoProductSampleRoundsTab({
 
   const isSubmitting = createMutation.isPending || updateMutation.isPending;
 
+  const initialForm: RoundFormState = editingRound
+    ? {
+        sampleDate: editingRound.sampleDate?.slice(0, 10) || todayIso(),
+        feedback: editingRound.feedback || "",
+        status: editingRound.status,
+      }
+    : emptyFormState();
+  const isFormDirty =
+    isFormOpen &&
+    (formState.sampleDate !== initialForm.sampleDate ||
+      formState.feedback !== initialForm.feedback ||
+      formState.status !== initialForm.status);
+  const { requestClose: requestCloseForm, discardDialog } = useDiscardChangesGuard(
+    isFormDirty,
+    () => setIsFormOpen(false),
+  );
+
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
@@ -483,14 +501,16 @@ export function PoProductSampleRoundsTab({
 
       {!readOnly && <Modal
         open={isFormOpen}
-        onClose={() => setIsFormOpen(false)}
+        onClose={requestCloseForm}
+        closeDisabled={isSubmitting}
+        closeOnClickOutside
         title={
           editingRound ? `Sửa đợt may mẫu ${editingRound.roundNo}` : "Thêm đợt may mẫu mới"
         }
         size="md"
         footer={
           <div className="flex justify-end gap-2.5">
-            <Button variant="outline" onClick={() => setIsFormOpen(false)}>
+            <Button variant="outline" onClick={requestCloseForm}>
               Huỷ
             </Button>
             <Button onClick={() => void handleSubmitForm()} loading={isSubmitting}>
@@ -686,6 +706,7 @@ export function PoProductSampleRoundsTab({
         closeLabel="Đóng thông báo"
         onClose={hideToast}
       />
+      {discardDialog}
     </div>
   );
 }

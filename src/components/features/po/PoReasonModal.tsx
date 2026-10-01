@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Modal } from "@/components/shared";
+import { useDiscardChangesGuard } from "@/hooks/useDiscardChangesGuard";
 
 interface Props {
   isOpen: boolean;
@@ -20,6 +21,14 @@ export function PoReasonModal({
 }: Props) {
   const [reason, setReason] = useState("");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const { requestClose, discardDialog } = useDiscardChangesGuard(
+    reason.trim() !== "",
+    () => {
+      setReason("");
+      setErrorMsg(null);
+      onClose();
+    },
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,7 +53,14 @@ export function PoReasonModal({
   };
 
   return (
-    <Modal open={isOpen} onClose={onClose} title={title}>
+    <>
+    <Modal
+      open={isOpen}
+      onClose={requestClose}
+      closeDisabled={isPending}
+      closeOnClickOutside
+      title={title}
+    >
       <form onSubmit={handleSubmit} className="space-y-4">
         {errorMsg && (
           <div className="rounded-lg bg-red-50 p-3 text-xs font-medium text-red-600 dark:bg-red-950/40 dark:text-red-400">
@@ -68,7 +84,7 @@ export function PoReasonModal({
         <div className="flex justify-end gap-3 pt-2">
           <button
             type="button"
-            onClick={onClose}
+            onClick={requestClose}
             disabled={isPending}
             className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
           >
@@ -88,5 +104,7 @@ export function PoReasonModal({
         </div>
       </form>
     </Modal>
+    {discardDialog}
+    </>
   );
 }

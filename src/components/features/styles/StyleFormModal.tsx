@@ -96,7 +96,12 @@ export function StyleFormModal({
 
   return (
     <>
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 animate-in fade-in duration-150">
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 animate-in fade-in duration-150"
+        onClick={(e) => {
+          if (e.target === e.currentTarget && !isSubmitting) handleRequestClose();
+        }}
+      >
         <div className="w-full max-w-lg overflow-hidden rounded-xl border border-gray-200 bg-white p-6 shadow-xl dark:border-gray-800 dark:bg-gray-900">
           {/* Header */}
           <div className="flex items-center justify-between border-b border-gray-100 pb-4 dark:border-gray-800">

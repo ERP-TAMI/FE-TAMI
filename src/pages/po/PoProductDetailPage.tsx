@@ -38,6 +38,7 @@ import { StyleImagePlaceholder } from "@/components/features/styles/StyleImagePl
 import { StyleOperationStepTable } from "@/components/features/styles/StyleOperationStepTable";
 import { StyleProductionDocTab } from "@/components/features/production-docs/StyleProductionDocTab";
 import { UnsavedChangesDialog } from "@/components/features/styles/UnsavedChangesDialog";
+import { useDiscardChangesGuard } from "@/hooks/useDiscardChangesGuard";
 import { ProductStatusBadge } from "@/components/features/po/ProductStatusBadge";
 import { ProductColorSizeEditor } from "@/components/features/po/ProductColorSizeEditor";
 import { ProductVersionedFileGroup } from "@/components/features/po/ProductVersionedFileGroup";
@@ -830,6 +831,37 @@ export default function PoProductDetailPage({
     });
   };
 
+  // Click ra ngoài / Hủy / Esc: có thay đổi chưa lưu thì hỏi lại trước khi đóng.
+  const isEditDirty =
+    isEditModalOpen &&
+    Boolean(product) &&
+    (editMode === "colors"
+      ? JSON.stringify(editColors) !== JSON.stringify(productColors)
+      : editProductCode !== product!.productCode ||
+        editProductName !== product!.productName ||
+        editCategory !== (product!.category || "") ||
+        editMaterialNote !== (product!.materialNote || "") ||
+        editDeadline !== (product!.deadline ? product!.deadline.split("T")[0] : "") ||
+        Number(editCmBaseDays) !== (product!.as3bCmBaseDays || 30));
+  const editGuard = useDiscardChangesGuard(isEditDirty, () =>
+    setIsEditModalOpen(false),
+  );
+  const lockGuard = useDiscardChangesGuard(lockReason.trim() !== "", () => {
+    setLockReason("");
+    setIsLockModalOpen(false);
+  });
+  const unlockGuard = useDiscardChangesGuard(unlockReason.trim() !== "", () => {
+    setUnlockReason("");
+    setIsUnlockModalOpen(false);
+  });
+  const uploadDocGuard = useDiscardChangesGuard(docUploadFile !== null, () =>
+    setIsUploadDocOpen(false),
+  );
+  const uploadVersionGuard = useDiscardChangesGuard(
+    newVersionFile !== null || newVersionReason.trim() !== "",
+    () => setIsUploadVersionOpen(false),
+  );
+
   // Loading Skeleton y xì StyleDetailPage
   if (isLoading) {
     return (
@@ -1575,6 +1607,7 @@ export default function PoProductDetailPage({
             <Modal
               open={Boolean(palettePreviewModalUrl)}
               onClose={() => setPalettePreviewModalUrl(null)}
+              closeOnClickOutside
               title={`Xem ảnh bảng màu: ${palettePreviewModalUrl.name}`}
               size="xl"
             >
@@ -1910,9 +1943,9 @@ export default function PoProductDetailPage({
       {isEditModalOpen && !isReadOnly && (
         <Modal
           open={isEditModalOpen}
-          onClose={() => {
-            if (!updateProductMutation.isPending) setIsEditModalOpen(false);
-          }}
+          onClose={editGuard.requestClose}
+          closeDisabled={updateProductMutation.isPending}
+          closeOnClickOutside
           title={editMode === "colors" ? "Chỉnh sửa màu & size" : "Chỉnh sửa thông tin sản phẩm"}
           size="lg"
         >
@@ -2060,7 +2093,7 @@ export default function PoProductDetailPage({
                 variant="outline"
                 size="sm"
                 type="button"
-                onClick={() => setIsEditModalOpen(false)}
+                onClick={editGuard.requestClose}
                 disabled={updateProductMutation.isPending}
               >
                 Hủy
@@ -2081,6 +2114,7 @@ export default function PoProductDetailPage({
             setIsLinkPoDocOpen(false);
             setLinkDocFilter(null);
           }}
+          closeOnClickOutside
           title={
             linkDocFilter === "po_detail"
               ? "Gán tài liệu từ kho PO — mục PO Chi Tiết"
@@ -2192,9 +2226,9 @@ export default function PoProductDetailPage({
       {isLockModalOpen && !readOnlyManagement && (
         <Modal
           open={isLockModalOpen}
-          onClose={() => {
-            if (!updateStatusMutation.isPending) setIsLockModalOpen(false);
-          }}
+          onClose={lockGuard.requestClose}
+          closeDisabled={updateStatusMutation.isPending}
+          closeOnClickOutside
           title="Khóa sản phẩm sau khi xử lý xong"
           size="md"
         >
@@ -2231,7 +2265,7 @@ export default function PoProductDetailPage({
                 variant="outline"
                 size="sm"
                 type="button"
-                onClick={() => setIsLockModalOpen(false)}
+                onClick={lockGuard.requestClose}
                 disabled={updateStatusMutation.isPending}
               >
                 Hủy bỏ
@@ -2254,7 +2288,9 @@ export default function PoProductDetailPage({
       {isUnlockModalOpen && !readOnlyManagement && (
         <Modal
           open={isUnlockModalOpen}
-          onClose={() => setIsUnlockModalOpen(false)}
+          onClose={unlockGuard.requestClose}
+          closeDisabled={updateStatusMutation.isPending}
+          closeOnClickOutside
           title="Mở khóa sản phẩm"
           size="md"
         >
@@ -2295,7 +2331,7 @@ export default function PoProductDetailPage({
                 variant="outline"
                 size="sm"
                 type="button"
-                onClick={() => setIsUnlockModalOpen(false)}
+                onClick={unlockGuard.requestClose}
                 disabled={updateStatusMutation.isPending}
               >
                 Hủy bỏ
@@ -2318,9 +2354,9 @@ export default function PoProductDetailPage({
       {isUploadDocOpen && !isReadOnly && (
         <Modal
           open={isUploadDocOpen}
-          onClose={() => {
-            if (!uploadProductDocMutation.isPending) setIsUploadDocOpen(false);
-          }}
+          onClose={uploadDocGuard.requestClose}
+          closeDisabled={uploadProductDocMutation.isPending}
+          closeOnClickOutside
           title={
             docUploadCategory === "production_doc"
               ? "Tải lên file PO Chi Tiết"
@@ -2371,7 +2407,7 @@ export default function PoProductDetailPage({
                 variant="outline"
                 size="sm"
                 type="button"
-                onClick={() => setIsUploadDocOpen(false)}
+                onClick={uploadDocGuard.requestClose}
                 disabled={uploadProductDocMutation.isPending}
               >
                 Hủy bỏ
@@ -2392,9 +2428,9 @@ export default function PoProductDetailPage({
       {isUploadVersionOpen && versionTargetInfo && !isReadOnly && (
         <Modal
           open={isUploadVersionOpen}
-          onClose={() => {
-            if (!uploadVersionMutation.isPending) setIsUploadVersionOpen(false);
-          }}
+          onClose={uploadVersionGuard.requestClose}
+          closeDisabled={uploadVersionMutation.isPending}
+          closeOnClickOutside
           title={`Cập nhật phiên bản mới: v${versionTargetInfo.currentVersionNo + 1}`}
           size="md"
         >
@@ -2443,7 +2479,7 @@ export default function PoProductDetailPage({
                 variant="outline"
                 size="sm"
                 type="button"
-                onClick={() => setIsUploadVersionOpen(false)}
+                onClick={uploadVersionGuard.requestClose}
                 disabled={uploadVersionMutation.isPending}
               >
                 Hủy bỏ
@@ -2467,6 +2503,7 @@ export default function PoProductDetailPage({
         <Modal
           open={Boolean(previewDocItem)}
           onClose={() => setPreviewDocItem(null)}
+          closeOnClickOutside
           title={`Xem trước: ${previewDocItem.fileName || previewDocItem.title || "Tài liệu"}`}
           size="xl"
         >
@@ -2488,6 +2525,11 @@ export default function PoProductDetailPage({
         closeLabel="Đóng thông báo"
         onClose={hideToast}
       />
+      {editGuard.discardDialog}
+      {lockGuard.discardDialog}
+      {unlockGuard.discardDialog}
+      {uploadDocGuard.discardDialog}
+      {uploadVersionGuard.discardDialog}
     </div>
   );
 }

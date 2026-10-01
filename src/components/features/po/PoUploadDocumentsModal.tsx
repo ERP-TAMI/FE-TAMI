@@ -4,6 +4,7 @@ import { PlusIcon, TrashBinIcon } from "@/icons";
 import { PO_DOCUMENT_CATEGORIES, getDocumentCategoryInfo } from "@/lib/poDocuments";
 import { PoDocumentCategoryPicker } from "./PoDocumentCategoryPicker";
 import type { AttachedDocItem } from "@/types/po";
+import { useDiscardChangesGuard } from "@/hooks/useDiscardChangesGuard";
 
 interface Props {
   isOpen: boolean;
@@ -96,13 +97,21 @@ export function PoUploadDocumentsModal({
     onClose();
   };
 
+  const { requestClose, discardDialog } = useDiscardChangesGuard(
+    attachedFiles.length > 0,
+    handleClose,
+  );
+
   const busy = isPending;
   const totalSize = attachedFiles.reduce((sum, i) => sum + i.file.size, 0);
 
   return (
+    <>
     <Modal
       open={isOpen}
-      onClose={handleClose}
+      onClose={requestClose}
+      closeDisabled={busy}
+      closeOnClickOutside
       title="Tải tài liệu lên đơn hàng PO"
       size="xl"
     >
@@ -325,7 +334,7 @@ export function PoUploadDocumentsModal({
         </div>
 
         <div className="flex items-center justify-end gap-3 border-t border-gray-100 pt-4 dark:border-gray-800">
-          <Button variant="outline" size="sm" onClick={handleClose}>
+          <Button variant="outline" size="sm" onClick={requestClose}>
             Hủy
           </Button>
           <Button
@@ -338,5 +347,7 @@ export function PoUploadDocumentsModal({
         </div>
       </div>
     </Modal>
+    {discardDialog}
+    </>
   );
 }

@@ -129,6 +129,7 @@ export function CopyOperationStepsDialog({
         open={open}
         title="Sao chép bảng quy trình công đoạn từ mẫu Fit khác"
         onClose={handleClose}
+        closeOnClickOutside
         footer={footer}
       >
         <div className="space-y-4">

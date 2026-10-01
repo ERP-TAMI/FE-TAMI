@@ -1416,6 +1416,7 @@ export function StyleOperationStepTable({
           open
           title="Ảnh rập / Cấu trúc"
           onClose={() => setZoomOpen(false)}
+          closeOnClickOutside
         >
           <div className="flex max-h-[75vh] items-center justify-center overflow-auto rounded-xl bg-gray-50/80 p-4 dark:bg-gray-800">
             <img
