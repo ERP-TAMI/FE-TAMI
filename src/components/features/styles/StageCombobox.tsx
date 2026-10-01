@@ -520,6 +520,7 @@ export function StageCombobox({
           onKeyDown={handleKeyDown}
           autoComplete="off"
           spellCheck={false}
+          title={query || undefined}
           aria-invalid={Boolean(error)}
           aria-describedby={errorId}
           placeholder="Tìm công đoạn..."
