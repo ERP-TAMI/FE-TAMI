@@ -1,7 +1,17 @@
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { cleanup, render as rtlRender, screen, within } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { ReactElement } from "react";
 import PoDetailPage from "./PoDetailPage";
+
+// EntityHistoryButton (rendered in several tab toolbars) reaches a real
+// useQuery internally, which this page previously never needed.
+function render(ui: ReactElement) {
+  return rtlRender(
+    <QueryClientProvider client={new QueryClient()}>{ui}</QueryClientProvider>,
+  );
+}
 
 const hooks = vi.hoisted(() => ({
   usePurchaseOrder: vi.fn(),

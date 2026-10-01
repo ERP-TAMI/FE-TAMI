@@ -13,7 +13,6 @@ import type {
   PurchaseOrderDetail,
   PurchaseOrderDocumentItem,
   PurchaseOrderProductItem,
-  PurchaseOrderStatusHistoryItem,
   UpdatePoInput,
   UpdatePoProductInput,
   UpdatePoStatusInput,
@@ -117,13 +116,6 @@ export const poApi = {
     const response = await apiClient.patch<PurchaseOrderDetail>(
       `/purchase-orders/${id}/status`,
       input,
-    );
-    return response.data;
-  },
-
-  async getHistory(id: string): Promise<PurchaseOrderStatusHistoryItem[]> {
-    const response = await apiClient.get<PurchaseOrderStatusHistoryItem[]>(
-      `/purchase-orders/${id}/history`,
     );
     return response.data;
   },
@@ -319,6 +311,28 @@ export const poApi = {
   ): Promise<import("@/types/po").PurchaseOrderProductDetail> {
     const response = await apiClient.get<import("@/types/po").PurchaseOrderProductDetail>(
       `/purchase-orders/${poId}/products/${productId}`,
+    );
+    return response.data;
+  },
+
+  async getProductColors(
+    poId: string,
+    productId: string,
+  ): Promise<import("@/types/po").ProductColorsResponse> {
+    const response = await apiClient.get<import("@/types/po").ProductColorsResponse>(
+      `/purchase-orders/${poId}/products/${productId}/colors`,
+    );
+    return response.data;
+  },
+
+  async getProductDocuments(
+    poId: string,
+    productId: string,
+    purpose?: string,
+  ): Promise<import("@/types/po").ProductDocumentItem[]> {
+    const response = await apiClient.get<import("@/types/po").ProductDocumentItem[]>(
+      `/purchase-orders/${poId}/products/${productId}/documents`,
+      { params: purpose ? { purpose } : undefined },
     );
     return response.data;
   },

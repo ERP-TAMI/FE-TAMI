@@ -5,6 +5,9 @@ import {
   usePurchaseOrder,
   usePoDocuments,
   usePoProductDetail,
+  useProductColors,
+  useProductDocuments,
+  useProductOperationSteps,
   useUpdatePoProduct,
   useUpdateProductStatus,
   useSaveProductOperationSteps,
@@ -35,12 +38,14 @@ import { StyleImagePlaceholder } from "@/components/features/styles/StyleImagePl
 import { StyleOperationStepTable } from "@/components/features/styles/StyleOperationStepTable";
 import { StyleProductionDocTab } from "@/components/features/production-docs/StyleProductionDocTab";
 import { UnsavedChangesDialog } from "@/components/features/styles/UnsavedChangesDialog";
+import { useDiscardChangesGuard } from "@/hooks/useDiscardChangesGuard";
 import { ProductStatusBadge } from "@/components/features/po/ProductStatusBadge";
 import { ProductColorSizeEditor } from "@/components/features/po/ProductColorSizeEditor";
 import { ProductVersionedFileGroup } from "@/components/features/po/ProductVersionedFileGroup";
 import { PoSplitDocumentPreview } from "@/components/features/po/PoSplitDocumentPreview";
 import { PoProductBomTab } from "@/components/features/po/PoProductBomTab";
 import { PoProductSampleRoundsTab } from "@/components/features/po/PoProductSampleRoundsTab";
+import { EntityHistoryButton } from "@/components/features/audit/EntityHistoryButton";
 import { ArrowLeft } from "lucide-react";
 import type {
   ProductColorItem,
@@ -243,7 +248,42 @@ export default function PoProductDetailPage({
     isError,
   } = usePoProductDetail(poId, productId);
   const isProductLocked = product?.status === "closed";
-  const isReadOnly = isProductLocked || readOnlyManagement;
+  // PO đã khóa/hủy thì mọi sản phẩm bên trong cũng chỉ đọc (BE cũng chặn).
+  const isPoLocked = po?.status === "closed" || po?.status === "cancelled";
+  const isReadOnly = isProductLocked || isPoLocked || readOnlyManagement;
+
+  // Màu & size dùng ở tab Thông tin (tóm tắt) và tab Bảng size (bảng sửa).
+  const { data: colorsData } = useProductColors(poId, productId, {
+    enabled: activeTab === "general" || activeTab === "sizes",
+  });
+  const colorsLoaded = colorsData !== undefined;
+  const productColors = useMemo(() => colorsData?.colors ?? [], [colorsData]);
+  const productTotalQuantity = colorsData?.totalQuantity ?? 0;
+
+  // Tab Bảng màu chỉ cần ảnh purpose=color_card — lọc ngay từ BE, không kéo
+  // về rồi lọc ở FE (tránh ký lại URL cho mọi phiên bản của tài liệu khác).
+  const { data: colorCardDocumentsData } = useProductDocuments(poId, productId, {
+    enabled: activeTab === "colors",
+    purpose: "color_card",
+  });
+  const paletteDocuments = useMemo(
+    () => colorCardDocumentsData ?? [],
+    [colorCardDocumentsData],
+  );
+
+  // Tab Tài liệu đính kèm cần nhiều purpose (PO chi tiết, TechPack, Khác) nên
+  // vẫn lấy trọn danh sách rồi nhóm ở FE.
+  const { data: productDocumentsData } = useProductDocuments(poId, productId, {
+    enabled: activeTab === "documents",
+  });
+  const productDocuments = useMemo(
+    () => productDocumentsData ?? [],
+    [productDocumentsData],
+  );
+
+  const { data: productSteps } = useProductOperationSteps(poId, productId, {
+    enabled: activeTab === "steps",
+  });
 
   const updateProductMutation = useUpdatePoProduct();
   const updateStatusMutation = useUpdateProductStatus();
@@ -256,6 +296,7 @@ export default function PoProductDetailPage({
 
   // Modal edit basic product info (phong cách StyleFormModal)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editMode, setEditMode] = useState<"info" | "colors">("info");
   const [editProductCode, setEditProductCode] = useState("");
   const [editProductName, setEditProductName] = useState("");
   const [editCategory, setEditCategory] = useState("");
@@ -356,7 +397,7 @@ export default function PoProductDetailPage({
   const uniqueSizes = useMemo(() => {
     const set = new Set<string>();
     const list: string[] = [];
-    (product?.colors || []).forEach((c) => {
+    productColors.forEach((c) => {
       (c.sizes || []).forEach((s) => {
         if (s.sizeLabel && !set.has(s.sizeLabel)) {
           set.add(s.sizeLabel);
@@ -365,46 +406,54 @@ export default function PoProductDetailPage({
       });
     });
     return list;
-  }, [product?.colors]);
+  }, [productColors]);
 
   // Gom nhóm các sự kiện lịch sử theo từng loại thao tác chung
 
   const totalBySize = useMemo(() => {
     const map: Record<string, number> = {};
-    (product?.colors || []).forEach((c) => {
+    productColors.forEach((c) => {
       (c.sizes || []).forEach((s) => {
         map[s.sizeLabel] = (map[s.sizeLabel] || 0) + (Number(s.quantity) || 0);
       });
     });
     return map;
-  }, [product?.colors]);
+  }, [productColors]);
 
+  // Nút "Chỉnh sửa" chỉ sửa thông tin chung, không đụng màu/size — màu chỉ
+  // được tải ở tab Thông tin/Bảng size, gửi kèm từ tab khác sẽ xoá màu cũ.
   const handleOpenEditModal = () => {
     if (!product || isReadOnly) return;
+    setEditMode("info");
     setEditProductCode(product.productCode);
     setEditProductName(product.productName);
     setEditCategory(product.category || "");
     setEditMaterialNote(product.materialNote || "");
     setEditDeadline(product.deadline ? product.deadline.split("T")[0] : "");
     setEditCmBaseDays(product.as3bCmBaseDays || 30);
-    setEditColors(
-      product.colors && product.colors.length > 0
-        ? JSON.parse(JSON.stringify(product.colors))
-        : [],
-    );
+    setEditFieldErrors({});
+    setIsEditModalOpen(true);
+  };
+
+  const handleOpenColorsModal = () => {
+    if (!product || isReadOnly || !colorsLoaded) return;
+    setEditMode("colors");
+    setEditColors(JSON.parse(JSON.stringify(productColors)));
     setEditFieldErrors({});
     setIsEditModalOpen(true);
   };
 
   const validateEditFields = (): boolean => {
     const errors: typeof editFieldErrors = {};
-    if (!editProductCode.trim()) errors.productCode = "Mã sản phẩm không được để trống.";
-    if (!editProductName.trim()) errors.productName = "Tên sản phẩm không được để trống.";
+    if (editMode === "info") {
+      if (!editProductCode.trim()) errors.productCode = "Mã sản phẩm không được để trống.";
+      if (!editProductName.trim()) errors.productName = "Tên sản phẩm không được để trống.";
+    }
 
     const namedColors = editColors.filter((c) => c.colorName.trim().length > 0);
-    if (namedColors.length === 0) {
+    if (editMode === "colors" && namedColors.length === 0) {
       errors.colors = "Vui lòng nhập ít nhất một màu sắc sản phẩm.";
-    } else {
+    } else if (editMode === "colors") {
       const seenNames = new Set<string>();
       for (const c of namedColors) {
         const name = c.colorName.trim();
@@ -474,17 +523,23 @@ export default function PoProductDetailPage({
       await updateProductMutation.mutateAsync({
         id: poId,
         productId,
-        input: {
-          productCode: editProductCode.trim(),
-          productName: editProductName.trim(),
-          category: editCategory.trim() || undefined,
-          materialNote: editMaterialNote.trim() || undefined,
-          deadline: editDeadline || undefined,
-          as3bCmBaseDays: Number(editCmBaseDays) || 30,
-          colors: cleanColors,
-        },
+        input:
+          editMode === "colors"
+            ? { colors: cleanColors }
+            : {
+                productCode: editProductCode.trim(),
+                productName: editProductName.trim(),
+                category: editCategory.trim() || undefined,
+                materialNote: editMaterialNote.trim() || undefined,
+                deadline: editDeadline || undefined,
+                as3bCmBaseDays: Number(editCmBaseDays) || 30,
+              },
       });
-      showToast("Đã cập nhật thông tin sản phẩm thành công.");
+      showToast(
+        editMode === "colors"
+          ? "Đã cập nhật màu & size thành công."
+          : "Đã cập nhật thông tin sản phẩm thành công.",
+      );
       setIsEditModalOpen(false);
     } catch (err: unknown) {
       const apiErr = getApiError(err, "Cập nhật sản phẩm thất bại.");
@@ -502,8 +557,9 @@ export default function PoProductDetailPage({
       }
       try {
         const res = await uploadImage.mutateAsync({
+          // BE kiểm tra entityId là 1 PO thật — không phải ID sản phẩm.
           entityType: "purchase-order",
-          entityId: productId,
+          entityId: poId,
           purpose: "sample_image",
           file,
         });
@@ -776,6 +832,37 @@ export default function PoProductDetailPage({
     });
   };
 
+  // Click ra ngoài / Hủy / Esc: có thay đổi chưa lưu thì hỏi lại trước khi đóng.
+  const isEditDirty =
+    isEditModalOpen &&
+    Boolean(product) &&
+    (editMode === "colors"
+      ? JSON.stringify(editColors) !== JSON.stringify(productColors)
+      : editProductCode !== product!.productCode ||
+        editProductName !== product!.productName ||
+        editCategory !== (product!.category || "") ||
+        editMaterialNote !== (product!.materialNote || "") ||
+        editDeadline !== (product!.deadline ? product!.deadline.split("T")[0] : "") ||
+        Number(editCmBaseDays) !== (product!.as3bCmBaseDays || 30));
+  const editGuard = useDiscardChangesGuard(isEditDirty, () =>
+    setIsEditModalOpen(false),
+  );
+  const lockGuard = useDiscardChangesGuard(lockReason.trim() !== "", () => {
+    setLockReason("");
+    setIsLockModalOpen(false);
+  });
+  const unlockGuard = useDiscardChangesGuard(unlockReason.trim() !== "", () => {
+    setUnlockReason("");
+    setIsUnlockModalOpen(false);
+  });
+  const uploadDocGuard = useDiscardChangesGuard(docUploadFile !== null, () =>
+    setIsUploadDocOpen(false),
+  );
+  const uploadVersionGuard = useDiscardChangesGuard(
+    newVersionFile !== null || newVersionReason.trim() !== "",
+    () => setIsUploadVersionOpen(false),
+  );
+
   // Loading Skeleton y xì StyleDetailPage
   if (isLoading) {
     return (
@@ -808,7 +895,7 @@ export default function PoProductDetailPage({
 
 
   // Chuyển đổi dữ liệu công đoạn cho StyleOperationStepTable
-  const mappedSteps: StyleOperationStepItem[] = (product.operationSteps || []).map(
+  const mappedSteps: StyleOperationStepItem[] = (productSteps || []).map(
     (step, idx) => ({
       id: String(step.id),
       stepName: step.stepName || "",
@@ -835,16 +922,14 @@ export default function PoProductDetailPage({
   const isColorCardPurpose = (purpose?: string | null) => purpose === "color_card";
 
   // Phân nhóm tài liệu đính kèm: PO Chi Tiết, TechPack, Khác
-  const poDocuments = (product.documents || []).filter((d) =>
+  // (color_card không nằm trong đây nữa — nó có query riêng ở tab Bảng màu.)
+  const poDocuments = productDocuments.filter((d) =>
     isPoDetailPurpose(d.purpose),
   );
-  const techPackDocuments = (product.documents || []).filter((d) =>
+  const techPackDocuments = productDocuments.filter((d) =>
     isTechPackPurpose(d.purpose),
   );
-  const paletteDocuments = (product.documents || []).filter((d) =>
-    isColorCardPurpose(d.purpose),
-  );
-  const otherDocuments = (product.documents || []).filter(
+  const otherDocuments = productDocuments.filter(
     (d) =>
       !isPoDetailPurpose(d.purpose) &&
       !isTechPackPurpose(d.purpose) &&
@@ -904,7 +989,7 @@ export default function PoProductDetailPage({
 
           {/* Cột phải: Nhóm nút hành động */}
           <div className="flex flex-wrap items-center gap-2 shrink-0">
-            {!readOnlyManagement &&
+            {!readOnlyManagement && !isPoLocked &&
               (isProductLocked ? (
                 <Button
                   variant="outline"
@@ -942,7 +1027,7 @@ export default function PoProductDetailPage({
         </div>
 
         {/* Lock Banner notification khi sản phẩm bị khóa */}
-        {isProductLocked && (
+        {isProductLocked && !isPoLocked && (
           <div className="rounded-xl border border-rose-200 bg-rose-50/80 p-3.5 text-xs text-rose-800 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300 flex items-center justify-between gap-3">
             <div className="flex items-center gap-2.5">
               <span className="flex h-5 w-5 items-center justify-center rounded-full bg-rose-500 text-white shrink-0">
@@ -952,7 +1037,7 @@ export default function PoProductDetailPage({
                 Sản phẩm này đã được <strong>Khoá</strong> sau khi xử lý hoàn tất. Quy trình công đoạn và các thông tin đã được chốt và chuyển sang chế độ <strong>Chỉ đọc</strong>.
               </span>
             </div>
-            {!readOnlyManagement && (
+            {!readOnlyManagement && !isPoLocked && (
               <button
                 type="button"
                 onClick={() => setIsUnlockModalOpen(true)}
@@ -962,6 +1047,16 @@ export default function PoProductDetailPage({
                 Mở khoá để tiếp tục xử lý
               </button>
             )}
+          </div>
+        )}
+        {isPoLocked && (
+          <div className="rounded-xl border border-rose-200 bg-rose-50/80 p-3.5 text-xs text-rose-800 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300 flex items-center gap-2.5">
+            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-rose-500 text-white shrink-0">
+              <LockIcon className="w-3 h-3" />
+            </span>
+            <span>
+              Đơn hàng PO này đã <strong>{po?.status === "cancelled" ? "Hủy" : "Khoá"}</strong>, nên toàn bộ sản phẩm bên trong chỉ ở chế độ <strong>Chỉ đọc</strong>.
+            </span>
           </div>
         )}
         {readOnlyManagement && (
@@ -1230,7 +1325,7 @@ export default function PoProductDetailPage({
                 <div className="min-w-0">
                   <span className="text-sm font-semibold text-gray-900 dark:text-white">Màu sắc &amp; Kích cỡ</span>
                   <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">
-                    {product.colors?.length || 0} màu · {uniqueSizes.length} size · {(product.totalQuantity || 0).toLocaleString()} pcs
+                    {productColors.length} màu · {uniqueSizes.length} size · {productTotalQuantity.toLocaleString()} pcs
                   </span>
                 </div>
                 <button
@@ -1256,10 +1351,17 @@ export default function PoProductDetailPage({
             </div>
 
             {/* Metadata Footer */}
-            <div className="text-xs text-gray-400 dark:text-gray-500 flex flex-wrap gap-3">
+            <div className="text-xs text-gray-400 dark:text-gray-500 flex flex-wrap items-center gap-3">
               <span>Tạo lúc {formatDateTime(product.createdAt)}</span>
               <span>•</span>
               <span>Cập nhật {formatDateTime(product.updatedAt)}</span>
+              <EntityHistoryButton
+                aggregateType="PurchaseOrderProduct"
+                aggregateId={product.id}
+                title="Lịch sử: Thông tin sản phẩm"
+                size="xs"
+                className="ml-auto !font-semibold"
+              />
             </div>
           </div>
         </div>
@@ -1276,20 +1378,32 @@ export default function PoProductDetailPage({
               Bảng phân bổ Size &amp; Phối màu sản phẩm
             </h3>
 
-            {!isReadOnly && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleOpenEditModal}
-                className="text-xs font-semibold text-gray-700 border-gray-200 bg-white hover:bg-gray-50 shrink-0"
-              >
-                Chỉnh sửa màu &amp; size
-              </Button>
-            )}
+            <div className="flex items-center gap-2">
+              <EntityHistoryButton
+                aggregateType="PurchaseOrderProduct"
+                aggregateId={product.id}
+                title="Lịch sử: Bảng size"
+              />
+              {!isReadOnly && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleOpenColorsModal}
+                  disabled={!colorsLoaded}
+                  className="text-xs font-semibold text-gray-700 border-gray-200 bg-white hover:bg-gray-50 shrink-0"
+                >
+                  Chỉnh sửa màu &amp; size
+                </Button>
+              )}
+            </div>
           </div>
 
           {/* Ma trận bảng Size + Màu */}
-          {!product.colors || product.colors.length === 0 ? (
+          {!colorsLoaded ? (
+            <div className="rounded-2xl border border-gray-200 bg-white p-12 text-center text-xs text-gray-500 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400">
+              Đang tải bảng size &amp; màu...
+            </div>
+          ) : productColors.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-gray-300 p-12 text-center dark:border-gray-700 bg-white dark:bg-gray-900">
               <TableIcon className="w-10 h-10 mx-auto text-gray-400 mb-3" />
               <h4 className="text-sm font-bold text-gray-800 dark:text-gray-200">Chưa có bảng size &amp; màu sắc</h4>
@@ -1299,7 +1413,7 @@ export default function PoProductDetailPage({
               {!isReadOnly && (
                 <Button
                   size="sm"
-                  onClick={handleOpenEditModal}
+                  onClick={handleOpenColorsModal}
                   className="mt-4 text-xs font-semibold"
                 >
                   + Thiết lập Bảng Size &amp; Màu
@@ -1325,7 +1439,7 @@ export default function PoProductDetailPage({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                    {product.colors.map((color, idx) => {
+                    {productColors.map((color, idx) => {
                       const rowTotal = (color.sizes || []).reduce(
                         (sum, s) => sum + (Number(s.quantity) || 0),
                         0,
@@ -1369,7 +1483,7 @@ export default function PoProductDetailPage({
                         </td>
                       ))}
                       <td className="px-5 py-3.5 text-right font-mono text-sm font-extrabold text-brand-600 dark:text-brand-400">
-                        {(product.totalQuantity || 0).toLocaleString()}
+                        {productTotalQuantity.toLocaleString()}
                       </td>
                     </tr>
                   </tfoot>
@@ -1391,16 +1505,23 @@ export default function PoProductDetailPage({
               Bảng màu sản phẩm
             </h3>
 
-            {!isReadOnly && (
-              <Button
-                size="sm"
-                onClick={() => handleOpenUploadDoc("color_card")}
-                className="text-xs font-semibold shrink-0"
-              >
-                <PlusIcon className="w-4 h-4 mr-1.5" />
-                Tải ảnh bảng màu lên
-              </Button>
-            )}
+            <div className="flex items-center gap-2">
+              <EntityHistoryButton
+                aggregateType="PurchaseOrderProductDocument"
+                parentId={product.id}
+                title="Lịch sử: Tài liệu sản phẩm"
+              />
+              {!isReadOnly && (
+                <Button
+                  size="sm"
+                  onClick={() => handleOpenUploadDoc("color_card")}
+                  className="text-xs font-semibold shrink-0"
+                >
+                  <PlusIcon className="w-4 h-4 mr-1.5" />
+                  Tải ảnh bảng màu lên
+                </Button>
+              )}
+            </div>
           </div>
 
           {/* Thư viện hình ảnh bảng màu đã tải lên */}
@@ -1487,6 +1608,7 @@ export default function PoProductDetailPage({
             <Modal
               open={Boolean(palettePreviewModalUrl)}
               onClose={() => setPalettePreviewModalUrl(null)}
+              closeOnClickOutside
               title={`Xem ảnh bảng màu: ${palettePreviewModalUrl.name}`}
               size="xl"
             >
@@ -1518,6 +1640,7 @@ export default function PoProductDetailPage({
           styleCode={product.productCode}
           styleName={product.productName}
           onImageChange={isReadOnly ? undefined : (file) => void handleUploadAndSaveImage(file)}
+          historyAggregateType="PurchaseOrderProductOperationStep"
         />
       )}
 
@@ -1530,7 +1653,7 @@ export default function PoProductDetailPage({
           productCode={product.productCode}
           productName={product.productName}
           poId={poId || ""}
-          isProductLocked={isProductLocked}
+          isProductLocked={isProductLocked || isPoLocked}
           readOnly={readOnlyManagement}
         />
       )}
@@ -1543,8 +1666,8 @@ export default function PoProductDetailPage({
           poId={poId}
           productId={productId}
           styleName={product.productName}
-          styleImageUrl={imageUrl || product.structureImageVersionId || undefined}
-          readOnly={readOnlyManagement}
+          styleImageUrl={imageUrl || undefined}
+          readOnly={isReadOnly}
           onEditingChange={setIsProductionDocEditing}
         />
       )}
@@ -1556,7 +1679,8 @@ export default function PoProductDetailPage({
         <PoProductSampleRoundsTab
           poId={poId}
           productId={productId}
-          readOnly={readOnlyManagement}
+          readOnly={isReadOnly}
+          canDownload={!readOnlyManagement}
         />
       )}
 
@@ -1571,16 +1695,23 @@ export default function PoProductDetailPage({
               Tài liệu đính kèm
             </h3>
 
-            {!isReadOnly && (
-              <Button
-                size="sm"
-                onClick={() => openLinkPoDocModal(null)}
-                className="shrink-0"
-              >
-                <PlusIcon className="w-4 h-4 mr-1" />
-                Gán tài liệu từ kho PO
-              </Button>
-            )}
+            <div className="flex items-center gap-2">
+              <EntityHistoryButton
+                aggregateType="PurchaseOrderProductDocument"
+                parentId={product.id}
+                title="Lịch sử: Tài liệu sản phẩm"
+              />
+              {!isReadOnly && (
+                <Button
+                  size="sm"
+                  onClick={() => openLinkPoDocModal(null)}
+                  className="shrink-0"
+                >
+                  <PlusIcon className="w-4 h-4 mr-1" />
+                  Gán tài liệu từ kho PO
+                </Button>
+              )}
+            </div>
           </div>
 
           {/* Banner thông báo khi sản phẩm bị khóa */}
@@ -1813,16 +1944,20 @@ export default function PoProductDetailPage({
       {isEditModalOpen && !isReadOnly && (
         <Modal
           open={isEditModalOpen}
-          onClose={() => {
-            if (!updateProductMutation.isPending) setIsEditModalOpen(false);
-          }}
-          title="Chỉnh sửa thông tin sản phẩm"
+          onClose={editGuard.requestClose}
+          closeDisabled={updateProductMutation.isPending}
+          closeOnClickOutside
+          title={editMode === "colors" ? "Chỉnh sửa màu & size" : "Chỉnh sửa thông tin sản phẩm"}
           size="lg"
         >
           <p className="-mt-2 mb-4 text-xs text-gray-500 dark:text-gray-400">
-            Cập nhật các thông số chi tiết và cơ cấu màu sắc / size của sản phẩm.
+            {editMode === "colors"
+              ? "Cập nhật cơ cấu màu sắc / size và số lượng của sản phẩm."
+              : "Cập nhật các thông số chi tiết của sản phẩm."}
           </p>
           <form onSubmit={handleSaveEditProduct} className="space-y-4">
+            {editMode === "info" && (
+            <>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
               <div>
                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -1931,12 +2066,12 @@ export default function PoProductDetailPage({
                 placeholder="Nhập chất liệu, thành phần sợi, lưu ý may hoặc đặc điểm của sản phẩm..."
               />
             </div>
+            </>
+            )}
 
             {/* Trình soạn thảo Phân bổ Màu sắc & Cỡ số */}
-            <div
-              ref={editColorsCardRef}
-              className="pt-2 border-t border-gray-100 dark:border-gray-800"
-            >
+            {editMode === "colors" && (
+            <div ref={editColorsCardRef}>
               <ProductColorSizeEditor
                 colors={editColors}
                 onChange={(next) => {
@@ -1952,13 +2087,14 @@ export default function PoProductDetailPage({
                 </p>
               )}
             </div>
+            )}
 
             <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-gray-100 dark:border-gray-800">
               <Button
                 variant="outline"
                 size="sm"
                 type="button"
-                onClick={() => setIsEditModalOpen(false)}
+                onClick={editGuard.requestClose}
                 disabled={updateProductMutation.isPending}
               >
                 Hủy
@@ -1979,6 +2115,7 @@ export default function PoProductDetailPage({
             setIsLinkPoDocOpen(false);
             setLinkDocFilter(null);
           }}
+          closeOnClickOutside
           title={
             linkDocFilter === "po_detail"
               ? "Gán tài liệu từ kho PO — mục PO Chi Tiết"
@@ -2021,7 +2158,7 @@ export default function PoProductDetailPage({
               return (
               <div className="max-h-80 overflow-y-auto space-y-2">
                 {visibleDocs.map((d) => {
-                  const alreadyLinked = product.documents?.some((doc) => doc.documentId === d.documentId);
+                  const alreadyLinked = productDocuments.some((doc) => doc.documentId === d.documentId);
                   const isPo = isPoDetailPurpose(d.purpose);
                   const isTp = isTechPackPurpose(d.purpose);
                   const categoryName = isPo ? "PO Chi Tiết" : isTp ? "TechPack" : "Khác";
@@ -2090,9 +2227,9 @@ export default function PoProductDetailPage({
       {isLockModalOpen && !readOnlyManagement && (
         <Modal
           open={isLockModalOpen}
-          onClose={() => {
-            if (!updateStatusMutation.isPending) setIsLockModalOpen(false);
-          }}
+          onClose={lockGuard.requestClose}
+          closeDisabled={updateStatusMutation.isPending}
+          closeOnClickOutside
           title="Khóa sản phẩm sau khi xử lý xong"
           size="md"
         >
@@ -2129,7 +2266,7 @@ export default function PoProductDetailPage({
                 variant="outline"
                 size="sm"
                 type="button"
-                onClick={() => setIsLockModalOpen(false)}
+                onClick={lockGuard.requestClose}
                 disabled={updateStatusMutation.isPending}
               >
                 Hủy bỏ
@@ -2152,7 +2289,9 @@ export default function PoProductDetailPage({
       {isUnlockModalOpen && !readOnlyManagement && (
         <Modal
           open={isUnlockModalOpen}
-          onClose={() => setIsUnlockModalOpen(false)}
+          onClose={unlockGuard.requestClose}
+          closeDisabled={updateStatusMutation.isPending}
+          closeOnClickOutside
           title="Mở khóa sản phẩm"
           size="md"
         >
@@ -2193,7 +2332,7 @@ export default function PoProductDetailPage({
                 variant="outline"
                 size="sm"
                 type="button"
-                onClick={() => setIsUnlockModalOpen(false)}
+                onClick={unlockGuard.requestClose}
                 disabled={updateStatusMutation.isPending}
               >
                 Hủy bỏ
@@ -2216,9 +2355,9 @@ export default function PoProductDetailPage({
       {isUploadDocOpen && !isReadOnly && (
         <Modal
           open={isUploadDocOpen}
-          onClose={() => {
-            if (!uploadProductDocMutation.isPending) setIsUploadDocOpen(false);
-          }}
+          onClose={uploadDocGuard.requestClose}
+          closeDisabled={uploadProductDocMutation.isPending}
+          closeOnClickOutside
           title={
             docUploadCategory === "production_doc"
               ? "Tải lên file PO Chi Tiết"
@@ -2269,7 +2408,7 @@ export default function PoProductDetailPage({
                 variant="outline"
                 size="sm"
                 type="button"
-                onClick={() => setIsUploadDocOpen(false)}
+                onClick={uploadDocGuard.requestClose}
                 disabled={uploadProductDocMutation.isPending}
               >
                 Hủy bỏ
@@ -2290,9 +2429,9 @@ export default function PoProductDetailPage({
       {isUploadVersionOpen && versionTargetInfo && !isReadOnly && (
         <Modal
           open={isUploadVersionOpen}
-          onClose={() => {
-            if (!uploadVersionMutation.isPending) setIsUploadVersionOpen(false);
-          }}
+          onClose={uploadVersionGuard.requestClose}
+          closeDisabled={uploadVersionMutation.isPending}
+          closeOnClickOutside
           title={`Cập nhật phiên bản mới: v${versionTargetInfo.currentVersionNo + 1}`}
           size="md"
         >
@@ -2341,7 +2480,7 @@ export default function PoProductDetailPage({
                 variant="outline"
                 size="sm"
                 type="button"
-                onClick={() => setIsUploadVersionOpen(false)}
+                onClick={uploadVersionGuard.requestClose}
                 disabled={uploadVersionMutation.isPending}
               >
                 Hủy bỏ
@@ -2365,6 +2504,7 @@ export default function PoProductDetailPage({
         <Modal
           open={Boolean(previewDocItem)}
           onClose={() => setPreviewDocItem(null)}
+          closeOnClickOutside
           title={`Xem trước: ${previewDocItem.fileName || previewDocItem.title || "Tài liệu"}`}
           size="xl"
         >
@@ -2386,6 +2526,11 @@ export default function PoProductDetailPage({
         closeLabel="Đóng thông báo"
         onClose={hideToast}
       />
+      {editGuard.discardDialog}
+      {lockGuard.discardDialog}
+      {unlockGuard.discardDialog}
+      {uploadDocGuard.discardDialog}
+      {uploadVersionGuard.discardDialog}
     </div>
   );
 }

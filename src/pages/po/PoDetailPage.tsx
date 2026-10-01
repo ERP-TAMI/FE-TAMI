@@ -8,6 +8,7 @@ import { PoAddProductModal } from "@/components/features/po/PoAddProductModal";
 import { PoDocumentsSection } from "@/components/features/po/PoDocumentsSection";
 import { PoAddProductQuickForm } from "@/components/features/po/PoAddProductQuickForm";
 import { PoSplitDocumentPreview } from "@/components/features/po/PoSplitDocumentPreview";
+import { EntityHistoryButton } from "@/components/features/audit/EntityHistoryButton";
 import { StyleImagePlaceholder } from "@/components/features/styles/StyleImagePlaceholder";
 import {
   usePurchaseOrder,
@@ -635,27 +636,34 @@ export default function PoDetailPage({
         </nav>
 
         {/* Nút bật/tắt chế độ chia khung 50/50 khi ở tab Sản phẩm / Mẫu Fit */}
-        {activeTab === "lines" && !readOnlyManagement && (
-          <div className="pb-1.5">
-            <button
-              type="button"
-              onClick={() => setIsSplitMode(!isSplitMode)}
-              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer ${isSplitMode
-                  ? "bg-brand-600 text-white shadow-xs dark:bg-brand-500"
-                  : "border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
-                }`}
-              title={
-                isSplitMode
-                  ? "Thoát chế độ chia khung, quay về chế độ xem thường"
-                  : "Chế độ chia khung 50/50: Tài liệu PO bên trái, Sản phẩm bên phải"
-              }
-            >
-              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <rect x="3" y="3" width="18" height="18" rx="2" />
-                <path d="M12 3v18" />
-              </svg>
-              <span>{isSplitMode ? "Thoát chia khung" : "Chia khung 50/50"}</span>
-            </button>
+        {activeTab === "lines" && (
+          <div className="flex items-center gap-2 pb-1.5">
+            <EntityHistoryButton
+              aggregateType="PurchaseOrderProduct"
+              parentId={id}
+              title="Lịch sử: Sản phẩm / Mẫu Fit"
+            />
+            {!readOnlyManagement && (
+              <button
+                type="button"
+                onClick={() => setIsSplitMode(!isSplitMode)}
+                className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer ${isSplitMode
+                    ? "bg-brand-600 text-white shadow-xs dark:bg-brand-500"
+                    : "border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+                  }`}
+                title={
+                  isSplitMode
+                    ? "Thoát chế độ chia khung, quay về chế độ xem thường"
+                    : "Chế độ chia khung 50/50: Tài liệu PO bên trái, Sản phẩm bên phải"
+                }
+              >
+                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <rect x="3" y="3" width="18" height="18" rx="2" />
+                  <path d="M12 3v18" />
+                </svg>
+                <span>{isSplitMode ? "Thoát chia khung" : "Chia khung 50/50"}</span>
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -685,11 +693,18 @@ export default function PoDetailPage({
                   Thông tin PO
                 </h3>
               </div>
-              {!isEditing && !isReadOnly && (
-                <Button variant="outline" size="sm" onClick={startEdit}>
-                  Chỉnh sửa
-                </Button>
-              )}
+              <div className="flex items-center gap-2">
+                <EntityHistoryButton
+                  aggregateType="PurchaseOrder"
+                  aggregateId={id}
+                  title="Lịch sử: Thông tin PO"
+                />
+                {!isEditing && !isReadOnly && (
+                  <Button variant="outline" size="sm" onClick={startEdit}>
+                    Chỉnh sửa
+                  </Button>
+                )}
+              </div>
             </div>
 
             {isEditing ? (
@@ -1747,9 +1762,6 @@ export default function PoDetailPage({
           )}
         </div>
       )}
-
-      {/* Tab 4: Lịch sử */}
-
 
       {/* Reason Modal Dialog */}
       <PoReasonModal

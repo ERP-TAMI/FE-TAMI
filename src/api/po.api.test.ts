@@ -102,6 +102,47 @@ describe("poApi", () => {
     expect(res).toEqual(mockPage);
   });
 
+  it("getProductColors calls GET /purchase-orders/:id/products/:productId/colors", async () => {
+    const mockResponse = {
+      colors: [{ id: "c-1", colorName: "Đen", sizes: [{ sizeLabel: "M", quantity: 10 }] }],
+      totalQuantity: 10,
+    };
+    vi.mocked(apiClient.get).mockResolvedValueOnce({ data: mockResponse });
+
+    const res = await poApi.getProductColors("po-1", "prod-1");
+
+    expect(apiClient.get).toHaveBeenCalledWith(
+      "/purchase-orders/po-1/products/prod-1/colors",
+    );
+    expect(res).toEqual(mockResponse);
+  });
+
+  it("getProductDocuments calls GET /purchase-orders/:id/products/:productId/documents with no filter by default", async () => {
+    const mockDocs = [
+      { documentId: "doc-1", productId: "prod-1", title: "Techpack", sourcePoDocument: true, linkedAt: "2026-09-30T00:00:00.000Z" },
+    ];
+    vi.mocked(apiClient.get).mockResolvedValueOnce({ data: mockDocs });
+
+    const res = await poApi.getProductDocuments("po-1", "prod-1");
+
+    expect(apiClient.get).toHaveBeenCalledWith(
+      "/purchase-orders/po-1/products/prod-1/documents",
+      { params: undefined },
+    );
+    expect(res).toEqual(mockDocs);
+  });
+
+  it("getProductDocuments passes purpose as a query param so the Bảng màu tab only asks for color_card", async () => {
+    vi.mocked(apiClient.get).mockResolvedValueOnce({ data: [] });
+
+    await poApi.getProductDocuments("po-1", "prod-1", "color_card");
+
+    expect(apiClient.get).toHaveBeenCalledWith(
+      "/purchase-orders/po-1/products/prod-1/documents",
+      { params: { purpose: "color_card" } },
+    );
+  });
+
   it("addProduct calls POST /purchase-orders/:id/products conforming to BE CreatePoProductDto contract", async () => {
     const mockProduct = {
       id: "prod-1",

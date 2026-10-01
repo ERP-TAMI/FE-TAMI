@@ -19,8 +19,6 @@ export const PO_KEYS = {
   list: (query: PoQuery) => [...PO_KEYS.lists(), query] as const,
   details: () => [...PO_KEYS.all, "detail"] as const,
   detail: (id: string) => [...PO_KEYS.details(), id] as const,
-  histories: () => [...PO_KEYS.all, "history"] as const,
-  history: (id: string) => [...PO_KEYS.histories(), id] as const,
   documentsOf: (id: string) => [...PO_KEYS.all, "documents", id] as const,
   documents: (id: string, query: PoDocumentQuery = {}) =>
     [...PO_KEYS.documentsOf(id), query] as const,
@@ -29,6 +27,12 @@ export const PO_KEYS = {
     [...PO_KEYS.productsOf(id), query] as const,
   productDetail: (poId: string, productId: string) =>
     [...PO_KEYS.all, "productDetail", poId, productId] as const,
+  productColors: (poId: string, productId: string) =>
+    [...PO_KEYS.all, "productColors", poId, productId] as const,
+  productDocumentsOf: (poId: string, productId: string) =>
+    [...PO_KEYS.all, "productDocuments", poId, productId] as const,
+  productDocuments: (poId: string, productId: string, purpose?: string) =>
+    [...PO_KEYS.productDocumentsOf(poId, productId), purpose ?? "all"] as const,
   productSteps: (poId: string, productId: string) =>
     [...PO_KEYS.all, "productSteps", poId, productId] as const,
   productSamples: (poId: string, productId: string) =>
@@ -283,6 +287,9 @@ export function useUpdatePoProduct() {
       void queryClient.invalidateQueries({
         queryKey: PO_KEYS.productDetail(id, productId),
       });
+      void queryClient.invalidateQueries({
+        queryKey: PO_KEYS.productColors(id, productId),
+      });
     },
   });
 }
@@ -328,6 +335,30 @@ export function usePoProductDetail(
   });
 }
 
+export function useProductColors(
+  poId: string | undefined,
+  productId: string | undefined,
+  options?: { enabled?: boolean },
+) {
+  return useQuery({
+    queryKey: PO_KEYS.productColors(poId || "", productId || ""),
+    queryFn: () => poApi.getProductColors(poId!, productId!),
+    enabled: Boolean(poId && productId) && (options?.enabled ?? true),
+  });
+}
+
+export function useProductDocuments(
+  poId: string | undefined,
+  productId: string | undefined,
+  options?: { enabled?: boolean; purpose?: string },
+) {
+  return useQuery({
+    queryKey: PO_KEYS.productDocuments(poId || "", productId || "", options?.purpose),
+    queryFn: () => poApi.getProductDocuments(poId!, productId!, options?.purpose),
+    enabled: Boolean(poId && productId) && (options?.enabled ?? true),
+  });
+}
+
 export function useUpdateProductStatus() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -367,7 +398,7 @@ export function useLinkProductDocument() {
     }) => poApi.linkProductDocument(poId, productId, documentId, purpose),
     onSuccess: (_, { poId, productId }) => {
       void queryClient.invalidateQueries({
-        queryKey: PO_KEYS.productDetail(poId, productId),
+        queryKey: PO_KEYS.productDocumentsOf(poId, productId),
       });
       void queryClient.invalidateQueries({ queryKey: PO_KEYS.productsOf(poId) });
       void queryClient.invalidateQueries({ queryKey: PO_KEYS.detail(poId) });
@@ -391,7 +422,7 @@ export function useUpdateProductDocumentPurpose() {
     }) => poApi.updateProductDocumentPurpose(poId, productId, documentId, purpose),
     onSuccess: (_, { poId, productId }) => {
       void queryClient.invalidateQueries({
-        queryKey: PO_KEYS.productDetail(poId, productId),
+        queryKey: PO_KEYS.productDocumentsOf(poId, productId),
       });
       void queryClient.invalidateQueries({ queryKey: PO_KEYS.productsOf(poId) });
     },
@@ -412,7 +443,7 @@ export function useUnlinkProductDocument() {
     }) => poApi.unlinkProductDocument(poId, productId, documentId),
     onSuccess: (_, { poId, productId }) => {
       void queryClient.invalidateQueries({
-        queryKey: PO_KEYS.productDetail(poId, productId),
+        queryKey: PO_KEYS.productDocumentsOf(poId, productId),
       });
       void queryClient.invalidateQueries({ queryKey: PO_KEYS.productsOf(poId) });
     },
@@ -435,7 +466,7 @@ export function useUploadProductDocument() {
     }) => poApi.uploadProductDocument(poId, productId, file, purpose),
     onSuccess: (_, { poId, productId }) => {
       void queryClient.invalidateQueries({
-        queryKey: PO_KEYS.productDetail(poId, productId),
+        queryKey: PO_KEYS.productDocumentsOf(poId, productId),
       });
       void queryClient.invalidateQueries({ queryKey: PO_KEYS.productsOf(poId) });
       void queryClient.invalidateQueries({ queryKey: PO_KEYS.detail(poId) });
@@ -471,7 +502,7 @@ export function useUploadProductDocumentVersion() {
       ),
     onSuccess: (_, { poId, productId }) => {
       void queryClient.invalidateQueries({
-        queryKey: PO_KEYS.productDetail(poId, productId),
+        queryKey: PO_KEYS.productDocumentsOf(poId, productId),
       });
       void queryClient.invalidateQueries({ queryKey: PO_KEYS.productsOf(poId) });
       void queryClient.invalidateQueries({ queryKey: PO_KEYS.detail(poId) });
@@ -482,11 +513,12 @@ export function useUploadProductDocumentVersion() {
 export function useProductOperationSteps(
   poId: string | undefined,
   productId: string | undefined,
+  options?: { enabled?: boolean },
 ) {
   return useQuery({
     queryKey: PO_KEYS.productSteps(poId || "", productId || ""),
     queryFn: () => poApi.getProductOperationSteps(poId!, productId!),
-    enabled: Boolean(poId && productId),
+    enabled: Boolean(poId && productId) && (options?.enabled ?? true),
   });
 }
 

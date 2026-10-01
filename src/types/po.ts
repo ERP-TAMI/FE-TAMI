@@ -52,16 +52,6 @@ export interface PoDocumentPreviewResponse {
   text?: string;
 }
 
-export interface PurchaseOrderStatusHistoryItem {
-  id: string;
-  oldStatus: PoStatus | null;
-  newStatus: PoStatus;
-  action: string;
-  reason: string | null;
-  changedBy: string | null;
-  changedAt: string;
-}
-
 export interface PurchaseOrderListItem {
   id: string;
   poCode: string;
@@ -291,7 +281,6 @@ export interface ProductSampleRound {
 }
 
 export interface CreateProductSampleRoundInput {
-  roundNo?: number;
   sampleDate?: string;
   feedback?: string;
   status?: SampleStatus;
@@ -377,27 +366,25 @@ export interface ProductDocumentItem {
   linkedAt: string;
 }
 
-export interface PurchaseOrderProductDetail extends PurchaseOrderProductItem {
-  operationSteps: ProductOperationStep[];
-  sampleRounds: ProductSampleRound[];
-  productionDocument: ProductProductionDoc | null;
-  documents: ProductDocumentItem[];
-  statusHistory: Array<{
-    id: string;
-    productId: string;
-    oldStatus: string | null;
-    newStatus: string;
-    action: string;
-    reason: string | null;
-    changedBy: string | null;
-    changedAt: string;
-  }>;
+/**
+ * Thông tin chung của sản phẩm PO (tab Thông tin).
+ *
+ * BE cố ý không trả kèm màu/size, quy trình công đoạn, đợt may mẫu, tài liệu
+ * SX, tài liệu đính kèm nữa — mỗi tab gọi endpoint riêng (useProductColors,
+ * useProductOperationSteps, useProductSampleRounds, useProductProductionDoc,
+ * useProductDocuments).
+ */
+export type PurchaseOrderProductDetail = PurchaseOrderProductItem;
+
+export interface ProductColorsResponse {
+  colors: ProductColorItem[];
+  totalQuantity: number;
 }
 
 /**
  * Thông tin chung của PO.
  *
- * BE cố ý không trả kèm products / documents / statusHistory nữa — mỗi tab gọi
+ * BE cố ý không trả kèm products / documents nữa — mỗi tab gọi
  * endpoint riêng. Hai trường *Count dùng để hiện số trên nhãn tab mà không phải
  * tải cả danh sách.
  */

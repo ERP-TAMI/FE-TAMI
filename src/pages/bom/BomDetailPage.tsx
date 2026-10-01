@@ -245,10 +245,23 @@ export default function BomDetailPage() {
 
   const displayOrderCost = isHistorical ? null : bom.currentOrderCost;
 
+  // BOM của sản phẩm PO đóng băng theo sản phẩm/PO (BE cũng chặn ghi).
+  const poBomLockReason =
+    bom.type !== "po"
+      ? null
+      : bom.purchaseOrder?.status === "cancelled"
+        ? "Đơn hàng PO đã Hủy"
+        : bom.purchaseOrder?.status === "closed"
+          ? "Đơn hàng PO đã Khoá"
+          : (bom.purchaseOrderProduct?.status ?? bom.product?.status) === "closed"
+            ? "Sản phẩm đã Khoá"
+            : null;
+
   const isReadOnlyPoBom =
-    bom.type === "po" &&
-    user?.roleCode === "SA" &&
-    user.purchaseOrderMode === "READ_ONLY";
+    poBomLockReason !== null ||
+    (bom.type === "po" &&
+      user?.roleCode === "SA" &&
+      user.purchaseOrderMode === "READ_ONLY");
 
   const isRdEntryMode =
     !isReadOnlyPoBom &&
@@ -579,6 +592,12 @@ export default function BomDetailPage() {
           isLineModalOpen ? "lg:mr-[480px]" : ""
         }`}
       >
+        {poBomLockReason && (
+          <p className="rounded-xl border border-rose-200 bg-rose-50/80 px-3.5 py-2.5 text-xs font-medium text-rose-800 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300">
+            {poBomLockReason}, nên BOM này chỉ ở chế độ <strong>Chỉ đọc</strong>.
+          </p>
+        )}
+
         {/* 1. Header & Quick Actions */}
         <BomDetailHeader
           bom={bom}

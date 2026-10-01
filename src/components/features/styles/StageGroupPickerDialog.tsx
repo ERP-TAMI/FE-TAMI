@@ -3,6 +3,7 @@ import { Modal } from "@/components/shared/Modal";
 import { Button } from "@/components/shared/Button";
 import { CheckLineIcon } from "@/icons";
 import { stageGroupApi, type StageGroup, type StageGroupSubItem } from "@/api/stage-group.api";
+import { useDiscardChangesGuard } from "@/hooks/useDiscardChangesGuard";
 
 export interface StageGroupPickerDialogProps {
   open: boolean;
@@ -22,6 +23,7 @@ export function StageGroupPickerDialog({
   const [activeGroup, setActiveGroup] = useState<StageGroup | null>(group);
   const [loading, setLoading] = useState(false);
   const [selectedItems, setSelectedItems] = useState<Record<string, boolean>>({});
+  const [initialSelected, setInitialSelected] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (!open || !group) {
@@ -69,7 +71,15 @@ export function StageGroupPickerDialog({
     });
 
     setSelectedItems(preSelected);
+    setInitialSelected(preSelected);
   }, [activeGroup, existingStageNames]);
+
+  const isDirty = ((activeGroup || group)?.items || []).some(
+    (item) => Boolean(selectedItems[item.id]) !== Boolean(initialSelected[item.id]),
+  );
+  const { requestClose, discardDialog } = useDiscardChangesGuard(isDirty, () =>
+    onOpenChange(false),
+  );
 
   if (!open || !group) return null;
 
@@ -110,7 +120,7 @@ export function StageGroupPickerDialog({
         <span>Đã chọn {totalSelectedCount} / {items.length} công đoạn</span>
       </div>
       <div className="flex gap-2">
-        <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
+        <Button variant="outline" size="sm" onClick={requestClose}>
           Hủy
         </Button>
         <Button
@@ -127,10 +137,12 @@ export function StageGroupPickerDialog({
   );
 
   return (
+    <>
     <Modal
       open={open}
       title={`Sửa công đoạn nhóm: ${currentGroup.name || currentGroup.code || ""}`}
-      onClose={() => onOpenChange(false)}
+      onClose={requestClose}
+      closeOnClickOutside
       footer={modalFooter}
     >
       <div className="space-y-3">
@@ -213,5 +225,7 @@ export function StageGroupPickerDialog({
         </div>
       </div>
     </Modal>
+    {discardDialog}
+    </>
   );
 }

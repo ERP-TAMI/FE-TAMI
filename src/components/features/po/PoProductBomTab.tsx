@@ -242,7 +242,7 @@ export function PoProductBomTab({
       <BomLinesTable
         lines={bom.lines || []}
         bomCode={bom.bomCode}
-        readOnly={readOnly}
+        readOnly={readOnly || isProductLocked}
         currentStatus={currentStatus}
         isHistorical={false}
         costPerUnit={bom.costPerUnit}

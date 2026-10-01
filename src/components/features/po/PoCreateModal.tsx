@@ -10,6 +10,7 @@ import {
   CalenderIcon,
 } from "@/icons";
 import type { CreatePoInput, AttachedDocItem } from "@/types/po";
+import { useDiscardChangesGuard } from "@/hooks/useDiscardChangesGuard";
 import {
   PO_DOCUMENT_CATEGORIES,
   getDocumentCategoryInfo,
@@ -195,6 +196,12 @@ export function PoCreateModal({ isOpen, isPending, uploadProgress, onClose, onSu
     onClose();
   };
 
+  const { requestClose, discardDialog } = useDiscardChangesGuard(
+    [poCode, customerPoCode, customerNameSnapshot, deadline, note].some((v) => v.trim() !== "") ||
+      attachedFiles.length > 0,
+    handleResetAndClose,
+  );
+
   const validateStep1 = (): boolean => {
     setErrorMsg(null);
 
@@ -334,9 +341,12 @@ export function PoCreateModal({ isOpen, isPending, uploadProgress, onClose, onSu
   );
 
   return (
+    <>
     <Modal
       open={isOpen}
-      onClose={handleResetAndClose}
+      onClose={requestClose}
+      closeDisabled={isPending}
+      closeOnClickOutside
       title="Tạo đơn hàng PO mới"
       size="lg"
     >
@@ -669,7 +679,7 @@ export function PoCreateModal({ isOpen, isPending, uploadProgress, onClose, onSu
               <Button
                 variant="outline"
                 size="md"
-                onClick={handleResetAndClose}
+                onClick={requestClose}
                 disabled={isPending}
               >
                 Hủy
@@ -903,7 +913,7 @@ export function PoCreateModal({ isOpen, isPending, uploadProgress, onClose, onSu
               </Button>
 
               <div className="flex items-center gap-3">
-                <Button variant="outline" size="md" onClick={handleResetAndClose}>
+                <Button variant="outline" size="md" onClick={requestClose}>
                   Hủy
                 </Button>
                 <Button size="md" type="button" onClick={handleNextToStep3}>
@@ -1131,7 +1141,7 @@ export function PoCreateModal({ isOpen, isPending, uploadProgress, onClose, onSu
                   <Button
                     variant="outline"
                     size="md"
-                    onClick={handleResetAndClose}
+                    onClick={requestClose}
                     disabled={isPending}
                   >
                     Hủy
@@ -1151,5 +1161,7 @@ export function PoCreateModal({ isOpen, isPending, uploadProgress, onClose, onSu
         )}
       </div>
     </Modal>
+    {discardDialog}
+    </>
   );
 }

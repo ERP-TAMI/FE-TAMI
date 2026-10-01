@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { EntityHistoryButton } from "@/components/features/audit/EntityHistoryButton";
+import { useDiscardChangesGuard } from "@/hooks/useDiscardChangesGuard";
 import {
   Button,
   ConfirmDialog,
@@ -64,9 +66,16 @@ interface Props {
   poId: string;
   productId: string;
   readOnly?: boolean;
+  /** Tách khỏi readOnly: sản phẩm/PO đã khóa vẫn tải ảnh được, chỉ khu Quản lý thì không. */
+  canDownload?: boolean;
 }
 
-export function PoProductSampleRoundsTab({ poId, productId, readOnly = false }: Props) {
+export function PoProductSampleRoundsTab({
+  poId,
+  productId,
+  readOnly = false,
+  canDownload = !readOnly,
+}: Props) {
   const { toast, showToast, hideToast } = useToast();
   const roundsQuery = useProductSampleRounds(poId, productId);
   const rounds = roundsQuery.data ?? [];
@@ -261,7 +270,7 @@ export function PoProductSampleRoundsTab({ poId, productId, readOnly = false }: 
   };
 
   const handleDownloadImage = async (roundId: string, image: ProductSampleImage) => {
-    if (readOnly) return;
+    if (!canDownload) return;
     // No noopener/noreferrer: those make window.open() return null, so we couldn't navigate it later.
     const popup = window.open("", "_blank");
     try {
@@ -280,18 +289,42 @@ export function PoProductSampleRoundsTab({ poId, productId, readOnly = false }: 
 
   const isSubmitting = createMutation.isPending || updateMutation.isPending;
 
+  const initialForm: RoundFormState = editingRound
+    ? {
+        sampleDate: editingRound.sampleDate?.slice(0, 10) || todayIso(),
+        feedback: editingRound.feedback || "",
+        status: editingRound.status,
+      }
+    : emptyFormState();
+  const isFormDirty =
+    isFormOpen &&
+    (formState.sampleDate !== initialForm.sampleDate ||
+      formState.feedback !== initialForm.feedback ||
+      formState.status !== initialForm.status);
+  const { requestClose: requestCloseForm, discardDialog } = useDiscardChangesGuard(
+    isFormDirty,
+    () => setIsFormOpen(false),
+  );
+
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <h3 className="text-theme-base font-bold text-gray-900 dark:text-white">
           Đợt may mẫu ({rounds.length})
         </h3>
-        {!readOnly && (
-          <Button size="sm" onClick={openCreateForm}>
-            <PlusIcon className="h-4 w-4" />
-            Thêm đợt may mẫu
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          <EntityHistoryButton
+            aggregateType="PurchaseOrderProductSampleRound"
+            parentId={productId}
+            title="Lịch sử: Đợt may mẫu"
+          />
+          {!readOnly && (
+            <Button size="sm" onClick={openCreateForm}>
+              <PlusIcon className="h-4 w-4" />
+              Thêm đợt may mẫu
+            </Button>
+          )}
+        </div>
       </div>
 
       {roundsQuery.isLoading ? (
@@ -416,23 +449,23 @@ export function PoProductSampleRoundsTab({ poId, productId, readOnly = false }: 
                             className="h-full w-full object-cover"
                           />
                         </button>
-                        {!readOnly && <div className="absolute right-1.5 top-1.5 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                          <button
+                        {(canDownload || !readOnly) && <div className="absolute right-1.5 top-1.5 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                          {canDownload && <button
                             type="button"
                             onClick={() => void handleDownloadImage(round.id, image)}
                             className="rounded-lg bg-black/50 p-1.5 text-white hover:bg-black/70"
                             title="Tải ảnh về"
                           >
                             <DownloadIcon className="h-4 w-4" />
-                          </button>
-                          <button
+                          </button>}
+                          {!readOnly && <button
                             type="button"
                             onClick={() => setPendingRemoveImage({ roundId: round.id, image })}
                             className="rounded-lg bg-black/50 p-1.5 text-white hover:bg-error-600"
                             title="Gỡ ảnh"
                           >
                             <TrashBinIcon className="h-4 w-4" />
-                          </button>
+                          </button>}
                         </div>}
                       </div>
                     ))}
@@ -468,14 +501,16 @@ export function PoProductSampleRoundsTab({ poId, productId, readOnly = false }: 
 
       {!readOnly && <Modal
         open={isFormOpen}
-        onClose={() => setIsFormOpen(false)}
+        onClose={requestCloseForm}
+        closeDisabled={isSubmitting}
+        closeOnClickOutside
         title={
           editingRound ? `Sửa đợt may mẫu ${editingRound.roundNo}` : "Thêm đợt may mẫu mới"
         }
         size="md"
         footer={
           <div className="flex justify-end gap-2.5">
-            <Button variant="outline" onClick={() => setIsFormOpen(false)}>
+            <Button variant="outline" onClick={requestCloseForm}>
               Huỷ
             </Button>
             <Button onClick={() => void handleSubmitForm()} loading={isSubmitting}>
@@ -600,7 +635,7 @@ export function PoProductSampleRoundsTab({ poId, productId, readOnly = false }: 
                 </span>
               )}
 
-              {!readOnly && (
+              {canDownload && (
                 <button
                   type="button"
                   onClick={() => void handleDownloadImage(viewingImage.roundId, viewingImage.image)}
@@ -671,6 +706,7 @@ export function PoProductSampleRoundsTab({ poId, productId, readOnly = false }: 
         closeLabel="Đóng thông báo"
         onClose={hideToast}
       />
+      {discardDialog}
     </div>
   );
 }
