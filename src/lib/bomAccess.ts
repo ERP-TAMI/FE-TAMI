@@ -2,7 +2,7 @@ import type { AuthUser } from "@/store/authStore";
 
 const BOM_CREATE_ROLES = new Set(["nvkh", "tpkh", "sa"]);
 
-const BOM_COST_ROLES = new Set(["tpkh", "accounting", "sa"]);
+const BOM_COST_ROLES = new Set(["accounting", "sa"]);
 
 export function canCreateBom(user: AuthUser | { roleCode?: string } | null): boolean {
   if (!user?.roleCode) return false;
@@ -60,7 +60,7 @@ export function canEditTechnicalLines(
   )
     return false;
   const role = user.roleCode.toLowerCase().trim();
-  if (status === "wait_nvkh") return role === "nvkh";
+  if (status === "wait_nvkh") return role === "nvkh" || role === "tpkh";
   if (status === "wait_rd") return role === "rd";
   if (status === "wait_tpkh_confirm") return role === "tpkh";
   return false;
@@ -191,6 +191,11 @@ export function canCreateRevision(
   if (status !== "closed") return false;
   const role = user.roleCode.toLowerCase().trim();
   return role === "sa" || role === "tpkh" || role === "nvkh";
+}
+
+export function canPromoteRevision(user: AuthUser | { roleCode?: string } | null): boolean {
+  if (!user?.roleCode) return false;
+  return user.roleCode.toLowerCase().trim() === "sa";
 }
 
 export function canCopyFitBom(

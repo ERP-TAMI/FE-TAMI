@@ -24,12 +24,10 @@ const hooks = vi.hoisted(() => ({
   useUpdateBom: { isPending: false, mutateAsync: vi.fn() },
   useBomRevisions: vi.fn(),
   useBomRevisionDetail: vi.fn(),
-  useBomRevisionHistory: vi.fn(),
   useBomRevisionDiff: vi.fn(),
-  useAddBomLine: { isPending: false, mutateAsync: vi.fn() },
-  useUpdateBomLine: { isPending: false, mutateAsync: vi.fn() },
-  useDeleteBomLine: { isPending: false, mutateAsync: vi.fn() },
-  useReorderBomLines: { isPending: false, mutateAsync: vi.fn() },
+  useSaveBomLines: { isPending: false, mutateAsync: vi.fn() },
+  useSaveBomCosts: { isPending: false, mutateAsync: vi.fn() },
+  usePromoteBomRevision: { isPending: false, mutateAsync: vi.fn() },
   useForwardBom: { isPending: false, mutateAsync: vi.fn() },
   useRejectBom: { isPending: false, mutateAsync: vi.fn() },
   useApproveBom: { isPending: false, mutateAsync: vi.fn() },
@@ -103,12 +101,10 @@ vi.mock("@/hooks/useBoms", () => ({
   useBomRevisions: () => hooks.useBomRevisions(),
   useBomRevisionDetail: (bomId?: string, revisionId?: string) =>
     hooks.useBomRevisionDetail(bomId, revisionId),
-  useBomRevisionHistory: () => hooks.useBomRevisionHistory(),
   useBomRevisionDiff: () => hooks.useBomRevisionDiff(),
-  useAddBomLine: () => hooks.useAddBomLine,
-  useUpdateBomLine: () => hooks.useUpdateBomLine,
-  useDeleteBomLine: () => hooks.useDeleteBomLine,
-  useReorderBomLines: () => hooks.useReorderBomLines,
+  useSaveBomLines: () => hooks.useSaveBomLines,
+  useSaveBomCosts: () => hooks.useSaveBomCosts,
+  usePromoteBomRevision: () => hooks.usePromoteBomRevision,
   useForwardBom: () => hooks.useForwardBom,
   useRejectBom: () => hooks.useRejectBom,
   useApproveBom: () => hooks.useApproveBom,
@@ -118,6 +114,14 @@ vi.mock("@/hooks/useBoms", () => ({
   useCopyFitToPoBom: () => hooks.useCopyFit,
   useDiscontinueBom: () => hooks.useDiscontinueBom,
   useBomAggregate: (params?: unknown) => hooks.useBomAggregate(params),
+}));
+
+vi.mock("@/components/features/audit/EntityHistoryButton", () => ({
+  EntityHistoryButton: ({ title }: { title?: string }) => (
+    <button type="button" data-testid="entity-history-button">
+      {title}
+    </button>
+  ),
 }));
 
 vi.mock("@/hooks/useStyles", () => ({
@@ -381,10 +385,9 @@ describe("PR-11: BOM V2 Final Integration & E2E Regression", () => {
       bomCode: "BOM-NEW",
     });
     hooks.useUpdateBom.mutateAsync.mockResolvedValue({});
-    hooks.useAddBomLine.mutateAsync.mockResolvedValue({});
-    hooks.useUpdateBomLine.mutateAsync.mockResolvedValue({});
-    hooks.useDeleteBomLine.mutateAsync.mockResolvedValue({});
-    hooks.useReorderBomLines.mutateAsync.mockResolvedValue({});
+    hooks.useSaveBomLines.mutateAsync.mockResolvedValue({ rowVersion: 2, lines: [] });
+    hooks.useSaveBomCosts.mutateAsync.mockResolvedValue({ rowVersion: 2, lines: [] });
+    hooks.usePromoteBomRevision.mutateAsync.mockResolvedValue({});
     hooks.useForwardBom.mutateAsync.mockResolvedValue({});
     hooks.useRejectBom.mutateAsync.mockResolvedValue({});
     hooks.useApproveBom.mutateAsync.mockResolvedValue({});
@@ -439,25 +442,6 @@ describe("PR-11: BOM V2 Final Integration & E2E Regression", () => {
 
     hooks.useBomRevisionDetail.mockReturnValue({
       data: mockRevisionDetail,
-      isLoading: false,
-    });
-
-    hooks.useBomRevisionHistory.mockReturnValue({
-      data: [
-        {
-          id: "hist-1",
-          revisionId: "rev-po-01",
-          oldStatus: "wait_nvkh",
-          newStatus: "wait_rd",
-          action: "forward",
-          changedAt: "2026-09-10T00:00:00Z",
-          fromStatus: "wait_nvkh",
-          toStatus: "wait_rd",
-          createdAt: "2026-09-10T00:00:00Z",
-          note: "Chuyển R&D",
-          changedBy: "NVKH Nguyễn Văn A",
-        },
-      ],
       isLoading: false,
     });
 
@@ -723,7 +707,9 @@ describe("PR-11: BOM V2 Final Integration & E2E Regression", () => {
       expect(screen.getByText("Chỉ may 40/2")).toBeTruthy();
       expect(screen.getAllByText("Chỉ may")[0]).toBeTruthy();
 
-      // At N1, add material button is available
+      // At N1, the edit button is available and unlocks adding materials
+      expect(screen.queryByText("Thêm vật tư")).toBeNull();
+      fireEvent.click(screen.getByRole("button", { name: /Chỉnh sửa/ }));
       expect(screen.getByText("Thêm vật tư")).toBeTruthy();
     });
 
@@ -749,6 +735,7 @@ describe("PR-11: BOM V2 Final Integration & E2E Regression", () => {
       renderWithRouter(<BomDetailPage />, { initialEntries: ["/bom/bom-v2-test-id"] });
 
       expect(screen.queryByText("Thêm vật tư")).toBeNull();
+      expect(screen.queryByRole("button", { name: /Chỉnh sửa/ })).toBeNull();
     });
   });
 
@@ -916,7 +903,7 @@ describe("PR-11: BOM V2 Final Integration & E2E Regression", () => {
       renderWithRouter(<BomDetailPage />, { initialEntries: ["/bom/bom-v2-test-id"] });
 
       // Switch to Revisions tab
-      fireEvent.click(screen.getByRole("button", { name: /Lịch sử/i }));
+      fireEvent.click(screen.getByText(/Lịch sử phiên bản/i));
 
       const diffBtn = screen.getByText("So sánh");
       fireEvent.click(diffBtn);
@@ -925,14 +912,11 @@ describe("PR-11: BOM V2 Final Integration & E2E Regression", () => {
       expect(screen.getByText("Keo dựng vải")).toBeTruthy();
     });
 
-    it("21. history timeline renders revision audit log chronologically", () => {
+    it("21. history is opened from the shared audit buttons, not from a hidden tab", () => {
       renderWithRouter(<BomDetailPage />, { initialEntries: ["/bom/bom-v2-test-id"] });
 
-      const historyTab = screen.getByRole("button", { name: "Nhật ký duyệt" });
-      fireEvent.click(historyTab);
-
-      expect(screen.getAllByText("Chuyển R&D")[0]).toBeTruthy();
-      expect(screen.getByText("NVKH Nguyễn Văn A")).toBeTruthy();
+      expect(screen.queryByRole("button", { name: "Nhật ký duyệt" })).toBeNull();
+      expect(screen.getAllByTestId("entity-history-button").length).toBe(2);
     });
   });
 
@@ -1163,7 +1147,7 @@ describe("PR-11: BOM V2 Final Integration & E2E Regression", () => {
   // =======================================================================
   describe("Cost & Historical Snapshot Regression", () => {
     it("34. detail page renders formatted costs for authorized roles and handles null correctly", () => {
-      hooks.mockUser = { roleCode: "TPKH", fullName: "Trưởng phòng KH" };
+      hooks.mockUser = { roleCode: "SA", fullName: "Quản trị" };
       const nullCostBom: BomDetail = {
         ...mockDetailBom,
         lines: [

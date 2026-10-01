@@ -351,13 +351,17 @@ export default function BomAggregatePage() {
   };
 
   // Count of eligible approved PO BOMs for KPI card
-  const { data: approvedBomsResponse } = useBoms({
-    type: "po",
-    status: "closed",
-    purchaseOrder: purchaseOrderId,
-    style: styleId,
-    limit: 1,
-  });
+  const { data: approvedBomsResponse } = useBoms(
+    {
+      type: "po",
+      status: "closed",
+      purchaseOrder: purchaseOrderId,
+      style: styleId,
+      limit: 1,
+    },
+    // Backend đã trả meta.totalBoms; chỉ hỏi thêm khi thiếu
+    { enabled: Boolean(aggregateResponse) && meta.totalBoms === undefined },
+  );
 
   const distinctBomCount = bomId
     ? 1

@@ -3,7 +3,7 @@ import apiClient from "@/lib/apiClient";
 import { bomsApi } from "./boms.api";
 
 vi.mock("@/lib/apiClient", () => ({
-  default: { get: vi.fn(), post: vi.fn(), patch: vi.fn(), delete: vi.fn() },
+  default: { get: vi.fn(), post: vi.fn(), patch: vi.fn(), put: vi.fn(), delete: vi.fn() },
 }));
 
 describe("bomsApi contract & request mapping", () => {
@@ -92,63 +92,66 @@ describe("bomsApi contract & request mapping", () => {
     });
   });
 
-  describe("getRevisionHistory contract normalization", () => {
-    it("maps BE canonical contract (oldStatus, newStatus, changedAt, action, reason) to FE fields", async () => {
-      const bePayload = [
-        {
-          id: "hist-01",
-          revisionId: "rev-01",
-          oldStatus: null,
-          newStatus: "wait_nvkh",
-          action: "create",
-          reason: null,
-          changedBy: "User 1",
-          changedAt: "2026-09-20T08:00:00.000Z",
-        },
-        {
-          id: "hist-02",
-          revisionId: "rev-01",
-          oldStatus: "wait_nvkh",
-          newStatus: "wait_rd",
-          action: "forward",
-          reason: null,
-          changedBy: "User 2",
-          changedAt: "2026-09-20T09:00:00.000Z",
-        },
-        {
-          id: "hist-03",
-          revisionId: "rev-01",
-          oldStatus: "wait_rd",
-          newStatus: "wait_nvkh",
-          action: "reject",
-          reason: "Chưa đúng định mức chỉ may",
-          changedBy: "User 3",
-          changedAt: "2026-09-20T10:00:00.000Z",
-        },
-      ];
+  describe("saveLines", () => {
+    it("PUTs the whole table to /boms/:id/lines and drops empty fields", async () => {
+      vi.mocked(apiClient.put).mockResolvedValue({ data: { rowVersion: 3, lines: [] } });
 
-      vi.mocked(apiClient.get).mockResolvedValue({ data: bePayload });
+      const result = await bomsApi.saveLines("bom-01", {
+        expectedRowVersion: 2,
+        lines: [
+          { lineId: "line-1", consumption: 2, note: null },
+          { materialId: "mat-9", consumption: 0.5, note: "mới" },
+        ],
+      });
 
-      const result = await bomsApi.getRevisionHistory("bom-01", "rev-01");
+      expect(apiClient.put).toHaveBeenCalledWith("/boms/bom-01/lines", {
+        expectedRowVersion: 2,
+        lines: [
+          { lineId: "line-1", consumption: 2, note: null },
+          { materialId: "mat-9", consumption: 0.5, note: "mới" },
+        ],
+      });
+      expect(result.rowVersion).toBe(3);
+    });
 
-      expect(apiClient.get).toHaveBeenCalledWith("/boms/bom-01/revisions/rev-01/history");
-      expect(result).toHaveLength(3);
+    it("omits expectedRowVersion when the caller has none", async () => {
+      vi.mocked(apiClient.put).mockResolvedValue({ data: { rowVersion: 1, lines: [] } });
+      await bomsApi.saveLines("bom-01", { lines: [] });
+      expect(apiClient.put).toHaveBeenCalledWith("/boms/bom-01/lines", { lines: [] });
+    });
+  });
 
-      // Verify canonical BE properties
-      expect(result[0].oldStatus).toBeNull();
-      expect(result[0].newStatus).toBe("wait_nvkh");
-      expect(result[0].changedAt).toBe("2026-09-20T08:00:00.000Z");
+  describe("saveCosts", () => {
+    it("PATCHes only the changed prices to /boms/:id/lines/costs", async () => {
+      vi.mocked(apiClient.patch).mockResolvedValue({ data: { rowVersion: 4, lines: [] } });
 
-      // Verify backwards-compatible FE aliases
-      expect(result[0].fromStatus).toBe("wait_nvkh"); // fallback when oldStatus is null
-      expect(result[0].toStatus).toBe("wait_nvkh");
-      expect(result[0].createdAt).toBe("2026-09-20T08:00:00.000Z");
+      await bomsApi.saveCosts("bom-01", {
+        items: [
+          { lineId: "line-1", unitCost: 1200.5 },
+          { lineId: "line-2", unitCost: null },
+        ],
+        expectedRowVersion: 3,
+      });
 
-      // Reject step
-      expect(result[2].oldStatus).toBe("wait_rd");
-      expect(result[2].newStatus).toBe("wait_nvkh");
-      expect(result[2].action).toBe("reject");
-      expect(result[2].reason).toBe("Chưa đúng định mức chỉ may");
+      expect(apiClient.patch).toHaveBeenCalledWith("/boms/bom-01/lines/costs", {
+        items: [
+          { lineId: "line-1", unitCost: 1200.5 },
+          { lineId: "line-2", unitCost: null },
+        ],
+        expectedRowVersion: 3,
+      });
+    });
+  });
+
+  describe("promoteRevision", () => {
+    it("POSTs the trimmed reason to /boms/:id/revisions/:revisionId/promote", async () => {
+      vi.mocked(apiClient.post).mockResolvedValue({ data: { id: "bom-01" } });
+
+      await bomsApi.promoteRevision("bom-01", "rev-1", { reason: "  quay về bản 1  " });
+
+      expect(apiClient.post).toHaveBeenCalledWith("/boms/bom-01/revisions/rev-1/promote", {
+        reason: "quay về bản 1",
+      });
     });
   });
 

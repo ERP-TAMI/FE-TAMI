@@ -1,4 +1,10 @@
-import { useQuery, useQueries, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  useQuery,
+  useQueries,
+  useMutation,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { bomsApi } from "@/api/boms.api";
 import { bomKeys } from "@/api/boms.keys";
 import type {
@@ -7,9 +13,9 @@ import type {
   CreateBomPayload,
   UpdateBomPayload,
   DiscontinueBomPayload,
-  CreateBomLinePayload,
-  UpdateBomLinePayload,
-  ReorderBomLinesPayload,
+  SaveBomLinesPayload,
+  SaveBomCostsPayload,
+  PromoteRevisionPayload,
   ForwardBomPayload,
   RejectBomPayload,
   ApproveBomPayload,
@@ -25,6 +31,7 @@ export function useBoms(
     queryKey: bomKeys.list(params),
     queryFn: () => bomsApi.getBoms(params),
     enabled: options?.enabled ?? true,
+    placeholderData: keepPreviousData,
   });
 }
 
@@ -90,49 +97,38 @@ export function useDiscontinueBom(bomId: string) {
   });
 }
 
-export function useAddBomLine(bomId: string) {
+export function useSaveBomLines(bomId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (payload: CreateBomLinePayload) => bomsApi.addLine(bomId, payload),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: bomKeys.detail(bomId) });
-      void queryClient.invalidateQueries({ queryKey: bomKeys.lists() });
+    mutationFn: (payload: SaveBomLinesPayload) => bomsApi.saveLines(bomId, payload),
+    onSuccess: async () => {
+      void queryClient.invalidateQueries({ queryKey: bomKeys.lists(), refetchType: "none" });
+      void queryClient.invalidateQueries({ queryKey: bomKeys.aggregates(), refetchType: "none" });
+      await queryClient.invalidateQueries({ queryKey: bomKeys.detail(bomId) });
     },
   });
 }
 
-export function useUpdateBomLine(bomId: string) {
+export function useSaveBomCosts(bomId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ lineId, payload }: { lineId: string; payload: UpdateBomLinePayload }) =>
-      bomsApi.updateLine(bomId, lineId, payload),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: bomKeys.detail(bomId) });
-      void queryClient.invalidateQueries({ queryKey: bomKeys.lists() });
+    mutationFn: (payload: SaveBomCostsPayload) => bomsApi.saveCosts(bomId, payload),
+    onSuccess: async () => {
+      void queryClient.invalidateQueries({ queryKey: bomKeys.lists(), refetchType: "none" });
+      void queryClient.invalidateQueries({ queryKey: bomKeys.aggregates(), refetchType: "none" });
+      await queryClient.invalidateQueries({ queryKey: bomKeys.detail(bomId) });
     },
   });
 }
 
-export function useDeleteBomLine(bomId: string) {
+export function usePromoteBomRevision(bomId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (arg: string | { lineId: string; expectedRowVersion?: number }) =>
-      typeof arg === "string"
-        ? bomsApi.deleteLine(bomId, arg)
-        : bomsApi.deleteLine(bomId, arg.lineId, arg.expectedRowVersion),
+    mutationFn: ({ revisionId, payload }: { revisionId: string; payload: PromoteRevisionPayload }) =>
+      bomsApi.promoteRevision(bomId, revisionId, payload),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: bomKeys.detail(bomId) });
-      void queryClient.invalidateQueries({ queryKey: bomKeys.lists() });
-    },
-  });
-}
-
-export function useReorderBomLines(bomId: string) {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (payload: ReorderBomLinesPayload) => bomsApi.reorderLines(bomId, payload),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: bomKeys.detail(bomId) });
+      // Promote đổi bản hiện hành của cả BOM nên làm mới mọi thứ thuộc BOM
+      void queryClient.invalidateQueries({ queryKey: bomKeys.all });
     },
   });
 }
@@ -202,14 +198,8 @@ export function useBomRevisionDetail(bomId: string | undefined, revisionId: stri
     queryKey: bomKeys.revisionDetail(bomId || "", revisionId || ""),
     queryFn: () => bomsApi.getRevisionDetail(bomId!, revisionId!),
     enabled: Boolean(bomId && revisionId),
-  });
-}
-
-export function useBomRevisionHistory(bomId: string | undefined, revisionId: string | undefined) {
-  return useQuery({
-    queryKey: bomKeys.revisionHistory(bomId || "", revisionId || ""),
-    queryFn: () => bomsApi.getRevisionHistory(bomId!, revisionId!),
-    enabled: Boolean(bomId && revisionId),
+    // Phiên bản không phải hiện hành là bất biến — chỉ đổi khi SA promote (đã làm mới ở đó)
+    staleTime: 5 * 60 * 1000,
   });
 }
 
@@ -222,6 +212,7 @@ export function useBomRevisionDiff(
     queryKey: bomKeys.revisionDiff(bomId || "", revisionId || "", compareWithId),
     queryFn: () => bomsApi.getRevisionDiff(bomId!, revisionId!, compareWithId),
     enabled: Boolean(bomId && revisionId),
+    staleTime: 5 * 60 * 1000,
   });
 }
 
@@ -249,5 +240,6 @@ export function useBomAggregate(
   return useQuery({
     queryKey: bomKeys.aggregate(bomId, queryParams),
     queryFn: () => bomsApi.getBomAggregate(idOrParams, params),
+    placeholderData: keepPreviousData,
   });
 }

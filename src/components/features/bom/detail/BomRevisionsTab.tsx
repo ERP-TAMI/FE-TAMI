@@ -1,4 +1,4 @@
-import { GitBranch, GitCompare, CheckCircle2 } from "lucide-react";
+import { GitBranch, GitCompare, CheckCircle2, RotateCcw } from "lucide-react";
 import type { RevisionListItem } from "@/types/bom";
 import { BomStatusBadge } from "../BomStatusBadge";
 import { formatDate } from "@/lib/bomAccess";
@@ -7,14 +7,18 @@ interface BomRevisionsTabProps {
   revisions: RevisionListItem[];
   isLoading: boolean;
   currentRevisionId?: string;
+  canPromote?: boolean;
   onOpenDiff: (revId: string) => void;
+  onPromote?: (revId: string) => void;
 }
 
 export function BomRevisionsTab({
   revisions,
   isLoading,
   currentRevisionId,
+  canPromote = false,
   onOpenDiff,
+  onPromote,
 }: BomRevisionsTabProps) {
   if (isLoading) {
     return (
@@ -122,6 +126,17 @@ export function BomRevisionsTab({
                           <GitCompare className="h-3.5 w-3.5 text-brand-600 dark:text-brand-400" />
                           <span>So sánh</span>
                         </button>
+                        {canPromote && !isCurrent && onPromote && (
+                          <button
+                            type="button"
+                            onClick={() => onPromote(rev.id)}
+                            className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-brand-200 bg-brand-50 px-2.5 py-1 text-theme-xs font-medium text-brand-700 shadow-2xs hover:bg-brand-100 dark:border-brand-900 dark:bg-brand-950/40 dark:text-brand-300"
+                            title="Đặt làm phiên bản hiện hành"
+                          >
+                            <RotateCcw className="h-3.5 w-3.5" />
+                            <span>Đặt làm hiện hành</span>
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

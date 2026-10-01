@@ -6,20 +6,9 @@ import {
   ExternalLink,
   FileSpreadsheet,
 } from "lucide-react";
-import {
-  useBoms,
-  useBom,
-  useCreateBom,
-  useAddBomLine,
-  useUpdateBomLine,
-  useDeleteBomLine,
-  useReorderBomLines,
-} from "@/hooks/useBoms";
-import { BomLinesTable } from "@/components/features/bom/detail/BomLinesTable";
-import { BomAddMaterialDrawer } from "@/components/features/bom/detail/BomAddMaterialDrawer";
-import { BomLineDeleteDialog } from "@/components/features/bom/detail/BomLineDeleteDialog";
+import { useBoms, useBom, useCreateBom } from "@/hooks/useBoms";
+import { BomLinesEditor } from "@/components/features/bom/detail/BomLinesEditor";
 import { useToast } from "@/hooks/useToast";
-import type { BomLineItem, CreateBomLinePayload, UpdateBomLinePayload } from "@/types/bom";
 
 interface PoProductBomTabProps {
   productId: string;
@@ -38,6 +27,7 @@ export function PoProductBomTab({
   readOnly = false,
 }: PoProductBomTabProps) {
   const { showToast } = useToast();
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   // Query BOMs for this product
   const {
@@ -60,15 +50,6 @@ export function PoProductBomTab({
 
   // Mutations
   const createBomMutation = useCreateBom();
-  const addLineMutation = useAddBomLine(bomId || "");
-  const updateLineMutation = useUpdateBomLine(bomId || "");
-  const deleteLineMutation = useDeleteBomLine(bomId || "");
-  const reorderLinesMutation = useReorderBomLines(bomId || "");
-
-  // Modal states for Line Modal / Delete Dialog
-  const [isLineModalOpen, setIsLineModalOpen] = useState(false);
-  const [editingLine, setEditingLine] = useState<BomLineItem | null>(null);
-  const [deletingLine, setDeletingLine] = useState<BomLineItem | null>(null);
 
   // Create BOM handler
   const handleCreateBomForProduct = async () => {
@@ -83,68 +64,6 @@ export function PoProductBomTab({
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { message?: string } }; message?: string };
       showToast(axiosErr?.response?.data?.message || axiosErr?.message || "Lỗi khi tạo BOM", "error");
-    }
-  };
-
-  // Line CRUD handlers
-  const handleOpenAddLine = () => {
-    if (readOnly || isProductLocked) return;
-    setEditingLine(null);
-    setIsLineModalOpen(true);
-  };
-
-  const handleOpenEditLine = (line: BomLineItem) => {
-    if (readOnly || isProductLocked) return;
-    setEditingLine(line);
-    setIsLineModalOpen(true);
-  };
-
-  const handleCreateLine = async (payload: CreateBomLinePayload) => {
-    if (readOnly || isProductLocked) return;
-    await addLineMutation.mutateAsync({ ...payload, expectedRowVersion: bom?.rowVersion });
-    showToast("Đã thêm nguyên phụ liệu vào BOM", "success");
-  };
-
-  const handleCreateBatch = async (payloads: CreateBomLinePayload[]) => {
-    if (readOnly || isProductLocked) return;
-    for (const payload of payloads) {
-      await addLineMutation.mutateAsync(payload);
-    }
-    showToast(`Đã thêm ${payloads.length} nguyên phụ liệu vào BOM`, "success");
-  };
-
-  const handleUpdateLine = async (payload: UpdateBomLinePayload) => {
-    if (!editingLine || readOnly || isProductLocked) return;
-    await updateLineMutation.mutateAsync({
-      lineId: editingLine.id,
-      payload: { ...payload, expectedRowVersion: bom?.rowVersion },
-    });
-    showToast("Đã cập nhật dòng vật tư", "success");
-  };
-
-  const handleConfirmDelete = async () => {
-    if (!deletingLine || readOnly || isProductLocked) return;
-    try {
-      await deleteLineMutation.mutateAsync({
-        lineId: deletingLine.id,
-        expectedRowVersion: bom?.rowVersion,
-      });
-      showToast("Đã xóa dòng vật tư", "success");
-      setDeletingLine(null);
-    } catch (err: unknown) {
-      const axiosErr = err as { response?: { data?: { message?: string } } };
-      showToast(axiosErr?.response?.data?.message || "Lỗi khi xóa", "error");
-    }
-  };
-
-  const handleReorder = async (newLineIds: string[]) => {
-    if (readOnly || isProductLocked) return;
-    try {
-      await reorderLinesMutation.mutateAsync({ lineIds: newLineIds, expectedRowVersion: bom?.rowVersion });
-      showToast("Đã sắp xếp lại thứ tự vật tư", "success");
-    } catch (err: unknown) {
-      const axiosErr = err as { response?: { data?: { message?: string } }; message?: string };
-      showToast(axiosErr?.response?.data?.message || axiosErr?.message || "Lỗi khi sắp xếp", "error");
     }
   };
 
@@ -239,48 +158,21 @@ export function PoProductBomTab({
       </div>
 
       {/* Embedded Inline BOM Lines Table */}
-      <BomLinesTable
-        lines={bom.lines || []}
+      <BomLinesEditor
+        bomId={bom.id}
         bomCode={bom.bomCode}
+        rowVersion={bom.rowVersion}
+        lines={bom.lines || []}
         readOnly={readOnly || isProductLocked}
         currentStatus={currentStatus}
         isHistorical={false}
+        revisionId={bom.currentRevision?.id}
         costPerUnit={bom.costPerUnit}
         currentOrderQuantity={bom.currentOrderQuantity}
         currentOrderCost={bom.currentOrderCost}
-        onAddLine={handleOpenAddLine}
-        onEditLine={handleOpenEditLine}
-        onDeleteLine={(line) => setDeletingLine(line)}
-        onReorderLines={handleReorder}
-        isReordering={reorderLinesMutation.isPending}
-        onAddLineInline={handleCreateLine}
-        onUpdateLineInline={(lineId, payload) =>
-          updateLineMutation.mutateAsync({ lineId, payload }).then(() => {
-            showToast("Đã cập nhật dòng vật tư", "success");
-          })
-        }
-      />
-
-      {/* Modal Add / Edit Line (Alternative Modal Option) */}
-      <BomAddMaterialDrawer
-        isOpen={isLineModalOpen && !readOnly && !isProductLocked}
-        onClose={() => setIsLineModalOpen(false)}
-        initialLine={editingLine}
-        existingLines={bom.lines || []}
-        onSubmitCreate={handleCreateLine}
-        onSubmitCreateBatch={handleCreateBatch}
-        onSubmitUpdate={handleUpdateLine}
-        currentStatus={currentStatus}
-        isHistorical={false}
-      />
-
-      {/* Modal Confirm Delete Line */}
-      <BomLineDeleteDialog
-        isOpen={Boolean(deletingLine) && !readOnly && !isProductLocked}
-        line={deletingLine}
-        onClose={() => setDeletingLine(null)}
-        onConfirm={handleConfirmDelete}
-        isSubmitting={deleteLineMutation.isPending}
+        isDrawerOpen={isDrawerOpen}
+        onDrawerOpenChange={setIsDrawerOpen}
+        showToast={showToast}
       />
     </div>
   );

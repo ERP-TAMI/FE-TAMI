@@ -443,8 +443,8 @@ describe("BomPage (PR-08 Frontend BOM V2)", () => {
   // 4. COST DISPLAY & ROLE MASKING
   // ──────────────────────────────────────────────────────────────────────────
   describe("4. Cost Display & Role Masking", () => {
-    it("displays formatted USD cost for TPKH role", () => {
-      hooks.mockUser = { roleCode: "TPKH", fullName: "Trưởng phòng KH" };
+    it("displays formatted USD cost for SA role", () => {
+      hooks.mockUser = { roleCode: "SA", fullName: "Quản trị" };
       renderBomPage();
 
       // PO BOM cost: $125
@@ -480,7 +480,7 @@ describe("BomPage (PR-08 Frontend BOM V2)", () => {
     });
 
     it("renders '$0.0000' accurately when cost is 0 (does not treat 0 as falsy null)", () => {
-      hooks.mockUser = { roleCode: "TPKH", fullName: "Trưởng phòng KH" };
+      hooks.mockUser = { roleCode: "SA", fullName: "Quản trị" };
       const zeroCostItem: BomListItem = {
         ...mockBomPoItem,
         id: "bom-zero-cost",

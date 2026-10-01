@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Search, CheckCircle2, Circle, Edit2 } from "lucide-react";
+import { Search, CheckCircle2, Circle } from "lucide-react";
 import type { BomLineItem } from "@/types/bom";
 
 export interface RdLineInputState {
@@ -11,16 +11,12 @@ interface BomRdEntryTableProps {
   lines: BomLineItem[];
   inputs: Record<string, RdLineInputState>;
   onChangeInput: (lineId: string, field: "consumption" | "note", value: string) => void;
-  onEditLine: (line: BomLineItem) => void;
-  isEditingInModal?: boolean;
 }
 
 export function BomRdEntryTable({
   lines,
   inputs,
   onChangeInput,
-  onEditLine,
-  isEditingInModal = false,
 }: BomRdEntryTableProps) {
   const [search, setSearch] = useState("");
   const [selectedGroup, setSelectedGroup] = useState("all");
@@ -182,23 +178,18 @@ export function BomRdEntryTable({
 
                       {/* 6. Định mức / SP * (Inline input) */}
                       <td className="px-3.5 py-3 text-center">
-                        {isEditingInModal ? (
-                          <span className="font-mono text-xs font-semibold text-gray-900 dark:text-white">
-                            {lineState.consumption || "—"}
-                          </span>
-                        ) : (
-                          <input
-                            type="number"
-                            step="0.0001"
-                            min="0"
-                            placeholder="-"
-                            value={lineState.consumption}
-                            onChange={(e) =>
-                              onChangeInput(line.id, "consumption", e.target.value)
-                            }
-                            className="h-9 w-24 rounded-lg border border-gray-200 bg-white px-2.5 text-center font-mono text-xs font-semibold text-gray-900 shadow-2xs focus:border-brand-500 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                          />
-                        )}
+                        <input
+                          type="number"
+                          step="0.0001"
+                          min="0"
+                          placeholder="-"
+                          value={lineState.consumption}
+                          onChange={(e) =>
+                            onChangeInput(line.id, "consumption", e.target.value)
+                          }
+                          className="h-9 w-24 rounded-lg border border-gray-200 bg-white px-2.5 text-center font-mono text-xs font-semibold text-gray-900 shadow-2xs focus:border-brand-500 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                        />
+
                       </td>
 
                       {/* 7. Ghi chú (Inline input) */}
@@ -228,16 +219,6 @@ export function BomRdEntryTable({
                               <span>Chưa nhập</span>
                             </span>
                           )}
-
-                          {/* Accessible button to preserve test compatibility */}
-                          <button
-                            type="button"
-                            onClick={() => onEditLine(line)}
-                            title="Chỉnh sửa dòng vật tư"
-                            className="sr-only"
-                          >
-                            <Edit2 className="h-3.5 w-3.5" />
-                          </button>
                         </div>
                       </td>
                     </tr>

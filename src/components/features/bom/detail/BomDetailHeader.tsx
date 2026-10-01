@@ -1,4 +1,5 @@
 import { PageHeader } from "@/components/shared/PageHeader";
+import { EntityHistoryButton } from "@/components/features/audit/EntityHistoryButton";
 import {
   Plus,
   ArrowRight,
@@ -19,13 +20,13 @@ import {
   canForwardBom,
   canRejectBom,
   canApproveBom,
-  canAddBomLine,
   canCreateRevision,
   canDiscontinueBom,
   canCopyFitBom,
   canEditHeader,
   getForwardActionInfo,
   formatDate,
+  BOM_STATUS_CONFIG,
 } from "@/lib/bomAccess";
 import { useAuthStore } from "@/store/authStore";
 
@@ -37,7 +38,6 @@ interface BomDetailHeaderProps {
   isHistorical?: boolean;
   onSelectRevision?: (revisionId: string) => void;
   onOpenEditHeaderModal?: () => void;
-  onOpenAddLineModal: () => void;
   onOpenForwardModal: () => void;
   onOpenRejectModal: () => void;
   onOpenApproveModal: () => void;
@@ -56,7 +56,6 @@ export function BomDetailHeader({
   isHistorical = false,
   onSelectRevision,
   onOpenEditHeaderModal,
-  onOpenAddLineModal,
   onOpenForwardModal,
   onOpenRejectModal,
   onOpenApproveModal,
@@ -91,7 +90,6 @@ export function BomDetailHeader({
   const showForward = !readOnly && canForwardBom(user, currentStatus, isHistorical);
   const showReject = !readOnly && canRejectBom(user, currentStatus, isHistorical);
   const showApprove = !readOnly && canApproveBom(user, currentStatus, isHistorical);
-  const showAddLine = !readOnly && canAddBomLine(user, currentStatus, isHistorical);
   const showCreateRevision = !readOnly && canCreateRevision(user, currentStatus, isHistorical);
   const showDiscontinue = !readOnly && canDiscontinueBom(user, currentStatus, isHistorical);
   const showCopyFit = !readOnly && canCopyFitBom(user, bom, isHistorical);
@@ -195,7 +193,7 @@ export function BomDetailHeader({
                     const isCurrent = r.id === bom.currentRevision?.id || r.isCurrent;
                     return (
                       <option key={r.id} value={r.id}>
-                        Phiên bản {r.revisionNo} ({isCurrent ? "Đang làm việc" : "Đã đóng"})
+                        Phiên bản {r.revisionNo} ({isCurrent ? "Hiện hành" : BOM_STATUS_CONFIG[r.status]?.label ?? r.status})
                       </option>
                     );
                   })}
@@ -222,6 +220,13 @@ export function BomDetailHeader({
 
         {/* Right: Actions Group in single horizontal line matching mockup */}
         <div className="flex items-center gap-2.5 shrink-0">
+          <EntityHistoryButton
+            aggregateType="Bom"
+            aggregateId={bom.id}
+            title="Lịch sử: Thông tin BOM"
+            size="md"
+          />
+
           {/* A dropdown only earns its keep once there are 2+ extra actions to
            * hide — with just one, show it directly instead of making the
            * user open a menu for a single item. */}
@@ -338,7 +343,7 @@ export function BomDetailHeader({
             </button>
           )}
 
-          {/* Primary Action: + Lưu nháp (in wait_rd or wait_accounting) or + Thêm nguyên liệu */}
+          {/* Primary Action: Lưu nháp (R&D entry mode) */}
           {!readOnly && (currentStatus === "wait_rd" || currentStatus === "wait_accounting") && onSaveDraft ? (
             <button
               type="button"
@@ -348,15 +353,6 @@ export function BomDetailHeader({
             >
               <Plus className="h-4 w-4" />
               <span>{isSavingDraft ? "Đang lưu..." : "Lưu nháp"}</span>
-            </button>
-          ) : showAddLine ? (
-            <button
-              type="button"
-              onClick={onOpenAddLineModal}
-              className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-brand-600 px-4 py-2 text-theme-sm font-semibold text-white shadow-xs transition-colors hover:bg-brand-700 active:scale-[0.98]"
-            >
-              <Plus className="h-4 w-4" />
-              <span>Thêm nguyên liệu</span>
             </button>
           ) : null}
         </div>

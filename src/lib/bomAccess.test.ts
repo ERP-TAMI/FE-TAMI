@@ -133,9 +133,9 @@ describe("bomAccess - Permission Matrix & Workflow Guards", () => {
   });
 
   describe("canEditTechnicalLines", () => {
-    it("N1: only nvkh can edit lines", () => {
+    it("N1: nvkh and tpkh can edit lines", () => {
       expect(canEditTechnicalLines(roles.nvkh, "wait_nvkh")).toBe(true);
-      expect(canEditTechnicalLines(roles.tpkh, "wait_nvkh")).toBe(false);
+      expect(canEditTechnicalLines(roles.tpkh, "wait_nvkh")).toBe(true);
       expect(canEditTechnicalLines(roles.rd, "wait_nvkh")).toBe(false);
     });
 

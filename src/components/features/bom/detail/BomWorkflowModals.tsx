@@ -8,7 +8,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import type { BomStatus } from "@/types/bom";
-import { getAvailableRejectTargets, getForwardActionInfo } from "@/lib/bomAccess";
+import { BOM_STATUS_CONFIG, getAvailableRejectTargets, getForwardActionInfo } from "@/lib/bomAccess";
 import { getApiError } from "@/lib/apiError";
 import { Modal } from "@/components/shared/Modal";
 
@@ -594,4 +594,135 @@ export function BomCreateRevisionModal({
       </form>
     </Modal>
   );
+}
+
+// ==========================================
+// 6. PROMOTE REVISION MODAL (SA)
+// ==========================================
+interface PromoteRevisionModalProps {
+  isOpen: boolean;
+  targetRevisionNo: number;
+  currentRevisionNo: number;
+  currentStatus: string;
+  onClose: () => void;
+  onSubmit: (reason: string) => Promise<void>;
+}
+
+export function BomPromoteRevisionModal({
+  isOpen,
+  targetRevisionNo,
+  currentRevisionNo,
+  currentStatus,
+  onClose,
+  onSubmit,
+}: PromoteRevisionModalProps) {
+  const [reason, setReason] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      setReason("");
+      setError(null);
+    }
+  }, [isOpen]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = reason.trim();
+    if (!trimmed) {
+      setError("Vui lòng nhập lý do đổi phiên bản hiện hành");
+      return;
+    }
+    setIsSubmitting(true);
+    setError(null);
+    try {
+      await onSubmit(trimmed);
+      onClose();
+    } catch (err: unknown) {
+      setError(getApiError(err, "Lỗi khi đổi phiên bản hiện hành").message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const isInProgress = currentStatus !== "closed";
+
+  return (
+    <Modal
+      open={isOpen}
+      onClose={onClose}
+      size="md"
+      title={
+        <div className="flex items-center gap-2.5">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-50 text-brand-600 dark:bg-brand-950/40 dark:text-brand-400">
+            <GitBranch className="h-5 w-5" />
+          </div>
+          <div>
+            <h3 className="text-base font-bold text-gray-900 dark:text-white">
+              Đặt Phiên bản {targetRevisionNo} làm hiện hành
+            </h3>
+            <p className="text-theme-xs text-gray-500 dark:text-gray-400">
+              Phiên bản {currentRevisionNo} được giữ nguyên, chỉ thôi là bản hiện hành
+            </p>
+          </div>
+        </div>
+      }
+    >
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        {isInProgress && (
+          <div className="flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50 p-3 text-theme-xs text-amber-800 dark:border-amber-900/30 dark:bg-amber-950/30 dark:text-amber-300">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+            <span>
+              Phiên bản {currentRevisionNo} đang ở bước &quot;{currentStatusLabel(currentStatus)}
+              &quot; và sẽ không còn là bản hiện hành. Công việc đang làm dở trên đó được giữ lại
+              nhưng người xử lý sẽ không thấy nó nữa.
+            </span>
+          </div>
+        )}
+
+        {error && (
+          <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-theme-xs text-rose-700 dark:border-rose-900/30 dark:bg-rose-950/30 dark:text-rose-300">
+            {error}
+          </div>
+        )}
+
+        <div>
+          <label className="mb-1 block text-theme-xs font-semibold text-gray-700 dark:text-gray-300">
+            Lý do <span className="text-rose-500">*</span>
+          </label>
+          <textarea
+            rows={3}
+            required
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="Ví dụ: Phiên bản mới nhất sai định mức, quay về bản đã duyệt trước đó..."
+            className="w-full rounded-xl border border-gray-200 bg-white p-3 text-theme-sm text-gray-900 focus:border-brand-500 focus:outline-none dark:border-gray-800 dark:bg-gray-900 dark:text-white"
+          />
+        </div>
+
+        <div className="flex items-center justify-end gap-3 pt-2">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={isSubmitting}
+            className="cursor-pointer rounded-xl border border-gray-200 px-4 py-2 text-theme-sm font-semibold text-gray-700 hover:bg-gray-50 dark:border-gray-800 dark:text-gray-300 dark:hover:bg-gray-800"
+          >
+            Hủy
+          </button>
+          <button
+            type="submit"
+            disabled={isSubmitting || !reason.trim()}
+            className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-brand-500 px-5 py-2 text-theme-sm font-semibold text-white shadow-xs hover:bg-brand-600 disabled:opacity-50"
+          >
+            {isSubmitting ? "Đang đổi..." : `Đặt Phiên bản ${targetRevisionNo} làm hiện hành`}
+          </button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+function currentStatusLabel(status: string): string {
+  return BOM_STATUS_CONFIG[status]?.label ?? status;
 }
