@@ -69,7 +69,8 @@ export function EditProfileModal({
   return (
     <Modal
       open={open}
-      title="Chỉnh sửa thông tin cá nhân"
+      title="Chỉnh sửa hồ sơ"
+      subtitle="Cập nhật họ tên và số điện thoại liên hệ."
       onClose={handleClose}
       closeDisabled={isSubmitting}
       size="lg"
@@ -79,15 +80,6 @@ export function EditProfileModal({
         onSubmit={(event) => void submit(event)}
         noValidate
       >
-        <div className="rounded-xl border border-gray-100 bg-gray-50/70 p-4 dark:border-gray-800 dark:bg-gray-800/40">
-          <p className="text-theme-sm font-medium text-gray-900 dark:text-white">
-            Quy định cập nhật thông tin
-          </p>
-          <p className="text-theme-xs mt-1 text-gray-500 dark:text-gray-400">
-            Bạn có thể cập nhật Họ và tên và Số điện thoại liên hệ. Địa chỉ email ({user.email}) và Vai trò ({user.roleName}) được bảo vệ và quản lý bởi Quản trị viên hệ thống.
-          </p>
-        </div>
-
         {serverError && (
           <Alert variant="error" title="Không thể cập nhật thông tin">
             {serverError.message}
@@ -109,23 +101,6 @@ export function EditProfileModal({
             error={formState.errors.phone?.message}
             disabled={isSubmitting}
             {...register("phone")}
-          />
-          <Input
-            label="Địa chỉ email"
-            type="email"
-            value={user.email}
-            disabled
-            readOnly
-            hint="Email tài khoản do Quản trị viên cấp, không thể tự chỉnh sửa."
-            className="cursor-not-allowed bg-gray-50 text-gray-500 disabled:opacity-100 dark:bg-gray-800/60 dark:text-gray-400"
-          />
-          <Input
-            label="Vai trò"
-            value={user.roleName}
-            disabled
-            readOnly
-            hint="Vai trò và quyền hạn do Quản trị viên hệ thống quản lý."
-            className="cursor-not-allowed bg-gray-50 text-gray-500 disabled:opacity-100 dark:bg-gray-800/60 dark:text-gray-400"
           />
         </div>
 
