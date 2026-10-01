@@ -12,6 +12,10 @@ import type {
 } from "@/types/po";
 import type { Style } from "@/types/style";
 import { ProductColorSizeEditor, calcTotalFromColors } from "@/components/features/po/ProductColorSizeEditor";
+import {
+  getPoProductDeadlineError,
+  getPoProductTodayDate,
+} from "./poProductValidation";
 
 interface Props {
   isOpen: boolean;
@@ -78,10 +82,12 @@ export function PoAddProductModal({
   const [fieldErrors, setFieldErrors] = useState<{
     productCode?: string;
     productName?: string;
+    deadline?: string;
     colors?: string;
   }>({});
   const productCodeInputRef = useRef<HTMLInputElement>(null);
   const productNameInputRef = useRef<HTMLInputElement>(null);
+  const deadlineInputRef = useRef<HTMLInputElement>(null);
   const colorsCardRef = useRef<HTMLDivElement>(null);
 
   // Import options from Style
@@ -270,7 +276,9 @@ export function PoAddProductModal({
     return namedColors.some((c) => (c.sizes || []).some((s) => Number(s.quantity) > 0));
   }, [colors]);
 
-  const step1Complete = Boolean(productCode.trim() && productName.trim() && step1ColorsValid);
+  const step1Complete = Boolean(
+    productCode.trim() && productName.trim() && deadline && step1ColorsValid,
+  );
 
   const validateStep1 = (): boolean => {
     setErrorMsg(null);
@@ -278,6 +286,8 @@ export function PoAddProductModal({
     const errors: typeof fieldErrors = {};
     if (!productCode.trim()) errors.productCode = "Mã sản phẩm không được để trống.";
     if (!productName.trim()) errors.productName = "Tên sản phẩm không được để trống.";
+    const deadlineError = getPoProductDeadlineError(deadline);
+    if (deadlineError) errors.deadline = deadlineError;
 
     const namedColors = colors.filter((c) => c.colorName.trim().length > 0);
     if (namedColors.length === 0) {
@@ -323,6 +333,8 @@ export function PoAddProductModal({
       productCodeInputRef.current?.focus();
     } else if (errors.productName) {
       productNameInputRef.current?.focus();
+    } else if (errors.deadline) {
+      deadlineInputRef.current?.focus();
     } else if (errors.colors) {
       colorsCardRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
     }
@@ -381,7 +393,7 @@ export function PoAddProductModal({
         sourceStyleId: mode === "select" && sourceStyleId ? sourceStyleId : undefined,
         category: category.trim() || undefined,
         materialNote: materialNote.trim() || undefined,
-        deadline: deadline || undefined,
+        deadline,
         colors: cleanColors.length > 0 ? cleanColors : undefined,
         importOptions,
         poDocumentIds: selectedPoDocIds.length > 0 ? selectedPoDocIds : undefined,
@@ -844,11 +856,18 @@ export function PoAddProductModal({
                 </div>
 
                 <div className="sm:w-1/2 sm:pr-2">
-                  <label className="block text-sm font-semibold text-gray-800 dark:text-gray-200 mb-1.5">
-                    Hạn giao (Deadline)
+                  <label htmlFor="po-product-deadline" className="block text-sm font-semibold text-gray-800 dark:text-gray-200 mb-1.5">
+                    Hạn giao (Deadline) <span className="text-error-700 dark:text-error-400">*</span>
                   </label>
                   <input
+                    ref={deadlineInputRef}
+                    id="po-product-deadline"
                     type="date"
+                    min={getPoProductTodayDate()}
+                    required
+                    aria-required="true"
+                    aria-invalid={Boolean(fieldErrors.deadline)}
+                    aria-describedby={fieldErrors.deadline ? "po-product-deadline-error" : undefined}
                     value={deadline}
                     onClick={(e) => {
                       try {
@@ -857,9 +876,27 @@ export function PoAddProductModal({
                         /* ignore when unsupported */
                       }
                     }}
-                    onChange={(e) => setDeadline(e.target.value)}
-                    className="w-full rounded-xl border border-gray-250 bg-white px-4 py-3 text-sm text-gray-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800 dark:bg-gray-800 dark:text-white cursor-pointer"
+                    onChange={(e) => {
+                      setDeadline(e.target.value);
+                      if (fieldErrors.deadline) {
+                        setFieldErrors((prev) => ({ ...prev, deadline: undefined }));
+                      }
+                    }}
+                    className={`w-full rounded-xl border bg-white px-4 py-3 text-sm text-gray-900 outline-none transition dark:bg-gray-800 dark:text-white cursor-pointer ${
+                      fieldErrors.deadline
+                        ? "border-error-500 focus:border-error-500 focus:ring-2 focus:ring-error-500/20 dark:border-error-500"
+                        : "border-gray-250 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-800"
+                    }`}
                   />
+                  {fieldErrors.deadline && (
+                    <p
+                      id="po-product-deadline-error"
+                      role="alert"
+                      className="mt-1.5 text-xs font-medium text-error-700 dark:text-error-400"
+                    >
+                      {fieldErrors.deadline}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>

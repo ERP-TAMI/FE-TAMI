@@ -8,6 +8,10 @@ import type {
   ImportFitOptions,
   PurchaseOrderDocumentItem,
 } from "@/types/po";
+import {
+  getPoProductDeadlineError,
+  getPoProductTodayDate,
+} from "./poProductValidation";
 
 interface Props {
   isPending: boolean;
@@ -106,6 +110,8 @@ export function PoAddProductForm({
     setErrorMsg(null);
     if (!productCode.trim()) { setErrorMsg("Mã sản phẩm không được để trống."); return false; }
     if (!productName.trim()) { setErrorMsg("Tên sản phẩm không được để trống."); return false; }
+    const deadlineError = getPoProductDeadlineError(deadline);
+    if (deadlineError) { setErrorMsg(deadlineError); return false; }
     return true;
   };
 
@@ -126,7 +132,7 @@ export function PoAddProductForm({
         sourceStyleId: mode === "select" && sourceStyleId ? sourceStyleId : undefined,
         category: category.trim() || undefined,
         materialNote: materialNote.trim() || undefined,
-        deadline: deadline || undefined,
+        deadline,
         importOptions,
         poDocumentIds: selectedPoDocIds.length > 0 ? selectedPoDocIds : undefined,
       });
@@ -268,8 +274,8 @@ export function PoAddProductForm({
               <input type="text" placeholder="Áo thun, Quần..." value={category} onChange={(e) => setCategory(e.target.value)} className={inputCls} />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300">Hạn giao</label>
-              <input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} className={inputCls} />
+              <label htmlFor="po-product-shared-deadline" className="block text-xs font-semibold text-gray-700 dark:text-gray-300">Hạn giao <span className="text-error-700 dark:text-error-400">*</span></label>
+              <input id="po-product-shared-deadline" type="date" min={getPoProductTodayDate()} required aria-required="true" value={deadline} onChange={(e) => setDeadline(e.target.value)} className={`${inputCls} cursor-pointer`} />
             </div>
           </div>
 

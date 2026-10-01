@@ -11,6 +11,10 @@ import type {
   ProductColorItem,
 } from "@/types/po";
 import { ProductColorSizeEditor } from "@/components/features/po/ProductColorSizeEditor";
+import {
+  getPoProductDeadlineError,
+  getPoProductTodayDate,
+} from "./poProductValidation";
 
 interface Props {
   isPending: boolean;
@@ -78,10 +82,12 @@ export function PoAddProductQuickForm({
   const [fieldErrors, setFieldErrors] = useState<{
     productCode?: string;
     productName?: string;
+    deadline?: string;
     colors?: string;
   }>({});
   const productCodeInputRef = useRef<HTMLInputElement>(null);
   const productNameInputRef = useRef<HTMLInputElement>(null);
+  const deadlineInputRef = useRef<HTMLInputElement>(null);
   const colorsCardRef = useRef<HTMLDivElement>(null);
   const [showImportConfirm, setShowImportConfirm] = useState(false);
 
@@ -237,6 +243,8 @@ export function PoAddProductQuickForm({
     const errors: typeof fieldErrors = {};
     if (!productCode.trim()) errors.productCode = "Mã sản phẩm không được để trống.";
     if (!productName.trim()) errors.productName = "Tên sản phẩm không được để trống.";
+    const deadlineError = getPoProductDeadlineError(deadline);
+    if (deadlineError) errors.deadline = deadlineError;
 
     const namedColors = colors.filter((c) => c.colorName.trim().length > 0);
     if (namedColors.length === 0) {
@@ -282,6 +290,8 @@ export function PoAddProductQuickForm({
       productCodeInputRef.current?.focus();
     } else if (errors.productName) {
       productNameInputRef.current?.focus();
+    } else if (errors.deadline) {
+      deadlineInputRef.current?.focus();
     } else if (errors.colors) {
       colorsCardRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
     }
@@ -324,7 +334,7 @@ export function PoAddProductQuickForm({
         sourceStyleId: mode === "select" && sourceStyleId ? sourceStyleId : undefined,
         category: category.trim() || undefined,
         materialNote: materialNote.trim() || undefined,
-        deadline: deadline || undefined,
+        deadline,
         colors: cleanColors.length > 0 ? cleanColors : undefined,
         importOptions,
         poDocumentIds: attachedDocIds.length > 0 ? attachedDocIds : undefined,
@@ -569,15 +579,36 @@ export function PoAddProductQuickForm({
             />
           </div>
           <div>
-            <label className="block text-[11px] font-semibold text-gray-600 dark:text-gray-400 mb-1">
-              Hạn giao
+            <label htmlFor="po-product-quick-deadline" className="block text-[11px] font-semibold text-gray-700 dark:text-gray-300 mb-1">
+              Hạn giao <span className="text-error-700 dark:text-error-400">*</span>
             </label>
             <input
+              ref={deadlineInputRef}
+              id="po-product-quick-deadline"
               type="date"
+              min={getPoProductTodayDate()}
+              required
+              aria-required="true"
+              aria-invalid={Boolean(fieldErrors.deadline)}
+              aria-describedby={fieldErrors.deadline ? "po-product-quick-deadline-error" : undefined}
               value={deadline}
-              onChange={(e) => setDeadline(e.target.value)}
-              className={inputCls}
+              onChange={(e) => {
+                setDeadline(e.target.value);
+                if (fieldErrors.deadline) {
+                  setFieldErrors((prev) => ({ ...prev, deadline: undefined }));
+                }
+              }}
+              className={`${inputCls} ${fieldErrors.deadline ? errorInputCls : ""} cursor-pointer`}
             />
+            {fieldErrors.deadline && (
+              <p
+                id="po-product-quick-deadline-error"
+                role="alert"
+                className="mt-1 text-[11px] font-medium text-error-700 dark:text-error-400"
+              >
+                {fieldErrors.deadline}
+              </p>
+            )}
           </div>
         </div>
 

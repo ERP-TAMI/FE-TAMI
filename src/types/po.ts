@@ -194,7 +194,7 @@ export interface CreatePoProductInput {
   sourceStyleId?: string;
   category?: string;
   materialNote?: string;
-  deadline?: string;
+  deadline: string;
   as3bCmBaseDays?: number;
   importOptions?: ImportFitOptions;
   poDocumentIds?: string[];
