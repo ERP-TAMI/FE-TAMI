@@ -213,7 +213,8 @@ describe("application routes", () => {
         }),
       ).toBeTruthy();
       expect(screen.getByRole("heading", { name: "Thông tin cá nhân" })).toBeTruthy();
-      expect(screen.getByRole("heading", { name: "Bảo mật" })).toBeTruthy();
+      fireEvent.click(screen.getByRole("tab", { name: "Bảo mật" }));
+      expect(screen.getByRole("heading", { name: "Bảo mật tài khoản" })).toBeTruthy();
     },
   );
 
