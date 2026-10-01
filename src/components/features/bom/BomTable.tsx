@@ -309,7 +309,7 @@ export function BomTable({
                           className="mt-2 inline-flex items-center gap-1.5 rounded-xl bg-brand-500 px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-brand-600"
                         >
                           <Plus className="h-3.5 w-3.5" />
-                          Tạo BOM mới
+                          Tạo NPL mới
                         </button>
                       )
                     )}

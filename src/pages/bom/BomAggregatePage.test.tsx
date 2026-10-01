@@ -375,7 +375,7 @@ describe("BomAggregatePage", () => {
       expect(hooks.refetchMock).toHaveBeenCalledTimes(1);
     });
 
-    it("5. empty state: renders empty state when no BOM PO data exists", () => {
+    it("5. empty state: renders empty state when no NPL PO data exists", () => {
       hooks.useBomAggregate.mockReturnValue({
         data: { data: [], meta: { total: 0, page: 1, limit: 20, totalPages: 0 } },
         isLoading: false,
@@ -575,7 +575,7 @@ describe("BomAggregatePage", () => {
       expect(mockSetSearchParams).toHaveBeenCalled();
     });
 
-    it("8. PO -> BOM dependency: BOM selector populates BOMs for selected PO and resets on PO change", () => {
+    it("8. PO -> NPL dependency: NPL selector populates BOMs for selected PO and resets on PO change", () => {
       mockSearchParams.set("purchaseOrderId", "po-1");
       render(
         <BrowserRouter>
@@ -587,13 +587,13 @@ describe("BomAggregatePage", () => {
       expect(within(bomSelect).getByText("PRD-01")).toBeTruthy();
       expect(within(bomSelect).getByText("PRD-02")).toBeTruthy();
 
-      // Changing PO resets BOM selection
+      // Changing PO resets NPL selection
       const poSelect = screen.getByTestId("aggregate-po-select");
       fireEvent.change(poSelect, { target: { value: "po-2" } });
       expect(mockSetSearchParams).toHaveBeenCalled();
     });
 
-    it("9. BOM filter: selecting a BOM sets bomId", () => {
+    it("9. NPL filter: selecting a NPL sets bomId", () => {
       mockSearchParams.set("purchaseOrderId", "po-1");
       render(
         <BrowserRouter>
@@ -1036,7 +1036,7 @@ describe("BomAggregatePage", () => {
       expect(screen.queryByText("Chi phí dự tính")).toBeNull();
     });
 
-    it("31. TPKH does not see cost: BOM cost is excluded from material aggregate table", () => {
+    it("31. TPKH does not see cost: NPL cost is excluded from material aggregate table", () => {
       hooks.mockUser = { roleCode: "TPKH", fullName: "Trưởng phòng KH" };
       render(
         <BrowserRouter>
@@ -1048,7 +1048,7 @@ describe("BomAggregatePage", () => {
       expect(screen.queryByText("Chi phí dự tính")).toBeNull();
     });
 
-    it("32. ACCOUNTING does not see cost: BOM cost is excluded from material aggregate table", () => {
+    it("32. ACCOUNTING does not see cost: NPL cost is excluded from material aggregate table", () => {
       hooks.mockUser = { roleCode: "ACCOUNTING", fullName: "Kế toán" };
       render(
         <BrowserRouter>
@@ -1060,7 +1060,7 @@ describe("BomAggregatePage", () => {
       expect(screen.queryByText("Chi phí dự tính")).toBeNull();
     });
 
-    it("33. SA does not see cost: BOM cost is excluded from material aggregate table", () => {
+    it("33. SA does not see cost: NPL cost is excluded from material aggregate table", () => {
       hooks.mockUser = { roleCode: "SA", fullName: "Super Admin / Giám đốc" };
       render(
         <BrowserRouter>
@@ -1097,7 +1097,7 @@ describe("BomAggregatePage", () => {
       expect(screen.queryByText("Chi phí dự tính")).toBeNull();
     });
 
-    it("35. summary cards exclude price and cross-unit total: renders only BOM and material counts", () => {
+    it("35. summary cards exclude price and cross-unit total: renders only NPL and material counts", () => {
       hooks.mockUser = { roleCode: "TPKH", fullName: "Trưởng phòng KH" };
       hooks.useBomAggregate.mockReturnValue({
         data: {
@@ -1351,7 +1351,7 @@ describe("BomAggregatePage", () => {
   // TABS NAVIGATION (Tổng hợp theo vật tư & Theo màu / size)
   // ==========================================
   describe("TABS NAVIGATION", () => {
-    it("44. removes 'Theo sản phẩm' and 'Chi tiết theo BOM' tabs from UI", () => {
+    it("44. removes 'Theo sản phẩm' and 'Chi tiết theo NPL' tabs from UI", () => {
       render(
         <BrowserRouter>
           <BomAggregatePage />
@@ -1359,7 +1359,7 @@ describe("BomAggregatePage", () => {
       );
 
       expect(screen.queryByText("Theo sản phẩm")).toBeNull();
-      expect(screen.queryByText("Chi tiết theo BOM")).toBeNull();
+      expect(screen.queryByText("Chi tiết theo NPL")).toBeNull();
       expect(screen.getByText("Tổng hợp theo vật tư")).toBeTruthy();
       expect(screen.getByText("Theo màu / size")).toBeTruthy();
     });
@@ -1511,7 +1511,7 @@ describe("BomAggregatePage", () => {
       expect(screen.getAllByText("Đen")[0]).toBeTruthy();
     });
 
-    it("51. keeps PO dropdown enabled and selectable when BOM is selected", () => {
+    it("51. keeps PO dropdown enabled and selectable when NPL is selected", () => {
       mockSearchParams = new URLSearchParams("bomId=bom-1");
 
       render(
@@ -1528,7 +1528,7 @@ describe("BomAggregatePage", () => {
       expect(poSelect).toBeTruthy();
       expect(poSelect.disabled).toBe(false);
       expect(poSelect.textContent).toContain("Tất cả đơn hàng");
-      expect(poSelect.textContent).not.toContain("Khóa (đang lọc theo BOM)");
+      expect(poSelect.textContent).not.toContain("Khóa (đang lọc theo NPL)");
     });
 
     it("52. keeps PO dropdown enabled and limits BOMs to PO when PO is selected first", () => {

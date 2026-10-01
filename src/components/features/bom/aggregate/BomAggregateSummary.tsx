@@ -51,7 +51,7 @@ export function BomAggregateSummary({
             {totalBoms > 0 ? totalBoms : 0}
           </div>
           <span className="text-[11px] font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap">
-            BOM đã duyệt
+            NPL đã duyệt
           </span>
         </div>
       </div>
@@ -59,7 +59,7 @@ export function BomAggregateSummary({
       {/* Info Icon Tooltip */}
       <div
         className="hidden md:flex items-center text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-400 cursor-help"
-        title="Dữ liệu được cập nhật theo BOM đã duyệt trong khoảng thời gian đã chọn."
+        title="Dữ liệu được cập nhật theo NPL đã duyệt trong khoảng thời gian đã chọn."
       >
         <Info className="h-4 w-4" />
       </div>

@@ -10,6 +10,7 @@ export type ConfirmDialogProps = {
   cancelLabel?: string;
   variant?: "danger" | "primary";
   isSubmitting?: boolean;
+  closeOnClickOutside?: boolean;
   onConfirm: () => void;
   onClose: () => void;
 };
@@ -22,6 +23,7 @@ export function ConfirmDialog({
   cancelLabel = "Hủy",
   variant = "primary",
   isSubmitting = false,
+  closeOnClickOutside = false,
   onConfirm,
   onClose,
 }: ConfirmDialogProps) {
@@ -33,6 +35,8 @@ export function ConfirmDialog({
       title={title}
       closeLabel="Đóng hộp xác nhận"
       onClose={onClose}
+      closeDisabled={isSubmitting}
+      closeOnClickOutside={closeOnClickOutside}
       footer={
         <>
           <Button variant="outline" onClick={onClose}>

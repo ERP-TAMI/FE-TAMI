@@ -81,52 +81,43 @@ export const bomsApi = {
     return res.data;
   },
 
-  async addLine(id: string, payload: import("@/types/bom").CreateBomLinePayload): Promise<import("@/types/bom").BomLineItem> {
-    const cleanBody: Record<string, unknown> = {
-      materialId: payload.materialId,
-      consumption: payload.consumption !== undefined ? Number(payload.consumption) : 0,
+  async saveLines(
+    id: string,
+    payload: import("@/types/bom").SaveBomLinesPayload,
+  ): Promise<import("@/types/bom").SaveBomLinesResponse> {
+    const body: Record<string, unknown> = {
+      lines: payload.lines.map((row) => {
+        const line: Record<string, unknown> = {};
+        if (row.lineId) line.lineId = row.lineId;
+        if (row.materialId) line.materialId = row.materialId;
+        if (row.consumption !== undefined) line.consumption = Number(row.consumption);
+        if (row.note !== undefined) line.note = row.note;
+        return line;
+      }),
     };
-    if (payload.note !== undefined && payload.note !== null) {
-      cleanBody.note = payload.note;
-    }
-    if (payload.orderIndex !== undefined && payload.orderIndex !== null) {
-      cleanBody.orderIndex = Number(payload.orderIndex);
-    }
-    if (payload.expectedRowVersion !== undefined) cleanBody.expectedRowVersion = payload.expectedRowVersion;
-    const res = await apiClient.post<import("@/types/bom").BomLineItem>(`/boms/${id}/lines`, cleanBody);
+    if (payload.expectedRowVersion !== undefined) body.expectedRowVersion = payload.expectedRowVersion;
+    const res = await apiClient.put<import("@/types/bom").SaveBomLinesResponse>(`/boms/${id}/lines`, body);
     return res.data;
   },
 
-  async updateLine(id: string, lineId: string, payload: import("@/types/bom").UpdateBomLinePayload): Promise<import("@/types/bom").BomLineItem> {
-    const cleanBody: Record<string, unknown> = {};
-    if (payload.materialId !== undefined) cleanBody.materialId = payload.materialId;
-    if (payload.consumption !== undefined) cleanBody.consumption = Number(payload.consumption);
-    if (payload.unitCost !== undefined) cleanBody.unitCost = payload.unitCost;
-    if (payload.note !== undefined) cleanBody.note = payload.note;
-    if (payload.orderIndex !== undefined) cleanBody.orderIndex = Number(payload.orderIndex);
-    if (payload.expectedRowVersion !== undefined) cleanBody.expectedRowVersion = payload.expectedRowVersion;
-
-    const res = await apiClient.patch<import("@/types/bom").BomLineItem>(`/boms/${id}/lines/${lineId}`, cleanBody);
+  async saveCosts(
+    id: string,
+    payload: import("@/types/bom").SaveBomCostsPayload,
+  ): Promise<import("@/types/bom").SaveBomLinesResponse> {
+    const body: Record<string, unknown> = { items: payload.items };
+    if (payload.expectedRowVersion !== undefined) body.expectedRowVersion = payload.expectedRowVersion;
+    const res = await apiClient.patch<import("@/types/bom").SaveBomLinesResponse>(`/boms/${id}/lines/costs`, body);
     return res.data;
   },
 
-  async deleteLine(id: string, lineId: string, expectedRowVersion?: number): Promise<{ success: boolean; message: string }> {
-    const res = await apiClient.delete<{ success: boolean; message: string }>(`/boms/${id}/lines/${lineId}`, {
-      data: expectedRowVersion !== undefined ? { expectedRowVersion } : {},
+  async promoteRevision(
+    id: string,
+    revisionId: string,
+    payload: import("@/types/bom").PromoteRevisionPayload,
+  ): Promise<BomDetail> {
+    const res = await apiClient.post<BomDetail>(`/boms/${id}/revisions/${revisionId}/promote`, {
+      reason: payload.reason.trim(),
     });
-    return res.data;
-  },
-
-  async reorderLines(id: string, payload: import("@/types/bom").ReorderBomLinesPayload): Promise<import("@/types/bom").BomLineItem[]> {
-    let items = payload.items;
-    if ((!items || items.length === 0) && Array.isArray(payload.lineIds)) {
-      items = payload.lineIds.map((lineId, orderIndex) => ({ lineId, orderIndex }));
-    }
-    const cleanBody: Record<string, unknown> = {
-      items: Array.isArray(items) ? items : [],
-    };
-    if (payload.expectedRowVersion !== undefined) cleanBody.expectedRowVersion = payload.expectedRowVersion;
-    const res = await apiClient.put<import("@/types/bom").BomLineItem[]>(`/boms/${id}/lines/reorder`, cleanBody);
     return res.data;
   },
 
@@ -174,24 +165,6 @@ export const bomsApi = {
   async getRevisionDetail(id: string, revisionId: string): Promise<import("@/types/bom").RevisionDetail> {
     const res = await apiClient.get<import("@/types/bom").RevisionDetail>(`/boms/${id}/revisions/${revisionId}`);
     return res.data;
-  },
-
-  async getRevisionHistory(id: string, revisionId: string): Promise<import("@/types/bom").BomWorkflowHistoryItem[]> {
-    const res = await apiClient.get<Record<string, unknown>[]>(`/boms/${id}/revisions/${revisionId}/history`);
-    return (res.data || []).map((item) => ({
-      ...item,
-      id: String(item.id || ""),
-      revisionId: String(item.revisionId || revisionId),
-      oldStatus: (item.oldStatus !== undefined ? item.oldStatus : (item.fromStatus ?? null)) as import("@/types/bom").BomStatus | null,
-      newStatus: (item.newStatus ?? item.toStatus) as import("@/types/bom").BomStatus,
-      fromStatus: (item.fromStatus ?? item.oldStatus ?? item.newStatus) as import("@/types/bom").BomStatus,
-      toStatus: (item.toStatus ?? item.newStatus) as import("@/types/bom").BomStatus,
-      action: item.action as string | undefined,
-      reason: item.reason as string | null | undefined,
-      changedBy: item.changedBy as string | null | undefined,
-      changedAt: (item.changedAt ?? item.createdAt) as string | Date,
-      createdAt: (item.createdAt ?? item.changedAt) as string | Date,
-    }));
   },
 
   async getRevisionDiff(

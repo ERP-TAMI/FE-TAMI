@@ -1577,7 +1577,7 @@ export function StyleProductionDocTab({
         <ConfirmDialog
           open
           title="Ghi đè nội dung đã có?"
-          description="Section 1 (Mô tả hình dáng) và/hoặc Section 2 (Phụ liệu) hiện đã có nội dung. Đồng bộ lại sẽ ghi đè nội dung đang có bằng dữ liệu mới nhất từ Style + BOM."
+          description="Section 1 (Mô tả hình dáng) và/hoặc Section 2 (Phụ liệu) hiện đã có nội dung. Đồng bộ lại sẽ ghi đè nội dung đang có bằng dữ liệu mới nhất từ Style + NPL."
           confirmLabel="Ghi đè và đồng bộ"
           variant="danger"
           isSubmitting={resyncDoc.isPending}
