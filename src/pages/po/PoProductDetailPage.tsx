@@ -557,8 +557,9 @@ export default function PoProductDetailPage({
       }
       try {
         const res = await uploadImage.mutateAsync({
+          // BE kiểm tra entityId là 1 PO thật — không phải ID sản phẩm.
           entityType: "purchase-order",
-          entityId: productId,
+          entityId: poId,
           purpose: "sample_image",
           file,
         });

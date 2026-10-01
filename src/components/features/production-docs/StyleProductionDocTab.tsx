@@ -600,8 +600,9 @@ export function StyleProductionDocTab({
       const res = await uploadImage.mutateAsync(
         isProductMode
           ? {
+              // BE kiểm tra entityId là 1 PO thật — không phải ID sản phẩm.
               entityType: "purchase-order",
-              entityId: productId!,
+              entityId: poId!,
               purpose: "production_doc_image",
               file,
             }
@@ -1365,7 +1366,7 @@ export function StyleProductionDocTab({
                                 isProductMode
                                   ? {
                                       entityType: "purchase-order",
-                                      entityId: productId!,
+                                      entityId: poId!,
                                       purpose: "production_doc_image",
                                       file,
                                     }
