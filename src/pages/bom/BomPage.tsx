@@ -34,8 +34,7 @@ export default function BomPage() {
 
   // Parse URL search parameters with fallbacks
   const rawType = searchParams.get("type");
-  const typeParam: BomType | "all" =
-    rawType === "fit" || rawType === "po" ? rawType : "all";
+  const typeParam: BomType | "all" = rawType === "fit" || rawType === "po" ? rawType : "all";
   const statusParam = searchParams.get("status") || "";
   const searchParam = searchParams.get("search") || "";
 
@@ -58,8 +57,7 @@ export default function BomPage() {
       searchParams.get("startDate") ||
       searchParams.get("endDate"),
   );
-  const periodModeParam =
-    (searchParams.get("periodMode") as PeriodMode) || "month";
+  const periodModeParam = (searchParams.get("periodMode") as PeriodMode) || "month";
   const monthParam = searchParams.get("month") || currentMonth;
   const yearParam = searchParams.get("year") || currentYear;
   const startDateParam = searchParams.get("startDate") || "";
@@ -68,13 +66,9 @@ export default function BomPage() {
   const pageParam = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
   const limitParam = Math.max(1, parseInt(searchParams.get("limit") || "20", 10));
   const sortByParam =
-    (searchParams.get("sortBy") as
-      | "bomCode"
-      | "createdAt"
-      | "updatedAt"
-      | "deadline") || "updatedAt";
-  const sortOrderParam =
-    (searchParams.get("sortOrder") as "ASC" | "DESC") || "DESC";
+    (searchParams.get("sortBy") as "bomCode" | "createdAt" | "updatedAt" | "deadline") ||
+    "updatedAt";
+  const sortOrderParam = (searchParams.get("sortOrder") as "ASC" | "DESC") || "DESC";
 
   // URL state update helper
   const updateQueryParams = useCallback(
@@ -215,10 +209,8 @@ export default function BomPage() {
     search: searchParam || undefined,
     month: hasPeriodFilter && periodModeParam === "month" ? monthParam : undefined,
     year: hasPeriodFilter && periodModeParam === "year" ? yearParam : undefined,
-    startDate:
-      hasPeriodFilter && periodModeParam === "dateRange" ? startDateParam : undefined,
-    endDate:
-      hasPeriodFilter && periodModeParam === "dateRange" ? endDateParam : undefined,
+    startDate: hasPeriodFilter && periodModeParam === "dateRange" ? startDateParam : undefined,
+    endDate: hasPeriodFilter && periodModeParam === "dateRange" ? endDateParam : undefined,
     page: pageParam,
     limit: limitParam,
     sortBy: sortByParam,
@@ -230,10 +222,7 @@ export default function BomPage() {
   const totalPages = bomsData?.meta.totalPages ?? 1;
 
   const isFiltering =
-    typeParam !== "all" ||
-    Boolean(statusParam) ||
-    Boolean(searchParam) ||
-    hasPeriodFilter;
+    typeParam !== "all" || Boolean(statusParam) || Boolean(searchParam) || hasPeriodFilter;
 
   const handleViewDetail = (id: string, tab?: string) => {
     navigate(tab ? `/bom/${id}?tab=${tab}` : `/bom/${id}`);
@@ -253,10 +242,7 @@ export default function BomPage() {
         reason: "Ngừng sử dụng từ danh sách NPL",
         expectedRowVersion: detail.rowVersion,
       });
-      showToast(
-        `Đã ngừng sử dụng bảng định mức ${deletingBom.bomCode}`,
-        "success",
-      );
+      showToast(`Đã ngừng sử dụng bảng định mức ${deletingBom.bomCode}`, "success");
       setDeletingBom(null);
     } catch {
       showToast(
@@ -331,10 +317,7 @@ export default function BomPage() {
       )}
 
       {/* Create BOM Wizard Modal */}
-      <BomCreateWizardModal
-        open={isCreateOpen}
-        onClose={() => setIsCreateOpen(false)}
-      />
+      <BomCreateWizardModal open={isCreateOpen} onClose={() => setIsCreateOpen(false)} />
 
       {/* Discontinue Confirm Dialog */}
       <ConfirmDialog
@@ -342,6 +325,7 @@ export default function BomPage() {
         title="Ngừng sử dụng NPL"
         description={`Bạn có chắc chắn muốn ngừng sử dụng (khóa) bảng định mức "${deletingBom?.bomCode}"? Sau khi ngừng sử dụng, bảng NPL sẽ chuyển sang trạng thái Đã khóa và không thể chỉnh sửa.`}
         confirmLabel="Ngừng sử dụng"
+        closeOnClickOutside
         variant="danger"
         isSubmitting={discontinueMutation.isPending}
         onConfirm={handleConfirmDiscontinue}

@@ -1,6 +1,5 @@
 import { PageHeader } from "@/components/shared/PageHeader";
 import {
-  Plus,
   ArrowRight,
   RotateCcw,
   CheckCircle2,
@@ -10,6 +9,7 @@ import {
   MoreHorizontal,
   AlertOctagon,
   History,
+  Pencil,
 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import type { BomDetail, RevisionListItem } from "@/types/bom";
@@ -19,13 +19,13 @@ import {
   canForwardBom,
   canRejectBom,
   canApproveBom,
-  canAddBomLine,
   canCreateRevision,
   canDiscontinueBom,
   canCopyFitBom,
   canEditHeader,
   getForwardActionInfo,
   formatDate,
+  BOM_STATUS_CONFIG,
 } from "@/lib/bomAccess";
 import { useAuthStore } from "@/store/authStore";
 
@@ -37,15 +37,12 @@ interface BomDetailHeaderProps {
   isHistorical?: boolean;
   onSelectRevision?: (revisionId: string) => void;
   onOpenEditHeaderModal?: () => void;
-  onOpenAddLineModal: () => void;
   onOpenForwardModal: () => void;
   onOpenRejectModal: () => void;
   onOpenApproveModal: () => void;
   onOpenCreateRevisionModal: () => void;
   onOpenCopyFitModal: () => void;
   onOpenDiscontinueModal: () => void;
-  onSaveDraft?: () => void;
-  isSavingDraft?: boolean;
 }
 
 export function BomDetailHeader({
@@ -56,15 +53,12 @@ export function BomDetailHeader({
   isHistorical = false,
   onSelectRevision,
   onOpenEditHeaderModal,
-  onOpenAddLineModal,
   onOpenForwardModal,
   onOpenRejectModal,
   onOpenApproveModal,
   onOpenCreateRevisionModal,
   onOpenCopyFitModal,
   onOpenDiscontinueModal,
-  onSaveDraft,
-  isSavingDraft = false,
 }: BomDetailHeaderProps) {
   const user = useAuthStore((state) => state.user);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -83,15 +77,14 @@ export function BomDetailHeader({
   const currentStatus = isHistorical
     ? (bom.status as import("@/types/bom").BomStatus) || "closed"
     : bom.status === "discontinued" || Boolean(bom.discontinuedAt)
-    ? "discontinued"
-    : bom.status || bom.currentRevision?.status || "wait_nvkh";
+      ? "discontinued"
+      : bom.status || bom.currentRevision?.status || "wait_nvkh";
   const isDiscontinued = currentStatus === "discontinued" || !!bom.discontinuedAt;
 
   const showEditHeader = !readOnly && canEditHeader(user, currentStatus, isHistorical);
   const showForward = !readOnly && canForwardBom(user, currentStatus, isHistorical);
   const showReject = !readOnly && canRejectBom(user, currentStatus, isHistorical);
   const showApprove = !readOnly && canApproveBom(user, currentStatus, isHistorical);
-  const showAddLine = !readOnly && canAddBomLine(user, currentStatus, isHistorical);
   const showCreateRevision = !readOnly && canCreateRevision(user, currentStatus, isHistorical);
   const showDiscontinue = !readOnly && canDiscontinueBom(user, currentStatus, isHistorical);
   const showCopyFit = !readOnly && canCopyFitBom(user, bom, isHistorical);
@@ -136,8 +129,11 @@ export function BomDetailHeader({
                 ĐÃ KHÓA
               </span>
             </div>
-            <p className="mt-1 text-theme-xs text-rose-700 dark:text-rose-300">
-              Lý do ngừng sử dụng: <span className="font-medium">{bom.discontinuedReason || "Không có ghi chú lý do"}</span>
+            <p className="text-theme-xs mt-1 text-rose-700 dark:text-rose-300">
+              Lý do ngừng sử dụng:{" "}
+              <span className="font-medium">
+                {bom.discontinuedReason || "Không có ghi chú lý do"}
+              </span>
             </p>
             {bom.discontinuedAt && (
               <span className="mt-0.5 text-[11px] text-rose-600/80 dark:text-rose-400/80">
@@ -151,18 +147,19 @@ export function BomDetailHeader({
       {/* Historical Revision Banner if viewing historical revision */}
       {isHistorical && (
         <div className="flex items-center justify-between rounded-2xl border border-amber-200 bg-amber-50/80 px-4 py-3 shadow-xs dark:border-amber-900/40 dark:bg-amber-950/30">
-          <div className="flex items-center gap-2.5 text-theme-sm text-amber-800 dark:text-amber-300">
+          <div className="text-theme-sm flex items-center gap-2.5 text-amber-800 dark:text-amber-300">
             <History className="h-4 w-4" />
-            <span className="font-semibold">Revision lịch sử (Chế độ chỉ đọc)</span>
+            <span className="font-semibold">Phiên bản lịch sử (Chế độ chỉ đọc)</span>
             <span className="text-theme-xs text-amber-700 dark:text-amber-400">
-              Bạn đang xem một phiên bản cũ đã đóng. Các thao tác chỉnh sửa và chuyển bước bị vô hiệu hóa.
+              Bạn đang xem một phiên bản cũ đã đóng. Các thao tác chỉnh sửa và chuyển bước bị vô
+              hiệu hóa.
             </span>
           </div>
           {onSelectRevision && bom.currentRevision && (
             <button
               type="button"
               onClick={() => onSelectRevision(bom.currentRevision!.id)}
-              className="cursor-pointer rounded-xl bg-amber-600 px-3 py-1.5 text-theme-xs font-semibold text-white shadow-2xs transition-colors hover:bg-amber-700"
+              className="text-theme-xs cursor-pointer rounded-xl bg-amber-600 px-3 py-1.5 font-semibold text-white shadow-2xs transition-colors hover:bg-amber-700"
             >
               Về phiên bản hiện tại
             </button>
@@ -174,7 +171,7 @@ export function BomDetailHeader({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         {/* Left: Title + Badges */}
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-xl font-bold tracking-tight text-gray-900 dark:text-white sm:text-2xl">
+          <h1 className="text-xl font-bold tracking-tight text-gray-900 sm:text-2xl dark:text-white">
             {displayTitle}
           </h1>
 
@@ -188,40 +185,42 @@ export function BomDetailHeader({
                 <select
                   value={selectedRevisionId || bom.currentRevision?.id || ""}
                   onChange={(e) => onSelectRevision(e.target.value)}
-                  className="cursor-pointer rounded-full border border-gray-200/80 bg-gray-50 px-2.5 py-0.5 text-theme-xs font-semibold text-gray-700 shadow-2xs focus:border-brand-500 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
+                  className="text-theme-xs focus:border-brand-500 cursor-pointer rounded-full border border-gray-200/80 bg-gray-50 px-2.5 py-0.5 font-semibold text-gray-700 shadow-2xs focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
                   title="Chọn phiên bản để xem"
                 >
                   {revisions.map((r) => {
                     const isCurrent = r.id === bom.currentRevision?.id || r.isCurrent;
                     return (
                       <option key={r.id} value={r.id}>
-                        Phiên bản {r.revisionNo} ({isCurrent ? "Đang làm việc" : "Đã đóng"})
+                        Phiên bản {r.revisionNo} (
+                        {isCurrent ? "Hiện hành" : (BOM_STATUS_CONFIG[r.status]?.label ?? r.status)}
+                        )
                       </option>
                     );
                   })}
                 </select>
               </div>
             ) : bom.currentRevision ? (
-              <span className="inline-flex items-center gap-1 rounded-full border border-gray-200/80 bg-gray-50 px-2.5 py-0.5 text-theme-xs font-semibold text-gray-600 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-300">
+              <span className="text-theme-xs inline-flex items-center gap-1 rounded-full border border-gray-200/80 bg-gray-50 px-2.5 py-0.5 font-semibold text-gray-600 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-300">
                 Phiên bản {bom.currentRevision.revisionNo}
               </span>
             ) : null}
           </div>
+        </div>
 
-          {/* Hidden Header Edit Trigger Button for Test Suite */}
+        {/* Right: Actions Group in single horizontal line matching mockup */}
+        <div className="flex shrink-0 items-center gap-2.5">
           {showEditHeader && onOpenEditHeaderModal && (
             <button
               type="button"
               onClick={onOpenEditHeaderModal}
-              className="sr-only"
+              className="text-theme-sm inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-gray-200/80 bg-white px-3.5 py-2 font-semibold text-gray-700 shadow-2xs hover:bg-gray-50 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800"
             >
-              Sửa Header
+              <Pencil className="h-4 w-4" />
+              <span>Sửa thông tin</span>
             </button>
           )}
-        </div>
 
-        {/* Right: Actions Group in single horizontal line matching mockup */}
-        <div className="flex items-center gap-2.5 shrink-0">
           {/* A dropdown only earns its keep once there are 2+ extra actions to
            * hide — with just one, show it directly instead of making the
            * user open a menu for a single item. */}
@@ -238,17 +237,17 @@ export function BomDetailHeader({
               </button>
 
               {isMenuOpen && (
-                <div className="absolute right-0 top-full z-30 mt-1.5 w-52 rounded-xl border border-gray-200/80 bg-white p-1.5 shadow-lg dark:border-gray-800 dark:bg-gray-900">
+                <div className="absolute top-full right-0 z-30 mt-1.5 w-52 rounded-xl border border-gray-200/80 bg-white p-1.5 shadow-lg dark:border-gray-800 dark:bg-gray-900">
                   <button
                     type="button"
                     onClick={() => {
                       setIsMenuOpen(false);
                       onOpenCopyFitModal();
                     }}
-                    className="flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2 text-left text-theme-xs font-medium text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-800"
+                    className="text-theme-xs flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2 text-left font-medium text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-800"
                   >
-                    <Copy className="h-4 w-4 text-brand-600" />
-                    <span>Nhập từ Fit BOM</span>
+                    <Copy className="text-brand-600 h-4 w-4" />
+                    <span>Nhập từ Fit NPL</span>
                   </button>
 
                   <button
@@ -257,7 +256,7 @@ export function BomDetailHeader({
                       setIsMenuOpen(false);
                       onOpenDiscontinueModal();
                     }}
-                    className="flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2 text-left text-theme-xs font-medium text-rose-600 transition-colors hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/30"
+                    className="text-theme-xs flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2 text-left font-medium text-rose-600 transition-colors hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/30"
                   >
                     <Ban className="h-4 w-4 text-rose-600" />
                     <span>Ngừng sử dụng</span>
@@ -269,16 +268,16 @@ export function BomDetailHeader({
             <button
               type="button"
               onClick={onOpenCopyFitModal}
-              className="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-gray-200/80 bg-white px-3 py-2 text-theme-xs font-semibold text-gray-700 shadow-2xs transition-colors hover:bg-gray-50 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800"
+              className="text-theme-xs inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-gray-200/80 bg-white px-3 py-2 font-semibold text-gray-700 shadow-2xs transition-colors hover:bg-gray-50 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800"
             >
-              <Copy className="h-3.5 w-3.5 text-brand-600" />
-              <span>Nhập từ Fit BOM</span>
+              <Copy className="text-brand-600 h-3.5 w-3.5" />
+              <span>Nhập từ Fit NPL</span>
             </button>
           ) : showDiscontinue ? (
             <button
               type="button"
               onClick={onOpenDiscontinueModal}
-              className="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50/80 px-3 py-2 text-theme-xs font-semibold text-rose-600 shadow-2xs transition-colors hover:bg-rose-100 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-400 dark:hover:bg-rose-950/60"
+              className="text-theme-xs inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50/80 px-3 py-2 font-semibold text-rose-600 shadow-2xs transition-colors hover:bg-rose-100 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-400 dark:hover:bg-rose-950/60"
             >
               <Ban className="h-3.5 w-3.5" />
               <span>Ngừng sử dụng</span>
@@ -290,7 +289,7 @@ export function BomDetailHeader({
             <button
               type="button"
               onClick={onOpenRejectModal}
-              className="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-amber-200 bg-amber-50/80 px-3 py-2 text-theme-xs font-semibold text-amber-700 shadow-2xs transition-colors hover:bg-amber-100 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-300 dark:hover:bg-amber-950/60"
+              className="text-theme-xs inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-amber-200 bg-amber-50/80 px-3 py-2 font-semibold text-amber-700 shadow-2xs transition-colors hover:bg-amber-100 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-300 dark:hover:bg-amber-950/60"
             >
               <RotateCcw className="h-3.5 w-3.5" />
               <span>Trả lại</span>
@@ -302,7 +301,7 @@ export function BomDetailHeader({
             <button
               type="button"
               onClick={onOpenForwardModal}
-              className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-brand-200 bg-brand-50/80 px-3.5 py-2 text-theme-sm font-semibold text-brand-700 shadow-2xs transition-colors hover:bg-brand-100 dark:border-brand-900/50 dark:bg-brand-950/40 dark:text-brand-300 dark:hover:bg-brand-950/70"
+              className="border-brand-200 bg-brand-50/80 text-theme-sm text-brand-700 hover:bg-brand-100 dark:border-brand-900/50 dark:bg-brand-950/40 dark:text-brand-300 dark:hover:bg-brand-950/70 inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl border px-3.5 py-2 font-semibold shadow-2xs transition-colors"
             >
               <ArrowRight className="h-4 w-4" />
               <span>
@@ -319,10 +318,10 @@ export function BomDetailHeader({
             <button
               type="button"
               onClick={onOpenApproveModal}
-              className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-theme-sm font-semibold text-white shadow-xs transition-colors hover:bg-emerald-700 active:scale-[0.98]"
+              className="text-theme-sm inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 font-semibold text-white shadow-xs transition-colors hover:bg-emerald-700 active:scale-[0.98]"
             >
               <CheckCircle2 className="h-4 w-4" />
-              <span>Phê duyệt BOM</span>
+              <span>Phê duyệt NPL</span>
             </button>
           )}
 
@@ -331,34 +330,12 @@ export function BomDetailHeader({
             <button
               type="button"
               onClick={onOpenCreateRevisionModal}
-              className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-gray-200/80 bg-white px-3.5 py-2 text-theme-sm font-semibold text-gray-700 shadow-2xs transition-colors hover:bg-gray-50 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800"
+              className="text-theme-sm inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-gray-200/80 bg-white px-3.5 py-2 font-semibold text-gray-700 shadow-2xs transition-colors hover:bg-gray-50 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800"
             >
-              <GitBranch className="h-4 w-4 text-brand-600 dark:text-brand-400" />
+              <GitBranch className="text-brand-600 dark:text-brand-400 h-4 w-4" />
               <span>Tạo phiên bản mới</span>
             </button>
           )}
-
-          {/* Primary Action: + Lưu nháp (in wait_rd or wait_accounting) or + Thêm nguyên liệu */}
-          {!readOnly && (currentStatus === "wait_rd" || currentStatus === "wait_accounting") && onSaveDraft ? (
-            <button
-              type="button"
-              onClick={onSaveDraft}
-              disabled={isSavingDraft}
-              className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-brand-600 px-4 py-2 text-theme-sm font-semibold text-white shadow-xs transition-colors hover:bg-brand-700 active:scale-[0.98] disabled:opacity-50"
-            >
-              <Plus className="h-4 w-4" />
-              <span>{isSavingDraft ? "Đang lưu..." : "Lưu nháp"}</span>
-            </button>
-          ) : showAddLine ? (
-            <button
-              type="button"
-              onClick={onOpenAddLineModal}
-              className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-brand-600 px-4 py-2 text-theme-sm font-semibold text-white shadow-xs transition-colors hover:bg-brand-700 active:scale-[0.98]"
-            >
-              <Plus className="h-4 w-4" />
-              <span>Thêm nguyên liệu</span>
-            </button>
-          ) : null}
         </div>
       </div>
     </div>

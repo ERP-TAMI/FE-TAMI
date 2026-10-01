@@ -180,33 +180,35 @@ export interface DiscontinueBomPayload {
   expectedRowVersion: number;
 }
 
-export interface CreateBomLinePayload {
-  materialId?: string;
-  consumption: number;
-  unitCost?: number;
-  note?: string;
-  orderIndex?: number;
-  expectedRowVersion?: number;
-}
-
-export interface UpdateBomLinePayload {
+export interface SaveBomLineRow {
+  lineId?: string;
   materialId?: string;
   consumption?: number;
-  unitCost?: number | null;
-  note?: string;
-  orderIndex?: number;
+  note?: string | null;
+}
+
+export interface SaveBomLinesPayload {
+  lines: SaveBomLineRow[];
   expectedRowVersion?: number;
 }
 
-export interface ReorderBomLineItem {
+export interface SaveBomCostItem {
   lineId: string;
-  orderIndex: number;
+  unitCost: number | null;
 }
 
-export interface ReorderBomLinesPayload {
-  lineIds?: string[];
-  items?: ReorderBomLineItem[];
+export interface SaveBomCostsPayload {
+  items: SaveBomCostItem[];
   expectedRowVersion?: number;
+}
+
+export interface SaveBomLinesResponse {
+  rowVersion: number;
+  lines: BomLineItem[];
+}
+
+export interface PromoteRevisionPayload {
+  reason: string;
 }
 
 export interface ForwardBomPayload {
@@ -305,21 +307,6 @@ export interface RevisionDiffResponse {
     status: BomStatus;
   };
   items: RevisionDiffItem[];
-}
-
-export interface BomWorkflowHistoryItem {
-  id: string;
-  revisionId: string;
-  oldStatus?: BomStatus | null;
-  newStatus?: BomStatus;
-  fromStatus?: BomStatus;
-  toStatus?: BomStatus;
-  action?: string;
-  reason?: string | null;
-  note?: string | null;
-  changedBy?: string | null;
-  changedAt?: string | Date;
-  createdAt?: string | Date;
 }
 
 export type AggregateBreakdownType = "none" | "color" | "size" | "color_size";

@@ -11,8 +11,6 @@ export const bomKeys = {
   revisions: (bomId: string) => [...bomKeys.all, "revisions", bomId] as const,
   revisionDetail: (bomId: string, revisionId: string) =>
     [...bomKeys.all, "revision", bomId, revisionId] as const,
-  revisionHistory: (bomId: string, revisionId: string) =>
-    [...bomKeys.all, "history", bomId, revisionId] as const,
   revisionDiff: (bomId: string, revisionId: string, compareWithId?: string) =>
     [...bomKeys.all, "diff", bomId, revisionId, compareWithId || ""] as const,
   aggregates: () => [...bomKeys.all, "aggregate"] as const,

@@ -1,4 +1,4 @@
-import { BrowserRouter } from "react-router-dom";
+import { BrowserRouter, createMemoryRouter, RouterProvider } from "react-router-dom";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import BomDetailPage from "./BomDetailPage";
@@ -6,6 +6,7 @@ import type { BomDetail, RevisionDetail } from "@/types/bom";
 
 // SearchParams mock variable
 let mockSearchParams = new URLSearchParams();
+let useRealRouter = false;
 const mockSetSearchParams = vi.fn((params: unknown) => {
   mockSearchParams = new URLSearchParams(params as Record<string, string>);
 });
@@ -16,13 +17,13 @@ const hooks = vi.hoisted(() => ({
   useUpdateBom: { isPending: false, mutateAsync: vi.fn() },
   useBomRevisions: vi.fn(),
   useBomRevisionDetail: vi.fn(),
-  useBomRevisionHistory: vi.fn(),
   useBomRevisionDiff: vi.fn(),
   useBomAggregate: vi.fn(),
-  addLine: { isPending: false, mutateAsync: vi.fn() },
-  updateLine: { isPending: false, mutateAsync: vi.fn() },
-  deleteLine: { isPending: false, mutateAsync: vi.fn() },
-  reorderLines: { isPending: false, mutateAsync: vi.fn() },
+  saveLines: { isPending: false, mutateAsync: vi.fn() },
+  saveCosts: { isPending: false, mutateAsync: vi.fn() },
+  promote: { isPending: false, mutateAsync: vi.fn() },
+  useMaterials: vi.fn(),
+  useMaterialGroups: vi.fn(),
   forwardBom: { isPending: false, mutateAsync: vi.fn() },
   rejectBom: { isPending: false, mutateAsync: vi.fn() },
   approveBom: { isPending: false, mutateAsync: vi.fn() },
@@ -43,12 +44,13 @@ const hooks = vi.hoisted(() => ({
 }));
 
 vi.mock("react-router-dom", async () => {
-  const actual = await vi.importActual("react-router-dom");
+  const actual = await vi.importActual<typeof import("react-router-dom")>("react-router-dom");
   return {
     ...actual,
     useNavigate: () => hooks.mockNavigate,
     useParams: () => ({ id: "bom-test-uuid" }),
-    useSearchParams: () => [mockSearchParams, mockSetSearchParams],
+    useSearchParams: () =>
+      useRealRouter ? actual.useSearchParams() : [mockSearchParams, mockSetSearchParams],
   };
 });
 
@@ -67,19 +69,33 @@ vi.mock("@/hooks/useBoms", () => ({
   useBomRevisions: () => hooks.useBomRevisions(),
   useBomRevisionDetail: (bomId?: string, revisionId?: string) =>
     hooks.useBomRevisionDetail(bomId, revisionId),
-  useBomRevisionHistory: () => hooks.useBomRevisionHistory(),
   useBomRevisionDiff: () => hooks.useBomRevisionDiff(),
   useBomAggregate: () => hooks.useBomAggregate(),
-  useAddBomLine: () => hooks.addLine,
-  useUpdateBomLine: () => hooks.updateLine,
-  useDeleteBomLine: () => hooks.deleteLine,
-  useReorderBomLines: () => hooks.reorderLines,
+  useSaveBomLines: () => hooks.saveLines,
+  useSaveBomCosts: () => hooks.saveCosts,
+  usePromoteBomRevision: () => hooks.promote,
   useForwardBom: () => hooks.forwardBom,
   useRejectBom: () => hooks.rejectBom,
   useApproveBom: () => hooks.approveBom,
   useCreateBomRevision: () => hooks.createRevision,
   useCopyFitToPoBom: () => hooks.copyFit,
   useDiscontinueBom: () => hooks.discontinueBom,
+}));
+
+vi.mock("@/components/features/audit/EntityHistoryButton", () => ({
+  EntityHistoryButton: ({ title }: { title?: string }) => (
+    <button type="button" data-testid="entity-history-button">
+      {title}
+    </button>
+  ),
+}));
+
+vi.mock("@/hooks/useMaterials", () => ({
+  useMaterials: () => hooks.useMaterials(),
+}));
+
+vi.mock("@/hooks/useMaterialGroups", () => ({
+  useMaterialGroups: () => hooks.useMaterialGroups(),
 }));
 
 vi.mock("@/api/material.api", () => ({
@@ -302,6 +318,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockSearchParams = new URLSearchParams();
+    useRealRouter = false;
     hooks.mockUser = { roleCode: "NVKH", fullName: "Nhân viên Kế hoạch" };
     hooks.useBom.mockReturnValue({
       data: mockFitBom,
@@ -325,24 +342,6 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
     });
     hooks.useBomRevisionDetail.mockReturnValue({
       data: null,
-      isLoading: false,
-    });
-    hooks.useBomRevisionHistory.mockReturnValue({
-      data: [
-        {
-          id: "hist-1",
-          revisionId: "rev-1",
-          oldStatus: "wait_nvkh",
-          newStatus: "wait_rd",
-          action: "forward",
-          changedAt: "2026-09-18T00:00:00.000Z",
-          fromStatus: "wait_nvkh",
-          toStatus: "wait_rd",
-          createdAt: "2026-09-18T00:00:00.000Z",
-          note: "Chuyển R&D",
-          changedBy: "NVKH Nguyễn Văn A",
-        },
-      ],
       isLoading: false,
     });
     hooks.useBomRevisionDiff.mockReturnValue({
@@ -407,6 +406,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
 
   afterEach(() => {
     cleanup();
+    useRealRouter = false;
   });
 
   // ==========================================
@@ -436,7 +436,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
           <BomDetailPage />
         </BrowserRouter>,
       );
-      expect(screen.getByText("Không thể tải chi tiết BOM")).toBeTruthy();
+      expect(screen.getByText("Không thể tải chi tiết NPL")).toBeTruthy();
       expect(screen.getByText("Không thể kết nối máy chủ")).toBeTruthy();
       expect(screen.getByText("Thử lại")).toBeTruthy();
     });
@@ -446,7 +446,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
         data: null,
         isLoading: false,
         isError: true,
-        error: { response: { status: 404, data: { message: "BOM không tồn tại" } } },
+        error: { response: { status: 404, data: { message: "NPL không tồn tại" } } },
         refetch: vi.fn(),
       });
       render(
@@ -454,13 +454,13 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
           <BomDetailPage />
         </BrowserRouter>,
       );
-      expect(screen.getByText("BOM không tồn tại")).toBeTruthy();
+      expect(screen.getByText("NPL không tồn tại")).toBeTruthy();
       const backBtn = screen.getByText("Về danh sách");
       fireEvent.click(backBtn);
       expect(hooks.mockNavigate).toHaveBeenCalledWith("/bom");
     });
 
-    it("4. renders FIT BOM with Style information (Style Code, Style Name)", () => {
+    it("4. renders FIT NPL with Style information (Style Code, Style Name)", () => {
       render(
         <BrowserRouter>
           <BomDetailPage />
@@ -477,15 +477,14 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
         </BrowserRouter>,
       );
       expect(screen.getByRole("link", { name: "Dashboard" })).toBeTruthy();
-      expect(
-        screen.getByRole("link", { name: "Quản lý Nguyên phụ liệu" }),
-      ).toBeTruthy();
-      expect(
-        screen.getByRole("link", { name: /Danh sách NPL/ }),
-      ).toHaveProperty("href", expect.stringContaining("/bom"));
+      expect(screen.getByRole("link", { name: "Quản lý Nguyên phụ liệu" })).toBeTruthy();
+      expect(screen.getByRole("link", { name: /Danh sách NPL/ })).toHaveProperty(
+        "href",
+        expect.stringContaining("/bom"),
+      );
     });
 
-    it("5. renders PO BOM with PO and Product information", () => {
+    it("5. renders PO NPL with PO and Product information", () => {
       hooks.useBom.mockReturnValue({ data: mockPoBom, isLoading: false });
       render(
         <BrowserRouter>
@@ -497,7 +496,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       expect(screen.getAllByText("PO-2026-001").length).toBeGreaterThan(0);
     });
 
-    it("6. renders PO BOM informational color chips", () => {
+    it("6. renders PO NPL informational color chips", () => {
       hooks.useBom.mockReturnValue({ data: mockPoBom, isLoading: false });
       render(
         <BrowserRouter>
@@ -507,7 +506,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       expect(screen.getByText(/Màu: Đỏ/i)).toBeTruthy();
     });
 
-    it("falls back to the live PO product's colors and deadline when the BOM's own snapshot fields are null", () => {
+    it("falls back to the live PO product's colors and deadline when the NPL's own snapshot fields are null", () => {
       hooks.useBom.mockReturnValue({
         data: {
           ...mockPoBom,
@@ -540,7 +539,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       expect(screen.getAllByText(/500 SP|500 sản phẩm/i).length).toBeGreaterThan(0);
     });
 
-    it("8. displays Cost Per Unit and Order Cost for authorized role (TPKH)", () => {
+    it("8. TPKH does not see cost figures (only Accounting and SA do)", () => {
       hooks.mockUser = { roleCode: "TPKH", fullName: "Trưởng phòng KH" };
       hooks.useBom.mockReturnValue({ data: mockPoBom, isLoading: false });
       render(
@@ -548,8 +547,8 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
           <BomDetailPage />
         </BrowserRouter>,
       );
-      expect(screen.getAllByText("$150,000.0000").length).toBeGreaterThan(0);
-      expect(screen.getAllByText("$75,000,000.0000").length).toBeGreaterThan(0);
+      expect(screen.queryByText("$150,000.0000")).toBeNull();
+      expect(screen.queryByText("$75,000,000.0000")).toBeNull();
     });
 
     it("9. displays Cost Per Unit and Order Cost for Accounting role", () => {
@@ -574,7 +573,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       expect(screen.getAllByText("$150,000.0000").length).toBeGreaterThan(0);
     });
 
-    it("hides PO BOM write actions for SA in READ_ONLY mode on direct detail", () => {
+    it("hides PO NPL write actions for SA in READ_ONLY mode on direct detail", () => {
       hooks.mockUser = {
         roleCode: "SA",
         fullName: "Giám đốc điều hành",
@@ -588,11 +587,11 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
         </BrowserRouter>,
       );
 
-      expect(screen.queryByText("Sửa Header")).toBeNull();
+      expect(screen.queryByText("Sửa thông tin")).toBeNull();
       expect(screen.queryByRole("button", { name: "Thao tác khác" })).toBeNull();
     });
 
-    it("hides PO BOM approval for SA in READ_ONLY mode", () => {
+    it("hides PO NPL approval for SA in READ_ONLY mode", () => {
       hooks.mockUser = {
         roleCode: "SA",
         fullName: "Giám đốc điều hành",
@@ -609,35 +608,54 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
         </BrowserRouter>,
       );
 
-      expect(screen.queryByText("Phê duyệt BOM")).toBeNull();
+      expect(screen.queryByText("Phê duyệt NPL")).toBeNull();
     });
 
     it.each([
-      ["PO đã hủy", { purchaseOrder: { id: "po-1", poCode: "PO-2026-001", status: "cancelled" } }, "Đơn hàng PO đã Hủy"],
-      ["PO đã khoá", { purchaseOrder: { id: "po-1", poCode: "PO-2026-001", status: "closed" } }, "Đơn hàng PO đã Khoá"],
-      ["sản phẩm đã khoá", { product: { ...mockPoBom.product!, status: "closed" } }, "Sản phẩm đã Khoá"],
-    ])("hides PO BOM write actions when %s, even for full-access users", (_label, patch, banner) => {
-      hooks.mockUser = { roleCode: "SA", fullName: "Ban Giám Đốc", purchaseOrderMode: "FULL_ACCESS" };
-      hooks.useBom.mockReturnValue({ data: mockPoBom, isLoading: false });
-      const { unmount } = render(
-        <BrowserRouter>
-          <BomDetailPage />
-        </BrowserRouter>,
-      );
-      expect(screen.getByText("Sửa Header")).toBeTruthy();
-      unmount();
+      [
+        "PO đã hủy",
+        { purchaseOrder: { id: "po-1", poCode: "PO-2026-001", status: "cancelled" } },
+        "Đơn hàng PO đã Hủy",
+      ],
+      [
+        "PO đã khoá",
+        { purchaseOrder: { id: "po-1", poCode: "PO-2026-001", status: "closed" } },
+        "Đơn hàng PO đã Khoá",
+      ],
+      [
+        "sản phẩm đã khoá",
+        { product: { ...mockPoBom.product!, status: "closed" } },
+        "Sản phẩm đã Khoá",
+      ],
+    ])(
+      "hides PO NPL write actions when %s, even for full-access users",
+      (_label, patch, banner) => {
+        hooks.mockUser = {
+          roleCode: "SA",
+          fullName: "Ban Giám Đốc",
+          purchaseOrderMode: "FULL_ACCESS",
+        };
+        hooks.useBom.mockReturnValue({ data: mockPoBom, isLoading: false });
+        const { unmount } = render(
+          <BrowserRouter>
+            <BomDetailPage />
+          </BrowserRouter>,
+        );
+        expect(screen.getByText("Sửa thông tin")).toBeTruthy();
+        unmount();
 
-      hooks.useBom.mockReturnValue({ data: { ...mockPoBom, ...patch }, isLoading: false });
-      render(
-        <BrowserRouter>
-          <BomDetailPage />
-        </BrowserRouter>,
-      );
-      expect(screen.queryByText("Sửa Header")).toBeNull();
-      expect(screen.getByText(new RegExp(banner))).toBeTruthy();
-    });
+        hooks.useBom.mockReturnValue({ data: { ...mockPoBom, ...patch }, isLoading: false });
+        render(
+          <BrowserRouter>
+            <BomDetailPage />
+          </BrowserRouter>,
+        );
+        expect(screen.queryByText("Sửa thông tin")).toBeNull();
+        expect(screen.getByText(new RegExp(banner))).toBeTruthy();
+      },
+    );
 
-    it("preserves SA Fit BOM permissions while PO mode is READ_ONLY", () => {
+    it("preserves SA Fit NPL permissions while PO mode is READ_ONLY", () => {
       hooks.mockUser = {
         roleCode: "SA",
         fullName: "Giám đốc điều hành",
@@ -650,7 +668,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
         </BrowserRouter>,
       );
 
-      expect(screen.getByText("Sửa Header")).toBeTruthy();
+      expect(screen.getByText("Sửa thông tin")).toBeTruthy();
     });
 
     it("11. masks Cost Per Unit and Order Cost for NVKH role", () => {
@@ -679,7 +697,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
 
     it("13. displays '$0.0000' correctly when cost is 0 (not masked or dashed)", () => {
       const zeroCostBom = { ...mockPoBom, costPerUnit: 0, currentOrderCost: 0 };
-      hooks.mockUser = { roleCode: "TPKH", fullName: "TPKH" };
+      hooks.mockUser = { roleCode: "SA", fullName: "SA" };
       hooks.useBom.mockReturnValue({ data: zeroCostBom, isLoading: false });
       render(
         <BrowserRouter>
@@ -691,7 +709,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
 
     it("14. displays '—' when cost is null", () => {
       const nullCostBom = { ...mockPoBom, costPerUnit: null, currentOrderCost: null };
-      hooks.mockUser = { roleCode: "TPKH", fullName: "TPKH" };
+      hooks.mockUser = { roleCode: "SA", fullName: "SA" };
       hooks.useBom.mockReturnValue({ data: nullCostBom, isLoading: false });
       render(
         <BrowserRouter>
@@ -706,6 +724,33 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
   // Category 2: Header Editing & Discontinued State
   // ==========================================
   describe("Category 2: Header Editing & Discontinued State", () => {
+    it("closes a clean header modal on outside click and confirms unsaved edits", () => {
+      hooks.mockUser = { roleCode: "TPKH", fullName: "Trưởng phòng KH" };
+      render(
+        <BrowserRouter>
+          <BomDetailPage />
+        </BrowserRouter>,
+      );
+      fireEvent.click(screen.getByText("Sửa thông tin"));
+      fireEvent.click(document.querySelector('[data-modal-backdrop="true"]') as HTMLElement);
+      expect(screen.queryByText("Chỉnh sửa thông tin NPL")).toBeNull();
+
+      fireEvent.click(screen.getByText("Sửa thông tin"));
+      const deadlineInput = document.querySelector('input[type="date"]') as HTMLInputElement;
+      fireEvent.change(deadlineInput, { target: { value: "2026-12-31" } });
+      fireEvent.click(document.querySelector('[data-modal-backdrop="true"]') as HTMLElement);
+      expect(screen.getByText("Bạn có thay đổi chưa được lưu")).toBeTruthy();
+      expect(screen.getByRole("button", { name: "Bỏ thay đổi" }).className).toContain(
+        "bg-error-500",
+      );
+      fireEvent.click(screen.getByRole("button", { name: "Tiếp tục chỉnh sửa" }));
+      expect(deadlineInput.value).toBe("2026-12-31");
+      fireEvent.click(document.querySelector('[data-modal-backdrop="true"]') as HTMLElement);
+      fireEvent.click(screen.getByRole("button", { name: "Bỏ thay đổi" }));
+      expect(screen.queryByText("Chỉnh sửa thông tin NPL")).toBeNull();
+      expect(hooks.useUpdateBom.mutateAsync).not.toHaveBeenCalled();
+    });
+
     it("15. NVKH can open Header edit modal and sees deadline editable but rdNote readonly", () => {
       hooks.mockUser = { roleCode: "NVKH", fullName: "Nhân viên KH" };
       render(
@@ -713,10 +758,10 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
           <BomDetailPage />
         </BrowserRouter>,
       );
-      const editHeaderBtn = screen.getByText("Sửa Header");
+      const editHeaderBtn = screen.getByText("Sửa thông tin");
       fireEvent.click(editHeaderBtn);
 
-      expect(screen.getByText("Chỉnh sửa thông tin Header")).toBeTruthy();
+      expect(screen.getByText("Chỉnh sửa thông tin NPL")).toBeTruthy();
       expect(screen.getByText(/Hạn hoàn thành \(Deadline\)/i)).toBeTruthy();
       expect(
         screen.getByText(/Ghi chú kỹ thuật R&D \(Chỉ đọc với vai trò hiện tại\)/i),
@@ -732,7 +777,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
           <BomDetailPage />
         </BrowserRouter>,
       );
-      const editHeaderBtn = screen.getByText("Sửa Header");
+      const editHeaderBtn = screen.getByText("Sửa thông tin");
       fireEvent.click(editHeaderBtn);
 
       expect(screen.getByText(/Hạn hoàn thành \(Chỉ đọc với vai trò hiện tại\)/i)).toBeTruthy();
@@ -746,7 +791,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
           <BomDetailPage />
         </BrowserRouter>,
       );
-      const editHeaderBtn = screen.getByText("Sửa Header");
+      const editHeaderBtn = screen.getByText("Sửa thông tin");
       fireEvent.click(editHeaderBtn);
 
       expect(screen.getByText(/Hạn hoàn thành \(Deadline\)/i)).toBeTruthy();
@@ -767,21 +812,21 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
           <BomDetailPage />
         </BrowserRouter>,
       );
-      const editHeaderBtn = screen.getByText("Sửa Header");
+      const editHeaderBtn = screen.getByText("Sửa thông tin");
       expect(editHeaderBtn).toBeTruthy();
     });
 
-    it("19. Accounting cannot edit header fields (Sửa Header button hidden)", () => {
+    it("19. Accounting cannot edit header fields (Sửa thông tin button hidden)", () => {
       hooks.mockUser = { roleCode: "ACCOUNTING", fullName: "Kế toán" };
       render(
         <BrowserRouter>
           <BomDetailPage />
         </BrowserRouter>,
       );
-      expect(screen.queryByText("Sửa Header")).toBeNull();
+      expect(screen.queryByText("Sửa thông tin")).toBeNull();
     });
 
-    it("20. Discontinued BOM displays discontinued banner with reason and timestamp", () => {
+    it("20. Discontinued NPL displays discontinued banner with reason and timestamp", () => {
       const discBom: BomDetail = {
         ...mockFitBom,
         status: "discontinued",
@@ -799,7 +844,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       expect(screen.getAllByText(/ĐÃ KHÓA/i).length).toBeGreaterThan(0);
     });
 
-    it("21. Discontinued BOM suppresses header edit button and all mutations", () => {
+    it("21. Discontinued NPL suppresses header edit button and all mutations", () => {
       const discBom: BomDetail = {
         ...mockFitBom,
         status: "discontinued",
@@ -812,12 +857,12 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
           <BomDetailPage />
         </BrowserRouter>,
       );
-      expect(screen.queryByText("Sửa Header")).toBeNull();
+      expect(screen.queryByText("Sửa thông tin")).toBeNull();
       expect(screen.queryByText("Thêm nguyên liệu")).toBeNull();
       expect(screen.queryByText("Chuyển bước")).toBeNull();
     });
 
-    it("22. Closed BOM suppresses header edit button", () => {
+    it("22. Closed NPL suppresses header edit button", () => {
       const closedBom: BomDetail = {
         ...mockFitBom,
         status: "closed",
@@ -828,7 +873,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
           <BomDetailPage />
         </BrowserRouter>,
       );
-      expect(screen.queryByText("Sửa Header")).toBeNull();
+      expect(screen.queryByText("Sửa thông tin")).toBeNull();
     });
   });
 
@@ -902,7 +947,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       expect(screen.getByText("Vải Cotton 100%")).toBeTruthy();
     });
 
-    it("25. shows empty state when BOM has no material lines", () => {
+    it("25. shows empty state when NPL has no material lines", () => {
       const emptyBom: BomDetail = { ...mockFitBom, lines: [] };
       hooks.useBom.mockReturnValue({ data: emptyBom, isLoading: false });
       render(
@@ -941,230 +986,242 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
   });
 
   // ==========================================
-  // Category 4: Add Material Line
+  // Category 4: Add Material Line (edit mode, saved in one request)
   // ==========================================
   describe("Category 4: Add Material Line", () => {
-    it("28. NVKH at wait_nvkh sees 'Thêm nguyên liệu' and opens Add Line modal", () => {
+    const extraMaterial = {
+      id: "mat-3",
+      materialCode: "CHI-001",
+      materialName: "Chỉ may polyester",
+      materialGroupName: "Phụ liệu may",
+      defaultUnitName: "Cuộn",
+    };
+
+    const renderPage = () =>
+      render(
+        <BrowserRouter>
+          <BomDetailPage />
+        </BrowserRouter>,
+      );
+
+    beforeEach(() => {
+      hooks.saveLines.mutateAsync.mockResolvedValue({ rowVersion: 2, lines: [] });
+      hooks.useMaterials.mockReturnValue({
+        data: {
+          data: [
+            {
+              id: "mat-1",
+              materialCode: "VAI-001",
+              materialName: "Vải Cotton 100%",
+              materialGroupName: "Vải chính",
+              defaultUnitName: "Mét",
+            },
+            extraMaterial,
+          ],
+          meta: { total: 2, page: 1, limit: 50, totalPages: 1 },
+        },
+        isLoading: false,
+        isError: false,
+        error: null,
+        refetch: vi.fn(),
+      });
+      hooks.useMaterialGroups.mockReturnValue({ data: { data: [] } });
+    });
+
+    it("28. NVKH at wait_nvkh clicks 'Chỉnh sửa' to unlock 'Thêm vật tư'", () => {
       hooks.mockUser = { roleCode: "NVKH", fullName: "Nhân viên KH" };
-      render(
-        <BrowserRouter>
-          <BomDetailPage />
-        </BrowserRouter>,
-      );
-      const addBtn = screen.getByText("Thêm nguyên liệu");
-      fireEvent.click(addBtn);
+      renderPage();
+      expect(screen.queryByRole("button", { name: /Thêm vật tư/ })).toBeNull();
 
-      expect(screen.getByText("Thêm nguyên phụ liệu vào BOM")).toBeTruthy();
+      fireEvent.click(screen.getByRole("button", { name: /Chỉnh sửa/ }));
+      fireEvent.click(screen.getByRole("button", { name: /Thêm vật tư/ }));
+
+      expect(screen.getByRole("dialog")).toBeTruthy();
     });
 
-    it("29. Add Line modal does not render unitCost input", async () => {
-      render(
-        <BrowserRouter>
-          <BomDetailPage />
-        </BrowserRouter>,
-      );
-      const addBtn = screen.getByText("Thêm nguyên liệu");
-      fireEvent.click(addBtn);
-
-      expect(screen.queryByPlaceholderText(/Đơn giá/i)).toBeNull();
+    it("29. TPKH can also edit and add materials at wait_nvkh", () => {
+      hooks.mockUser = { roleCode: "TPKH", fullName: "Trưởng phòng KH" };
+      renderPage();
+      fireEvent.click(screen.getByRole("button", { name: /Chỉnh sửa/ }));
+      expect(screen.getByRole("button", { name: /Thêm vật tư/ })).toBeTruthy();
     });
 
-    it("30. Add Line modal validates positive consumption (> 0)", async () => {
-      render(
-        <BrowserRouter>
-          <BomDetailPage />
-        </BrowserRouter>,
-      );
-      fireEvent.click(screen.getByText("Thêm nguyên liệu"));
+    it("30. the picker hides materials that are already in the NPL", () => {
+      renderPage();
+      fireEvent.click(screen.getByRole("button", { name: /Chỉnh sửa/ }));
+      fireEvent.click(screen.getByRole("button", { name: /Thêm vật tư/ }));
+
+      const dialog = screen.getByRole("dialog");
+      expect(dialog.textContent).toContain("CHI-001");
+      expect(dialog.textContent).not.toContain("VAI-001");
+    });
+
+    it("31. adding a material only touches the draft table, nothing is sent until Lưu", async () => {
+      renderPage();
+      fireEvent.click(screen.getByRole("button", { name: /Chỉnh sửa/ }));
+      fireEvent.click(screen.getByRole("button", { name: /Thêm vật tư/ }));
+      fireEvent.click(screen.getByLabelText("Chọn Chỉ may polyester"));
+      fireEvent.click(screen.getByRole("button", { name: "Thêm 1 vật tư" }));
+
+      expect(screen.getByText("Chỉ may polyester")).toBeTruthy();
+      expect(screen.getByText("Mới")).toBeTruthy();
+      expect(hooks.saveLines.mutateAsync).not.toHaveBeenCalled();
+    });
+
+    it("32. Lưu sends the whole table, new rows included, in a single request", async () => {
+      renderPage();
+      fireEvent.click(screen.getByRole("button", { name: /Chỉnh sửa/ }));
+      fireEvent.click(screen.getByRole("button", { name: /Thêm vật tư/ }));
+      fireEvent.click(screen.getByLabelText("Chọn Chỉ may polyester"));
+      fireEvent.click(screen.getByRole("button", { name: "Thêm 1 vật tư" }));
+
+      fireEvent.change(screen.getByTestId(/^consumption-input-new-/), {
+        target: { value: "2.5" },
+      });
+      fireEvent.click(screen.getByTestId("save-all-costs-floating-btn"));
 
       await waitFor(() => {
-        expect(screen.getByText(/VAI-001/i)).toBeTruthy();
+        expect(hooks.saveLines.mutateAsync).toHaveBeenCalledTimes(1);
       });
-      fireEvent.click(screen.getAllByText("Chọn")[0]);
-
-      const consumptionInput = screen.getByPlaceholderText(/Ví dụ: 1\.45/i);
-      fireEvent.change(consumptionInput, { target: { value: "0" } });
-
-      const form = screen.getByText("Thêm vào BOM").closest("form")!;
-      fireEvent.submit(form);
-
-      expect(screen.getByText(/Định mức tiêu hao phải là số dương lớn hơn 0/i)).toBeTruthy();
+      const payload = hooks.saveLines.mutateAsync.mock.calls[0][0];
+      expect(payload.expectedRowVersion).toBe(1);
+      expect(payload.lines).toHaveLength(3);
+      expect(payload.lines[0]).toMatchObject({ lineId: "line-1", consumption: 1.5 });
+      expect(payload.lines[2]).toMatchObject({ materialId: "mat-3", consumption: 2.5 });
+      expect(payload.lines[2].lineId).toBeUndefined();
     });
 
-    it("31. Add Line modal validates material selection from list", () => {
-      render(
-        <BrowserRouter>
-          <BomDetailPage />
-        </BrowserRouter>,
-      );
-      fireEvent.click(screen.getByText("Thêm nguyên liệu"));
-
-      fireEvent.click(screen.getByText("Thêm vào BOM"));
-      expect(screen.getByText(/Vui lòng chọn một nguyên phụ liệu từ danh mục/i)).toBeTruthy();
+    it("33. Accounting and SA never see the edit button at wait_nvkh", () => {
+      for (const roleCode of ["ACCOUNTING", "SA"]) {
+        hooks.mockUser = { roleCode, fullName: roleCode };
+        const { unmount } = renderPage();
+        expect(screen.queryByRole("button", { name: /Chỉnh sửa/ })).toBeNull();
+        unmount();
+      }
     });
 
-    it("32. submitting Add Line modal calls POST /boms/:id/lines mutation", async () => {
-      render(
-        <BrowserRouter>
-          <BomDetailPage />
-        </BrowserRouter>,
-      );
-      fireEvent.click(screen.getByText("Thêm nguyên liệu"));
+    it("34. Hủy throws the draft away without calling the API", () => {
+      renderPage();
+      fireEvent.click(screen.getByRole("button", { name: /Chỉnh sửa/ }));
+      fireEvent.click(screen.getByRole("button", { name: /Thêm vật tư/ }));
+      fireEvent.click(screen.getByLabelText("Chọn Chỉ may polyester"));
+      fireEvent.click(screen.getByRole("button", { name: "Thêm 1 vật tư" }));
+      expect(screen.getByText("Chỉ may polyester")).toBeTruthy();
 
-      await waitFor(() => {
-        expect(screen.getByText(/VAI-001/i)).toBeTruthy();
-      });
-      fireEvent.click(screen.getAllByText("Chọn")[0]);
+      fireEvent.click(screen.getAllByRole("button", { name: "Hủy" })[0]);
 
-      const consumptionInput = screen.getByPlaceholderText(/Ví dụ: 1\.45/i);
-      fireEvent.change(consumptionInput, { target: { value: "2.5" } });
-
-      fireEvent.click(screen.getByText("Thêm vào BOM"));
-      await waitFor(() => {
-        expect(hooks.addLine.mutateAsync).toHaveBeenCalledWith({
-          materialId: "mat-1",
-          consumption: 2.5,
-          note: undefined,
-          expectedRowVersion: 1,
-        });
-      });
-    });
-
-    it("33. Accounting cannot add material line (button hidden)", () => {
-      hooks.mockUser = { roleCode: "ACCOUNTING", fullName: "Kế toán" };
-      render(
-        <BrowserRouter>
-          <BomDetailPage />
-        </BrowserRouter>,
-      );
-      expect(screen.queryByText("Thêm nguyên liệu")).toBeNull();
-    });
-
-    it("34. SA cannot add material line (button hidden)", () => {
-      hooks.mockUser = { roleCode: "SA", fullName: "Ban Giám Đốc" };
-      render(
-        <BrowserRouter>
-          <BomDetailPage />
-        </BrowserRouter>,
-      );
-      expect(screen.queryByText("Thêm nguyên liệu")).toBeNull();
+      expect(screen.queryByText("Chỉ may polyester")).toBeNull();
+      expect(hooks.saveLines.mutateAsync).not.toHaveBeenCalled();
     });
   });
 
   // ==========================================
-  // Category 5: Edit Line
+  // Category 5: Edit Line (whole-table edit mode)
   // ==========================================
   describe("Category 5: Edit Line", () => {
-    it("35. Technical role (NVKH) edits consumption and note, unitCost is hidden", () => {
+    const renderPage = () =>
+      render(
+        <BrowserRouter>
+          <BomDetailPage />
+        </BrowserRouter>,
+      );
+
+    beforeEach(() => {
+      hooks.saveLines.mutateAsync.mockResolvedValue({ rowVersion: 2, lines: [] });
+      hooks.saveCosts.mutateAsync.mockResolvedValue({ rowVersion: 2, lines: [] });
+      hooks.useMaterials.mockReturnValue({ data: { data: [], meta: { total: 0 } } });
+      hooks.useMaterialGroups.mockReturnValue({ data: { data: [] } });
+    });
+
+    it("35. NVKH edits consumption and note of several rows and saves them together", async () => {
       hooks.mockUser = { roleCode: "NVKH", fullName: "NVKH" };
-      render(
-        <BrowserRouter>
-          <BomDetailPage />
-        </BrowserRouter>,
-      );
-      const editBtns = screen.getAllByTitle("Chỉnh sửa dòng vật tư");
-      fireEvent.click(editBtns[0]);
+      renderPage();
+      fireEvent.click(screen.getByRole("button", { name: /Chỉnh sửa/ }));
 
-      expect(screen.getByText("Chỉnh sửa dòng vật tư")).toBeTruthy();
-      expect(screen.getByDisplayValue("1.5")).toBeTruthy();
-      expect(screen.queryByPlaceholderText(/Ví dụ: 50000/i)).toBeNull();
-    });
-
-    it("36. Technical role (RD) at wait_rd can edit consumption", () => {
-      hooks.mockUser = { roleCode: "RD", fullName: "Kỹ sư RD" };
-      const waitRdBom = {
-        ...mockFitBom,
-        status: "wait_rd" as const,
-        currentRevision: { ...mockFitBom.currentRevision!, status: "wait_rd" as const },
-      };
-      hooks.useBom.mockReturnValue({ data: waitRdBom, isLoading: false });
-      render(
-        <BrowserRouter>
-          <BomDetailPage />
-        </BrowserRouter>,
-      );
-      const editBtns = screen.getAllByTitle("Chỉnh sửa dòng vật tư");
-      fireEvent.click(editBtns[0]);
-
-      expect(screen.getByDisplayValue("1.5")).toBeTruthy();
-    });
-
-    it("37. Technical role (TPKH) at wait_tpkh_confirm can edit material line (N3 is EDITABLE!)", () => {
-      hooks.mockUser = { roleCode: "TPKH", fullName: "TPKH" };
-      const waitTpkhBom = { ...mockFitBom, status: "wait_tpkh_confirm" as const };
-      hooks.useBom.mockReturnValue({ data: waitTpkhBom, isLoading: false });
-      render(
-        <BrowserRouter>
-          <BomDetailPage />
-        </BrowserRouter>,
-      );
-      const editBtns = screen.getAllByTitle("Chỉnh sửa dòng vật tư");
-      expect(editBtns.length).toBeGreaterThan(0);
-      fireEvent.click(editBtns[0]);
-      expect(screen.getByText("Chỉnh sửa dòng vật tư")).toBeTruthy();
-    });
-
-    it("38. Accounting at wait_accounting only sees and edits unitCost", () => {
-      hooks.mockUser = { roleCode: "ACCOUNTING", fullName: "Kế toán" };
-      hooks.useBom.mockReturnValue({ data: mockPoBom, isLoading: false });
-      render(
-        <BrowserRouter>
-          <BomDetailPage />
-        </BrowserRouter>,
-      );
-      const editBtns = screen.getAllByTitle("Chỉnh sửa dòng vật tư");
-      fireEvent.click(editBtns[0]);
-
-      expect(screen.getByText("Nhập đơn giá nguyên phụ liệu")).toBeTruthy();
-      expect(screen.getByPlaceholderText(/Ví dụ: 50000/i)).toBeTruthy();
-      expect(screen.queryByPlaceholderText(/Ví dụ: 1\.45/i)).toBeNull();
-    });
-
-    it("39. Accounting can input unitCost = 0 (0 USD valid cost)", async () => {
-      hooks.mockUser = { roleCode: "ACCOUNTING", fullName: "Kế toán" };
-      hooks.useBom.mockReturnValue({ data: mockPoBom, isLoading: false });
-      render(
-        <BrowserRouter>
-          <BomDetailPage />
-        </BrowserRouter>,
-      );
-      const editBtns = screen.getAllByTitle("Chỉnh sửa dòng vật tư");
-      fireEvent.click(editBtns[0]);
-
-      const costInput = screen.getByPlaceholderText(/Ví dụ: 50000/i);
-      fireEvent.change(costInput, { target: { value: "0" } });
-
-      const saveBtn = screen.getByText("Cập nhật");
-      fireEvent.click(saveBtn);
+      fireEvent.change(screen.getByTestId("consumption-input-line-1"), {
+        target: { value: "2" },
+      });
+      fireEvent.change(screen.getByTestId("note-input-line-2"), {
+        target: { value: "Cúc mới" },
+      });
+      fireEvent.click(screen.getByTestId("save-all-costs-floating-btn"));
 
       await waitFor(() => {
-        expect(hooks.updateLine.mutateAsync).toHaveBeenCalledWith({
-          lineId: "line-po-1",
-          payload: { unitCost: 0, expectedRowVersion: 1 },
-        });
+        expect(hooks.saveLines.mutateAsync).toHaveBeenCalledTimes(1);
+      });
+      expect(hooks.saveLines.mutateAsync).toHaveBeenCalledWith({
+        lines: [
+          { lineId: "line-1", consumption: 2, note: "Thân trước và sau" },
+          { lineId: "line-2", consumption: 8, note: "Cúc mới" },
+        ],
+        expectedRowVersion: 1,
       });
     });
 
-    it("40. Accounting entering decimal unitCost = 12500.5 submits valid number", async () => {
+    it("36. the unit cost column is never rendered for technical roles", () => {
+      hooks.mockUser = { roleCode: "NVKH", fullName: "NVKH" };
+      renderPage();
+      fireEvent.click(screen.getByRole("button", { name: /Chỉnh sửa/ }));
+      expect(screen.queryByText(/Đơn giá \(\$\)/)).toBeNull();
+      expect(screen.queryByTestId(/^unit-cost-input-/)).toBeNull();
+    });
+
+    it("37. TPKH at wait_tpkh_confirm can edit the table (N3 is editable)", () => {
+      hooks.mockUser = { roleCode: "TPKH", fullName: "TPKH" };
+      const waitTpkhBom = {
+        ...mockFitBom,
+        status: "wait_tpkh_confirm" as const,
+        currentRevision: { ...mockFitBom.currentRevision!, status: "wait_tpkh_confirm" as const },
+      };
+      hooks.useBom.mockReturnValue({ data: waitTpkhBom, isLoading: false });
+      renderPage();
+      fireEvent.click(screen.getByRole("button", { name: /Chỉnh sửa/ }));
+      expect(screen.getByTestId("consumption-input-line-1")).toBeTruthy();
+    });
+
+    it("38. Accounting at wait_accounting gets price inputs straight away, nothing else is editable", () => {
       hooks.mockUser = { roleCode: "ACCOUNTING", fullName: "Kế toán" };
       hooks.useBom.mockReturnValue({ data: mockPoBom, isLoading: false });
-      render(
-        <BrowserRouter>
-          <BomDetailPage />
-        </BrowserRouter>,
-      );
-      const editBtns = screen.getAllByTitle("Chỉnh sửa dòng vật tư");
-      fireEvent.click(editBtns[0]);
+      renderPage();
 
-      const costInput = screen.getByPlaceholderText(/Ví dụ: 50000/i);
-      fireEvent.change(costInput, { target: { value: "12500.5" } });
+      expect(screen.getByTestId("unit-cost-input-line-po-1")).toBeTruthy();
+      expect(screen.queryByTestId(/^consumption-input-/)).toBeNull();
+      expect(screen.queryByRole("button", { name: /Thêm vật tư/ })).toBeNull();
+    });
 
-      fireEvent.click(screen.getByText("Cập nhật"));
+    it("39. Accounting can save unitCost = 0 through the cost endpoint", async () => {
+      hooks.mockUser = { roleCode: "ACCOUNTING", fullName: "Kế toán" };
+      hooks.useBom.mockReturnValue({ data: mockPoBom, isLoading: false });
+      renderPage();
+
+      fireEvent.change(screen.getByTestId("unit-cost-input-line-po-1"), {
+        target: { value: "0" },
+      });
+      fireEvent.click(screen.getByTestId("save-all-costs-floating-btn"));
 
       await waitFor(() => {
-        expect(hooks.updateLine.mutateAsync).toHaveBeenCalledWith({
-          lineId: "line-po-1",
-          payload: { unitCost: 12500.5, expectedRowVersion: 1 },
+        expect(hooks.saveCosts.mutateAsync).toHaveBeenCalledWith({
+          items: [{ lineId: "line-po-1", unitCost: 0 }],
+          expectedRowVersion: 1,
+        });
+      });
+      expect(hooks.saveLines.mutateAsync).not.toHaveBeenCalled();
+    });
+
+    it("40. Accounting entering a decimal unitCost submits a valid number", async () => {
+      hooks.mockUser = { roleCode: "ACCOUNTING", fullName: "Kế toán" };
+      hooks.useBom.mockReturnValue({ data: mockPoBom, isLoading: false });
+      renderPage();
+
+      fireEvent.change(screen.getByTestId("unit-cost-input-line-po-1"), {
+        target: { value: "12500,5" },
+      });
+      fireEvent.click(screen.getByTestId("save-all-costs-floating-btn"));
+
+      await waitFor(() => {
+        expect(hooks.saveCosts.mutateAsync).toHaveBeenCalledWith({
+          items: [{ lineId: "line-po-1", unitCost: 12500.5 }],
+          expectedRowVersion: 1,
         });
       });
     });
@@ -1173,143 +1230,135 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       hooks.mockUser = { roleCode: "SA", fullName: "Ban Giám Đốc" };
       const waitSaBom = { ...mockPoBom, status: "wait_sa_approve" as const };
       hooks.useBom.mockReturnValue({ data: waitSaBom, isLoading: false });
-      render(
-        <BrowserRouter>
-          <BomDetailPage />
-        </BrowserRouter>,
-      );
-      expect(screen.queryByTitle("Chỉnh sửa dòng vật tư")).toBeNull();
+      renderPage();
+      expect(screen.queryByRole("button", { name: /Chỉnh sửa/ })).toBeNull();
+      expect(screen.queryByTestId(/^unit-cost-input-/)).toBeNull();
+    });
+
+    it("41b. a failed save keeps the draft and shows the server message", async () => {
+      hooks.mockUser = { roleCode: "NVKH", fullName: "NVKH" };
+      hooks.saveLines.mutateAsync.mockRejectedValueOnce({
+        response: { data: { message: "Vật tư này đã có ở dòng khác trong bảng." } },
+      });
+      renderPage();
+      fireEvent.click(screen.getByRole("button", { name: /Chỉnh sửa/ }));
+      fireEvent.change(screen.getByTestId("consumption-input-line-1"), {
+        target: { value: "3" },
+      });
+      fireEvent.click(screen.getByTestId("save-all-costs-floating-btn"));
+
+      await waitFor(() => {
+        expect(hooks.mockToast.showToast).toHaveBeenCalledWith(
+          "Vật tư này đã có ở dòng khác trong bảng.",
+          "error",
+        );
+      });
+      expect((screen.getByTestId("consumption-input-line-1") as HTMLInputElement).value).toBe("3");
     });
   });
 
   // ==========================================
-  // Category 6: Delete & Reorder Lines
+  // Category 6: Delete & Reorder Lines (applied on Lưu)
   // ==========================================
   describe("Category 6: Delete & Reorder Lines", () => {
-    it("42. Technical role clicking delete opens accessible confirmation dialog", () => {
+    const renderPage = () =>
       render(
         <BrowserRouter>
           <BomDetailPage />
         </BrowserRouter>,
       );
-      const delBtns = screen.getAllByTitle("Xóa dòng vật tư");
-      fireEvent.click(delBtns[0]);
 
-      expect(screen.getByText("Xóa dòng vật tư")).toBeTruthy();
-      expect(screen.getByText("Bạn có chắc chắn muốn xóa vật tư này?")).toBeTruthy();
+    beforeEach(() => {
+      hooks.saveLines.mutateAsync.mockResolvedValue({ rowVersion: 2, lines: [] });
     });
 
-    it("43. Canceling delete dialog closes dialog without calling mutation", () => {
-      render(
-        <BrowserRouter>
-          <BomDetailPage />
-        </BrowserRouter>,
-      );
-      const delBtns = screen.getAllByTitle("Xóa dòng vật tư");
-      fireEvent.click(delBtns[0]);
+    it("42. delete is only offered in edit mode and removes the row from the draft", () => {
+      renderPage();
+      expect(screen.queryByTitle("Xóa dòng vật tư")).toBeNull();
 
-      const cancelBtn = screen.getByText("Hủy");
-      fireEvent.click(cancelBtn);
+      fireEvent.click(screen.getByRole("button", { name: /Chỉnh sửa/ }));
+      fireEvent.click(screen.getAllByTitle("Xóa dòng vật tư")[0]);
 
-      expect(hooks.deleteLine.mutateAsync).not.toHaveBeenCalled();
-      expect(screen.queryByText("Bạn có chắc chắn muốn xóa vật tư này?")).toBeNull();
+      expect(screen.queryByText("Vải Cotton 100%")).toBeNull();
+      expect(hooks.saveLines.mutateAsync).not.toHaveBeenCalled();
     });
 
-    it("44. Confirming delete dialog calls DELETE /boms/:id/lines/:lineId", async () => {
-      render(
-        <BrowserRouter>
-          <BomDetailPage />
-        </BrowserRouter>,
-      );
-      const delBtns = screen.getAllByTitle("Xóa dòng vật tư");
-      fireEvent.click(delBtns[0]);
+    it("43. Hủy brings a deleted row back without calling the API", () => {
+      renderPage();
+      fireEvent.click(screen.getByRole("button", { name: /Chỉnh sửa/ }));
+      fireEvent.click(screen.getAllByTitle("Xóa dòng vật tư")[0]);
+      fireEvent.click(screen.getAllByRole("button", { name: "Hủy" })[0]);
 
-      const confirmBtn = screen.getByText("Xóa vật tư");
-      fireEvent.click(confirmBtn);
+      expect(screen.getByText("Vải Cotton 100%")).toBeTruthy();
+      expect(hooks.saveLines.mutateAsync).not.toHaveBeenCalled();
+    });
+
+    it("44. Lưu omits the deleted line", async () => {
+      renderPage();
+      fireEvent.click(screen.getByRole("button", { name: /Chỉnh sửa/ }));
+      fireEvent.click(screen.getAllByTitle("Xóa dòng vật tư")[0]);
+      fireEvent.click(screen.getByTestId("save-all-costs-floating-btn"));
 
       await waitFor(() => {
-        expect(hooks.deleteLine.mutateAsync).toHaveBeenCalledWith({
-          lineId: "line-1",
+        expect(hooks.saveLines.mutateAsync).toHaveBeenCalledWith({
+          lines: [{ lineId: "line-2", consumption: 8, note: "Cúc nẹp và măng sét" }],
           expectedRowVersion: 1,
         });
       });
     });
 
-    it("45. Accounting cannot delete material line (button hidden)", () => {
+    it("45. Accounting cannot delete material lines (no edit mode for technical fields)", () => {
       hooks.mockUser = { roleCode: "ACCOUNTING", fullName: "Kế toán" };
       hooks.useBom.mockReturnValue({ data: mockPoBom, isLoading: false });
-      render(
-        <BrowserRouter>
-          <BomDetailPage />
-        </BrowserRouter>,
-      );
+      renderPage();
       expect(screen.queryByTitle("Xóa dòng vật tư")).toBeNull();
     });
 
-    it("46. SA cannot delete material line (button hidden)", () => {
+    it("46. SA cannot delete material lines", () => {
       hooks.mockUser = { roleCode: "SA", fullName: "Ban Giám Đốc" };
       hooks.useBom.mockReturnValue({ data: mockPoBom, isLoading: false });
-      render(
-        <BrowserRouter>
-          <BomDetailPage />
-        </BrowserRouter>,
-      );
+      renderPage();
       expect(screen.queryByTitle("Xóa dòng vật tư")).toBeNull();
     });
 
-    it("47. Technical role reordering line down calls PUT /boms/:id/lines/reorder", async () => {
-      render(
-        <BrowserRouter>
-          <BomDetailPage />
-        </BrowserRouter>,
-      );
-      const downBtns = screen.getAllByTitle("Di chuyển xuống");
-      fireEvent.click(downBtns[0]);
+    it("47. moving a line down is applied together with the next Lưu", async () => {
+      renderPage();
+      fireEvent.click(screen.getByRole("button", { name: /Chỉnh sửa/ }));
+      fireEvent.click(screen.getAllByTitle("Di chuyển xuống")[0]);
+      expect(hooks.saveLines.mutateAsync).not.toHaveBeenCalled();
 
+      fireEvent.click(screen.getByTestId("save-all-costs-floating-btn"));
       await waitFor(() => {
-        expect(hooks.reorderLines.mutateAsync).toHaveBeenCalledWith({
-          lineIds: ["line-2", "line-1"],
-          expectedRowVersion: 1,
-        });
+        expect(hooks.saveLines.mutateAsync).toHaveBeenCalledTimes(1);
       });
+      const lines = hooks.saveLines.mutateAsync.mock.calls[0][0].lines;
+      expect(lines.map((l: { lineId: string }) => l.lineId)).toEqual(["line-2", "line-1"]);
     });
 
-    it("48. Technical role reordering line up calls PUT /boms/:id/lines/reorder", async () => {
-      render(
-        <BrowserRouter>
-          <BomDetailPage />
-        </BrowserRouter>,
-      );
-      const upBtns = screen.getAllByTitle("Di chuyển lên");
-      fireEvent.click(upBtns[1]);
+    it("48. moving a line up works the same way", async () => {
+      renderPage();
+      fireEvent.click(screen.getByRole("button", { name: /Chỉnh sửa/ }));
+      fireEvent.click(screen.getAllByTitle("Di chuyển lên")[1]);
+      fireEvent.click(screen.getByTestId("save-all-costs-floating-btn"));
 
       await waitFor(() => {
-        expect(hooks.reorderLines.mutateAsync).toHaveBeenCalledWith({
-          lineIds: ["line-2", "line-1"],
-          expectedRowVersion: 1,
-        });
+        expect(hooks.saveLines.mutateAsync).toHaveBeenCalledTimes(1);
       });
+      const lines = hooks.saveLines.mutateAsync.mock.calls[0][0].lines;
+      expect(lines.map((l: { lineId: string }) => l.lineId)).toEqual(["line-2", "line-1"]);
     });
 
     it("49. Accounting cannot reorder lines (buttons hidden)", () => {
       hooks.mockUser = { roleCode: "ACCOUNTING", fullName: "Kế toán" };
       hooks.useBom.mockReturnValue({ data: mockPoBom, isLoading: false });
-      render(
-        <BrowserRouter>
-          <BomDetailPage />
-        </BrowserRouter>,
-      );
+      renderPage();
       expect(screen.queryByTitle("Di chuyển lên")).toBeNull();
     });
 
     it("50. SA cannot reorder lines (buttons hidden)", () => {
       hooks.mockUser = { roleCode: "SA", fullName: "Ban Giám Đốc" };
       hooks.useBom.mockReturnValue({ data: mockPoBom, isLoading: false });
-      render(
-        <BrowserRouter>
-          <BomDetailPage />
-        </BrowserRouter>,
-      );
+      renderPage();
       expect(screen.queryByTitle("Di chuyển lên")).toBeNull();
     });
   });
@@ -1318,8 +1367,27 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
   // Category 7: Workflow Transitions
   // ==========================================
   describe("Category 7: Workflow Transitions", () => {
-    it("51. N1 (wait_nvkh): NVKH sees 'Chuyển RD' and submits forward", async () => {
-      hooks.mockUser = { roleCode: "NVKH", fullName: "NVKH" };
+    it("confirms before dismissing a filled transfer modal", () => {
+      hooks.mockUser = { roleCode: "TPKH", fullName: "Trưởng phòng KH" };
+      render(
+        <BrowserRouter>
+          <BomDetailPage />
+        </BrowserRouter>,
+      );
+      fireEvent.click(screen.getByText("Chuyển RD"));
+      fireEvent.change(
+        screen.getByPlaceholderText("Nhập ghi chú hoặc yêu cầu đối với bộ phận tiếp theo..."),
+        { target: { value: "Giao cho RD" } },
+      );
+      fireEvent.click(document.querySelector('[data-modal-backdrop="true"]') as HTMLElement);
+      expect(screen.getByText("Bạn có thay đổi chưa được lưu")).toBeTruthy();
+      fireEvent.click(screen.getByRole("button", { name: "Bỏ thay đổi" }));
+      expect(screen.queryByText("Ghi chú bàn giao (Tùy chọn)")).toBeNull();
+      expect(hooks.forwardBom.mutateAsync).not.toHaveBeenCalled();
+    });
+
+    it.each(["NVKH", "TPKH"])("51. N1 (wait_nvkh): %s sees 'Chuyển RD' and submits forward", async (roleCode) => {
+      hooks.mockUser = { roleCode, fullName: roleCode };
       render(
         <BrowserRouter>
           <BomDetailPage />
@@ -1328,7 +1396,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       const fwdBtn = screen.getByText("Chuyển RD");
       fireEvent.click(fwdBtn);
 
-      expect(screen.getByText("Nộp BOM cho RD?")).toBeTruthy();
+      expect(screen.getByText("Nộp NPL cho RD?")).toBeTruthy();
       fireEvent.click(screen.getByText("Xác nhận chuyển bước"));
 
       await waitFor(() => {
@@ -1348,12 +1416,52 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       const fwdBtn = screen.getByText("Chuyển TPKH");
       fireEvent.click(fwdBtn);
 
-      expect(screen.getByText("Nộp BOM cho TPKH?")).toBeTruthy();
+      expect(screen.getByText("Nộp NPL cho TPKH?")).toBeTruthy();
       fireEvent.click(screen.getByText("Xác nhận chuyển bước"));
 
       await waitFor(() => {
         expect(hooks.forwardBom.mutateAsync).toHaveBeenCalled();
       });
+    });
+
+    it("RD saves an incomplete technical draft with two decimals without forwarding", async () => {
+      hooks.mockUser = { roleCode: "RD", fullName: "RD" };
+      hooks.useBom.mockReturnValue({
+        data: {
+          ...mockFitBom,
+          status: "wait_rd" as const,
+          lines: [mockFitBom.lines[0], { ...mockFitBom.lines[1], consumption: 0 }],
+        },
+        isLoading: false,
+      });
+      hooks.saveLines.mutateAsync.mockResolvedValue({ rowVersion: 2, lines: [] });
+      render(
+        <BrowserRouter>
+          <BomDetailPage />
+        </BrowserRouter>,
+      );
+      expect(screen.getAllByTestId("entity-history-button")).toHaveLength(1);
+      fireEvent.click(screen.getByRole("button", { name: "Chỉnh sửa" }));
+      fireEvent.change(screen.getByTestId("consumption-input-line-1"), {
+        target: { value: "1.2345" },
+      });
+      expect((screen.getByTestId("consumption-input-line-1") as HTMLInputElement).value).toBe(
+        "1.23",
+      );
+      fireEvent.click(screen.getByRole("button", { name: "Chuyển TPKH" }));
+      expect(hooks.forwardBom.mutateAsync).not.toHaveBeenCalled();
+      fireEvent.click(screen.getAllByRole("button", { name: "Lưu" })[0]);
+      await waitFor(() =>
+        expect(hooks.saveLines.mutateAsync).toHaveBeenCalledWith(
+          expect.objectContaining({
+            lines: expect.arrayContaining([
+              expect.objectContaining({ lineId: "line-1", consumption: 1.23 }),
+              expect.objectContaining({ lineId: "line-2", consumption: 0 }),
+            ]),
+          }),
+        ),
+      );
+      expect(hooks.forwardBom.mutateAsync).not.toHaveBeenCalled();
     });
 
     it("53. N3 (wait_tpkh_confirm): TPKH sees 'Chuyển Kế toán' and submits forward", async () => {
@@ -1368,7 +1476,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       const fwdBtn = screen.getByText("Chuyển Kế toán");
       fireEvent.click(fwdBtn);
 
-      expect(screen.getByText("Chuyển BOM sang Kế toán?")).toBeTruthy();
+      expect(screen.getByText("Chuyển NPL sang Kế toán?")).toBeTruthy();
       fireEvent.click(screen.getByText("Xác nhận chuyển bước"));
 
       await waitFor(() => {
@@ -1387,7 +1495,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       const fwdBtn = screen.getByText("Chuyển SA");
       fireEvent.click(fwdBtn);
 
-      expect(screen.getByText("Nộp BOM cho SA?")).toBeTruthy();
+      expect(screen.getByText("Nộp NPL cho SA?")).toBeTruthy();
       fireEvent.click(screen.getByText("Xác nhận chuyển bước"));
 
       await waitFor(() => {
@@ -1395,7 +1503,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       });
     });
 
-    it("55. N5 (wait_sa_approve): SA sees 'Phê duyệt BOM' and submits approve", async () => {
+    it("55. N5 (wait_sa_approve): SA sees 'Phê duyệt NPL' and submits approve", async () => {
       hooks.mockUser = { roleCode: "SA", fullName: "Ban Giám Đốc" };
       const waitSaBom = { ...mockPoBom, status: "wait_sa_approve" as const };
       hooks.useBom.mockReturnValue({ data: waitSaBom, isLoading: false });
@@ -1404,11 +1512,11 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
           <BomDetailPage />
         </BrowserRouter>,
       );
-      const approveBtn = screen.getByText("Phê duyệt BOM");
+      const approveBtn = screen.getByText("Phê duyệt NPL");
       fireEvent.click(approveBtn);
 
-      expect(screen.getByText("Phê duyệt & Đóng BOM")).toBeTruthy();
-      fireEvent.click(screen.getByText("Phê duyệt đóng BOM"));
+      expect(screen.getByText("Phê duyệt & Đóng NPL")).toBeTruthy();
+      fireEvent.click(screen.getByText("Phê duyệt đóng NPL"));
 
       await waitFor(() => {
         expect(hooks.approveBom.mutateAsync).toHaveBeenCalled();
@@ -1426,7 +1534,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       );
       fireEvent.click(screen.getByText("Trả lại"));
 
-      expect(screen.getByText("Từ chối / Trả lại BOM")).toBeTruthy();
+      expect(screen.getByText("Từ chối / Trả lại NPL")).toBeTruthy();
       expect(screen.getByText("N1 - Trả về NVKH")).toBeTruthy();
       expect(screen.queryByText("N3 - Trả về TPKH")).toBeNull();
     });
@@ -1502,7 +1610,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
         refetch: refetchSpy,
       });
       hooks.forwardBom.mutateAsync.mockRejectedValueOnce({
-        response: { status: 409, data: { message: "BOM đã được cập nhật bởi người khác" } },
+        response: { status: 409, data: { message: "NPL đã được cập nhật bởi người khác" } },
       });
 
       render(
@@ -1613,7 +1721,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
           <BomDetailPage />
         </BrowserRouter>,
       );
-      expect(screen.getByText(/Phiên bản 2 \(Đang làm việc\)/i)).toBeTruthy();
+      expect(screen.getByText(/Phiên bản 2 \(Hiện hành\)/i)).toBeTruthy();
     });
 
     it("68. selecting a historical revision displays historical lines and 'Revision lịch sử' banner", () => {
@@ -1629,7 +1737,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
         </BrowserRouter>,
       );
 
-      expect(screen.getByText(/Revision lịch sử \(Chế độ chỉ đọc\)/i)).toBeTruthy();
+      expect(screen.getByText(/Phiên bản lịch sử \(Chế độ chỉ đọc\)/i)).toBeTruthy();
       expect(screen.getByText("Vải Thô Cũ")).toBeTruthy();
     });
 
@@ -1653,7 +1761,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       expect(screen.queryByTitle("Xóa dòng vật tư")).toBeNull();
     });
 
-    it("70. Closed BOM shows 'Tạo phiên bản mới' button for authorized role", () => {
+    it("70. Closed NPL shows 'Tạo phiên bản mới' button for authorized role", () => {
       const closedBom = { ...mockFitBom, status: "closed" as const };
       hooks.useBom.mockReturnValue({ data: closedBom, isLoading: false });
       render(
@@ -1672,9 +1780,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
           <BomDetailPage />
         </BrowserRouter>,
       );
-      expect(
-        screen.getByText("Đã hoàn tất toàn bộ quy trình (Khởi tạo → Phê duyệt)"),
-      ).toBeTruthy();
+      expect(screen.getByText("Đã hoàn tất toàn bộ quy trình (Khởi tạo → Phê duyệt)")).toBeTruthy();
       expect(screen.queryByText("Khởi tạo")).toBeNull();
       expect(screen.queryByText("Phê duyệt")).toBeNull();
     });
@@ -1689,12 +1795,12 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       );
       fireEvent.click(screen.getByText("Tạo phiên bản mới"));
 
-      expect(screen.getByText(/Tạo Phiên Bản Mới \(Rev 2\)/i)).toBeTruthy();
+      expect(screen.getByRole("heading", { name: "Tạo phiên bản 2" })).toBeTruthy();
 
       const reasonInput = screen.getByPlaceholderText(/Thay thế phụ liệu cúc/i);
       fireEvent.change(reasonInput, { target: { value: "Thay đổi chất liệu ren" } });
 
-      fireEvent.click(screen.getByText("Tạo Rev 2"));
+      fireEvent.click(screen.getByRole("button", { name: "Tạo phiên bản 2" }));
 
       await waitFor(() => {
         expect(hooks.createRevision.mutateAsync).toHaveBeenCalledWith({
@@ -1709,22 +1815,101 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
           <BomDetailPage />
         </BrowserRouter>,
       );
-      fireEvent.click(screen.getByText(/Lịch sử phiên bản/i));
+      fireEvent.click(screen.getByRole("button", { name: /^Lịch sử$/ }));
 
       expect(screen.getByText("Lịch sử các phiên bản định mức")).toBeTruthy();
       expect(screen.getByText("So sánh")).toBeTruthy();
     });
 
-    it("73. History Tab renders workflow audit trail timeline", () => {
+    it("73. revision history stays with its line table; NPL history is under the history tab", () => {
       render(
         <BrowserRouter>
           <BomDetailPage />
         </BrowserRouter>,
       );
-      fireEvent.click(screen.getByText(/Nhật ký duyệt/i));
+      const titles = screen.getAllByTestId("entity-history-button").map((el) => el.textContent);
+      expect(titles).toEqual(["Lịch sử sửa đổi phiên bản 1"]);
+      fireEvent.click(screen.getByRole("button", { name: /^Lịch sử$/ }));
+      const historyTitles = screen
+        .getAllByTestId("entity-history-button")
+        .map((button) => button.textContent);
+      expect(historyTitles).toContain("Lịch sử thay đổi NPL và các phiên bản");
+      expect(screen.queryByText(/Nhật ký duyệt/i)).toBeNull();
+    });
 
-      expect(screen.getByText("Nhật ký luân chuyển quy trình (Workflow Audit Trail)")).toBeTruthy();
-      expect(screen.getByText("NVKH Nguyễn Văn A")).toBeTruthy();
+    it("73b. SA can promote an older revision after giving a reason", async () => {
+      hooks.mockUser = { roleCode: "SA", fullName: "Quản trị" };
+      hooks.promote.mutateAsync.mockResolvedValue({});
+      hooks.useBomRevisions.mockReturnValue({
+        data: [
+          {
+            id: "rev-1",
+            bomId: "bom-test-uuid",
+            revisionNo: 2,
+            status: "wait_nvkh",
+            isCurrent: true,
+          },
+          {
+            id: "rev-0",
+            bomId: "bom-test-uuid",
+            revisionNo: 1,
+            status: "closed",
+            isCurrent: false,
+          },
+        ],
+        isLoading: false,
+      });
+      render(
+        <BrowserRouter>
+          <BomDetailPage />
+        </BrowserRouter>,
+      );
+      fireEvent.click(screen.getByRole("button", { name: /^Lịch sử$/ }));
+      fireEvent.click(screen.getByRole("button", { name: /Đặt làm hiện hành/ }));
+
+      const submit = screen.getByRole("button", { name: /Đặt Phiên bản 1 làm hiện hành/ });
+      expect((submit as HTMLButtonElement).disabled).toBe(true);
+      fireEvent.change(screen.getByPlaceholderText(/Phiên bản mới nhất sai định mức/), {
+        target: { value: "Bản 2 sai" },
+      });
+      fireEvent.click(submit);
+
+      await waitFor(() => {
+        expect(hooks.promote.mutateAsync).toHaveBeenCalledWith({
+          revisionId: "rev-0",
+          payload: { reason: "Bản 2 sai" },
+        });
+      });
+    });
+
+    it("73c. only SA sees the promote button", () => {
+      hooks.mockUser = { roleCode: "TPKH", fullName: "TPKH" };
+      hooks.useBomRevisions.mockReturnValue({
+        data: [
+          {
+            id: "rev-1",
+            bomId: "bom-test-uuid",
+            revisionNo: 2,
+            status: "wait_nvkh",
+            isCurrent: true,
+          },
+          {
+            id: "rev-0",
+            bomId: "bom-test-uuid",
+            revisionNo: 1,
+            status: "closed",
+            isCurrent: false,
+          },
+        ],
+        isLoading: false,
+      });
+      render(
+        <BrowserRouter>
+          <BomDetailPage />
+        </BrowserRouter>,
+      );
+      fireEvent.click(screen.getByRole("button", { name: /^Lịch sử$/ }));
+      expect(screen.queryByRole("button", { name: /Đặt làm hiện hành/ })).toBeNull();
     });
 
     it("74. Revision Diff modal opens and displays ADDED and CHANGED items", () => {
@@ -1733,7 +1918,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
           <BomDetailPage />
         </BrowserRouter>,
       );
-      fireEvent.click(screen.getByText(/Lịch sử phiên bản/i));
+      fireEvent.click(screen.getByRole("button", { name: /^Lịch sử$/ }));
       fireEvent.click(screen.getByText("So sánh"));
 
       expect(screen.getByText("So sánh biến động định mức")).toBeTruthy();
@@ -1749,7 +1934,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
           <BomDetailPage />
         </BrowserRouter>,
       );
-      fireEvent.click(screen.getByText(/Lịch sử phiên bản/i));
+      fireEvent.click(screen.getByRole("button", { name: /^Lịch sử$/ }));
       fireEvent.click(screen.getByText("So sánh"));
 
       expect(screen.queryByText(/35\.000/i)).toBeNull();
@@ -1757,10 +1942,10 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
   });
 
   // ==========================================
-  // Category 10: Copy Fit -> PO BOM
+  // Category 10: Copy Fit -> PO NPL
   // ==========================================
-  describe("Category 10: Copy Fit -> PO BOM", () => {
-    it("76. PO BOM with 0 lines at N1 shows 'Nhập từ Fit BOM' in menu", () => {
+  describe("Category 10: Copy Fit -> PO NPL", () => {
+    it("76. PO NPL with 0 lines at N1 shows 'Nhập từ Fit NPL' in menu", () => {
       const emptyPoBom: BomDetail = {
         ...mockPoBom,
         status: "wait_nvkh",
@@ -1779,10 +1964,10 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
           <BomDetailPage />
         </BrowserRouter>,
       );
-      expect(screen.getByText("Nhập từ Fit BOM")).toBeTruthy();
+      expect(screen.getByText("Nhập từ Fit NPL")).toBeTruthy();
     });
 
-    it("77. PO BOM with existing lines hides Copy action", () => {
+    it("77. PO NPL with existing lines hides Copy action", () => {
       const nonEmptyPoBom: BomDetail = {
         ...mockPoBom,
         status: "wait_nvkh",
@@ -1801,7 +1986,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
           <BomDetailPage />
         </BrowserRouter>,
       );
-      expect(screen.queryByText("Nhập từ Fit BOM")).toBeNull();
+      expect(screen.queryByText("Nhập từ Fit NPL")).toBeNull();
     });
 
     it("shows a clear message instead of blank/loading state when the PO product isn't linked to any Fit style", () => {
@@ -1826,7 +2011,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
         </BrowserRouter>,
       );
 
-      fireEvent.click(screen.getByText("Nhập từ Fit BOM"));
+      fireEvent.click(screen.getByText("Nhập từ Fit NPL"));
 
       expect(
         screen.getByText(
@@ -1835,13 +2020,13 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       ).toBeTruthy();
     });
 
-    it("78. FIT BOM hides Copy action", () => {
+    it("78. FIT NPL hides Copy action", () => {
       render(
         <BrowserRouter>
           <BomDetailPage />
         </BrowserRouter>,
       );
-      expect(screen.queryByText("Nhập từ Fit BOM")).toBeNull();
+      expect(screen.queryByText("Nhập từ Fit NPL")).toBeNull();
     });
 
     it("79. Copy Fit modal allows selecting source revision and calls copy mutation", async () => {
@@ -1863,12 +2048,12 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
           <BomDetailPage />
         </BrowserRouter>,
       );
-      fireEvent.click(screen.getByText("Nhập từ Fit BOM"));
+      fireEvent.click(screen.getByText("Nhập từ Fit NPL"));
 
-      expect(screen.getByText("Sao chép từ Fit BOM")).toBeTruthy();
+      expect(screen.getByText("Sao chép từ Fit NPL")).toBeTruthy();
 
       await waitFor(() => {
-        expect(screen.getByText(/Fit BOM: BOM-FIT-ST101/i)).toBeTruthy();
+        expect(screen.getByText(/Fit NPL: BOM-FIT-ST101/i)).toBeTruthy();
       });
 
       fireEvent.click(screen.getByText("Xác nhận sao chép"));
@@ -1881,7 +2066,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       });
     });
 
-    it("80. Copy Fit action is hidden when BOM is discontinued", () => {
+    it("80. Copy Fit action is hidden when NPL is discontinued", () => {
       const discPoBom: BomDetail = {
         ...mockPoBom,
         status: "discontinued",
@@ -1894,7 +2079,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
           <BomDetailPage />
         </BrowserRouter>,
       );
-      expect(screen.queryByText("Nhập từ Fit BOM")).toBeNull();
+      expect(screen.queryByText("Nhập từ Fit NPL")).toBeNull();
     });
 
     const multiLinePoBom: BomDetail = {
@@ -1954,7 +2139,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       fireEvent.blur(inputs[0]);
 
       // Verify NO mutation called on blur
-      expect(hooks.updateLine.mutateAsync).not.toHaveBeenCalled();
+      expect(hooks.saveCosts.mutateAsync).not.toHaveBeenCalled();
 
       // Enter cost for line 2 using dot separator
       fireEvent.change(inputs[1], { target: { value: "0.2400" } });
@@ -1965,11 +2150,12 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       expect((inputs[1] as HTMLInputElement).value).toBe("0.2400");
 
       // Verify dirty count and save draft button appear
-      expect(screen.getAllByText(/2 đơn giá chưa lưu/i).length).toBeGreaterThan(0);
-      expect(screen.getAllByText("Lưu nháp").length).toBeGreaterThan(0);
+      expect(screen.getAllByText(/2 thay đổi chưa lưu/i).length).toBeGreaterThan(0);
+      expect(screen.getAllByRole("button", { name: /^Lưu$/ }).length).toBeGreaterThan(0);
     });
 
-    it("82. clicking 'Lưu nháp' saves all dirty lines and displays success toast", async () => {
+    it("82. clicking 'Lưu' saves all dirty prices in one request and shows a success toast", async () => {
+      hooks.saveCosts.mutateAsync.mockResolvedValue({ rowVersion: 2, lines: [] });
       hooks.mockUser = { roleCode: "ACCOUNTING", fullName: "Kế toán viên" };
       hooks.useBom.mockReturnValue({ data: multiLinePoBom, isLoading: false });
       render(
@@ -1982,22 +2168,18 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       fireEvent.change(inputs[0], { target: { value: "0,1360" } });
       fireEvent.change(inputs[1], { target: { value: "0.2400" } });
 
-      const saveButton = screen.getAllByRole("button", { name: /lưu nháp/i })[0];
-      fireEvent.click(saveButton);
+      fireEvent.click(screen.getByTestId("save-all-costs-floating-btn"));
 
       await waitFor(() => {
-        expect(hooks.updateLine.mutateAsync).toHaveBeenCalledWith({
-          lineId: "line-po-1",
-          payload: { unitCost: 0.136 },
+        expect(hooks.saveCosts.mutateAsync).toHaveBeenCalledTimes(1);
+        expect(hooks.saveCosts.mutateAsync).toHaveBeenCalledWith({
+          items: [
+            { lineId: "line-po-1", unitCost: 0.136 },
+            { lineId: "line-po-2", unitCost: 0.24 },
+          ],
+          expectedRowVersion: 1,
         });
-        expect(hooks.updateLine.mutateAsync).toHaveBeenCalledWith({
-          lineId: "line-po-2",
-          payload: { unitCost: 0.24 },
-        });
-        expect(hooks.mockToast.showToast).toHaveBeenCalledWith(
-          "Đã lưu thành công 2 đơn giá vật tư",
-          "success",
-        );
+        expect(hooks.mockToast.showToast).toHaveBeenCalledWith("Đã lưu định mức", "success");
       });
     });
 
@@ -2131,6 +2313,76 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
         // Now dirty: preview shows and contains "Dự kiến"
         expect(screen.getAllByText("Dự kiến").length).toBeGreaterThanOrEqual(1);
       });
+    });
+  });
+
+  describe("draft navigation with a Data Router", () => {
+    const renderWithRouter = () => {
+      useRealRouter = true;
+      const router = createMemoryRouter([{ path: "/bom/:id", element: <BomDetailPage /> }], {
+        initialEntries: ["/bom/bom-test-uuid"],
+      });
+      render(<RouterProvider router={router} />);
+      return router;
+    };
+
+    it("keeps a two-decimal technical draft across tab changes and saves it", async () => {
+      hooks.saveLines.mutateAsync.mockResolvedValue({ rowVersion: 2, lines: [] });
+      renderWithRouter();
+      fireEvent.click(screen.getByRole("button", { name: /Chỉnh sửa/ }));
+      fireEvent.change(screen.getByTestId("consumption-input-line-1"), {
+        target: { value: "1.239876" },
+      });
+      expect((screen.getByTestId("consumption-input-line-1") as HTMLInputElement).value).toBe(
+        "1.23",
+      );
+      fireEvent.click(screen.getByRole("button", { name: /^Lịch sử$/ }));
+      fireEvent.click(screen.getByRole("button", { name: /Nguyên liệu/ }));
+      expect((screen.getByTestId("consumption-input-line-1") as HTMLInputElement).value).toBe(
+        "1.23",
+      );
+      fireEvent.click(screen.getByTestId("save-all-costs-floating-btn"));
+      await waitFor(() =>
+        expect(hooks.saveLines.mutateAsync).toHaveBeenCalledWith(
+          expect.objectContaining({
+            lines: expect.arrayContaining([
+              expect.objectContaining({ lineId: "line-1", consumption: 1.23 }),
+            ]),
+          }),
+        ),
+      );
+    });
+
+    it("blocks revision changes until the draft is discarded", async () => {
+      hooks.useBomRevisions.mockReturnValue({
+        data: [
+          { id: "rev-1", revisionNo: 2, status: "wait_nvkh", isCurrent: true },
+          { id: "rev-hist-1", revisionNo: 1, status: "closed", isCurrent: false },
+        ],
+        isLoading: false,
+      });
+      hooks.useBomRevisionDetail.mockReturnValue({
+        data: mockHistoricalRevDetail,
+        isLoading: false,
+      });
+      const router = renderWithRouter();
+      fireEvent.click(screen.getByRole("button", { name: /Chỉnh sửa/ }));
+      fireEvent.change(screen.getByTestId("consumption-input-line-1"), {
+        target: { value: "2.25" },
+      });
+      fireEvent.change(screen.getByTitle("Chọn phiên bản để xem"), {
+        target: { value: "rev-hist-1" },
+      });
+      expect(router.state.location.search).toBe("");
+      fireEvent.click(screen.getByRole("button", { name: "Tiếp tục chỉnh sửa" }));
+      expect((screen.getByTestId("consumption-input-line-1") as HTMLInputElement).value).toBe(
+        "2.25",
+      );
+      fireEvent.change(screen.getByTitle("Chọn phiên bản để xem"), {
+        target: { value: "rev-hist-1" },
+      });
+      fireEvent.click(screen.getByRole("button", { name: /Rời khỏi trang/ }));
+      await waitFor(() => expect(router.state.location.search).toBe("?revision=rev-hist-1"));
     });
   });
 });

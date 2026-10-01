@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { AlertCircle, RotateCw } from "lucide-react";
 import {
@@ -6,11 +6,7 @@ import {
   useUpdateBom,
   useBomRevisions,
   useBomRevisionDetail,
-  useBomRevisionHistory,
-  useAddBomLine,
-  useUpdateBomLine,
-  useDeleteBomLine,
-  useReorderBomLines,
+  usePromoteBomRevision,
   useForwardBom,
   useRejectBom,
   useApproveBom,
@@ -19,45 +15,31 @@ import {
   useDiscontinueBom,
 } from "@/hooks/useBoms";
 import { useToast } from "@/hooks/useToast";
-import { ConfirmDialog, Toast } from "@/components/shared";
-import { useUnsavedChangesWarning } from "@/hooks/useNavigationBlocker";
-import type {
-  BomLineItem,
-  CreateBomLinePayload,
-  UpdateBomLinePayload,
-  UpdateBomPayload,
-  BomStatus,
-} from "@/types/bom";
+import { Toast } from "@/components/shared";
+import type { BomLineItem, UpdateBomPayload, BomStatus } from "@/types/bom";
 
 // Components
 import { BomDetailHeader } from "@/components/features/bom/detail/BomDetailHeader";
 import { BomHeaderEditModal } from "@/components/features/bom/detail/BomHeaderEditModal";
 import { BomWorkflowStepper } from "@/components/features/bom/detail/BomWorkflowStepper";
 import { BomDetailKpiCards } from "@/components/features/bom/detail/BomDetailKpiCards";
-import { BomLinesTable } from "@/components/features/bom/detail/BomLinesTable";
-import { BomAddMaterialDrawer } from "@/components/features/bom/detail/BomAddMaterialDrawer";
-import { BomLineDeleteDialog } from "@/components/features/bom/detail/BomLineDeleteDialog";
+import { BomLinesEditor } from "@/components/features/bom/detail/BomLinesEditor";
 import {
   BomForwardModal,
   BomRejectModal,
   BomApproveModal,
   BomDiscontinueModal,
   BomCreateRevisionModal,
+  BomPromoteRevisionModal,
 } from "@/components/features/bom/detail/BomWorkflowModals";
 import { BomRevisionsTab } from "@/components/features/bom/detail/BomRevisionsTab";
 import { BomRevisionDiffModal } from "@/components/features/bom/detail/BomRevisionDiffModal";
-import { BomHistoryTab } from "@/components/features/bom/detail/BomHistoryTab";
 import { BomAggregateTab } from "@/components/features/bom/detail/BomAggregateTab";
 import { BomCopyFitModal } from "@/components/features/bom/detail/BomCopyFitModal";
 import { useAuthStore } from "@/store/authStore";
-import { canEditTechnicalLines } from "@/lib/bomAccess";
-import {
-  BomRdEntryTable,
-  type RdLineInputState,
-} from "@/components/features/bom/detail/BomRdEntryTable";
-import { BomRdBottomBar } from "@/components/features/bom/detail/BomRdBottomBar";
+import { canPromoteRevision } from "@/lib/bomAccess";
 
-type ActiveTab = "lines" | "revisions" | "history" | "aggregate";
+type ActiveTab = "lines" | "revisions" | "aggregate";
 
 export default function BomDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -68,16 +50,14 @@ export default function BomDetailPage() {
 
   const tabFromUrl = searchParams.get("tab");
   const initialTab: ActiveTab =
-    tabFromUrl === "revisions" || tabFromUrl === "history" || tabFromUrl === "aggregate"
-      ? tabFromUrl
-      : "lines";
+    tabFromUrl === "revisions" || tabFromUrl === "aggregate" ? tabFromUrl : "lines";
   const [activeTab, setActiveTab] = useState<ActiveTab>(initialTab);
 
   const selectedRevisionParam = searchParams.get("revision");
 
   useEffect(() => {
     const t = searchParams.get("tab");
-    if (t === "revisions" || t === "history" || t === "aggregate" || t === "lines") {
+    if (t === "revisions" || t === "aggregate" || t === "lines") {
       setActiveTab(t);
     }
   }, [searchParams]);
@@ -107,20 +87,11 @@ export default function BomDetailPage() {
     isHistorical ? selectedRevisionParam! : undefined,
   );
 
-  // Query History
   const activeRevisionId = isHistorical ? selectedRevisionParam! : bom?.currentRevision?.id;
-
-  const { data: history, isLoading: isLoadingHistory } = useBomRevisionHistory(
-    id,
-    activeRevisionId,
-  );
 
   // Mutation Hooks
   const updateBomMutation = useUpdateBom(id || "");
-  const addLineMutation = useAddBomLine(id || "");
-  const updateLineMutation = useUpdateBomLine(id || "");
-  const deleteLineMutation = useDeleteBomLine(id || "");
-  const reorderLinesMutation = useReorderBomLines(id || "");
+  const promoteMutation = usePromoteBomRevision(id || "");
   const forwardMutation = useForwardBom(id || "");
   const rejectMutation = useRejectBom(id || "");
   const approveMutation = useApproveBom(id || "");
@@ -131,8 +102,7 @@ export default function BomDetailPage() {
   // Modal States
   const [isEditHeaderOpen, setIsEditHeaderOpen] = useState(false);
   const [isLineModalOpen, setIsLineModalOpen] = useState(false);
-  const [editingLine, setEditingLine] = useState<BomLineItem | null>(null);
-  const [deletingLine, setDeletingLine] = useState<BomLineItem | null>(null);
+  const [promoteTargetId, setPromoteTargetId] = useState<string | null>(null);
   const [isForwardModalOpen, setIsForwardModalOpen] = useState(false);
   const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
   const [isApproveModalOpen, setIsApproveModalOpen] = useState(false);
@@ -141,39 +111,7 @@ export default function BomDetailPage() {
   const [isCopyFitModalOpen, setIsCopyFitModalOpen] = useState(false);
   const [diffModalRevId, setDiffModalRevId] = useState<string | null>(null);
 
-  // R&D Inline inputs state (must be at top level before early returns)
-  const [rdInputs, setRdInputs] = useState<Record<string, RdLineInputState>>({});
-  const [isSavingRdDraft, setIsSavingRdDraft] = useState(false);
-  const [isFinishingRd, setIsFinishingRd] = useState(false);
-
-  // Accounting unsaved state & navigation blocker (must be top-level before early returns)
-  const [hasUnsavedAccountingCosts, setHasUnsavedAccountingCosts] = useState(false);
-  const blocker = useUnsavedChangesWarning(
-    hasUnsavedAccountingCosts,
-    "Bạn có các đơn giá vật tư đã thay đổi nhưng chưa bấm 'Lưu nháp'. Vui lòng bấm lưu để không bị mất dữ liệu!",
-  );
-
-  // Sync inputs when bom lines change
-  const activeBomLines: BomLineItem[] = useMemo(() => {
-    return isHistorical ? (historicalRevision?.lines as BomLineItem[]) || [] : bom?.lines || [];
-  }, [isHistorical, historicalRevision?.lines, bom?.lines]);
-
-  useEffect(() => {
-    if (activeBomLines.length > 0) {
-      setRdInputs((prev) => {
-        const next = { ...prev };
-        activeBomLines.forEach((l) => {
-          if (!next[l.id]) {
-            next[l.id] = {
-              consumption: l.consumption && Number(l.consumption) > 0 ? String(l.consumption) : "",
-              note: l.note || "",
-            };
-          }
-        });
-        return next;
-      });
-    }
-  }, [activeBomLines]);
+  const [hasUnsavedLines, setHasUnsavedLines] = useState(false);
 
   if (isLoadingBom) {
     return (
@@ -197,14 +135,14 @@ export default function BomDetailPage() {
   if (isErrorBom || !bom) {
     const errorMsg =
       (errorBom as { response?: { data?: { message?: string } } })?.response?.data?.message ||
-      "Không tìm thấy thông tin BOM hoặc phiên làm việc đã hết hạn.";
+      "Không tìm thấy thông tin NPL hoặc phiên làm việc đã hết hạn.";
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center p-6 text-center">
         <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-rose-100 text-rose-600 dark:bg-rose-950/50 dark:text-rose-400">
           <AlertCircle className="h-8 w-8" />
         </div>
         <h2 className="mt-4 text-xl font-bold text-gray-900 dark:text-white">
-          Không thể tải chi tiết BOM
+          Không thể tải chi tiết NPL
         </h2>
         <p className="text-theme-sm mt-1 max-w-md text-gray-500 dark:text-gray-400">{errorMsg}</p>
         <div className="mt-6 flex items-center gap-3">
@@ -259,149 +197,7 @@ export default function BomDetailPage() {
 
   const isReadOnlyPoBom =
     poBomLockReason !== null ||
-    (bom.type === "po" &&
-      user?.roleCode === "SA" &&
-      user.purchaseOrderMode === "READ_ONLY");
-
-  const isRdEntryMode =
-    !isReadOnlyPoBom &&
-    currentStatus === "wait_rd" &&
-    canEditTechnicalLines(user, currentStatus, isHistorical);
-
-  const handleSaveAllAccountingCosts = async (
-    updates: { lineId: string; unitCost: number | null }[],
-  ): Promise<string[]> => {
-    const failedLineIds: string[] = [];
-    let savedCount = 0;
-    for (const { lineId, unitCost } of updates) {
-      try {
-        await updateLineMutation.mutateAsync({ lineId, payload: { unitCost } });
-        savedCount += 1;
-      } catch {
-        failedLineIds.push(lineId);
-      }
-    }
-    setHasUnsavedAccountingCosts(failedLineIds.length > 0);
-    if (failedLineIds.length === 0) {
-      showToast(`Đã lưu thành công ${savedCount} đơn giá vật tư`, "success");
-    } else {
-      const failedMaterials = failedLineIds.map(
-        (lineId) => displayLines.find((line) => line.id === lineId)?.materialNameSnapshot || lineId,
-      );
-      showToast(
-        `Đã lưu ${savedCount}/${updates.length} đơn giá. Lỗi ở: ${failedMaterials.join(", ")}.`,
-        "error",
-      );
-    }
-    return failedLineIds;
-  };
-
-  const handleChangeRdInput = (lineId: string, field: "consumption" | "note", value: string) => {
-    setRdInputs((prev) => ({
-      ...prev,
-      [lineId]: {
-        ...(prev[lineId] || { consumption: "", note: "" }),
-        [field]: value,
-      },
-    }));
-  };
-
-  const handleCancelRdInputs = () => {
-    const resetState: Record<string, RdLineInputState> = {};
-    displayLines.forEach((l) => {
-      resetState[l.id] = {
-        consumption: l.consumption && Number(l.consumption) > 0 ? String(l.consumption) : "",
-        note: l.note || "",
-      };
-    });
-    setRdInputs(resetState);
-    showToast("Đã khôi phục định mức ban đầu", "success");
-  };
-
-  const handleSaveRdDraft = async () => {
-    setIsSavingRdDraft(true);
-    try {
-      const updates = displayLines.map(async (line) => {
-        const input = rdInputs[line.id];
-        if (!input) return;
-        const val = parseFloat(input.consumption);
-        const parsedConsumption = !isNaN(val) && val >= 0 ? val : 0;
-        await updateLineMutation.mutateAsync({
-          lineId: line.id,
-          payload: {
-            consumption: parsedConsumption,
-            note: input.note.trim() || undefined,
-          },
-        });
-      });
-      await Promise.all(updates);
-      showToast("Đã lưu nháp định mức", "success");
-    } catch (err: unknown) {
-      const axiosErr = err as { response?: { data?: { message?: string } } };
-      showToast(axiosErr?.response?.data?.message || "Lỗi khi lưu nháp", "error");
-    } finally {
-      setIsSavingRdDraft(false);
-    }
-  };
-
-  const handleFinishRd = async () => {
-    const unentered = displayLines.filter((line) => {
-      const input = rdInputs[line.id];
-      const val = input ? parseFloat(input.consumption) : Number(line.consumption);
-      return isNaN(val) || val <= 0;
-    });
-
-    if (unentered.length > 0) {
-      showToast(
-        `Còn ${unentered.length} vật tư chưa nhập định mức. Vui lòng nhập đầy đủ trước khi hoàn tất.`,
-        "error",
-      );
-      return;
-    }
-
-    setIsFinishingRd(true);
-    try {
-      const updates = displayLines.map(async (line) => {
-        const input = rdInputs[line.id];
-        if (!input) return;
-        const val = parseFloat(input.consumption);
-        await updateLineMutation.mutateAsync({
-          lineId: line.id,
-          payload: {
-            consumption: val,
-            note: input.note.trim() || undefined,
-          },
-        });
-      });
-      await Promise.all(updates);
-
-      const latest = await refetchBom();
-      await forwardMutation.mutateAsync({
-        note: "Đã hoàn tất nhập định mức",
-        expectedRowVersion: latest?.data?.rowVersion ?? bom.rowVersion,
-      });
-      showToast("Đã hoàn tất định mức và chuyển TPKH thành công", "success");
-    } catch (err: unknown) {
-      const axiosErr = err as { response?: { status?: number; data?: { message?: string } } };
-      if (axiosErr?.response?.status === 409) {
-        showToast("Dữ liệu đã bị thay đổi bởi người khác, hệ thống đang tải lại...", "error");
-        refetchBom();
-      } else {
-        showToast(axiosErr?.response?.data?.message || "Lỗi khi hoàn tất", "error");
-      }
-    } finally {
-      setIsFinishingRd(false);
-    }
-  };
-
-  const enteredRdCount = displayLines.filter((line) => {
-    const input = rdInputs[line.id];
-    if (input) {
-      const val = parseFloat(input.consumption);
-      return !isNaN(val) && val > 0;
-    }
-    return line.consumption != null && Number(line.consumption) > 0;
-  }).length;
+    (bom.type === "po" && user?.roleCode === "SA" && user.purchaseOrderMode === "READ_ONLY");
 
   // Revision switcher handler
   const handleSelectRevision = (revId: string) => {
@@ -422,80 +218,6 @@ export default function BomDetailPage() {
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { message?: string } } };
       showToast(axiosErr?.response?.data?.message || "Lỗi khi cập nhật Header", "error");
-    }
-  };
-
-  // Handlers for Line CRUD
-  const handleOpenAddLine = () => {
-    setEditingLine(null);
-    setIsLineModalOpen(true);
-  };
-
-  const handleOpenEditLine = (line: BomLineItem) => {
-    setEditingLine(line);
-    setIsLineModalOpen(true);
-  };
-
-  const handleCreateLine = async (payload: CreateBomLinePayload) => {
-    await addLineMutation.mutateAsync({ ...payload, expectedRowVersion: bom.rowVersion });
-    showToast("Đã thêm nguyên phụ liệu vào BOM", "success");
-  };
-
-  const handleCreateBatchLines = async (payloads: CreateBomLinePayload[]): Promise<string[]> => {
-    const failedMaterialIds: string[] = [];
-    let createdCount = 0;
-    for (const payload of payloads) {
-      try {
-        await addLineMutation.mutateAsync(payload);
-        createdCount += 1;
-      } catch {
-        if (payload.materialId) failedMaterialIds.push(payload.materialId);
-      }
-    }
-    if (failedMaterialIds.length === 0) {
-      showToast(`Đã thêm ${createdCount} nguyên phụ liệu vào BOM`, "success");
-    }
-    return failedMaterialIds;
-  };
-
-  const handleUpdateLine = async (payload: UpdateBomLinePayload) => {
-    if (!editingLine) return;
-    await updateLineMutation.mutateAsync({
-      lineId: editingLine.id,
-      payload: { ...payload, expectedRowVersion: bom.rowVersion },
-    });
-    showToast("Đã cập nhật dòng vật tư", "success");
-  };
-
-  const handleOpenDeleteLine = (line: BomLineItem) => {
-    setDeletingLine(line);
-  };
-
-  const handleConfirmDeleteLine = async () => {
-    if (!deletingLine) return;
-    try {
-      await deleteLineMutation.mutateAsync({
-        lineId: deletingLine.id,
-        expectedRowVersion: bom.rowVersion,
-      });
-      showToast("Đã xóa dòng vật tư", "success");
-      setDeletingLine(null);
-    } catch (err: unknown) {
-      const axiosErr = err as { response?: { data?: { message?: string } } };
-      showToast(axiosErr?.response?.data?.message || "Lỗi khi xóa", "error");
-    }
-  };
-
-  const handleReorderLines = async (lineIds: string[]) => {
-    try {
-      await reorderLinesMutation.mutateAsync({ lineIds, expectedRowVersion: bom.rowVersion });
-      showToast("Đã sắp xếp lại thứ tự vật tư", "success");
-    } catch (err: unknown) {
-      const axiosErr = err as { response?: { data?: { message?: string } }; message?: string };
-      showToast(
-        axiosErr?.response?.data?.message || axiosErr?.message || "Lỗi khi sắp xếp",
-        "error",
-      );
     }
   };
 
@@ -537,7 +259,7 @@ export default function BomDetailPage() {
   const handleApprove = async (note?: string) => {
     try {
       await approveMutation.mutateAsync({ note, expectedRowVersion: bom.rowVersion });
-      showToast("Đã phê duyệt đóng BOM thành công", "success");
+      showToast("Đã phê duyệt đóng NPL thành công", "success");
     } catch (err: unknown) {
       const axiosErr = err as { response?: { status?: number; data?: { message?: string } } };
       if (axiosErr?.response?.status === 409) {
@@ -552,7 +274,7 @@ export default function BomDetailPage() {
   const handleDiscontinue = async (reason: string) => {
     try {
       await discontinueMutation.mutateAsync({ reason, expectedRowVersion: bom.rowVersion });
-      showToast("Đã ngừng sử dụng BOM", "success");
+      showToast("Đã ngừng sử dụng NPL", "success");
     } catch (err: unknown) {
       const axiosErr = err as { response?: { status?: number; data?: { message?: string } } };
       if (axiosErr?.response?.status === 409) {
@@ -574,13 +296,28 @@ export default function BomDetailPage() {
     }
   };
 
+  const promoteTarget = promoteTargetId
+    ? (revisions || []).find((rev) => rev.id === promoteTargetId)
+    : undefined;
+
+  const handlePromote = async (reason: string) => {
+    if (!promoteTarget) return;
+    await promoteMutation.mutateAsync({ revisionId: promoteTarget.id, payload: { reason } });
+    showToast(`Đã đặt phiên bản ${promoteTarget.revisionNo} làm phiên bản hiện hành`, "success");
+    if (searchParams.get("revision")) {
+      const params = new URLSearchParams(searchParams);
+      params.delete("revision");
+      setSearchParams(params);
+    }
+  };
+
   const handleCopyFit = async (sourceRevisionId: string) => {
     try {
       await copyFitMutation.mutateAsync({ sourceRevisionId, expectedRowVersion: bom.rowVersion });
-      showToast("Đã sao chép thành công định mức từ Fit BOM", "success");
+      showToast("Đã sao chép thành công định mức từ Fit NPL", "success");
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { message?: string } } };
-      showToast(axiosErr?.response?.data?.message || "Lỗi khi sao chép từ Fit BOM", "error");
+      showToast(axiosErr?.response?.data?.message || "Lỗi khi sao chép từ Fit NPL", "error");
     }
   };
 
@@ -594,7 +331,7 @@ export default function BomDetailPage() {
       >
         {poBomLockReason && (
           <p className="rounded-xl border border-rose-200 bg-rose-50/80 px-3.5 py-2.5 text-xs font-medium text-rose-800 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300">
-            {poBomLockReason}, nên BOM này chỉ ở chế độ <strong>Chỉ đọc</strong>.
+            {poBomLockReason}, nên NPL này chỉ ở chế độ <strong>Chỉ đọc</strong>.
           </p>
         )}
 
@@ -607,11 +344,10 @@ export default function BomDetailPage() {
           isHistorical={isHistorical}
           onSelectRevision={handleSelectRevision}
           onOpenEditHeaderModal={() => setIsEditHeaderOpen(true)}
-          onOpenAddLineModal={handleOpenAddLine}
           onOpenForwardModal={() => {
-            if (hasUnsavedAccountingCosts) {
+            if (hasUnsavedLines) {
               showToast(
-                "Bạn có các đơn giá vật tư đã thay đổi nhưng chưa lưu. Vui lòng bấm 'Lưu nháp' trước khi chuyển bước!",
+                "Bạn có thay đổi định mức chưa lưu. Vui lòng bấm 'Lưu' trước khi chuyển bước!",
                 "error",
               );
               return;
@@ -623,8 +359,6 @@ export default function BomDetailPage() {
           onOpenCreateRevisionModal={() => setIsCreateRevModalOpen(true)}
           onOpenCopyFitModal={() => setIsCopyFitModalOpen(true)}
           onOpenDiscontinueModal={() => setIsDiscontinueModalOpen(true)}
-          onSaveDraft={isRdEntryMode ? handleSaveRdDraft : undefined}
-          isSavingDraft={isSavingRdDraft}
         />
 
         {/* 2. Workflow State Stepper */}
@@ -633,10 +367,8 @@ export default function BomDetailPage() {
         {/* 3. 4 KPI Summary Cards */}
         <BomDetailKpiCards bom={bom} />
 
-        {/* 4. Tabs: Hide visually in RD mode to match mockup, but keep DOM for accessibility */}
-        <div
-          className={isRdEntryMode ? "sr-only" : "border-b border-gray-200 dark:border-gray-800"}
-        >
+        {/* 4. Tabs */}
+        <div className="border-b border-gray-200 dark:border-gray-800">
           <div className="flex items-center gap-8">
             <button
               type="button"
@@ -659,7 +391,6 @@ export default function BomDetailPage() {
                   : "border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
               }`}
             >
-              <span className="sr-only">Lịch sử phiên bản</span>
               <span>Lịch sử</span>
             </button>
 
@@ -676,78 +407,57 @@ export default function BomDetailPage() {
                 Tổng hợp
               </button>
             )}
-
-            <button type="button" onClick={() => setActiveTab("history")} className="sr-only">
-              Nhật ký duyệt
-            </button>
           </div>
         </div>
 
         {/* 5. Tab Contents */}
-        {activeTab === "lines" && (
-          <div className="relative">
-            {isLoadingHistorical && (
-              <div className="text-theme-xs mb-3 rounded-xl border border-gray-200 bg-gray-50 p-4 text-center text-gray-500">
-                Đang tải dữ liệu của revision lịch sử...
-              </div>
+        <div className={activeTab === "lines" ? "relative" : "hidden"}>
+          {isLoadingHistorical && (
+            <div className="text-theme-xs mb-3 rounded-xl border border-gray-200 bg-gray-50 p-4 text-center text-gray-500">
+              Đang tải dữ liệu của phiên bản lịch sử...
+            </div>
+          )}
+          {(currentStatus === "wait_rd" || currentStatus === "wait_accounting") &&
+            !isHistorical &&
+            !isReadOnlyPoBom && (
+              <p className="mb-4 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-200">
+                {currentStatus === "wait_rd"
+                  ? "Chỉnh sửa hoặc thêm vật tư rồi bấm Lưu để ghi nhận từng phần. Khi đã nhập đủ định mức, dùng Chuyển TPKH ở đầu trang."
+                  : "Nhập đơn giá rồi bấm Lưu để ghi nhận từng phần. Khi đã nhập đủ giá, dùng Chuyển SA ở đầu trang."}
+              </p>
             )}
-            {isRdEntryMode ? (
-              <>
-                <BomRdEntryTable
-                  lines={displayLines}
-                  inputs={rdInputs}
-                  onChangeInput={handleChangeRdInput}
-                  onEditLine={handleOpenEditLine}
-                  isEditingInModal={isLineModalOpen}
-                />
-                <BomRdBottomBar
-                  totalCount={displayLines.length}
-                  enteredCount={enteredRdCount}
-                  onCancel={handleCancelRdInputs}
-                  onComplete={handleFinishRd}
-                  isSubmitting={isFinishingRd}
-                />
-              </>
-            ) : (
-              <BomLinesTable
-                lines={displayLines}
-                bomCode={bom.bomCode}
-                readOnly={isReadOnlyPoBom}
-                currentStatus={currentStatus}
-                isHistorical={isHistorical}
-                costPerUnit={displayCostPerUnit}
-                currentOrderQuantity={bom.currentOrderQuantity}
-                currentOrderCost={displayOrderCost}
-                onAddLine={handleOpenAddLine}
-                onEditLine={handleOpenEditLine}
-                onDeleteLine={handleOpenDeleteLine}
-                onReorderLines={handleReorderLines}
-                isReordering={reorderLinesMutation.isPending}
-                onAddLineInline={handleCreateLine}
-                onUpdateLineInline={(lineId, payload) =>
-                  updateLineMutation.mutateAsync({ lineId, payload }).then(() => {
-                    showToast("Đã cập nhật dòng vật tư", "success");
-                  })
-                }
-                onSaveAllCosts={handleSaveAllAccountingCosts}
-                onDirtyStateChange={setHasUnsavedAccountingCosts}
-                isEditingInModal={isLineModalOpen}
-              />
-            )}
-          </div>
-        )}
+          <BomLinesEditor
+            bomId={bom.id}
+            bomCode={bom.bomCode}
+            rowVersion={bom.rowVersion}
+            lines={displayLines}
+            readOnly={isReadOnlyPoBom}
+            currentStatus={currentStatus}
+            isHistorical={isHistorical}
+            revisionId={activeRevisionId}
+            revisionNo={
+              isHistorical ? historicalRevision?.revisionNo : bom.currentRevision?.revisionNo
+            }
+            costPerUnit={displayCostPerUnit}
+            currentOrderQuantity={bom.currentOrderQuantity}
+            currentOrderCost={displayOrderCost}
+            isDrawerOpen={isLineModalOpen}
+            onDrawerOpenChange={setIsLineModalOpen}
+            showToast={showToast}
+            onDirtyChange={setHasUnsavedLines}
+          />
+        </div>
 
         {activeTab === "revisions" && (
           <BomRevisionsTab
+            bomId={bom.id}
             revisions={revisions || []}
             isLoading={isLoadingRevisions}
             currentRevisionId={bom.currentRevision?.id}
+            canPromote={!isReadOnlyPoBom && !bom.discontinuedAt && canPromoteRevision(user)}
             onOpenDiff={(revId) => setDiffModalRevId(revId)}
+            onPromote={(revId) => setPromoteTargetId(revId)}
           />
-        )}
-
-        {activeTab === "history" && (
-          <BomHistoryTab history={history || []} isLoading={isLoadingHistory} />
         )}
 
         {activeTab === "aggregate" && bom.type === "po" && <BomAggregateTab bomId={bom.id} />}
@@ -760,26 +470,6 @@ export default function BomDetailPage() {
         isHistorical={isHistorical}
         onClose={() => setIsEditHeaderOpen(false)}
         onSubmit={handleUpdateHeader}
-      />
-
-      <BomAddMaterialDrawer
-        isOpen={isLineModalOpen && !isReadOnlyPoBom}
-        onClose={() => setIsLineModalOpen(false)}
-        initialLine={editingLine}
-        existingLines={displayLines}
-        currentStatus={currentStatus}
-        isHistorical={isHistorical}
-        onSubmitCreate={handleCreateLine}
-        onSubmitCreateBatch={handleCreateBatchLines}
-        onSubmitUpdate={handleUpdateLine}
-      />
-
-      <BomLineDeleteDialog
-        isOpen={Boolean(deletingLine) && !isReadOnlyPoBom}
-        line={deletingLine}
-        isSubmitting={deleteLineMutation.isPending}
-        onClose={() => setDeletingLine(null)}
-        onConfirm={handleConfirmDeleteLine}
       />
 
       <BomForwardModal
@@ -830,6 +520,15 @@ export default function BomDetailPage() {
         onSubmit={handleCopyFit}
       />
 
+      <BomPromoteRevisionModal
+        isOpen={Boolean(promoteTarget) && !isReadOnlyPoBom}
+        targetRevisionNo={promoteTarget?.revisionNo ?? 0}
+        currentRevisionNo={bom.currentRevision?.revisionNo ?? 0}
+        currentStatus={bom.currentRevision?.status ?? "closed"}
+        onClose={() => setPromoteTargetId(null)}
+        onSubmit={handlePromote}
+      />
+
       {diffModalRevId && (
         <BomRevisionDiffModal
           isOpen={Boolean(diffModalRevId)}
@@ -838,22 +537,6 @@ export default function BomDetailPage() {
           onClose={() => setDiffModalRevId(null)}
         />
       )}
-
-      <ConfirmDialog
-        open={blocker.state === "blocked"}
-        title="Dữ liệu chưa lưu"
-        description="Bạn có các đơn giá vật tư đã thay đổi nhưng chưa bấm 'Lưu nháp'. Nếu rời khỏi trang lúc này, các thay đổi sẽ bị mất. Vui lòng bấm lưu để không bị mất dữ liệu!"
-        confirmLabel="Rời khỏi trang (Bỏ thay đổi)"
-        cancelLabel="Tiếp tục chỉnh sửa & Lưu"
-        variant="danger"
-        onClose={() => {
-          if (blocker.state === "blocked") blocker.reset();
-        }}
-        onConfirm={() => {
-          setHasUnsavedAccountingCosts(false);
-          if (blocker.state === "blocked") blocker.proceed();
-        }}
-      />
 
       {toast && (
         <Toast

@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { materialApi } from "@/api/material.api";
 import { materialKeys, unitKeys } from "@/api/material.keys";
 import { unitApi, type UnitInput } from "@/api/unit.api";
@@ -18,6 +18,7 @@ export function useMaterials(
     queryKey: materialKeys.list(filters),
     queryFn: () => materialApi.list(filters),
     enabled: options?.enabled ?? true,
+    placeholderData: keepPreviousData,
   });
 }
 

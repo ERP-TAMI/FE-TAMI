@@ -18,7 +18,7 @@ const STEPS: StepInfo[] = [
     key: "wait_nvkh",
     num: 1,
     label: "Khởi tạo",
-    role: "NVKH",
+    role: "NVKH / TPKH",
   },
   {
     key: "wait_rd",
