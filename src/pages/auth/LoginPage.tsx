@@ -5,6 +5,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { getPostLoginPath } from "@/lib/areaAccess";
 import { z } from "zod";
 import { Alert, Button, Input } from "@/components/shared";
+import { PasswordVisibilityToggle } from "@/components/features/auth/PasswordVisibilityToggle";
 import PageMeta from "@/components/shared/PageMeta";
 import { authApi } from "@/api/auth.api";
 import { getApiError, type ApiError } from "@/lib/apiError";
@@ -39,6 +40,7 @@ export default function LoginPage() {
     defaultValues: DEV_DEFAULT_VALUES,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [serverError, setServerError] = useState<ApiError>();
   const setSession = useAuthStore((state) => state.setSession);
   const navigate = useNavigate();
@@ -102,8 +104,15 @@ export default function LoginPage() {
             <div>
               <Input
                 label="Mật khẩu"
-                type="password"
+                type={showPassword ? "text" : "password"}
                 placeholder="Nhập mật khẩu"
+                rightAction={
+                  <PasswordVisibilityToggle
+                    visible={showPassword}
+                    fieldLabel="mật khẩu"
+                    onToggle={() => setShowPassword((visible) => !visible)}
+                  />
+                }
                 error={formState.errors.password?.message}
                 {...register("password")}
               />

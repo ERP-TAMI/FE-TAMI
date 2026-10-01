@@ -4,6 +4,7 @@ import { useForm } from "react-hook-form";
 import { Link } from "react-router-dom";
 import { z } from "zod";
 import { Alert, Button, Input } from "@/components/shared";
+import { PasswordVisibilityToggle } from "@/components/features/auth/PasswordVisibilityToggle";
 import PageMeta from "@/components/shared/PageMeta";
 import { getApiError } from "@/lib/apiError";
 
@@ -49,6 +50,7 @@ export function PasswordTokenPage({
   const [message, setMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const { register, handleSubmit, formState } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: { password: "", confirmPassword: "" },
@@ -133,15 +135,12 @@ export function PasswordTokenPage({
               </p>
               <Input
                 label="Mật khẩu mới"
-                labelAction={
-                  <button
-                    type="button"
-                    className="text-theme-xs text-brand-600 hover:underline dark:text-brand-400"
-                    aria-pressed={showPassword}
-                    onClick={() => setShowPassword((visible) => !visible)}
-                  >
-                    {showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
-                  </button>
+                rightAction={
+                  <PasswordVisibilityToggle
+                    visible={showPassword}
+                    fieldLabel="mật khẩu mới"
+                    onToggle={() => setShowPassword((visible) => !visible)}
+                  />
                 }
                 type={showPassword ? "text" : "password"}
                 autoComplete="new-password"
@@ -150,7 +149,16 @@ export function PasswordTokenPage({
               />
               <Input
                 label="Nhập lại mật khẩu"
-                type={showPassword ? "text" : "password"}
+                rightAction={
+                  <PasswordVisibilityToggle
+                    visible={showConfirmPassword}
+                    fieldLabel="mật khẩu nhập lại"
+                    onToggle={() =>
+                      setShowConfirmPassword((visible) => !visible)
+                    }
+                  />
+                }
+                type={showConfirmPassword ? "text" : "password"}
                 autoComplete="new-password"
                 error={formState.errors.confirmPassword?.message}
                 {...register("confirmPassword")}

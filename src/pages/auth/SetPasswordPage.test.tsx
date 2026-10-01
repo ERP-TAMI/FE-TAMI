@@ -57,7 +57,7 @@ describe("SetPasswordPage", () => {
     ).toBeTruthy();
   });
 
-  it("can show and hide both password fields", async () => {
+  it("can independently show and hide each password field with eye controls", async () => {
     vi.mocked(authApi.validatePasswordSetup).mockResolvedValue({
       valid: true,
       expiresAt: new Date(Date.now() + 60_000).toISOString(),
@@ -68,13 +68,21 @@ describe("SetPasswordPage", () => {
     const password = await screen.findByLabelText("Mật khẩu mới");
     const confirmation = screen.getByLabelText("Nhập lại mật khẩu");
     expect(password.getAttribute("type")).toBe("password");
+    expect(confirmation.getAttribute("type")).toBe("password");
 
-    fireEvent.click(screen.getByRole("button", { name: "Hiện mật khẩu" }));
+    fireEvent.click(screen.getByRole("button", { name: "Hiện mật khẩu mới" }));
     expect(password.getAttribute("type")).toBe("text");
+    expect(confirmation.getAttribute("type")).toBe("password");
+
+    fireEvent.click(screen.getByRole("button", { name: "Hiện mật khẩu nhập lại" }));
     expect(confirmation.getAttribute("type")).toBe("text");
 
-    fireEvent.click(screen.getByRole("button", { name: "Ẩn mật khẩu" }));
+    fireEvent.click(screen.getByRole("button", { name: "Ẩn mật khẩu mới" }));
     expect(password.getAttribute("type")).toBe("password");
+    expect(confirmation.getAttribute("type")).toBe("text");
+
+    fireEvent.click(screen.getByRole("button", { name: "Ẩn mật khẩu nhập lại" }));
+    expect(confirmation.getAttribute("type")).toBe("password");
   });
 
   it("shows an expired-link message", async () => {

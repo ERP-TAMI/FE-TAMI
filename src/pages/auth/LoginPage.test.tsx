@@ -46,6 +46,23 @@ describe("LoginPage", () => {
     );
   });
 
+  it("can show and hide the password with an eye control", () => {
+    render(
+      <MemoryRouter>
+        <LoginPage />
+      </MemoryRouter>,
+    );
+
+    const password = screen.getByLabelText("Mật khẩu");
+    expect(password.getAttribute("type")).toBe("password");
+
+    fireEvent.click(screen.getByRole("button", { name: "Hiện mật khẩu" }));
+    expect(password.getAttribute("type")).toBe("text");
+
+    fireEvent.click(screen.getByRole("button", { name: "Ẩn mật khẩu" }));
+    expect(password.getAttribute("type")).toBe("password");
+  });
+
   it("places the forgot-password action after the password field", () => {
     render(
       <MemoryRouter>
