@@ -38,10 +38,10 @@ import type {
 } from "@/types/document-library";
 import type { Style } from "@/types/style";
 import {
-  DocumentLibrarySidebar,
+  DocumentLibraryNavigation,
   type DocumentLibraryFilter,
   type DocumentLibraryView,
-} from "@/pages/documents/DocumentLibrarySidebar";
+} from "@/pages/documents/DocumentLibraryNavigation";
 import { DocumentFoldersView } from "@/pages/documents/DocumentFoldersView";
 
 const VIEW_PERMISSION = "master_data.documents.view";
@@ -1405,11 +1405,10 @@ export default function DocumentLibraryPage() {
           { label: "Kho tài liệu" },
         ]}
         title="Kho tài liệu"
-        description="Quản lý tập trung tài liệu dùng cho các mẫu Fit."
       />
 
-      <div className="grid min-w-0 items-start gap-4 xl:grid-cols-[220px_minmax(0,1fr)]">
-        <DocumentLibrarySidebar
+      <div className="space-y-4">
+        <DocumentLibraryNavigation
           activeView={activeView}
           activeFilters={activeFilters}
           onNavigate={navigateToView}

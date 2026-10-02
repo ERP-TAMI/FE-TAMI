@@ -210,6 +210,9 @@ describe("DocumentLibraryPage folder browser", () => {
       within(sidebar).getByRole("button", { name: "Tất cả thư mục" }).getAttribute("aria-current"),
     ).toBe("page");
     expect(await screen.findByRole("tree", { name: "Cây thư mục tài liệu" })).toBeTruthy();
+    expect(sidebar.parentElement?.tagName).not.toBe("ASIDE");
+    expect(screen.queryByText("Quản lý tập trung tài liệu dùng cho các mẫu Fit.")).toBeNull();
+    expect(screen.queryByText("Thư mục được tải theo từng cấp")).toBeNull();
     expect(await screen.findByRole("button", { name: "Mở thư mục Bộ sưu tập" })).toBeTruthy();
     expect(documentsLibraryApi.listFolders).toHaveBeenCalledWith({});
     expect(documentsLibraryApi.listFolders).not.toHaveBeenCalledWith({ parentId: rootFolder.id });
@@ -761,9 +764,7 @@ describe("DocumentLibraryPage folder browser", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Trang sau" }));
     const finalPageTable = await screen.findByRole("table", { name: "Tài liệu trong kho" });
-    fireEvent.click(
-      within(finalPageTable).getByRole("checkbox", { name: "Chọn spec-101.pdf" }),
-    );
+    fireEvent.click(within(finalPageTable).getByRole("checkbox", { name: "Chọn spec-101.pdf" }));
 
     expect(
       await screen.findByText("Bạn chỉ có thể chọn tối đa 100 tài liệu cho một lần thao tác."),

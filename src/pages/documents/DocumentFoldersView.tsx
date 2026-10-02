@@ -248,14 +248,14 @@ export function DocumentFoldersView({
             <h2 className="truncate font-semibold text-gray-900 dark:text-white">
               {currentFolder?.folderName ?? "Tất cả thư mục"}
             </h2>
-            <p className="mt-1 truncate text-xs text-gray-500">
-              {path.length > 1
-                ? path
-                    .slice(0, -1)
-                    .map((folder) => folder.folderName)
-                    .join(" / ")
-                : "Thư mục được tải theo từng cấp"}
-            </p>
+            {path.length > 1 && (
+              <p className="mt-1 truncate text-xs text-gray-500">
+                {path
+                  .slice(0, -1)
+                  .map((folder) => folder.folderName)
+                  .join(" / ")}
+              </p>
+            )}
           </div>
         </div>
         <div className="flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto">
