@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, type ReactNode } from "react";
+import { RefreshCw } from "lucide-react";
 import type { ProductionDocStatus } from "@/types/production-doc";
 
 interface Props {
@@ -9,14 +10,14 @@ interface Props {
   isEditing: boolean;
   isSaving: boolean;
   isExporting: boolean;
-  isResyncing: boolean;
+  isSyncing?: boolean;
   onStatusChange?: (status: ProductionDocStatus) => void;
   onEditClick: () => void;
   onCancelEdit: () => void;
   onSaveClick: () => void;
   onPreviewClick: () => void;
   onExportExcelClick?: () => void;
-  onResyncClick?: () => void;
+  onSyncClick?: () => void;
   onCopyClick?: () => void;
   /** Nút "Lịch sử" — chỉ hiện khi không đang chỉnh sửa. */
   historySlot?: ReactNode;
@@ -30,14 +31,14 @@ export function DocumentToolbar({
   isEditing,
   isSaving,
   isExporting,
-  isResyncing,
+  isSyncing = false,
   onStatusChange: _onStatusChange,
   onEditClick,
   onCancelEdit,
   onSaveClick,
   onPreviewClick,
   onExportExcelClick,
-  onResyncClick,
+  onSyncClick,
   onCopyClick,
   historySlot,
 }: Props) {
@@ -113,6 +114,20 @@ export function DocumentToolbar({
         ) : (
           <>
             {historySlot}
+            {onSyncClick && (
+              <button
+                type="button"
+                onClick={onSyncClick}
+                disabled={isSyncing}
+                className="inline-flex min-h-10 cursor-pointer items-center justify-center gap-2 rounded-xl border border-gray-300 bg-white px-4 text-sm font-semibold text-gray-900 transition-colors hover:bg-gray-50 focus:ring-4 focus:ring-gray-200 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+              >
+                <RefreshCw
+                  className={`h-4 w-4 ${isSyncing ? "animate-spin" : ""}`}
+                  aria-hidden="true"
+                />
+                {isSyncing ? "Đang đồng bộ..." : "Đồng bộ"}
+              </button>
+            )}
             {/* Tertiary Actions */}
             <button
               type="button"
@@ -142,7 +157,7 @@ export function DocumentToolbar({
             </button>
 
             {/* Overflow Actions Dropdown */}
-            {(onResyncClick || onCopyClick) && (
+            {onCopyClick && (
               <div className="relative" ref={overflowRef}>
                 <button
                   type="button"
@@ -155,32 +170,6 @@ export function DocumentToolbar({
 
                 {overflowOpen && (
                   <div className="absolute right-0 mt-1.5 w-56 rounded-xl border border-gray-200 bg-white p-1.5 shadow-lg dark:border-gray-700 dark:bg-gray-800 z-30 space-y-0.5">
-                    {onResyncClick && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setOverflowOpen(false);
-                          onResyncClick();
-                        }}
-                        disabled={isResyncing}
-                        className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-blue-50 hover:text-blue-700 dark:text-gray-200 dark:hover:bg-blue-950/40 dark:hover:text-blue-300 rounded-lg transition-colors"
-                      >
-                        <svg
-                          className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                          strokeWidth={2}
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                          />
-                        </svg>
-                        <span>Đồng bộ lại từ NPL</span>
-                      </button>
-                    )}
                     {onCopyClick && (
                       <button
                         type="button"
