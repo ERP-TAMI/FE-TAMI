@@ -16,6 +16,8 @@ export interface PurchaseOrderDocumentItem {
   fileUrl?: string | null;
   fileName?: string | null;
   fileSize?: number | null;
+  currentVersionNo?: number;
+  versions?: PurchaseOrderDocumentVersionItem[];
 }
 
 export interface AttachedDocItem {
@@ -341,10 +343,12 @@ export interface PurchaseOrderDocumentVersionItem {
   id: string;
   versionNo: number;
   originalFileName: string;
-  fileUrl: string;
+  fileUrl: string | null;
   fileSize: number | null;
   mimeType?: string;
   changeReason?: string | null;
+  evidenceFileName?: string | null;
+  evidenceUrl?: string | null;
   uploadedAt: string;
   uploadedBy?: string | null;
 }
