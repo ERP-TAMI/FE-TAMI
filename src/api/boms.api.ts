@@ -1,4 +1,5 @@
 import apiClient from "@/lib/apiClient";
+import type { EligibleFitStylePage, EligiblePoPage, EligiblePoProduct } from "@/types/bom";
 import type {
   BomDetail,
   BomStats,
@@ -9,6 +10,27 @@ import type {
 } from "@/types/bom";
 
 export const bomsApi = {
+  async getEligibleFitStyles(search = "", page = 1): Promise<EligibleFitStylePage> {
+    const res = await apiClient.get<EligibleFitStylePage>("/boms/create-targets/fit", {
+      params: { search, page, limit: 20 },
+    });
+    return res.data;
+  },
+
+  async getEligiblePurchaseOrders(search = "", page = 1): Promise<EligiblePoPage> {
+    const res = await apiClient.get<EligiblePoPage>("/boms/create-targets/po", {
+      params: { search, page, limit: 20 },
+    });
+    return res.data;
+  },
+
+  async getEligiblePoProducts(poId: string): Promise<EligiblePoProduct[]> {
+    const res = await apiClient.get<EligiblePoProduct[]>(
+      `/boms/create-targets/po/${poId}/products`,
+    );
+    return res.data;
+  },
+
   async getBoms(params: QueryBomsParams = {}): Promise<PaginatedBomsResponse> {
     const cleanParams: Record<string, string | number> = {};
     if (params.type) cleanParams.type = params.type;

@@ -1,5 +1,6 @@
 import {
   keepPreviousData,
+  useInfiniteQuery,
   useQuery,
   useQueries,
   useMutation,
@@ -7,6 +8,7 @@ import {
 } from "@tanstack/react-query";
 import { bomsApi } from "@/api/boms.api";
 import { bomKeys } from "@/api/boms.keys";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import type {
   QueryBomsParams,
   QueryBomStatsParams,
@@ -29,6 +31,40 @@ export function useBoms(params: QueryBomsParams = {}, options?: { enabled?: bool
     queryFn: () => bomsApi.getBoms(params),
     enabled: options?.enabled ?? true,
     placeholderData: keepPreviousData,
+  });
+}
+
+export function useEligiblePurchaseOrders(search: string, enabled: boolean) {
+  const debouncedSearch = useDebouncedValue(search.trim(), 250);
+  return useInfiniteQuery({
+    queryKey: [...bomKeys.createTargets(), "po", debouncedSearch],
+    queryFn: ({ pageParam }) => bomsApi.getEligiblePurchaseOrders(debouncedSearch, pageParam),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) =>
+      lastPage.page < lastPage.totalPages ? lastPage.page + 1 : undefined,
+    enabled,
+  });
+}
+
+export function useEligibleFitStyles(search: string, enabled: boolean) {
+  const debouncedSearch = useDebouncedValue(search.trim(), 250);
+  return useInfiniteQuery({
+    queryKey: [...bomKeys.createTargets(), "fit", debouncedSearch],
+    queryFn: ({ pageParam }) => bomsApi.getEligibleFitStyles(debouncedSearch, pageParam),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) =>
+      lastPage.page < lastPage.totalPages ? lastPage.page + 1 : undefined,
+    enabled,
+  });
+}
+
+export function useMultiEligiblePoProducts(poIds: string[]) {
+  return useQueries({
+    queries: poIds.map((poId) => ({
+      queryKey: [...bomKeys.createTargets(), "po", poId, "products"],
+      queryFn: () => bomsApi.getEligiblePoProducts(poId),
+      enabled: Boolean(poId),
+    })),
   });
 }
 
@@ -67,6 +103,7 @@ export function useCreateBom() {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: bomKeys.lists() });
       void queryClient.invalidateQueries({ queryKey: bomKeys.statsAll() });
+      void queryClient.invalidateQueries({ queryKey: bomKeys.createTargets() });
     },
   });
 }
