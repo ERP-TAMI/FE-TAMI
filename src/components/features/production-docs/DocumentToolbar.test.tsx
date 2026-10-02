@@ -15,13 +15,12 @@ describe("DocumentToolbar read-only mode", () => {
         isEditing={false}
         isSaving={false}
         isExporting={false}
-        isResyncing={false}
         onEditClick={vi.fn()}
         onCancelEdit={vi.fn()}
         onSaveClick={vi.fn()}
         onPreviewClick={onPreviewClick}
         onExportExcelClick={vi.fn()}
-        onResyncClick={vi.fn()}
+        onSyncClick={vi.fn()}
         onCopyClick={vi.fn()}
       />,
     );
@@ -42,7 +41,6 @@ describe("DocumentToolbar read-only mode", () => {
         isEditing={false}
         isSaving={false}
         isExporting={false}
-        isResyncing={false}
         onEditClick={vi.fn()}
         onCancelEdit={vi.fn()}
         onSaveClick={vi.fn()}
@@ -62,7 +60,6 @@ describe("DocumentToolbar read-only mode", () => {
         isEditing={false}
         isSaving={false}
         isExporting={false}
-        isResyncing={false}
         isSyncing
         onEditClick={vi.fn()}
         onCancelEdit={vi.fn()}

@@ -24,12 +24,11 @@ import { DocumentToolbar } from "./DocumentToolbar";
 import { EntityHistoryButton } from "@/components/features/audit/EntityHistoryButton";
 import { SizeSpecTable } from "./SizeSpecTable";
 import { PreviewModal } from "./PreviewModal";
-import { ResyncDialog } from "./ResyncDialog";
 import { CopyDialog } from "./CopyDialog";
-import { ProductProductionDocSyncDialog } from "./ProductProductionDocSyncDialog";
+import { ProductionDocSyncDialog } from "./ProductionDocSyncDialog";
 import { ConfirmDialog } from "@/components/shared";
 import { buildProductProductionDocSyncPayload } from "./productionDocSync";
-import type { ProductProductionDocSyncSelection } from "./productionDocSync";
+import type { ProductionDocSyncSelection } from "./productionDocSync";
 
 import type {
   ProductionDocImageGroup,
@@ -385,12 +384,19 @@ export function StyleProductionDocTab({
 
   const [previewOpen, setPreviewOpen] = useState(false);
   const [resyncOpen, setResyncOpen] = useState(false);
-  const [resyncOverwriteConfirmOpen, setResyncOverwriteConfirmOpen] = useState(false);
-  const [productSyncConfirmOpen, setProductSyncConfirmOpen] = useState(false);
-  const [productSyncSelection, setProductSyncSelection] = useState({
+  const [fitSyncSelection, setFitSyncSelection] = useState<ProductionDocSyncSelection>({
     image: true,
     accessories: true,
   });
+  const [resyncOverwriteSelection, setResyncOverwriteSelection] =
+    useState<ProductionDocSyncSelection | null>(null);
+  const [productSyncConfirmOpen, setProductSyncConfirmOpen] = useState(false);
+  const [productSyncSelection, setProductSyncSelection] = useState<ProductionDocSyncSelection>({
+    image: true,
+    accessories: true,
+  });
+  const [productSyncOverwriteSelection, setProductSyncOverwriteSelection] =
+    useState<ProductionDocSyncSelection | null>(null);
   const [copyOpen, setCopyOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<
     | { kind: "heading"; sectionIndex: number; groupIndex: number }
@@ -672,26 +678,43 @@ export function StyleProductionDocTab({
     }
   };
 
-  const handleResync = async (confirmOverwrite = false) => {
+  const handleResync = async (
+    selection: ProductionDocSyncSelection,
+    confirmOverwrite = false,
+  ) => {
     if (!doc || !styleId || readOnly) return;
+    const sections = [
+      ...(selection.image ? ["section1" as const] : []),
+      ...(selection.accessories ? ["section2" as const] : []),
+    ];
+    if (sections.length === 0) return;
     try {
       await resyncDoc.mutateAsync({
         styleId,
         docId: doc.id,
-        input: { sections: ["section1", "section2"], confirmOverwrite },
+        input: { sections, confirmOverwrite },
       });
-      showToast("Đã đồng bộ Section 1 & 2 từ Style + Nguyên phụ liệu.");
+      const syncedLabels = [
+        ...(selection.image ? ["Mục 1"] : []),
+        ...(selection.accessories ? ["Mục 2"] : []),
+      ];
+      showToast(`Đã đồng bộ ${syncedLabels.join(" và ")} từ Mẫu Fit.`);
       setResyncOpen(false);
-      setResyncOverwriteConfirmOpen(false);
+      setResyncOverwriteSelection(null);
     } catch (err: unknown) {
       const apiErr = err as { response?: { status?: number } };
       if (apiErr?.response?.status === 409 && !confirmOverwrite) {
         setResyncOpen(false);
-        setResyncOverwriteConfirmOpen(true);
+        setResyncOverwriteSelection(selection);
       } else {
         showToast(getApiError(err, "Đồng bộ thất bại.").message, "error");
       }
     }
+  };
+
+  const openFitSyncDialog = () => {
+    setFitSyncSelection({ image: true, accessories: true });
+    setResyncOpen(true);
   };
 
   const openProductSyncDialog = () => {
@@ -699,12 +722,24 @@ export function StyleProductionDocTab({
     setProductSyncConfirmOpen(true);
   };
 
-  const handleProductSync = async (selection: ProductProductionDocSyncSelection) => {
+  const handleProductSync = async (
+    selection: ProductionDocSyncSelection,
+    confirmOverwrite = false,
+  ) => {
     if (!doc || !isProductMode || !poId || !productId || readOnly) return;
     if (!selection.image && !selection.accessories) return;
     if (selection.accessories && isProductBomLoading) return;
     if (selection.accessories && isProductBomError) {
       showToast("Không tải được bảng Nguyên phụ liệu. Vui lòng tải lại trang rồi thử lại.", "error");
+      return;
+    }
+    if (
+      !confirmOverwrite &&
+      ((selection.image && doc.section1ImageUrl != null) ||
+        (selection.accessories && doc.section2Accessories != null))
+    ) {
+      setProductSyncConfirmOpen(false);
+      setProductSyncOverwriteSelection(selection);
       return;
     }
 
@@ -724,6 +759,7 @@ export function StyleProductionDocTab({
       ];
       showToast(`Đã đồng bộ ${syncedLabels.join(" và ")} thành công.`);
       setProductSyncConfirmOpen(false);
+      setProductSyncOverwriteSelection(null);
     } catch (err) {
       showToast(getApiError(err, "Đồng bộ ảnh và phụ liệu thất bại.").message, "error");
     }
@@ -831,8 +867,7 @@ export function StyleProductionDocTab({
           createDoc.isPending || updateDoc.isPending || updateProductDoc.isPending
         }
         isExporting={exportExcel.isPending}
-        isResyncing={resyncDoc.isPending}
-        isSyncing={updateProductDoc.isPending}
+        isSyncing={isProductMode ? updateProductDoc.isPending : resyncDoc.isPending}
         onStatusChange={(s) => void handleStatusChange(s)}
         onEditClick={() => setIsEditing(true)}
         onCancelEdit={() => setIsEditing(false)}
@@ -840,11 +875,12 @@ export function StyleProductionDocTab({
         onPreviewClick={() => setPreviewOpen(true)}
         onExportExcelClick={isProductMode ? undefined : () => void handleExportExcel()}
         onSyncClick={
-          isProductMode && doc && !readOnly
-            ? openProductSyncDialog
+          doc && !readOnly
+            ? isProductMode
+              ? openProductSyncDialog
+              : openFitSyncDialog
             : undefined
         }
-        onResyncClick={isProductMode ? undefined : () => setResyncOpen(true)}
         onCopyClick={isProductMode ? undefined : () => setCopyOpen(true)}
         historySlot={
           isProductMode || styleId ? (
@@ -1633,28 +1669,33 @@ export function StyleProductionDocTab({
         />
       )}
 
-      {resyncOpen && (
-        <ResyncDialog
-          isPending={resyncDoc.isPending}
-          onConfirm={() => void handleResync()}
-          onClose={() => setResyncOpen(false)}
-        />
-      )}
+      <ProductionDocSyncDialog
+        source="fit"
+        open={resyncOpen}
+        selection={fitSyncSelection}
+        isSubmitting={resyncDoc.isPending}
+        onSelectionChange={(field, checked) =>
+          setFitSyncSelection((selection) => ({ ...selection, [field]: checked }))
+        }
+        onConfirm={(selection) => void handleResync(selection)}
+        onClose={() => setResyncOpen(false)}
+      />
 
-      {resyncOverwriteConfirmOpen && (
+      {resyncOverwriteSelection && (
         <ConfirmDialog
           open
           title="Ghi đè nội dung đã có?"
-          description="Section 1 (Mô tả hình dáng) và/hoặc Section 2 (Phụ liệu) hiện đã có nội dung. Đồng bộ lại sẽ ghi đè nội dung đang có bằng dữ liệu mới nhất từ Style + NPL."
+          description="Mục đã chọn có nội dung. Đồng bộ sẽ ghi đè bằng dữ liệu hiện tại từ Mẫu Fit và Fit BOM."
           confirmLabel="Ghi đè và đồng bộ"
           variant="danger"
           isSubmitting={resyncDoc.isPending}
-          onConfirm={() => void handleResync(true)}
-          onClose={() => setResyncOverwriteConfirmOpen(false)}
+          onConfirm={() => void handleResync(resyncOverwriteSelection, true)}
+          onClose={() => setResyncOverwriteSelection(null)}
         />
       )}
 
-      <ProductProductionDocSyncDialog
+      <ProductionDocSyncDialog
+        source="po"
         open={productSyncConfirmOpen}
         selection={productSyncSelection}
         isSubmitting={updateProductDoc.isPending}
@@ -1666,6 +1707,19 @@ export function StyleProductionDocTab({
         onConfirm={(selection) => void handleProductSync(selection)}
         onClose={() => setProductSyncConfirmOpen(false)}
       />
+
+      {productSyncOverwriteSelection && (
+        <ConfirmDialog
+          open
+          title="Ghi đè nội dung đã có?"
+          description="Mục đã chọn có nội dung. Đồng bộ sẽ ghi đè bằng dữ liệu hiện tại từ sản phẩm PO và PO BOM."
+          confirmLabel="Ghi đè và đồng bộ"
+          variant="danger"
+          isSubmitting={updateProductDoc.isPending}
+          onConfirm={() => void handleProductSync(productSyncOverwriteSelection, true)}
+          onClose={() => setProductSyncOverwriteSelection(null)}
+        />
+      )}
 
       {copyOpen && styleId && (
         <CopyDialog

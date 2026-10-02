@@ -1,23 +1,25 @@
 import { ConfirmDialog } from "@/components/shared";
-import type { ProductProductionDocSyncSelection } from "./productionDocSync";
+import type { ProductionDocSyncSelection } from "./productionDocSync";
 
 interface Props {
+  source: "fit" | "po";
   open: boolean;
-  selection: ProductProductionDocSyncSelection;
+  selection: ProductionDocSyncSelection;
   isSubmitting: boolean;
-  isAccessoriesLoading: boolean;
-  isAccessoriesError: boolean;
-  onSelectionChange: (field: keyof ProductProductionDocSyncSelection, checked: boolean) => void;
-  onConfirm: (selection: ProductProductionDocSyncSelection) => void;
+  isAccessoriesLoading?: boolean;
+  isAccessoriesError?: boolean;
+  onSelectionChange: (field: keyof ProductionDocSyncSelection, checked: boolean) => void;
+  onConfirm: (selection: ProductionDocSyncSelection) => void;
   onClose: () => void;
 }
 
-export function ProductProductionDocSyncDialog({
+export function ProductionDocSyncDialog({
+  source,
   open,
   selection,
   isSubmitting,
-  isAccessoriesLoading,
-  isAccessoriesError,
+  isAccessoriesLoading = false,
+  isAccessoriesError = false,
   onSelectionChange,
   onConfirm,
   onClose,
@@ -32,8 +34,10 @@ export function ProductProductionDocSyncDialog({
       description={
         <div className="space-y-4">
           <p>
-            Chọn nội dung muốn lấy từ sản phẩm và bảng Nguyên phụ liệu. Chỉ các mục được chọn mới bị
-            thay đổi; mục không chọn sẽ được giữ nguyên.
+            {source === "fit"
+              ? "Chọn nội dung muốn lấy từ Mẫu Fit và Fit BOM."
+              : "Chọn nội dung muốn lấy từ sản phẩm và PO BOM."}{" "}
+            Chỉ các mục được chọn mới bị thay đổi; mục không chọn sẽ được giữ nguyên.
           </p>
           <div className="space-y-3 rounded-xl border border-gray-200 p-4 dark:border-gray-700">
             <label className="flex cursor-pointer items-start gap-3 text-gray-800 dark:text-gray-200">
@@ -45,10 +49,13 @@ export function ProductProductionDocSyncDialog({
                 className="text-brand-600 focus:ring-brand-500 mt-0.5 h-4 w-4 cursor-pointer rounded border-gray-300 disabled:cursor-not-allowed"
               />
               <span className="space-y-0.5">
-                <span className="block text-sm font-semibold">Ảnh sản phẩm → Mục 1</span>
+                <span className="block text-sm font-semibold">
+                  {source === "fit" ? "Ảnh và mô tả Mẫu Fit → Mục 1" : "Ảnh sản phẩm → Mục 1"}
+                </span>
                 <span className="block text-xs text-gray-500 dark:text-gray-400">
-                  Dùng ảnh cấu trúc hiện tại của sản phẩm; nếu sản phẩm chưa có ảnh, ảnh ở Mục 1 sẽ
-                  được xóa.
+                  {source === "fit"
+                    ? "Dùng ảnh và mô tả hiện tại của Mẫu Fit; phần nào không có dữ liệu sẽ được xóa."
+                    : "Dùng ảnh cấu trúc hiện tại của sản phẩm; nếu sản phẩm chưa có ảnh, ảnh ở Mục 1 sẽ được xóa."}
                 </span>
               </span>
             </label>
@@ -62,11 +69,12 @@ export function ProductProductionDocSyncDialog({
               />
               <span className="space-y-0.5">
                 <span className="block text-sm font-semibold">
-                  Nguyên phụ liệu → Mục 2 PHỤ LIỆU
+                  {source === "fit" ? "Fit BOM" : "PO BOM"} → Mục 2 PHỤ LIỆU
                 </span>
                 <span className="block text-xs text-gray-500 dark:text-gray-400">
-                  Dùng tên vật tư theo thứ tự của revision BOM hiện hành; nếu BOM không có vật tư,
-                  nội dung ở Mục 2 sẽ được xóa.
+                  {source === "fit"
+                    ? "Dùng tên vật tư của revision Fit BOM hiện hành, loại trùng và xếp theo tên; nếu không có vật tư, Mục 2 sẽ được xóa."
+                    : "Dùng tên vật tư theo thứ tự của revision PO BOM hiện hành; nếu BOM không có vật tư, Mục 2 sẽ được xóa."}
                 </span>
               </span>
             </label>

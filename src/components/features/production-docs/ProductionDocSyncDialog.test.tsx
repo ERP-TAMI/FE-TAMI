@@ -1,12 +1,12 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ProductProductionDocSyncDialog } from "./ProductProductionDocSyncDialog";
-import type { ProductProductionDocSyncSelection } from "./productionDocSync";
+import { ProductionDocSyncDialog } from "./ProductionDocSyncDialog";
+import type { ProductionDocSyncSelection } from "./productionDocSync";
 
-describe("ProductProductionDocSyncDialog", () => {
+describe("ProductionDocSyncDialog", () => {
   afterEach(cleanup);
 
-  const defaultSelection: ProductProductionDocSyncSelection = {
+  const defaultSelection: ProductionDocSyncSelection = {
     image: true,
     accessories: true,
   };
@@ -16,7 +16,8 @@ describe("ProductProductionDocSyncDialog", () => {
     const onSelectionChange = vi.fn();
 
     const { rerender } = render(
-      <ProductProductionDocSyncDialog
+      <ProductionDocSyncDialog
+        source="po"
         open
         selection={defaultSelection}
         isSubmitting={false}
@@ -29,9 +30,7 @@ describe("ProductProductionDocSyncDialog", () => {
     );
 
     const imageCheckbox = screen.getByRole("checkbox", { name: /Ảnh sản phẩm/ });
-    const accessoriesCheckbox = screen.getByRole("checkbox", {
-      name: /Nguyên phụ liệu/,
-    });
+    const accessoriesCheckbox = screen.getByRole("checkbox", { name: /PO BOM/ });
     expect(imageCheckbox).toHaveProperty("checked", true);
     expect(accessoriesCheckbox).toHaveProperty("checked", true);
 
@@ -39,7 +38,8 @@ describe("ProductProductionDocSyncDialog", () => {
     expect(onSelectionChange).toHaveBeenCalledWith("image", false);
 
     rerender(
-      <ProductProductionDocSyncDialog
+      <ProductionDocSyncDialog
+        source="po"
         open
         selection={{ image: false, accessories: true }}
         isSubmitting={false}
@@ -59,7 +59,8 @@ describe("ProductProductionDocSyncDialog", () => {
     const onConfirm = vi.fn();
 
     const { rerender } = render(
-      <ProductProductionDocSyncDialog
+      <ProductionDocSyncDialog
+        source="po"
         open
         selection={defaultSelection}
         isSubmitting={false}
@@ -77,7 +78,8 @@ describe("ProductProductionDocSyncDialog", () => {
     );
 
     rerender(
-      <ProductProductionDocSyncDialog
+      <ProductionDocSyncDialog
+        source="po"
         open
         selection={{ image: true, accessories: false }}
         isSubmitting={false}
@@ -95,7 +97,8 @@ describe("ProductProductionDocSyncDialog", () => {
 
   it("requires at least one selected item", () => {
     render(
-      <ProductProductionDocSyncDialog
+      <ProductionDocSyncDialog
+        source="po"
         open
         selection={{ image: false, accessories: false }}
         isSubmitting={false}
@@ -114,5 +117,28 @@ describe("ProductProductionDocSyncDialog", () => {
       "disabled",
       true,
     );
+  });
+
+  it("shows Fit sources and allows selecting only one section", () => {
+    const onConfirm = vi.fn();
+    render(
+      <ProductionDocSyncDialog
+        source="fit"
+        open
+        selection={{ image: true, accessories: false }}
+        isSubmitting={false}
+        onSelectionChange={vi.fn()}
+        onConfirm={onConfirm}
+        onClose={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("checkbox", { name: /Ảnh và mô tả Mẫu Fit/ })).toHaveProperty(
+      "checked",
+      true,
+    );
+    expect(screen.getByRole("checkbox", { name: /Fit BOM/ })).toHaveProperty("checked", false);
+    fireEvent.click(screen.getByRole("button", { name: "Xác nhận đồng bộ" }));
+    expect(onConfirm).toHaveBeenCalledWith({ image: true, accessories: false });
   });
 });

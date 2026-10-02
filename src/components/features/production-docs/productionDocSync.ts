@@ -1,7 +1,7 @@
 import type { BomLineItem } from "@/types/bom";
 import type { StyleProductionDocDetail } from "@/types/production-doc";
 
-export interface ProductProductionDocSyncSelection {
+export interface ProductionDocSyncSelection {
   image: boolean;
   accessories: boolean;
 }
@@ -9,7 +9,7 @@ export interface ProductProductionDocSyncSelection {
 export function buildProductProductionDocSyncPayload(
   productImageKey: string | null | undefined,
   bomLines: Pick<BomLineItem, "materialNameSnapshot" | "orderIndex">[] | null | undefined,
-  selection: ProductProductionDocSyncSelection,
+  selection: ProductionDocSyncSelection,
 ): Partial<Pick<StyleProductionDocDetail, "section1ImageUrl" | "section2Accessories">> {
   const accessoryNames = (bomLines ?? [])
     .slice()
