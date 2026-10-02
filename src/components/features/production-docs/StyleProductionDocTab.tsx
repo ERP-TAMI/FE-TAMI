@@ -14,6 +14,7 @@ import {
   useUpdateProductProductionDoc,
 } from "@/hooks/usePurchaseOrders";
 import { useStyles } from "@/hooks/useStyles";
+import { useBom, useBoms } from "@/hooks/useBoms";
 import { useUploadImage } from "@/hooks/useUploadImage";
 import { useToast } from "@/hooks/useToast";
 import { getApiError } from "@/lib/apiError";
@@ -25,7 +26,10 @@ import { SizeSpecTable } from "./SizeSpecTable";
 import { PreviewModal } from "./PreviewModal";
 import { ResyncDialog } from "./ResyncDialog";
 import { CopyDialog } from "./CopyDialog";
+import { ProductProductionDocSyncDialog } from "./ProductProductionDocSyncDialog";
 import { ConfirmDialog } from "@/components/shared";
+import { buildProductProductionDocSyncPayload } from "./productionDocSync";
+import type { ProductProductionDocSyncSelection } from "./productionDocSync";
 
 import type {
   ProductionDocImageGroup,
@@ -44,6 +48,7 @@ interface Props {
   productId?: string;
   styleName: string;
   styleImageUrl?: string | null;
+  productImageKey?: string | null;
   readOnly?: boolean;
   onEditingChange?: (isEditing: boolean) => void;
 }
@@ -306,10 +311,27 @@ export function StyleProductionDocTab({
   productId,
   styleName,
   styleImageUrl,
+  productImageKey,
   readOnly = false,
   onEditingChange,
 }: Props) {
   const isProductMode = Boolean(poId && productId);
+  const productBomsQuery = useBoms(
+    { type: "po", product: isProductMode ? productId : undefined, limit: 1 },
+    { enabled: isProductMode },
+  );
+  const productBomSummary = productBomsQuery.data?.data?.find(
+    (bom) =>
+      bom.type === "po" &&
+      (bom.purchaseOrderProduct?.id ?? bom.product?.id) === productId,
+  );
+  const productBomQuery = useBom(
+    isProductMode ? productBomSummary?.id : undefined,
+  );
+  const isProductBomLoading =
+    productBomsQuery.isFetching ||
+    Boolean(productBomSummary?.id && productBomQuery.isFetching);
+  const isProductBomError = productBomsQuery.isError || productBomQuery.isError;
   const styleQuery = useProductionDoc(isProductMode ? undefined : styleId);
   const productQuery = useProductProductionDoc(
     isProductMode ? poId : undefined,
@@ -364,6 +386,11 @@ export function StyleProductionDocTab({
   const [previewOpen, setPreviewOpen] = useState(false);
   const [resyncOpen, setResyncOpen] = useState(false);
   const [resyncOverwriteConfirmOpen, setResyncOverwriteConfirmOpen] = useState(false);
+  const [productSyncConfirmOpen, setProductSyncConfirmOpen] = useState(false);
+  const [productSyncSelection, setProductSyncSelection] = useState({
+    image: true,
+    accessories: true,
+  });
   const [copyOpen, setCopyOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<
     | { kind: "heading"; sectionIndex: number; groupIndex: number }
@@ -667,6 +694,41 @@ export function StyleProductionDocTab({
     }
   };
 
+  const openProductSyncDialog = () => {
+    setProductSyncSelection({ image: true, accessories: true });
+    setProductSyncConfirmOpen(true);
+  };
+
+  const handleProductSync = async (selection: ProductProductionDocSyncSelection) => {
+    if (!doc || !isProductMode || !poId || !productId || readOnly) return;
+    if (!selection.image && !selection.accessories) return;
+    if (selection.accessories && isProductBomLoading) return;
+    if (selection.accessories && isProductBomError) {
+      showToast("Không tải được bảng Nguyên phụ liệu. Vui lòng tải lại trang rồi thử lại.", "error");
+      return;
+    }
+
+    try {
+      await updateProductDoc.mutateAsync({
+        poId,
+        productId,
+        data: buildProductProductionDocSyncPayload(
+          productImageKey,
+          productBomQuery.data?.lines,
+          selection,
+        ),
+      });
+      const syncedLabels = [
+        ...(selection.image ? ["ảnh sản phẩm"] : []),
+        ...(selection.accessories ? ["phụ liệu"] : []),
+      ];
+      showToast(`Đã đồng bộ ${syncedLabels.join(" và ")} thành công.`);
+      setProductSyncConfirmOpen(false);
+    } catch (err) {
+      showToast(getApiError(err, "Đồng bộ ảnh và phụ liệu thất bại.").message, "error");
+    }
+  };
+
   const handleCopy = async (
     targetStyleId: string,
     mode: CopyMode,
@@ -770,12 +832,18 @@ export function StyleProductionDocTab({
         }
         isExporting={exportExcel.isPending}
         isResyncing={resyncDoc.isPending}
+        isSyncing={updateProductDoc.isPending}
         onStatusChange={(s) => void handleStatusChange(s)}
         onEditClick={() => setIsEditing(true)}
         onCancelEdit={() => setIsEditing(false)}
         onSaveClick={() => void handleSave()}
         onPreviewClick={() => setPreviewOpen(true)}
         onExportExcelClick={isProductMode ? undefined : () => void handleExportExcel()}
+        onSyncClick={
+          isProductMode && doc && !readOnly
+            ? openProductSyncDialog
+            : undefined
+        }
         onResyncClick={isProductMode ? undefined : () => setResyncOpen(true)}
         onCopyClick={isProductMode ? undefined : () => setCopyOpen(true)}
         historySlot={
@@ -1585,6 +1653,19 @@ export function StyleProductionDocTab({
           onClose={() => setResyncOverwriteConfirmOpen(false)}
         />
       )}
+
+      <ProductProductionDocSyncDialog
+        open={productSyncConfirmOpen}
+        selection={productSyncSelection}
+        isSubmitting={updateProductDoc.isPending}
+        isAccessoriesLoading={isProductBomLoading}
+        isAccessoriesError={isProductBomError}
+        onSelectionChange={(field, checked) =>
+          setProductSyncSelection((selection) => ({ ...selection, [field]: checked }))
+        }
+        onConfirm={(selection) => void handleProductSync(selection)}
+        onClose={() => setProductSyncConfirmOpen(false)}
+      />
 
       {copyOpen && styleId && (
         <CopyDialog

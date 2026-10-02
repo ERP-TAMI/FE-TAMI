@@ -57,4 +57,20 @@ describe("ConfirmDialog", () => {
 
     expect(screen.queryByRole("dialog")).toBeNull();
   });
+
+  it("disables confirmation when the caller has no valid selection", () => {
+    render(
+      <ConfirmDialog
+        open
+        title="Xác nhận"
+        description="Chọn ít nhất một nội dung."
+        confirmLabel="Đồng bộ"
+        confirmDisabled
+        onConfirm={vi.fn()}
+        onClose={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "Đồng bộ" })).toHaveProperty("disabled", true);
+  });
 });

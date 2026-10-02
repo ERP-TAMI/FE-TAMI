@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, type ReactNode } from "react";
+import { RefreshCw } from "lucide-react";
 import type { ProductionDocStatus } from "@/types/production-doc";
 
 interface Props {
@@ -10,12 +11,14 @@ interface Props {
   isSaving: boolean;
   isExporting: boolean;
   isResyncing: boolean;
+  isSyncing?: boolean;
   onStatusChange?: (status: ProductionDocStatus) => void;
   onEditClick: () => void;
   onCancelEdit: () => void;
   onSaveClick: () => void;
   onPreviewClick: () => void;
   onExportExcelClick?: () => void;
+  onSyncClick?: () => void;
   onResyncClick?: () => void;
   onCopyClick?: () => void;
   /** Nút "Lịch sử" — chỉ hiện khi không đang chỉnh sửa. */
@@ -31,12 +34,14 @@ export function DocumentToolbar({
   isSaving,
   isExporting,
   isResyncing,
+  isSyncing = false,
   onStatusChange: _onStatusChange,
   onEditClick,
   onCancelEdit,
   onSaveClick,
   onPreviewClick,
   onExportExcelClick,
+  onSyncClick,
   onResyncClick,
   onCopyClick,
   historySlot,
@@ -113,6 +118,20 @@ export function DocumentToolbar({
         ) : (
           <>
             {historySlot}
+            {onSyncClick && (
+              <button
+                type="button"
+                onClick={onSyncClick}
+                disabled={isSyncing}
+                className="inline-flex min-h-10 cursor-pointer items-center justify-center gap-2 rounded-xl border border-gray-300 bg-white px-4 text-sm font-semibold text-gray-900 transition-colors hover:bg-gray-50 focus:ring-4 focus:ring-gray-200 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+              >
+                <RefreshCw
+                  className={`h-4 w-4 ${isSyncing ? "animate-spin" : ""}`}
+                  aria-hidden="true"
+                />
+                {isSyncing ? "Đang đồng bộ..." : "Đồng bộ"}
+              </button>
+            )}
             {/* Tertiary Actions */}
             <button
               type="button"
