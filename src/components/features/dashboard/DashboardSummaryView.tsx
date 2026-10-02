@@ -1,4 +1,4 @@
-import { useMemo, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import {
   CalendarClock,
@@ -13,12 +13,12 @@ import {
 } from "lucide-react";
 import { Alert, Button, Input, Select } from "@/components/shared";
 import { ManagementStatCard } from "@/components/features/management-dashboard/ManagementStatCard";
+import { DashboardPeriodTrendChart } from "./DashboardPeriodTrendChart";
 import type {
   DashboardBomQueueItem,
   DashboardCustomerCount,
   DashboardPeriod,
   DashboardPeriodType,
-  DashboardTrendBucket,
   DashboardPurchaseOrderQueueItem,
   DashboardStatusCount,
   ManagementDashboardSummary,
@@ -93,12 +93,6 @@ function formatDay(date: string): string {
   return `${day}/${month}/${year}`;
 }
 
-function formatTrendLabel(period: string, granularity: "day" | "month" | "year"): string {
-  if (granularity === "day") return `${period.slice(8)}/${period.slice(5, 7)}`;
-  if (granularity === "month") return `${period.slice(5)}/${period.slice(0, 4)}`;
-  return period;
-}
-
 function formatCreatedAt(date: string): string {
   return new Intl.DateTimeFormat("vi-VN", {
     day: "2-digit",
@@ -164,132 +158,6 @@ function Panel({ title, children, className, count }: DashboardPanelProps) {
       </div>
       {children}
     </section>
-  );
-}
-
-function PeriodTrendChart({
-  items,
-  granularity,
-}: {
-  items: DashboardTrendBucket[];
-  granularity: "day" | "month" | "year";
-}) {
-  const { points, maxValue } = useMemo(() => {
-    const max = Math.max(1, ...items.flatMap((item) => [item.received, item.completed]));
-    const chartWidth = 660;
-    const step = chartWidth / Math.max(items.length, 1);
-    const chartHeight = 164;
-    const bottom = 184;
-    return {
-      maxValue: max,
-      points: items.map((item, index) => {
-        const x = 30 + step * index + step / 2;
-        return {
-          ...item,
-          x,
-          receivedY: bottom - (item.received / max) * chartHeight,
-          completedY: bottom - (item.completed / max) * chartHeight,
-          barWidth: Math.min(22, step * 0.38),
-        };
-      }),
-    };
-  }, [items]);
-  const linePath = points
-    .map((point, index) => `${index === 0 ? "M" : "L"} ${point.x} ${point.completedY}`)
-    .join(" ");
-  const gridValues = [0, Math.ceil(maxValue / 2), maxValue];
-  const labelEvery = Math.max(1, Math.ceil(points.length / 12));
-
-  if (items.length === 0) {
-    return <EmptyState message="Chưa có dữ liệu PO trong kỳ được chọn." />;
-  }
-
-  return (
-    <div>
-      <div className="mb-4 flex flex-wrap gap-x-5 gap-y-2 text-xs text-gray-600 dark:text-gray-300">
-        <span className="inline-flex items-center gap-2">
-          <span className="bg-brand-500 h-2.5 w-2.5 rounded-sm" aria-hidden="true" />
-          PO tiếp nhận
-        </span>
-        <span className="inline-flex items-center gap-2">
-          <span className="bg-success-500 h-0.5 w-4" aria-hidden="true" />
-          PO hoàn thành
-        </span>
-      </div>
-      <svg
-        viewBox="0 0 720 224"
-        role="img"
-        aria-label={`Biểu đồ PO tiếp nhận và hoàn thành theo ${granularity === "day" ? "ngày" : granularity === "month" ? "tháng" : "năm"}`}
-        className="h-auto w-full overflow-visible"
-        preserveAspectRatio="none"
-      >
-        {gridValues.map((value, index) => {
-          const y = 184 - (value / maxValue) * 164;
-          return (
-            <g key={`${value}-${index}`}>
-              <line
-                x1="30"
-                x2="690"
-                y1={y}
-                y2={y}
-                stroke="currentColor"
-                className="text-gray-200 dark:text-gray-800"
-              />
-              <text x="25" y={y - 4} textAnchor="end" className="fill-gray-500 text-[10px]">
-                {formatNumber(value)}
-              </text>
-            </g>
-          );
-        })}
-        {points.map((point, index) => (
-          <g key={point.period}>
-            <rect
-              x={point.x - point.barWidth / 2}
-              y={point.receivedY}
-              width={point.barWidth}
-              height={184 - point.receivedY}
-              rx="3"
-              className="fill-brand-500"
-            >
-              <title>{`${point.period}: ${formatNumber(point.received)} PO tiếp nhận`}</title>
-            </rect>
-            {(index % labelEvery === 0 || index === points.length - 1) && (
-              <text x={point.x} y="210" textAnchor="middle" className="fill-gray-500 text-[10px]">
-                {formatTrendLabel(point.period, granularity)}
-              </text>
-            )}
-          </g>
-        ))}
-        <path
-          d={linePath}
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="3"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className="text-success-500"
-        />
-        {points.map((point) => (
-          <circle
-            key={`completed-${point.period}`}
-            cx={point.x}
-            cy={point.completedY}
-            r="3.5"
-            className="fill-success-500"
-          >
-            <title>{`${point.period}: ${formatNumber(point.completed)} PO hoàn thành`}</title>
-          </circle>
-        ))}
-      </svg>
-      <ul className="sr-only">
-        {points.map((point) => (
-          <li key={`sr-${point.period}`}>
-            {point.period}: {formatNumber(point.received)} PO tiếp nhận,{" "}
-            {formatNumber(point.completed)} PO hoàn thành
-          </li>
-        ))}
-      </ul>
-    </div>
   );
 }
 
@@ -712,11 +580,15 @@ export function DashboardSummaryView({
           </div>
 
           <div className="grid grid-cols-1 gap-4 xl:grid-cols-12">
-            <Panel
-              title={`Xu hướng PO theo ${data.trendGranularity === "day" ? "ngày" : data.trendGranularity === "month" ? "tháng" : "năm"}`}
-              className="xl:col-span-7"
-            >
-              <PeriodTrendChart items={data.trend} granularity={data.trendGranularity} />
+            <Panel title="PO tiếp nhận" className="xl:col-span-7">
+              <DashboardPeriodTrendChart
+                items={data.trend}
+                granularity={data.trendGranularity}
+                periodType={data.periodType}
+                periodStart={data.periodStart}
+                periodEnd={data.periodEnd}
+                comparison={data.comparison}
+              />
             </Panel>
 
             <Panel

@@ -61,6 +61,23 @@ const dashboardSummarySchema = z
         })
         .strict(),
     ),
+    comparison: z
+      .object({
+        periodStart: dashboardDateSchema,
+        periodEnd: dashboardDateSchema,
+        currentEnd: dashboardDateSchema,
+        trend: z.array(
+          z
+            .object({
+              period: z.string(),
+              received: z.number().int().nonnegative().nullable(),
+            })
+            .strict(),
+        ),
+      })
+      .strict()
+      .nullable()
+      .optional(),
     purchaseOrderStatuses: z.array(
       z
         .object({
@@ -154,6 +171,56 @@ function validateDashboardTrendPeriods(
         code: z.ZodIssueCode.custom,
         path: ["trend", index, "period"],
         message: `Trend period must match ${summary.trendGranularity} granularity`,
+      });
+    }
+  });
+
+  if (!summary.comparison) return;
+
+  if (
+    summary.comparison.periodStart > summary.comparison.periodEnd ||
+    summary.comparison.periodEnd >= summary.periodStart
+  ) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["comparison"],
+      message: "Comparison dates must be ordered before the selected period",
+    });
+  }
+
+  if (
+    summary.comparison.currentEnd < summary.periodStart ||
+    summary.comparison.currentEnd > summary.periodEnd
+  ) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["comparison", "currentEnd"],
+      message: "Current comparison end must be inside the selected period",
+    });
+  }
+
+  if (summary.periodType === "all") {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["comparison"],
+      message: "All-time dashboard summaries cannot have a comparison period",
+    });
+  }
+
+  if (summary.comparison.trend.length !== summary.trend.length) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["comparison", "trend"],
+      message: "Comparison trend must align with selected trend buckets",
+    });
+  }
+
+  summary.comparison.trend.forEach(({ period }, index) => {
+    if (period !== summary.trend[index]?.period) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["comparison", "trend", index, "period"],
+        message: "Comparison trend periods must match selected trend periods",
       });
     }
   });

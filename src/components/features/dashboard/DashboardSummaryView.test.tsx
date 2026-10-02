@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { DashboardSummaryView } from "./DashboardSummaryView";
@@ -16,6 +16,12 @@ const data = {
   upcomingProductPurchaseOrders: 3,
   pendingBomCount: 5,
   trend: [{ period: "2026-09-01", received: 10, completed: 4 }],
+  comparison: {
+    periodStart: "2026-08-01",
+    periodEnd: "2026-08-31",
+    currentEnd: "2026-09-30",
+    trend: [{ period: "2026-09-01", received: 6 }],
+  },
   purchaseOrderStatuses: [{ status: "in_progress", count: 6 }],
   bomRevisionStatuses: [{ status: "wait_rd", count: 5 }],
   topCustomers: [{ customerName: "Khách A", count: 3 }],
@@ -44,6 +50,124 @@ const data = {
 afterEach(cleanup);
 
 describe("DashboardSummaryView", () => {
+  it("compares PO receipts in the selected and previous periods with explicit date ranges", () => {
+    render(
+      <MemoryRouter>
+        <DashboardSummaryView
+          period={{ periodType: "month", month: "2026-09" }}
+          onPeriodChange={vi.fn()}
+          data={data}
+          isLoading={false}
+          isError={false}
+          onRetry={vi.fn()}
+        />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole("region", { name: "PO tiếp nhận" })).toBeTruthy();
+    expect(screen.getByText("Kỳ đang chọn · 01/09/2026 – 30/09/2026")).toBeTruthy();
+    expect(screen.getByText("Kỳ liền trước · 01/08/2026 – 31/08/2026")).toBeTruthy();
+    const chart = screen.getByRole("img", { name: "Biểu đồ PO tiếp nhận theo ngày" });
+    expect(chart.querySelectorAll("path")).toHaveLength(2);
+    expect(chart.querySelector('path[stroke-dasharray="6 5"]')).toBeTruthy();
+    expect(
+      screen.getByText("2026-09-01: 10 PO tiếp nhận, 6 PO tiếp nhận kỳ liền trước"),
+    ).toBeTruthy();
+    expect(
+      within(screen.getByRole("region", { name: "PO tiếp nhận" })).queryByText("PO hoàn thành"),
+    ).toBeNull();
+  });
+
+  it("clips an in-progress period at its actual end date", () => {
+    const { container } = render(
+      <MemoryRouter>
+        <DashboardSummaryView
+          period={{ periodType: "month", month: "2026-10" }}
+          onPeriodChange={vi.fn()}
+          data={{
+            ...data,
+            periodStart: "2026-10-01",
+            periodEnd: "2026-10-31",
+            trend: [
+              { period: "2026-10-01", received: 2, completed: 1 },
+              { period: "2026-10-02", received: 1, completed: 0 },
+              { period: "2026-10-03", received: 0, completed: 0 },
+            ],
+            comparison: {
+              periodStart: "2026-09-01",
+              periodEnd: "2026-09-02",
+              currentEnd: "2026-10-02",
+              trend: [
+                { period: "2026-10-01", received: 3 },
+                { period: "2026-10-02", received: 2 },
+                { period: "2026-10-03", received: null },
+              ],
+            },
+          }}
+          isLoading={false}
+          isError={false}
+          onRetry={vi.fn()}
+        />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText("Kỳ đang chọn · 01/10/2026 – 02/10/2026")).toBeTruthy();
+    expect(screen.getByText("Kỳ liền trước · 01/09/2026 – 02/09/2026")).toBeTruthy();
+    expect(container.querySelectorAll('[data-testid="trend-current-point"]')).toHaveLength(2);
+  });
+
+  it("shows only the yearly PO trend for all time without a comparison legend", () => {
+    render(
+      <MemoryRouter>
+        <DashboardSummaryView
+          period={{ periodType: "all" }}
+          onPeriodChange={vi.fn()}
+          data={{
+            ...data,
+            periodType: "all",
+            periodStart: "2024-04-01",
+            periodEnd: "2026-09-30",
+            trendGranularity: "year",
+            trend: [
+              { period: "2024", received: 8, completed: 3 },
+              { period: "2025", received: 11, completed: 6 },
+              { period: "2026", received: 10, completed: 4 },
+            ],
+            comparison: null,
+          }}
+          isLoading={false}
+          isError={false}
+          onRetry={vi.fn()}
+        />
+      </MemoryRouter>,
+    );
+
+    expect(
+      within(screen.getByRole("region", { name: "PO tiếp nhận" })).getByText("Toàn thời gian"),
+    ).toBeTruthy();
+    expect(screen.queryByText(/Kỳ liền trước/)).toBeNull();
+    const chart = screen.getByRole("img", { name: "Biểu đồ PO tiếp nhận theo năm" });
+    expect(chart.querySelectorAll("path")).toHaveLength(1);
+  });
+
+  it("shows an empty state instead of an empty chart when the selected period has no buckets", () => {
+    render(
+      <MemoryRouter>
+        <DashboardSummaryView
+          period={{ periodType: "month", month: "2026-09" }}
+          onPeriodChange={vi.fn()}
+          data={{ ...data, trend: [], comparison: null }}
+          isLoading={false}
+          isError={false}
+          onRetry={vi.fn()}
+        />
+      </MemoryRouter>,
+    );
+
+    const chartPanel = screen.getByRole("region", { name: "PO tiếp nhận" });
+    expect(within(chartPanel).getByText("Chưa có dữ liệu PO trong kỳ được chọn.")).toBeTruthy();
+    expect(within(chartPanel).queryByRole("img")).toBeNull();
+  });
   it("shows operational metrics and links queue items to their details", () => {
     render(
       <MemoryRouter>

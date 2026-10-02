@@ -27,6 +27,7 @@ export type ManagementDashboardSummary = {
   upcomingProductPurchaseOrders: number;
   pendingBomCount: number;
   trend: DashboardTrendBucket[];
+  comparison?: DashboardTrendComparison | null;
   purchaseOrderStatuses: DashboardStatusCount[];
   bomRevisionStatuses: DashboardStatusCount[];
   topCustomers: DashboardCustomerCount[];
@@ -44,6 +45,18 @@ export type DashboardTrendBucket = {
   period: string;
   received: number;
   completed: number;
+};
+
+export type DashboardTrendComparison = {
+  periodStart: string;
+  periodEnd: string;
+  currentEnd: string;
+  trend: DashboardTrendComparisonBucket[];
+};
+
+export type DashboardTrendComparisonBucket = {
+  period: string;
+  received: number | null;
 };
 
 export type DashboardStatusCount = {

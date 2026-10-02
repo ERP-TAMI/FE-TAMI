@@ -58,6 +58,43 @@ describe("dashboardApi", () => {
     });
   });
 
+  it("accepts aligned current and previous receipt trends while allowing legacy responses", async () => {
+    const comparison = {
+      periodStart: "2026-08-01",
+      periodEnd: "2026-08-31",
+      currentEnd: "2026-09-30",
+      trend: [{ period: "2026-09-01", received: 8 }],
+    };
+    vi.mocked(apiClient.get).mockResolvedValue({ data: { ...summary, comparison } });
+
+    await expect(
+      dashboardApi.getSummary({ periodType: "month", month: "2026-09" }),
+    ).resolves.toMatchObject({ comparison });
+
+    vi.mocked(apiClient.get).mockResolvedValue({ data: summary });
+    await expect(
+      dashboardApi.getSummary({ periodType: "month", month: "2026-09" }),
+    ).resolves.toMatchObject({ trend: summary.trend });
+  });
+
+  it("rejects comparison trends whose buckets do not align with the selected trend", async () => {
+    vi.mocked(apiClient.get).mockResolvedValue({
+      data: {
+        ...summary,
+        comparison: {
+          periodStart: "2026-08-01",
+          periodEnd: "2026-08-31",
+          currentEnd: "2026-09-30",
+          trend: [{ period: "2026-08-01", received: 8 }],
+        },
+      },
+    });
+
+    await expect(
+      dashboardApi.getSummary({ periodType: "month", month: "2026-09" }),
+    ).rejects.toThrow();
+  });
+
   it("sends the selected date range as inclusive endpoints", async () => {
     vi.mocked(apiClient.get).mockResolvedValue({
       data: {
