@@ -252,6 +252,8 @@ describe("DocumentLibraryPage folder browser", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Mở thư mục Bộ sưu tập" }));
 
     const contents = await screen.findByRole("region", { name: "Nội dung Bộ sưu tập" });
+    expect(within(contents).queryByText("Nội dung thư mục")).toBeNull();
+    expect(within(contents).queryByText(/Dung lượng 1\.0 KB/)).toBeNull();
     const table = within(contents).getByRole("table", { name: "Tài liệu trong kho" });
     const rows = within(table).getAllByRole("row");
     expect(rows).toHaveLength(3);

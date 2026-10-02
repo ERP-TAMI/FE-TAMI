@@ -985,18 +985,16 @@ export default function DocumentLibraryPage() {
         }`}
       >
         <header className="space-y-3 border-b border-gray-100 px-4 py-3 dark:border-gray-800">
-          <div className="min-w-0">
-            <h2 className="truncate text-base font-semibold tracking-tight text-gray-900 dark:text-white">
-              {activeView === "folders" ? "Nội dung thư mục" : pageTitle}
-            </h2>
-            <p className="mt-1 text-xs text-gray-500">
-              {activeView === "folders" && selectedFolder?.parentFolderName
-                ? `${selectedFolder.parentFolderName} · `
-                : ""}
-              {activeView === "folders" && folderCount > 0 ? `${folderCount} thư mục · ` : ""}
-              {totalDocumentCount} tài liệu · Dung lượng {formatBytes(totalBytes)}
-            </p>
-          </div>
+          {activeView !== "folders" && (
+            <div className="min-w-0">
+              <h2 className="truncate text-base font-semibold tracking-tight text-gray-900 dark:text-white">
+                {pageTitle}
+              </h2>
+              <p className="mt-1 text-xs text-gray-500">
+                {totalDocumentCount} tài liệu · Dung lượng {formatBytes(totalBytes)}
+              </p>
+            </div>
+          )}
           <div className="flex flex-wrap items-center gap-2">
             <input
               value={search}
