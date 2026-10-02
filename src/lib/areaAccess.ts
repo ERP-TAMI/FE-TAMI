@@ -5,9 +5,14 @@ export { canAccessManagement };
 
 const USER_MANAGEMENT_PERMISSION = "system.users.manage";
 const AUDIT_LOG_PERMISSION = "system.audit.view";
+const BUSINESS_DASHBOARD_ROLES = new Set(["SA", "TPKH", "NVKH", "RD", "ACCOUNTING"]);
 
 export function canAccessItArea(user: AuthUser | null): boolean {
   return user?.roleCode === "IT";
+}
+
+export function canAccessBusinessDashboard(user: AuthUser | null): boolean {
+  return user !== null && BUSINESS_DASHBOARD_ROLES.has(user.roleCode);
 }
 
 export function canManageUsers(user: AuthUser | null): boolean {
@@ -61,6 +66,10 @@ export function getPostLoginPath(user: AuthUser, requestedPath?: string): string
       return landingPath;
     }
     return requestedPath;
+  }
+
+  if (isWithin(requestedPath, "/dashboard") && !canAccessBusinessDashboard(user)) {
+    return landingPath;
   }
 
   if (isWithin(requestedPath, "/admin")) {

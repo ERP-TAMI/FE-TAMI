@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { AuthUser } from "@/store/authStore";
 import {
   canAccessEditablePurchaseOrderModule,
+  canAccessBusinessDashboard,
   canAccessItArea,
   canAccessManagement,
   canManageUsers,
@@ -47,6 +48,15 @@ describe("area access policy", () => {
     expect(getLandingPath(user("IT"))).toBe("/it/profile");
   });
 
+  it("grants the business dashboard only to approved operational roles and SA", () => {
+    for (const roleCode of ["TPKH", "NVKH", "RD", "ACCOUNTING", "SA"]) {
+      expect(canAccessBusinessDashboard(user(roleCode))).toBe(true);
+    }
+    expect(canAccessBusinessDashboard(user("IT"))).toBe(false);
+    expect(canAccessBusinessDashboard(user("UNKNOWN"))).toBe(false);
+    expect(canAccessBusinessDashboard(null)).toBe(false);
+  });
+
   it("allows only full-access SA users into the editable PO module", () => {
     expect(canAccessEditablePurchaseOrderModule(user("SA"))).toBe(false);
     expect(
@@ -56,11 +66,9 @@ describe("area access policy", () => {
       }),
     ).toBe(true);
     expect(canAccessEditablePurchaseOrderModule(user("NVKH"))).toBe(true);
-    expect(
-      canAccessEditablePurchaseOrderModule(
-        user("TPKH", ["management.area.access"]),
-      ),
-    ).toBe(false);
+    expect(canAccessEditablePurchaseOrderModule(user("TPKH", ["management.area.access"]))).toBe(
+      false,
+    );
   });
 
   it("allows product lock management only to SA and TPKH", () => {
@@ -81,5 +89,6 @@ describe("area access policy", () => {
     expect(getPostLoginPath(sa, "/management/users")).toBe("/management/users");
     expect(getPostLoginPath(employee, "/admin/users")).toBe("/dashboard");
     expect(getPostLoginPath(employee, "//outside.example/path")).toBe("/dashboard");
+    expect(getPostLoginPath(itUser, "/dashboard")).toBe("/it/users");
   });
 });

@@ -1,15 +1,13 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { NavLink, useLocation } from "react-router-dom";
-import {
-  BoxCubeIcon,
-  ChevronDownIcon,
-  GridIcon,
-  ListIcon,
-  PageIcon,
-} from "@/icons";
+import { BoxCubeIcon, ChevronDownIcon, GridIcon, ListIcon, PageIcon } from "@/icons";
 import { useSidebar } from "@/context/SidebarContext";
 import { useAuthStore } from "@/store/authStore";
-import { canAccessEditablePurchaseOrderModule, canViewAuditLog } from "@/lib/areaAccess";
+import {
+  canAccessBusinessDashboard,
+  canAccessEditablePurchaseOrderModule,
+  canViewAuditLog,
+} from "@/lib/areaAccess";
 
 type NavChild = {
   name: string;
@@ -61,6 +59,7 @@ export default function AppSidebar() {
   const navItems = useMemo(
     () =>
       ALL_NAV_ITEMS.filter((item) => {
+        if (item.path === "/dashboard") return canAccessBusinessDashboard(user);
         if (item.path === "/po") return canAccessEditablePurchaseOrderModule(user);
         if (item.path === "/audit-log") return canViewAuditLog(user);
         return true;
@@ -155,7 +154,9 @@ export default function AppSidebar() {
                         end={child.path === "/bom"}
                         className={({ isActive }) =>
                           `menu-dropdown-item ${
-                            isActive ? "menu-dropdown-item-active font-semibold" : "menu-dropdown-item-inactive"
+                            isActive
+                              ? "menu-dropdown-item-active font-semibold"
+                              : "menu-dropdown-item-inactive"
                           }`
                         }
                       >

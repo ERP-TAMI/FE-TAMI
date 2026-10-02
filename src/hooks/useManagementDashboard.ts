@@ -1,12 +1,17 @@
 import { useQuery } from "@tanstack/react-query";
 import { managementDashboardApi } from "@/api/management-dashboard.api";
 import { managementDashboardKeys } from "@/api/management-dashboard.keys";
-import { managementDashboardMonthSchema } from "@/api/management-dashboard.schema";
+import {
+  dashboardPeriodSchema,
+  managementDashboardMonthSchema,
+} from "@/api/management-dashboard.schema";
+import type { DashboardPeriod } from "@/types/management-dashboard";
 
-export function useManagementDashboardSummary(month: string) {
+export function useManagementDashboardSummary(period: DashboardPeriod) {
   return useQuery({
-    queryKey: managementDashboardKeys.summary(month),
-    queryFn: () => managementDashboardApi.getSummary(month),
+    queryKey: managementDashboardKeys.summary(period),
+    queryFn: () => managementDashboardApi.getSummary(period),
+    enabled: dashboardPeriodSchema.safeParse(period).success,
   });
 }
 

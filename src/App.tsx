@@ -18,6 +18,7 @@ import { UserManagementRoute } from "@/routes/UserManagementRoute";
 import { AuditLogRoute } from "@/routes/AuditLogRoute";
 import { UserManagementAlias } from "@/routes/UserManagementAlias";
 import { PurchaseOrderModuleRoute } from "@/routes/PurchaseOrderModuleRoute";
+import { BusinessDashboardRoute } from "@/routes/BusinessDashboardRoute";
 import { canManagePurchaseOrders, getLandingPath } from "@/lib/areaAccess";
 import { useAuthStore } from "@/store/authStore";
 import { ScrollToTop } from "@/components/shared/ScrollToTop";
@@ -133,7 +134,9 @@ export function AppRoutes() {
           </Route>
           <Route element={<AppLayout />}>
             <Route index element={<Navigate to={getLandingPath(user)} replace />} />
-            <Route path="dashboard" element={<DashboardPage />} />
+            <Route element={<BusinessDashboardRoute />}>
+              <Route path="dashboard" element={<DashboardPage />} />
+            </Route>
             <Route path="profile" element={<ProfilePage />} />
             <Route path="styles" element={<StyleListPage />} />
             <Route path="styles/:id/detail" element={<StyleDetailPage />} />

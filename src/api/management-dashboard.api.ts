@@ -1,19 +1,22 @@
 import apiClient from "@/lib/apiClient";
 import type {
-  ManagementDashboardSummary,
+  DashboardPeriod,
+  ManagementDashboardManagementSummary,
   ManagementPurchaseOrdersOverview,
 } from "@/types/management-dashboard";
 import {
   managementDashboardSummarySchema,
+  dashboardPeriodSchema,
   managementPurchaseOrdersOverviewSchema,
 } from "./management-dashboard.schema";
 
 const resource = "/management/dashboard/summary";
 
 export const managementDashboardApi = {
-  async getSummary(month: string): Promise<ManagementDashboardSummary> {
-    const response = await apiClient.get<ManagementDashboardSummary>(resource, {
-      params: { month },
+  async getSummary(period: DashboardPeriod): Promise<ManagementDashboardManagementSummary> {
+    const validatedPeriod = dashboardPeriodSchema.parse(period);
+    const response = await apiClient.get<ManagementDashboardManagementSummary>(resource, {
+      params: validatedPeriod,
     });
     return managementDashboardSummarySchema.parse(response.data);
   },
