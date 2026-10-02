@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import ManagementDashboardPage from "./ManagementDashboardPage";
 
@@ -80,7 +80,11 @@ describe("ManagementDashboardPage", () => {
 
   it("loads metrics for the selected year", () => {
     render(<ManagementDashboardPage />);
-    fireEvent.change(screen.getByLabelText("Kỳ thống kê"), { target: { value: "year" } });
+    fireEvent.click(
+      within(screen.getByRole("group", { name: "Kỳ thống kê" })).getByRole("button", {
+        name: "Năm",
+      }),
+    );
     fireEvent.change(screen.getByLabelText("Năm tiếp nhận PO"), { target: { value: "2025" } });
 
     expect(hooks.useManagementDashboardSummary).toHaveBeenLastCalledWith({
@@ -110,7 +114,11 @@ describe("ManagementDashboardPage", () => {
 
   it("requests the exact inclusive date range selected by the user", () => {
     render(<ManagementDashboardPage />);
-    fireEvent.change(screen.getByLabelText("Kỳ thống kê"), { target: { value: "range" } });
+    fireEvent.click(
+      within(screen.getByRole("group", { name: "Kỳ thống kê" })).getByRole("button", {
+        name: "Khoảng ngày",
+      }),
+    );
     fireEvent.change(screen.getByLabelText("Từ ngày"), { target: { value: "2026-09-05" } });
     fireEvent.change(screen.getByLabelText("Đến ngày"), { target: { value: "2026-09-19" } });
 

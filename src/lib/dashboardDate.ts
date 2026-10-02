@@ -1,6 +1,6 @@
 import type { DashboardPeriod, DashboardPeriodType } from "@/types/management-dashboard";
 
-export type DashboardPeriodBounds = { fromDate: string; toDate: string };
+export type DashboardPeriodBounds = { fromDate: string; toDate: string } | null;
 
 export function getCurrentDashboardPeriod(now = new Date()): DashboardPeriod {
   return { periodType: "month", month: getDashboardMonthAt(now) };
@@ -28,6 +28,7 @@ function getDashboardMonthAt(now: Date): string {
 }
 
 export function getDashboardPeriodBounds(period: DashboardPeriod): DashboardPeriodBounds {
+  if (period.periodType === "all") return null;
   if (period.periodType === "range") {
     return { fromDate: period.fromDate, toDate: period.toDate };
   }
@@ -48,7 +49,22 @@ export function changeDashboardPeriodType(
   nextType: DashboardPeriodType,
 ): DashboardPeriod {
   if (current.periodType === nextType) return current;
-  const { fromDate, toDate } = getDashboardPeriodBounds(current);
+  if (nextType === "all") return { periodType: "all" };
+  if (current.periodType === "all") {
+    const currentMonth = getDashboardMonthAt(new Date());
+    if (nextType === "month") return { periodType: "month", month: currentMonth };
+    if (nextType === "year") {
+      return { periodType: "year", year: currentMonth.slice(0, 4) };
+    }
+    const { fromDate, toDate } = getDashboardPeriodBounds({
+      periodType: "month",
+      month: currentMonth,
+    })!;
+    return { periodType: "range", fromDate, toDate };
+  }
+  const currentBounds = getDashboardPeriodBounds(current);
+  if (!currentBounds) return getCurrentDashboardPeriod();
+  const { fromDate, toDate } = currentBounds;
 
   if (nextType === "year") return { periodType: "year", year: fromDate.slice(0, 4) };
   if (nextType === "month") return { periodType: "month", month: fromDate.slice(0, 7) };
@@ -56,6 +72,7 @@ export function changeDashboardPeriodType(
 }
 
 export function formatDashboardPeriodLabel(period: DashboardPeriod): string {
+  if (period.periodType === "all") return "Toàn thời gian";
   if (period.periodType === "month") {
     if (!period.month) return "Chưa chọn tháng";
     return `Tháng ${period.month.slice(5)}/${period.month.slice(0, 4)}`;

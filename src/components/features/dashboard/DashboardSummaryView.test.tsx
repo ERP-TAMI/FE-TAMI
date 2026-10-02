@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { DashboardSummaryView } from "./DashboardSummaryView";
@@ -86,10 +86,114 @@ describe("DashboardSummaryView", () => {
       </MemoryRouter>,
     );
 
-    fireEvent.change(screen.getByLabelText("Kỳ thống kê"), {
-      target: { value: "year" },
-    });
+    fireEvent.click(
+      within(screen.getByRole("group", { name: "Kỳ thống kê" })).getByRole("button", {
+        name: "Năm",
+      }),
+    );
     expect(onPeriodChange).toHaveBeenCalledWith({ periodType: "year", year: "2026" });
+  });
+
+  it.each([
+    { label: "Tháng", period: { periodType: "month" as const, month: "2026-09" } },
+    { label: "Năm", period: { periodType: "year" as const, year: "2026" } },
+    {
+      label: "Khoảng ngày",
+      period: { periodType: "range" as const, fromDate: "2026-09-01", toDate: "2026-09-30" },
+    },
+    { label: "Toàn thời gian", period: { periodType: "all" as const } },
+  ])("keeps all period choices visible when $label is selected", ({ label, period }) => {
+    render(
+      <MemoryRouter>
+        <DashboardSummaryView
+          period={period}
+          onPeriodChange={vi.fn()}
+          data={data}
+          isLoading={false}
+          isError={false}
+          onRetry={vi.fn()}
+        />
+      </MemoryRouter>,
+    );
+
+    const periodGroup = within(screen.getByRole("group", { name: "Kỳ thống kê" }));
+    expect(periodGroup.getAllByRole("button")).toHaveLength(4);
+    expect(periodGroup.getByRole("button", { name: label }).getAttribute("aria-pressed")).toBe(
+      "true",
+    );
+  });
+
+  it("switches to the all-time period and explains its date scope", () => {
+    const onPeriodChange = vi.fn();
+    const { rerender } = render(
+      <MemoryRouter>
+        <DashboardSummaryView
+          period={{ periodType: "year", year: "2026" }}
+          onPeriodChange={onPeriodChange}
+          data={data}
+          isLoading={false}
+          isError={false}
+          onRetry={vi.fn()}
+        />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(
+      within(screen.getByRole("group", { name: "Kỳ thống kê" })).getByRole("button", {
+        name: "Toàn thời gian",
+      }),
+    );
+    expect(onPeriodChange).toHaveBeenCalledWith({ periodType: "all" });
+
+    rerender(
+      <MemoryRouter>
+        <DashboardSummaryView
+          period={{ periodType: "all" }}
+          onPeriodChange={onPeriodChange}
+          data={data}
+          isLoading={false}
+          isError={false}
+          onRetry={vi.fn()}
+        />
+      </MemoryRouter>,
+    );
+    expect(screen.getByText("Từ dữ liệu cũ nhất đến mới nhất")).toBeTruthy();
+  });
+
+  it("keeps KPI and dashboard panel placeholders visible while loading", () => {
+    const { container } = render(
+      <MemoryRouter>
+        <DashboardSummaryView
+          period={{ periodType: "month", month: "2026-09" }}
+          onPeriodChange={vi.fn()}
+          isLoading
+          isError={false}
+          onRetry={vi.fn()}
+        />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole("status", { name: "Đang tải số liệu dashboard" })).toBeTruthy();
+    expect(container.querySelectorAll('[data-testid="dashboard-kpi-skeleton"]')).toHaveLength(7);
+    expect(container.querySelectorAll('[data-testid="dashboard-panel-skeleton"]')).toHaveLength(7);
+    expect(screen.getByRole("group", { name: "Kỳ thống kê" })).toBeTruthy();
+  });
+
+  it("matches management loading placeholders to the eight management KPIs", () => {
+    const { container } = render(
+      <MemoryRouter>
+        <DashboardSummaryView
+          period={{ periodType: "month", month: "2026-09" }}
+          onPeriodChange={vi.fn()}
+          isLoading
+          isError={false}
+          onRetry={vi.fn()}
+          managementView
+        />
+      </MemoryRouter>,
+    );
+
+    expect(container.querySelectorAll('[data-testid="dashboard-kpi-skeleton"]')).toHaveLength(8);
   });
 
   it("lets the user choose a year from a dropdown", () => {

@@ -19,6 +19,7 @@ export const dashboardPeriodSchema = z
         toDate: dashboardDateSchema,
       })
       .strict(),
+    z.object({ periodType: z.literal("all") }).strict(),
   ])
   .superRefine((period, context) => {
     if (period.periodType === "range" && period.fromDate > period.toDate) {
@@ -40,7 +41,7 @@ const poStatusSchema = z.enum([
 
 const dashboardSummarySchema = z
   .object({
-    periodType: z.enum(["month", "year", "range"]),
+    periodType: z.enum(["month", "year", "range", "all"]),
     periodStart: dashboardDateSchema,
     periodEnd: dashboardDateSchema,
     trendGranularity: z.enum(["day", "month", "year"]),

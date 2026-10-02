@@ -2,6 +2,7 @@ import { useMemo, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import {
   CalendarClock,
+  History,
   CheckCircle2,
   ClipboardList,
   ClockAlert,
@@ -109,6 +110,50 @@ function formatCreatedAt(date: string): string {
     month: "2-digit",
     timeZone: "Asia/Ho_Chi_Minh",
   }).format(new Date(date));
+}
+
+function DashboardLoadingState({ managementView }: { managementView: boolean }) {
+  const panelPlaceholders = [
+    "xl:col-span-7",
+    "xl:col-span-5",
+    "xl:col-span-6",
+    "xl:col-span-6",
+    "xl:col-span-6",
+    "xl:col-span-6",
+    "xl:col-span-12",
+  ];
+
+  return (
+    <div role="status" aria-label="Đang tải số liệu dashboard" className="space-y-4">
+      <span className="sr-only">Đang tải số liệu dashboard</span>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-hidden="true">
+        {Array.from({ length: managementView ? 8 : 7 }, (_, index) => (
+          <div
+            key={index}
+            data-testid="dashboard-kpi-skeleton"
+            className="h-32 animate-pulse rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900"
+          >
+            <div className="h-4 w-32 rounded bg-gray-100 dark:bg-gray-800" />
+            <div className="mt-5 h-8 w-20 rounded bg-gray-100 dark:bg-gray-800" />
+            <div className="mt-4 h-3 w-3/4 rounded bg-gray-100 dark:bg-gray-800" />
+          </div>
+        ))}
+      </div>
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-12" aria-hidden="true">
+        {panelPlaceholders.map((className, index) => (
+          <div
+            key={index}
+            data-testid="dashboard-panel-skeleton"
+            className={`${panelClass} ${className} h-72 animate-pulse`}
+          >
+            <div className="h-5 w-48 max-w-full rounded bg-gray-100 dark:bg-gray-800" />
+            <div className="mt-3 h-3 w-2/3 max-w-full rounded bg-gray-100 dark:bg-gray-800" />
+            <div className="mt-7 h-40 rounded-xl bg-gray-100 dark:bg-gray-800" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 function Panel({ title, description, children, className, count }: DashboardPanelProps) {
@@ -475,7 +520,15 @@ export function DashboardSummaryView({
 }: DashboardSummaryViewProps) {
   const periodLabel = formatDashboardPeriodLabel(period);
   const periodNoun =
-    period.periodType === "month" ? "tháng" : period.periodType === "year" ? "năm" : "khoảng ngày";
+    period.periodType === "month"
+      ? "tháng"
+      : period.periodType === "year"
+        ? "năm"
+        : period.periodType === "range"
+          ? "khoảng ngày"
+          : "toàn bộ thời gian";
+  const periodScopeLabel =
+    period.periodType === "all" ? "toàn bộ dữ liệu" : `${periodNoun} ${periodLabel}`;
   const monthError =
     period.periodType === "month" && !period.month ? "Chọn tháng tiếp nhận PO." : undefined;
   const yearError =
@@ -483,10 +536,11 @@ export function DashboardSummaryView({
   const fromDateError =
     period.periodType === "range" && !period.fromDate ? "Chọn ngày bắt đầu." : undefined;
   const toDateError = getRangeEndDateError(period);
-  const periodTypeOptions = [
+  const periodTypeOptions: { label: string; value: DashboardPeriodType }[] = [
     { label: "Tháng", value: "month" },
     { label: "Năm", value: "year" },
-    { label: "Ngày", value: "range" },
+    { label: "Khoảng ngày", value: "range" },
+    { label: "Toàn thời gian", value: "all" },
   ];
   const updatePeriod = (key: "month" | "year" | "fromDate" | "toDate", value: string) => {
     if (period.periodType === "month" && key === "month") {
@@ -507,51 +561,53 @@ export function DashboardSummaryView({
               ? "Tổng PO tháng"
               : period.periodType === "year"
                 ? "Tổng PO năm"
-                : "Tổng PO trong khoảng ngày",
+                : period.periodType === "range"
+                  ? "Tổng PO trong khoảng ngày"
+                  : "Tổng PO",
           value: data.totalPurchaseOrders,
-          helper: `Tiếp nhận ${periodLabel}, không gồm PO đã hủy`,
+          helper: `Tiếp nhận trong ${periodScopeLabel}, không gồm PO đã hủy`,
           icon: <ClipboardList />,
           tone: "brand" as const,
         },
         {
           label: "PO hoàn thành",
           value: data.completedPurchaseOrders,
-          helper: `Đã hoàn thành trong nhóm PO tiếp nhận ${periodLabel}`,
+          helper: `Đã hoàn thành trong nhóm PO tiếp nhận ${periodScopeLabel}`,
           icon: <CheckCircle2 />,
           tone: "success" as const,
         },
         {
           label: "PO đang xử lý",
           value: data.processingPurchaseOrders,
-          helper: "Tồn hiện tại trên toàn hệ thống",
+          helper: `Đang mở trong nhóm PO tiếp nhận ${periodScopeLabel}`,
           icon: <PackageCheck />,
           tone: "neutral" as const,
         },
         {
           label: "PO có sản phẩm quá hạn",
           value: data.overdueProductPurchaseOrders,
-          helper: "Đếm PO có ít nhất một sản phẩm quá hạn",
+          helper: `Nhóm PO tiếp nhận ${periodScopeLabel} có ít nhất một sản phẩm quá hạn`,
           icon: <ClockAlert />,
           tone: "danger" as const,
         },
         {
           label: "PO sắp đến hạn",
           value: data.upcomingProductPurchaseOrders,
-          helper: "Có sản phẩm đến hạn trong 7 ngày tới",
+          helper: `Trong nhóm PO tiếp nhận ${periodScopeLabel}, có sản phẩm đến hạn 7 ngày tới`,
           icon: <CalendarClock />,
           tone: "warning" as const,
         },
         {
           label: "BOM chờ xử lý",
           value: data.pendingBomCount,
-          helper: "Revision hiện tại đang chờ một bước duyệt",
+          helper: `Revision được tạo trong ${periodScopeLabel}, hiện đang chờ duyệt`,
           icon: <RotateCw />,
           tone: "brand" as const,
         },
         {
           label: "PO đã hủy",
           value: data.cancelledPurchaseOrders,
-          helper: `Tiếp nhận ${periodLabel}`,
+          helper: `Tiếp nhận trong ${periodScopeLabel}`,
           icon: <XCircle />,
           tone: "neutral" as const,
         },
@@ -560,7 +616,7 @@ export function DashboardSummaryView({
               {
                 label: "Nhân viên hoạt động",
                 value: data.activeEmployees,
-                helper: "Tài khoản đang active và không bị khóa",
+                helper: `Tài khoản tạo trong ${periodScopeLabel}, hiện đang hoạt động`,
                 icon: <UsersRound />,
                 tone: "success" as const,
               },
@@ -570,49 +626,76 @@ export function DashboardSummaryView({
     : [];
 
   return (
-    <section className="space-y-6" aria-labelledby="dashboard-title">
-      <div className="flex flex-col justify-between gap-4 xl:flex-row xl:items-end">
-        <div>
-          <p className="text-theme-xs text-brand-600 dark:text-brand-400 font-semibold tracking-wide uppercase">
-            Tổng quan vận hành
-          </p>
-          <h1
-            id="dashboard-title"
-            className="mt-1 text-2xl font-semibold tracking-tight text-gray-900 dark:text-white"
-          >
-            {managementView ? "Dashboard quản lý" : "Dashboard"}
-          </h1>
-          <p className="mt-2 max-w-2xl text-sm text-gray-600 dark:text-gray-400">
-            Theo dõi đơn hàng, hạn sản phẩm và tiến độ xử lý BOM trên toàn hệ thống.
-          </p>
-        </div>
-        <div
-          className={`grid w-full gap-3 xl:max-w-2xl ${period.periodType === "range" ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}
+    <section className="space-y-6" aria-labelledby="dashboard-title" aria-busy={isLoading}>
+      <div>
+        <p className="text-theme-xs text-brand-600 dark:text-brand-400 font-semibold tracking-wide uppercase">
+          Tổng quan vận hành
+        </p>
+        <h1
+          id="dashboard-title"
+          className="mt-1 text-2xl font-semibold tracking-tight text-gray-900 dark:text-white"
         >
-          <Select
-            label="Kỳ thống kê"
-            options={periodTypeOptions}
-            value={period.periodType}
-            onChange={(event) =>
-              onPeriodChange(
-                changeDashboardPeriodType(period, event.target.value as DashboardPeriodType),
-              )
-            }
-            className="cursor-pointer bg-white focus-visible:ring-3 dark:focus-visible:ring-3"
-          />
+          {managementView ? "Dashboard quản lý" : "Dashboard"}
+        </h1>
+        <p className="mt-2 max-w-2xl text-sm text-gray-600 dark:text-gray-400">
+          Theo dõi đơn hàng, hạn sản phẩm và tiến độ xử lý BOM trên toàn hệ thống.
+        </p>
+      </div>
+
+      <div className="shadow-theme-xs grid grid-cols-1 items-start gap-4 rounded-2xl border border-gray-200 bg-white p-4 sm:p-5 xl:grid-cols-[minmax(19rem,0.9fr)_minmax(0,1.1fr)] dark:border-gray-800 dark:bg-gray-900">
+        <div className="min-w-0 space-y-2">
+          <p
+            id="dashboard-period-label"
+            className="text-theme-sm font-medium text-gray-700 dark:text-gray-300"
+          >
+            Kỳ thống kê
+          </p>
+          <div
+            role="group"
+            aria-labelledby="dashboard-period-label"
+            className="grid grid-cols-2 gap-2"
+          >
+            {periodTypeOptions.map((option) => {
+              const isSelected = period.periodType === option.value;
+              return (
+                <Button
+                  key={option.value}
+                  type="button"
+                  variant="outline"
+                  size="lg"
+                  aria-pressed={isSelected}
+                  className={`min-w-0 cursor-pointer px-2 whitespace-nowrap transition-none focus-visible:ring-3 sm:px-3 ${
+                    isSelected
+                      ? "border-brand-500 bg-brand-50 text-brand-700 hover:bg-brand-50 dark:border-brand-400 dark:bg-brand-500/10 dark:text-brand-300 dark:hover:bg-brand-500/10"
+                      : ""
+                  }`}
+                  onClick={() => onPeriodChange(changeDashboardPeriodType(period, option.value))}
+                >
+                  {option.value === "all" && (
+                    <History aria-hidden="true" className="size-4 shrink-0" />
+                  )}
+                  {option.label}
+                </Button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="grid min-h-24 min-w-0 grid-cols-2 gap-3">
           {period.periodType === "month" && (
             <Input
+              className="col-span-2 cursor-pointer bg-white focus-visible:ring-3 dark:bg-gray-900 dark:[color-scheme:dark]"
               label="Tháng tiếp nhận PO"
               type="month"
               min="0001-01"
               value={period.month}
               onChange={(event) => updatePeriod("month", event.target.value)}
               error={monthError}
-              className="cursor-pointer bg-white focus-visible:ring-3 dark:bg-gray-900 dark:[color-scheme:dark]"
             />
           )}
           {period.periodType === "year" && (
             <Select
+              className="col-span-2 cursor-pointer bg-white tabular-nums focus-visible:ring-3 dark:bg-gray-900 dark:focus-visible:ring-3"
               label="Năm tiếp nhận PO"
               options={getDashboardYearOptions(period.year).map((year) => ({
                 label: year,
@@ -621,7 +704,6 @@ export function DashboardSummaryView({
               value={period.year}
               onChange={(event) => updatePeriod("year", event.target.value)}
               error={yearError}
-              className="cursor-pointer bg-white tabular-nums focus-visible:ring-3 dark:bg-gray-900 dark:focus-visible:ring-3"
             />
           )}
           {period.periodType === "range" && (
@@ -644,37 +726,29 @@ export function DashboardSummaryView({
               />
             </>
           )}
+          {period.periodType === "all" && (
+            <div className="col-span-2 min-h-24 space-y-2">
+              <p className="text-theme-sm font-medium text-gray-700 dark:text-gray-300">
+                Phạm vi dữ liệu
+              </p>
+              <div className="flex h-11 items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-4 text-sm text-gray-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
+                <History aria-hidden="true" className="size-4 shrink-0" />
+                <span>Từ dữ liệu cũ nhất đến mới nhất</span>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-600 dark:text-gray-400">
         <span className="bg-success-500 inline-flex h-2 w-2 rounded-full" aria-hidden="true" />
-        <span>Backlog, deadline và trạng thái BOM là tồn hiện tại.</span>
-        <span aria-hidden="true">·</span>
         <span>
-          Tổng PO, hoàn thành, hủy và top khách hàng theo {periodNoun} {periodLabel}.
+          PO lọc theo ngày tiếp nhận; BOM theo ngày tạo revision trong {periodScopeLabel}. Trạng
+          thái và deadline phản ánh tình trạng hiện tại của dữ liệu đã lọc.
         </span>
       </div>
 
-      {isLoading && (
-        <div
-          role="status"
-          aria-label="Đang tải số liệu dashboard"
-          className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4"
-        >
-          <span className="sr-only">Đang tải số liệu dashboard</span>
-          {Array.from({ length: 8 }, (_, index) => (
-            <div
-              key={index}
-              aria-hidden="true"
-              className="h-32 animate-pulse rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900"
-            >
-              <div className="h-4 w-32 rounded bg-gray-100 dark:bg-gray-800" />
-              <div className="mt-5 h-8 w-20 rounded bg-gray-100 dark:bg-gray-800" />
-            </div>
-          ))}
-        </div>
-      )}
+      {isLoading && <DashboardLoadingState managementView={managementView} />}
 
       {isError && (
         <div className="space-y-3">
@@ -702,15 +776,15 @@ export function DashboardSummaryView({
           <div className="grid grid-cols-1 gap-4 xl:grid-cols-12">
             <Panel
               title={`Xu hướng PO theo ${data.trendGranularity === "day" ? "ngày" : data.trendGranularity === "month" ? "tháng" : "năm"}`}
-              description={`Đơn tiếp nhận và hoàn thành trong ${periodLabel}`}
+              description={`PO tiếp nhận trong ${periodScopeLabel}; đường hoàn thành là trạng thái hiện tại của nhóm PO đó`}
               className="xl:col-span-7"
             >
               <PeriodTrendChart items={data.trend} granularity={data.trendGranularity} />
             </Panel>
 
             <Panel
-              title="Trạng thái PO hiện tại"
-              description="Phân bổ trên toàn bộ PO chưa lưu trữ"
+              title="Trạng thái PO trong kỳ"
+              description={`Trạng thái hiện tại của các PO tiếp nhận ${periodScopeLabel}`}
               count={data.purchaseOrderStatuses.reduce((total, row) => total + row.count, 0)}
               className="xl:col-span-5"
             >
@@ -723,7 +797,7 @@ export function DashboardSummaryView({
 
             <Panel
               title="Khách hàng có nhiều PO"
-              description={`Xếp theo số PO tiếp nhận ${periodLabel}`}
+              description={`Xếp theo số PO tiếp nhận ${periodScopeLabel}`}
               className="xl:col-span-6"
             >
               <CustomerBreakdown items={data.topCustomers} />
@@ -731,7 +805,7 @@ export function DashboardSummaryView({
 
             <Panel
               title="Trạng thái revision BOM"
-              description="Revision hiện tại, không gồm BOM đã ngừng"
+              description={`Trạng thái hiện tại của revision tạo trong ${periodScopeLabel}, không gồm BOM đã ngừng`}
               count={data.bomRevisionStatuses.reduce((total, row) => total + row.count, 0)}
               className="xl:col-span-6"
             >
@@ -751,7 +825,7 @@ export function DashboardSummaryView({
 
             <Panel
               title="PO có sản phẩm quá hạn"
-              description="Deadline sản phẩm đã qua; PO và sản phẩm chưa đóng hoặc hủy"
+              description={`Deadline sản phẩm đã qua; PO tiếp nhận ${periodScopeLabel} và sản phẩm chưa đóng hoặc hủy`}
               count={data.overdueProductPurchaseOrders}
               className="xl:col-span-6"
             >
@@ -764,7 +838,7 @@ export function DashboardSummaryView({
 
             <Panel
               title="PO sắp đến hạn"
-              description="Deadline sản phẩm từ hôm nay đến hết 6 ngày tiếp theo"
+              description={`PO tiếp nhận ${periodScopeLabel}, có deadline từ hôm nay đến hết 6 ngày tiếp theo`}
               count={data.upcomingProductPurchaseOrders}
               className="xl:col-span-6"
             >
@@ -777,7 +851,7 @@ export function DashboardSummaryView({
 
             <Panel
               title="BOM chờ xử lý"
-              description="Danh sách 5 revision hiện tại chờ lâu nhất"
+              description={`5 revision tạo trong ${periodScopeLabel} đang chờ lâu nhất`}
               count={data.pendingBomCount}
               className="xl:col-span-12"
             >

@@ -6,12 +6,13 @@ export type ManagementPurchaseOrderSummaryStatus =
   | "overdue"
   | "cancelled";
 
-export type DashboardPeriodType = "month" | "year" | "range";
+export type DashboardPeriodType = "month" | "year" | "range" | "all";
 
 export type DashboardPeriod =
   | { periodType: "month"; month: string }
   | { periodType: "year"; year: string }
-  | { periodType: "range"; fromDate: string; toDate: string };
+  | { periodType: "range"; fromDate: string; toDate: string }
+  | { periodType: "all" };
 
 export type ManagementDashboardSummary = {
   periodType: DashboardPeriodType;
