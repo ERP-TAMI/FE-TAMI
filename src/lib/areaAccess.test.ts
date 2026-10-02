@@ -5,6 +5,7 @@ import {
   canAccessItArea,
   canAccessManagement,
   canManageUsers,
+  canManagePurchaseOrderProductStatus,
   getLandingPath,
   getPostLoginPath,
 } from "@/lib/areaAccess";
@@ -60,6 +61,14 @@ describe("area access policy", () => {
         user("TPKH", ["management.area.access"]),
       ),
     ).toBe(false);
+  });
+
+  it("allows product lock management only to SA and TPKH", () => {
+    expect(canManagePurchaseOrderProductStatus(user("SA"))).toBe(true);
+    expect(canManagePurchaseOrderProductStatus(user("TPKH"))).toBe(true);
+    expect(canManagePurchaseOrderProductStatus(user("RD"))).toBe(false);
+    expect(canManagePurchaseOrderProductStatus(user("NVKH"))).toBe(false);
+    expect(canManagePurchaseOrderProductStatus(null)).toBe(false);
   });
 
   it("keeps only authorized internal deep links after login", () => {
