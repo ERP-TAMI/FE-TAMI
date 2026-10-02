@@ -5,19 +5,36 @@ import {
   Check,
   Folder,
   FolderPlus,
+  Grid2X2,
+  List,
   MoreHorizontal,
   Pencil,
-  Plus,
   Trash2,
+  Upload,
   X,
 } from "lucide-react";
 import { documentsLibraryApi } from "@/api/documents-library.api";
 import type { DocumentFolderItem } from "@/types/document-library";
 import { DocumentFolderTree } from "@/pages/documents/DocumentFolderTree";
+import {
+  DocumentLibraryStatusFilter,
+  type DocumentLibraryFilter,
+} from "@/pages/documents/DocumentLibraryStatusFilter";
 
 type DocumentFoldersViewProps = {
   path: DocumentFolderItem[];
+  search: string;
+  onSearchChange: (search: string) => void;
+  showAssignmentFilter: boolean;
+  assignmentFilter: DocumentLibraryFilter;
+  onAssignmentFilterChange: (filter: DocumentLibraryFilter) => void;
+  displayMode: "list" | "grid";
+  onDisplayModeChange: (mode: "list" | "grid") => void;
   canManage: boolean;
+  canUpload: boolean;
+  uploading: boolean;
+  uploadButtonLabel: string;
+  onUploadClick: () => void;
   onOpenFolder: (folder: DocumentFolderItem) => void;
   onSelectPath: (path: DocumentFolderItem[]) => void;
   onOpenRoot: () => void;
@@ -26,16 +43,23 @@ type DocumentFoldersViewProps = {
   onRename: (folder: DocumentFolderItem) => void;
   onDelete: (folder: DocumentFolderItem) => void;
   mergeContents?: boolean;
-  renderDocumentPanel?: (
-    folderRows: ReactNode | null,
-    folderCards: ReactNode | null,
-    folderCount: number,
-  ) => ReactNode;
+  renderDocumentPanel?: (folderRows: ReactNode | null, folderCards: ReactNode | null) => ReactNode;
 };
 
 export function DocumentFoldersView({
   path,
+  search,
+  onSearchChange,
+  showAssignmentFilter,
+  assignmentFilter,
+  onAssignmentFilterChange,
+  displayMode,
+  onDisplayModeChange,
   canManage,
+  canUpload,
+  uploading,
+  uploadButtonLabel,
+  onUploadClick,
   onOpenFolder,
   onSelectPath,
   onOpenRoot,
@@ -46,7 +70,6 @@ export function DocumentFoldersView({
   mergeContents = false,
   renderDocumentPanel,
 }: DocumentFoldersViewProps) {
-  const [search, setSearch] = useState("");
   const [creating, setCreating] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
   const [saving, setSaving] = useState(false);
@@ -79,13 +102,13 @@ export function DocumentFoldersView({
   };
 
   const openFolder = (folder: DocumentFolderItem) => {
-    setSearch("");
+    onSearchChange("");
     setOpenMenu(null);
     onOpenFolder(folder);
   };
 
   const backToParent = () => {
-    setSearch("");
+    onSearchChange("");
     setOpenMenu(null);
     onBack();
   };
@@ -230,65 +253,149 @@ export function DocumentFoldersView({
     </div>
   ));
 
+  const folderListItems = folders.map((folder) => (
+    <div
+      key={`folder-list:${folder.id}`}
+      onContextMenu={(event) => handleFolderContextMenu(event, folder)}
+      className="group flex min-h-16 min-w-0 items-center gap-3 border-b border-gray-100 px-4 py-3 transition-colors last:border-b-0 hover:bg-gray-50/80 motion-reduce:transition-none dark:border-gray-800 dark:hover:bg-gray-800/40"
+    >
+      <button
+        type="button"
+        onClick={() => openFolder(folder)}
+        className="focus-visible:outline-brand-500 flex min-w-0 flex-1 items-center gap-3 rounded-lg text-left focus-visible:outline-2 focus-visible:outline-offset-2"
+        aria-label={`Mở thư mục ${folder.folderName}`}
+      >
+        <Folder aria-hidden="true" className="text-brand-500 h-5 w-5 shrink-0" />
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-sm font-medium text-gray-800 dark:text-gray-100">
+            {folder.folderName}
+          </span>
+          <span className="mt-0.5 block text-xs text-gray-500">
+            {folder.documentCount} file{folder.documentCount === 1 ? "" : "s"}
+            {folder.hasChildren ? " · Có thư mục con" : ""}
+          </span>
+        </span>
+      </button>
+      {renderFolderActions(folder)}
+    </div>
+  ));
+
   return (
-    <section className="min-w-0 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xs dark:border-gray-800 dark:bg-gray-900">
-      <header className="bg-gray-25/70 flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 px-4 py-3 dark:border-gray-800 dark:bg-gray-900">
-        <div className="flex min-w-0 items-center gap-2">
-          {path.length > 0 && (
-            <button
-              type="button"
-              aria-label="Quay lại thư mục cha"
-              onClick={backToParent}
-              className="focus-visible:outline-brand-500 rounded-lg p-2 text-gray-500 transition-colors hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-offset-2 motion-reduce:transition-none dark:hover:bg-gray-800"
+    <div className="grid min-w-0 gap-4 md:grid-cols-[220px_minmax(0,1fr)]">
+      <div className="min-w-0 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xs md:h-full dark:border-gray-800 dark:bg-gray-900">
+        <DocumentFolderTree
+          path={path}
+          onSelectPath={onSelectPath}
+          onOpenRoot={onOpenRoot}
+          canManage={canManage}
+          onCreateChild={(targetPath) => {
+            onSearchChange("");
+            setOpenMenu(null);
+            onSelectPath(targetPath);
+            setCreating(true);
+            setNewFolderName("");
+          }}
+          onRename={onRename}
+          onDelete={onDelete}
+        />
+      </div>
+
+      <section className="flex min-w-0 flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xs md:h-full md:min-h-0 dark:border-gray-800 dark:bg-gray-900">
+        <header className="bg-gray-25/70 flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 px-4 py-3 dark:border-gray-800 dark:bg-gray-900">
+          <div className="flex min-w-0 items-center gap-2">
+            {path.length > 0 && (
+              <button
+                type="button"
+                aria-label="Quay lại thư mục cha"
+                onClick={backToParent}
+                className="focus-visible:outline-brand-500 rounded-lg p-2 text-gray-500 transition-colors hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-offset-2 motion-reduce:transition-none dark:hover:bg-gray-800"
+              >
+                <ArrowLeft aria-hidden="true" className="h-4 w-4" />
+              </button>
+            )}
+            <div className="min-w-0">
+              <h2 className="truncate font-semibold text-gray-900 dark:text-white">
+                {currentFolder?.folderName ?? "Tất cả thư mục"}
+              </h2>
+              {path.length > 1 && (
+                <p className="mt-1 truncate text-xs text-gray-500">
+                  {path
+                    .slice(0, -1)
+                    .map((folder) => folder.folderName)
+                    .join(" / ")}
+                </p>
+              )}
+            </div>
+          </div>
+          <div className="flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto">
+            <input
+              value={search}
+              onChange={(event) => onSearchChange(event.target.value)}
+              aria-label="Tìm thư mục hoặc file"
+              placeholder="Tìm thư mục hoặc file..."
+              className="focus:border-brand-300 focus:ring-brand-100 dark:focus:ring-brand-950 h-9 w-full min-w-0 rounded-lg border border-gray-200 bg-white px-3 text-sm transition-colors outline-none placeholder:text-gray-400 focus:ring-2 sm:w-48 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+            />
+            {showAssignmentFilter && (
+              <DocumentLibraryStatusFilter
+                value={assignmentFilter}
+                onChange={onAssignmentFilterChange}
+              />
+            )}
+            <div
+              role="group"
+              aria-label="Chế độ hiển thị thư mục"
+              className="flex shrink-0 rounded-lg border border-gray-200 bg-gray-50/70 p-0.5 dark:border-gray-700 dark:bg-gray-800/70"
             >
-              <ArrowLeft aria-hidden="true" className="h-4 w-4" />
-            </button>
-          )}
-          <div className="min-w-0">
-            <h2 className="truncate font-semibold text-gray-900 dark:text-white">
-              {currentFolder?.folderName ?? "Tất cả thư mục"}
-            </h2>
-            {path.length > 1 && (
-              <p className="mt-1 truncate text-xs text-gray-500">
-                {path
-                  .slice(0, -1)
-                  .map((folder) => folder.folderName)
-                  .join(" / ")}
-              </p>
+              <button
+                type="button"
+                aria-label="Dạng danh sách"
+                aria-pressed={displayMode === "list"}
+                onClick={() => onDisplayModeChange("list")}
+                className={`focus-visible:outline-brand-500 rounded-md p-1.5 transition-colors focus-visible:outline-2 focus-visible:outline-offset-1 ${displayMode === "list" ? "text-brand-600 dark:text-brand-300 bg-white shadow-xs dark:bg-gray-700" : "text-gray-500 hover:bg-white dark:text-gray-400 dark:hover:bg-gray-700"}`}
+              >
+                <List aria-hidden="true" className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                aria-label="Dạng lưới"
+                aria-pressed={displayMode === "grid"}
+                onClick={() => onDisplayModeChange("grid")}
+                className={`focus-visible:outline-brand-500 rounded-md p-1.5 transition-colors focus-visible:outline-2 focus-visible:outline-offset-1 ${displayMode === "grid" ? "text-brand-600 dark:text-brand-300 bg-white shadow-xs dark:bg-gray-700" : "text-gray-500 hover:bg-white dark:text-gray-400 dark:hover:bg-gray-700"}`}
+              >
+                <Grid2X2 aria-hidden="true" className="h-4 w-4" />
+              </button>
+            </div>
+            {canManage && (
+              <button
+                type="button"
+                onClick={() => {
+                  setCreating(true);
+                  setNewFolderName("");
+                }}
+                className="focus-visible:outline-brand-500 border-brand-200 text-brand-700 hover:bg-brand-50 dark:border-brand-900 dark:text-brand-300 dark:hover:bg-brand-950/30 inline-flex h-9 shrink-0 items-center gap-2 rounded-lg border bg-white px-3 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 motion-reduce:transition-none dark:bg-gray-900"
+              >
+                <FolderPlus aria-hidden="true" className="h-4 w-4" />
+                Tạo thư mục
+              </button>
+            )}
+            {canUpload && (
+              <button
+                type="button"
+                disabled={uploading}
+                onClick={onUploadClick}
+                className="bg-brand-600 hover:bg-brand-700 focus-visible:outline-brand-500 inline-flex h-9 shrink-0 items-center gap-2 rounded-lg px-3 text-sm font-semibold text-white transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-60 motion-reduce:transition-none"
+              >
+                <Upload aria-hidden="true" className="h-4 w-4" />
+                {uploadButtonLabel}
+              </button>
             )}
           </div>
-        </div>
-        <div className="flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto">
-          <input
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            aria-label="Tìm thư mục hiện tại"
-            placeholder="Tìm thư mục..."
-            className="focus:border-brand-300 focus:ring-brand-100 dark:focus:ring-brand-950 h-9 w-full min-w-0 rounded-lg border border-gray-200 bg-white px-3 text-sm transition-colors outline-none placeholder:text-gray-400 focus:ring-2 sm:w-48 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-          />
-          {canManage && (
-            <button
-              type="button"
-              onClick={() => {
-                setCreating(true);
-                setNewFolderName("");
-              }}
-              className="bg-brand-600 hover:bg-brand-700 focus-visible:outline-brand-500 inline-flex h-9 shrink-0 items-center gap-2 rounded-lg px-3 text-sm font-semibold text-white transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 motion-reduce:transition-none"
-            >
-              <Plus aria-hidden="true" className="h-4 w-4" />
-              Tạo thư mục
-            </button>
-          )}
-        </div>
-      </header>
-
-      <div className="grid min-h-56 md:grid-cols-[220px_minmax(0,1fr)]">
-        <DocumentFolderTree path={path} onSelectPath={onSelectPath} onOpenRoot={onOpenRoot} />
+        </header>
 
         <div
           role="region"
           aria-label={`Nội dung ${currentFolder?.folderName ?? "tất cả thư mục"}`}
-          className="min-w-0"
+          className="flex min-h-56 min-w-0 flex-1 flex-col"
         >
           {creating && canManage && (
             <form
@@ -343,7 +450,7 @@ export function DocumentFoldersView({
           renderDocumentPanel &&
           !foldersQuery.isLoading &&
           !foldersQuery.isError ? (
-            renderDocumentPanel(folderRows, folderCards, folders.length)
+            renderDocumentPanel(folderRows, folderCards)
           ) : (
             <>
               {foldersQuery.isLoading && !renderDocumentPanel ? (
@@ -364,15 +471,21 @@ export function DocumentFoldersView({
                   {search ? "Không tìm thấy thư mục phù hợp." : "Chưa có thư mục trong vị trí này."}
                 </div>
               ) : folders.length > 0 && (!mergeContents || !renderDocumentPanel) ? (
-                <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 xl:grid-cols-3">
-                  {folderCards}
+                <div
+                  className={
+                    displayMode === "grid"
+                      ? "grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 xl:grid-cols-3"
+                      : "divide-y divide-gray-100 dark:divide-gray-800"
+                  }
+                >
+                  {displayMode === "grid" ? folderCards : folderListItems}
                 </div>
               ) : null}
-              {renderDocumentPanel?.(null, null, folders.length)}
+              {renderDocumentPanel?.(null, null)}
             </>
           )}
         </div>
-      </div>
-    </section>
+      </section>
+    </div>
   );
 }
