@@ -716,6 +716,61 @@ describe("DocumentLibraryPage folder browser", () => {
     );
   });
 
+  it("limits cross-page bulk selection to 100 documents and explains the limit", async () => {
+    const documents: DocumentLibraryItem[] = Array.from({ length: 101 }, (_, index) => ({
+      documentId: `document-${index + 1}`,
+      title: `spec-${index + 1}.pdf`,
+      folderId: rootFolder.id,
+      folderName: rootFolder.folderName,
+      versionId: `version-${index + 1}`,
+      versionNo: 1,
+      fileName: `spec-${index + 1}.pdf`,
+      mimeType: "application/pdf",
+      byteSize: 1024,
+      uploadedAt: "2026-10-01T10:00:00.000Z",
+      isPinned: false,
+      isAssigned: false,
+    }));
+    vi.mocked(documentsLibraryApi.list).mockImplementation(async (params = {}) => {
+      const page = params.page ?? 1;
+      const limit = params.limit ?? 10;
+      return libraryPage(documents.slice((page - 1) * limit, page * limit), {
+        page,
+        limit,
+        total: documents.length,
+        totalPages: Math.ceil(documents.length / limit),
+      });
+    });
+
+    renderPage();
+    fireEvent.click(
+      within(screen.getByRole("navigation", { name: "Điều hướng kho tài liệu" })).getByRole(
+        "button",
+        { name: "Tất cả tài liệu" },
+      ),
+    );
+    await screen.findByRole("table", { name: "Tài liệu trong kho" });
+    fireEvent.change(screen.getByRole("combobox", { name: "Số tài liệu mỗi trang" }), {
+      target: { value: "100" },
+    });
+
+    await screen.findByRole("checkbox", { name: "Chọn spec-100.pdf" });
+    fireEvent.click(screen.getByRole("checkbox", { name: "Chọn tất cả tài liệu trên trang" }));
+    expect(await screen.findByText("Đã chọn 100 tài liệu")).toBeTruthy();
+    expect(screen.getByText("Tối đa 100 tài liệu mỗi lần")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Trang sau" }));
+    const finalPageTable = await screen.findByRole("table", { name: "Tài liệu trong kho" });
+    fireEvent.click(
+      within(finalPageTable).getByRole("checkbox", { name: "Chọn spec-101.pdf" }),
+    );
+
+    expect(
+      await screen.findByText("Bạn chỉ có thể chọn tối đa 100 tài liệu cho một lần thao tác."),
+    ).toBeTruthy();
+    expect(screen.getByText("Đã chọn 100 tài liệu")).toBeTruthy();
+  });
+
   it("pins selected documents together and skips documents that are already pinned", async () => {
     vi.mocked(documentsLibraryApi.list).mockResolvedValue(
       libraryPage([

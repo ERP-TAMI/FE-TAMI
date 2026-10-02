@@ -49,6 +49,7 @@ const MANAGE_PERMISSION = "master_data.documents.manage";
 const ASSIGN_PERMISSION = "master_data.documents.assign";
 const FILE_MENU_WIDTH = 176;
 const STYLE_PICKER_PAGE_SIZE = 20;
+const MAX_BULK_DOCUMENT_SELECTION = 100;
 const EMPTY_DOCUMENTS: DocumentLibraryItem[] = [];
 
 type FolderDialogState = { mode: "rename"; folder: DocumentFolderItem; name: string } | null;
@@ -624,6 +625,10 @@ export default function DocumentLibraryPage() {
     clearSelectionOnSuccess = false,
   ) => {
     if (documentsToAssign.length === 0) return;
+    if (documentsToAssign.length > MAX_BULK_DOCUMENT_SELECTION) {
+      showToast("Chỉ có thể gán tối đa 100 tài liệu trong một lần.", "error");
+      return;
+    }
     setAssignmentSearch("");
     setAssignmentPage(1);
     setSelectedStyleId(null);
@@ -668,8 +673,21 @@ export default function DocumentLibraryPage() {
 
   const toggleDocumentSelection = (document: DocumentLibraryItem) => {
     const key = `${document.documentId}:${document.folderId}`;
-    if (selectedDocumentKeys.has(key)) selectedDocumentCache.current.delete(key);
-    else selectedDocumentCache.current.set(key, document);
+    if (selectedDocumentKeys.has(key)) {
+      selectedDocumentCache.current.delete(key);
+    } else {
+      const selectedDocumentIds = new Set(
+        Array.from(selectedDocumentCache.current.values(), (selected) => selected.documentId),
+      );
+      if (
+        !selectedDocumentIds.has(document.documentId) &&
+        selectedDocumentIds.size >= MAX_BULK_DOCUMENT_SELECTION
+      ) {
+        showToast("Bạn chỉ có thể chọn tối đa 100 tài liệu cho một lần thao tác.", "error");
+        return;
+      }
+      selectedDocumentCache.current.set(key, document);
+    }
     setSelectedDocumentKeys((current) => {
       const next = new Set(current);
       if (next.has(key)) next.delete(key);
@@ -683,17 +701,40 @@ export default function DocumentLibraryPage() {
       visibleDocuments.forEach((document) =>
         selectedDocumentCache.current.delete(`${document.documentId}:${document.folderId}`),
       );
-    } else {
-      visibleDocuments.forEach((document) =>
-        selectedDocumentCache.current.set(`${document.documentId}:${document.folderId}`, document),
+    }
+    const newlySelectedKeys: string[] = [];
+    let blockedByLimit = false;
+    if (!allVisibleSelected) {
+      const selectedDocumentIds = new Set(
+        Array.from(selectedDocumentCache.current.values(), (document) => document.documentId),
       );
+      visibleDocuments.forEach((document) => {
+        const key = `${document.documentId}:${document.folderId}`;
+        if (selectedDocumentKeys.has(key)) return;
+        if (
+          !selectedDocumentIds.has(document.documentId) &&
+          selectedDocumentIds.size >= MAX_BULK_DOCUMENT_SELECTION
+        ) {
+          blockedByLimit = true;
+          return;
+        }
+        selectedDocumentIds.add(document.documentId);
+        selectedDocumentCache.current.set(key, document);
+        newlySelectedKeys.push(key);
+      });
     }
     setSelectedDocumentKeys((current) => {
       const next = new Set(current);
       if (allVisibleSelected) visibleDocumentKeys.forEach((key) => next.delete(key));
-      else visibleDocumentKeys.forEach((key) => next.add(key));
+      else newlySelectedKeys.forEach((key) => next.add(key));
       return next;
     });
+    if (blockedByLimit) {
+      showToast(
+        "Chỉ có thể chọn tối đa 100 tài liệu cho một lần thao tác. Đã chọn đủ 100 tài liệu.",
+        "error",
+      );
+    }
   };
 
   const renderFileActions = (document: DocumentLibraryItem) => {
@@ -1047,6 +1088,9 @@ export default function DocumentLibraryPage() {
           >
             <span className="text-brand-800 dark:text-brand-200 font-medium">
               Đã chọn {selectedDocuments.length} tài liệu
+            </span>
+            <span className="text-xs text-gray-500 dark:text-gray-400">
+              Tối đa 100 tài liệu mỗi lần
             </span>
             <div className="ml-auto flex items-center gap-2">
               <div ref={selectedActionsRef} className="relative">
