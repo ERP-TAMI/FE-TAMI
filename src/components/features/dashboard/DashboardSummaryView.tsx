@@ -23,11 +23,7 @@ import type {
   DashboardStatusCount,
   ManagementDashboardSummary,
 } from "@/types/management-dashboard";
-import {
-  changeDashboardPeriodType,
-  formatDashboardPeriodLabel,
-  getDashboardYearOptions,
-} from "@/lib/dashboardDate";
+import { changeDashboardPeriodType, getDashboardYearOptions } from "@/lib/dashboardDate";
 
 type DashboardSummaryViewProps = {
   period: DashboardPeriod;
@@ -41,7 +37,6 @@ type DashboardSummaryViewProps = {
 
 type DashboardPanelProps = {
   title: string;
-  description: string;
   children: ReactNode;
   className?: string;
   count?: number;
@@ -156,14 +151,11 @@ function DashboardLoadingState({ managementView }: { managementView: boolean }) 
   );
 }
 
-function Panel({ title, description, children, className, count }: DashboardPanelProps) {
+function Panel({ title, children, className, count }: DashboardPanelProps) {
   return (
     <section className={`${panelClass} ${className ?? ""}`} aria-label={title}>
       <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h2 className="text-base font-semibold text-gray-900 dark:text-white">{title}</h2>
-          <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">{description}</p>
-        </div>
+        <h2 className="text-base font-semibold text-gray-900 dark:text-white">{title}</h2>
         {count !== undefined && (
           <span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-700 dark:bg-gray-800 dark:text-gray-300">
             {formatNumber(count)}
@@ -518,17 +510,6 @@ export function DashboardSummaryView({
   onRetry,
   managementView = false,
 }: DashboardSummaryViewProps) {
-  const periodLabel = formatDashboardPeriodLabel(period);
-  const periodNoun =
-    period.periodType === "month"
-      ? "tháng"
-      : period.periodType === "year"
-        ? "năm"
-        : period.periodType === "range"
-          ? "khoảng ngày"
-          : "toàn bộ thời gian";
-  const periodScopeLabel =
-    period.periodType === "all" ? "toàn bộ dữ liệu" : `${periodNoun} ${periodLabel}`;
   const monthError =
     period.periodType === "month" && !period.month ? "Chọn tháng tiếp nhận PO." : undefined;
   const yearError =
@@ -565,49 +546,42 @@ export function DashboardSummaryView({
                   ? "Tổng PO trong khoảng ngày"
                   : "Tổng PO",
           value: data.totalPurchaseOrders,
-          helper: `Tiếp nhận trong ${periodScopeLabel}, không gồm PO đã hủy`,
           icon: <ClipboardList />,
           tone: "brand" as const,
         },
         {
           label: "PO hoàn thành",
           value: data.completedPurchaseOrders,
-          helper: `Đã hoàn thành trong nhóm PO tiếp nhận ${periodScopeLabel}`,
           icon: <CheckCircle2 />,
           tone: "success" as const,
         },
         {
           label: "PO đang xử lý",
           value: data.processingPurchaseOrders,
-          helper: `Đang mở trong nhóm PO tiếp nhận ${periodScopeLabel}`,
           icon: <PackageCheck />,
           tone: "neutral" as const,
         },
         {
           label: "PO có sản phẩm quá hạn",
           value: data.overdueProductPurchaseOrders,
-          helper: `Nhóm PO tiếp nhận ${periodScopeLabel} có ít nhất một sản phẩm quá hạn`,
           icon: <ClockAlert />,
           tone: "danger" as const,
         },
         {
           label: "PO sắp đến hạn",
           value: data.upcomingProductPurchaseOrders,
-          helper: `Trong nhóm PO tiếp nhận ${periodScopeLabel}, có sản phẩm đến hạn 7 ngày tới`,
           icon: <CalendarClock />,
           tone: "warning" as const,
         },
         {
           label: "BOM chờ xử lý",
           value: data.pendingBomCount,
-          helper: `Revision được tạo trong ${periodScopeLabel}, hiện đang chờ duyệt`,
           icon: <RotateCw />,
           tone: "brand" as const,
         },
         {
           label: "PO đã hủy",
           value: data.cancelledPurchaseOrders,
-          helper: `Tiếp nhận trong ${periodScopeLabel}`,
           icon: <XCircle />,
           tone: "neutral" as const,
         },
@@ -616,7 +590,6 @@ export function DashboardSummaryView({
               {
                 label: "Nhân viên hoạt động",
                 value: data.activeEmployees,
-                helper: `Tài khoản tạo trong ${periodScopeLabel}, hiện đang hoạt động`,
                 icon: <UsersRound />,
                 tone: "success" as const,
               },
@@ -629,18 +602,12 @@ export function DashboardSummaryView({
     <section className="space-y-6" aria-labelledby="dashboard-title" aria-busy={isLoading}>
       <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
         <div className="min-w-0">
-          <p className="text-theme-xs text-brand-600 dark:text-brand-400 font-semibold tracking-wide uppercase">
-            Tổng quan vận hành
-          </p>
           <h1
             id="dashboard-title"
-            className="mt-1 text-2xl font-semibold tracking-tight text-gray-900 dark:text-white"
+            className="text-2xl font-semibold tracking-tight text-gray-900 dark:text-white"
           >
             {managementView ? "Dashboard quản lý" : "Dashboard"}
           </h1>
-          <p className="mt-2 max-w-2xl text-sm text-gray-600 dark:text-gray-400">
-            Theo dõi đơn hàng, hạn sản phẩm và tiến độ xử lý BOM trên toàn hệ thống.
-          </p>
         </div>
 
         <div className="grid w-full grid-cols-1 items-end gap-3 xl:w-auto xl:shrink-0 xl:grid-cols-[10rem_26rem]">
@@ -719,14 +686,6 @@ export function DashboardSummaryView({
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-600 dark:text-gray-400">
-        <span className="bg-success-500 inline-flex h-2 w-2 rounded-full" aria-hidden="true" />
-        <span>
-          PO lọc theo ngày tiếp nhận; BOM theo ngày tạo revision trong {periodScopeLabel}. Trạng
-          thái và deadline phản ánh tình trạng hiện tại của dữ liệu đã lọc.
-        </span>
-      </div>
-
       {isLoading && <DashboardLoadingState managementView={managementView} />}
 
       {isError && (
@@ -755,7 +714,6 @@ export function DashboardSummaryView({
           <div className="grid grid-cols-1 gap-4 xl:grid-cols-12">
             <Panel
               title={`Xu hướng PO theo ${data.trendGranularity === "day" ? "ngày" : data.trendGranularity === "month" ? "tháng" : "năm"}`}
-              description={`PO tiếp nhận trong ${periodScopeLabel}; đường hoàn thành là trạng thái hiện tại của nhóm PO đó`}
               className="xl:col-span-7"
             >
               <PeriodTrendChart items={data.trend} granularity={data.trendGranularity} />
@@ -763,7 +721,6 @@ export function DashboardSummaryView({
 
             <Panel
               title="Trạng thái PO trong kỳ"
-              description={`Trạng thái hiện tại của các PO tiếp nhận ${periodScopeLabel}`}
               count={data.purchaseOrderStatuses.reduce((total, row) => total + row.count, 0)}
               className="xl:col-span-5"
             >
@@ -774,17 +731,12 @@ export function DashboardSummaryView({
               />
             </Panel>
 
-            <Panel
-              title="Khách hàng có nhiều PO"
-              description={`Xếp theo số PO tiếp nhận ${periodScopeLabel}`}
-              className="xl:col-span-6"
-            >
+            <Panel title="Khách hàng có nhiều PO" className="xl:col-span-6">
               <CustomerBreakdown items={data.topCustomers} />
             </Panel>
 
             <Panel
               title="Trạng thái revision BOM"
-              description={`Trạng thái hiện tại của revision tạo trong ${periodScopeLabel}, không gồm BOM đã ngừng`}
               count={data.bomRevisionStatuses.reduce((total, row) => total + row.count, 0)}
               className="xl:col-span-6"
             >
@@ -804,7 +756,6 @@ export function DashboardSummaryView({
 
             <Panel
               title="PO có sản phẩm quá hạn"
-              description={`Deadline sản phẩm đã qua; PO tiếp nhận ${periodScopeLabel} và sản phẩm chưa đóng hoặc hủy`}
               count={data.overdueProductPurchaseOrders}
               className="xl:col-span-6"
             >
@@ -817,7 +768,6 @@ export function DashboardSummaryView({
 
             <Panel
               title="PO sắp đến hạn"
-              description={`PO tiếp nhận ${periodScopeLabel}, có deadline từ hôm nay đến hết 6 ngày tiếp theo`}
               count={data.upcomingProductPurchaseOrders}
               className="xl:col-span-6"
             >
@@ -828,12 +778,7 @@ export function DashboardSummaryView({
               />
             </Panel>
 
-            <Panel
-              title="BOM chờ xử lý"
-              description={`5 revision tạo trong ${periodScopeLabel} đang chờ lâu nhất`}
-              count={data.pendingBomCount}
-              className="xl:col-span-12"
-            >
+            <Panel title="BOM chờ xử lý" count={data.pendingBomCount} className="xl:col-span-12">
               <BomQueue items={data.pendingBomQueue} />
             </Panel>
           </div>

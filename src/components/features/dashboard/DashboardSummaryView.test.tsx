@@ -63,6 +63,11 @@ describe("DashboardSummaryView", () => {
     );
     expect(screen.getAllByText("PO sắp đến hạn")[0].parentElement?.textContent).toContain("3");
     expect(screen.getAllByText("BOM chờ xử lý")[0].parentElement?.textContent).toContain("5");
+    expect(screen.queryByText("Tổng quan vận hành")).toBeNull();
+    expect(screen.queryByText(/Theo dõi đơn hàng, hạn sản phẩm/)).toBeNull();
+    expect(screen.queryByText(/PO lọc theo ngày tiếp nhận/)).toBeNull();
+    expect(screen.queryByText(/nhóm PO tiếp nhận/)).toBeNull();
+    expect(screen.queryByText(/revision tạo trong/)).toBeNull();
     expect(screen.getByRole("link", { name: "Mở đơn hàng PO-OVERDUE" }).getAttribute("href")).toBe(
       "/po/00000000-0000-4000-8000-000000000001",
     );
@@ -312,7 +317,7 @@ describe("DashboardSummaryView", () => {
     );
 
     expect(screen.getByRole("alert").textContent).toBe("Chọn tháng tiếp nhận PO.");
-    expect(screen.getByText(/Chưa chọn tháng/)).toBeTruthy();
+    expect(screen.getByLabelText("Tháng tiếp nhận PO").getAttribute("aria-invalid")).toBe("true");
     expect(screen.queryByText("Xu hướng PO theo ngày")).toBeNull();
   });
 
