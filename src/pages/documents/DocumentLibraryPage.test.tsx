@@ -213,7 +213,8 @@ describe("DocumentLibraryPage folder browser", () => {
     expect(sidebar.parentElement?.tagName).not.toBe("ASIDE");
     expect(screen.queryByText("Quản lý tập trung tài liệu dùng cho các mẫu Fit.")).toBeNull();
     expect(screen.queryByText("Thư mục được tải theo từng cấp")).toBeNull();
-    expect(await screen.findByRole("button", { name: "Mở thư mục Bộ sưu tập" })).toBeTruthy();
+    const folderButton = await screen.findByRole("button", { name: "Mở thư mục Bộ sưu tập" });
+    expect(folderButton.closest(".grid")).toBeTruthy();
     expect(documentsLibraryApi.listFolders).toHaveBeenCalledWith({});
     expect(documentsLibraryApi.listFolders).not.toHaveBeenCalledWith({ parentId: rootFolder.id });
   });

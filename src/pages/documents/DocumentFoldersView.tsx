@@ -207,7 +207,7 @@ export function DocumentFoldersView({
     <div
       key={`folder-card:${folder.id}`}
       onContextMenu={(event) => handleFolderContextMenu(event, folder)}
-      className="group flex min-w-0 items-center gap-3 rounded-xl border border-gray-200 px-4 py-3 transition-colors hover:bg-gray-50/80 motion-reduce:transition-none dark:border-gray-800 dark:hover:bg-gray-800/40"
+      className="group flex min-h-20 min-w-0 items-center gap-3 rounded-xl border border-gray-200 px-4 py-3 transition-colors hover:bg-gray-50/80 motion-reduce:transition-none dark:border-gray-800 dark:hover:bg-gray-800/40"
     >
       <button
         type="button"
@@ -364,7 +364,9 @@ export function DocumentFoldersView({
                   {search ? "Không tìm thấy thư mục phù hợp." : "Chưa có thư mục trong vị trí này."}
                 </div>
               ) : folders.length > 0 && (!mergeContents || !renderDocumentPanel) ? (
-                <div className="divide-y divide-gray-100 dark:divide-gray-800">{folderCards}</div>
+                <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 xl:grid-cols-3">
+                  {folderCards}
+                </div>
               ) : null}
               {renderDocumentPanel?.(null, null, folders.length)}
             </>
