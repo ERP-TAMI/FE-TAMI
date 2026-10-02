@@ -144,23 +144,23 @@ function DocumentFolderTreeNode({
             : "text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-800"
         }`}
       >
-        {folder.hasChildren ? (
-          <button
-            type="button"
-            aria-label={`${isExpanded ? "Thu gọn" : "Mở rộng"} cây thư mục ${folder.folderName}`}
-            aria-expanded={isExpanded}
-            onClick={() => onToggleExpanded(folder.id, isExpanded)}
-            className="focus-visible:outline-brand-500 rounded p-1.5 text-gray-400 hover:text-gray-700 focus-visible:outline-2 focus-visible:outline-offset-1 dark:hover:text-gray-200"
-          >
-            {isExpanded ? (
-              <ChevronDown aria-hidden="true" className="h-3.5 w-3.5" />
-            ) : (
-              <ChevronRight aria-hidden="true" className="h-3.5 w-3.5" />
-            )}
-          </button>
-        ) : (
-          <span aria-hidden="true" className="w-7 shrink-0" />
-        )}
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center">
+          {folder.hasChildren && (
+            <button
+              type="button"
+              aria-label={`${isExpanded ? "Thu gọn" : "Mở rộng"} cây thư mục ${folder.folderName}`}
+              aria-expanded={isExpanded}
+              onClick={() => onToggleExpanded(folder.id, isExpanded)}
+              className="focus-visible:outline-brand-500 flex h-full w-full items-center justify-center rounded text-gray-400 hover:text-gray-700 focus-visible:outline-2 focus-visible:outline-offset-1 dark:hover:text-gray-200"
+            >
+              {isExpanded ? (
+                <ChevronDown aria-hidden="true" className="h-3.5 w-3.5" />
+              ) : (
+                <ChevronRight aria-hidden="true" className="h-3.5 w-3.5" />
+              )}
+            </button>
+          )}
+        </span>
         <button
           type="button"
           aria-label={`Chọn thư mục ${folder.folderName}`}
