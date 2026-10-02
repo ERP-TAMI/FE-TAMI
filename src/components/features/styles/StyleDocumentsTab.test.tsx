@@ -1,10 +1,4 @@
-import {
-  cleanup,
-  fireEvent,
-  render as rtlRender,
-  screen,
-  waitFor,
-} from "@testing-library/react";
+import { cleanup, fireEvent, render as rtlRender, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ReactElement } from "react";
@@ -14,9 +8,7 @@ import type { StyleDocumentItem } from "@/types/style-document";
 // EntityHistoryButton (rendered in the tab's toolbar) reaches a real
 // useQuery internally, unlike the mocked useStyleDocuments hooks below.
 function render(ui: ReactElement) {
-  return rtlRender(
-    <QueryClientProvider client={new QueryClient()}>{ui}</QueryClientProvider>,
-  );
+  return rtlRender(<QueryClientProvider client={new QueryClient()}>{ui}</QueryClientProvider>);
 }
 
 const showToastMock = vi.hoisted(() => vi.fn());
@@ -24,6 +16,8 @@ const uploadMutateAsyncMock = vi.hoisted(() => vi.fn());
 const removeMutateAsyncMock = vi.hoisted(() => vi.fn());
 const getViewUrlMock = vi.hoisted(() => vi.fn());
 const useStyleDocumentsMock = vi.hoisted(() => vi.fn());
+const listLibraryDocumentsMock = vi.hoisted(() => vi.fn());
+const assignLibraryDocumentsMock = vi.hoisted(() => vi.fn());
 
 vi.mock("@/hooks/useToast", () => ({
   useToast: () => ({ toast: null, showToast: showToastMock, hideToast: vi.fn() }),
@@ -44,6 +38,22 @@ vi.mock("@/api/style-documents.api", () => ({
   },
 }));
 
+vi.mock("@/api/documents-library.api", () => ({
+  documentsLibraryApi: {
+    list: (...args: unknown[]) => listLibraryDocumentsMock(...args),
+    assignToStyle: (...args: unknown[]) => assignLibraryDocumentsMock(...args),
+  },
+}));
+
+vi.mock("@/store/authStore", () => ({
+  useAuthStore: (selector: (state: unknown) => unknown) =>
+    selector({
+      user: {
+        permissions: ["master_data.styles.manage", "master_data.documents.assign"],
+      },
+    }),
+}));
+
 const STYLE_ID = "8f3a1c2e-4b6a-4e1a-9c2d-1a2b3c4d5e6f";
 
 const mockDocuments: StyleDocumentItem[] = [
@@ -54,6 +64,9 @@ const mockDocuments: StyleDocumentItem[] = [
     byteSize: 204800,
     uploadedAt: "2026-01-01T10:00:00.000Z",
     purpose: "fit_attachment",
+    documentVersionId: "version-1",
+    versionNo: 1,
+    isCurrentVersion: true,
   },
 ];
 
@@ -115,9 +128,7 @@ describe("StyleDocumentsTab", () => {
 
     expect(openSpy).toHaveBeenCalledWith("", "_blank");
 
-    await waitFor(() =>
-      expect(getViewUrlMock).toHaveBeenCalledWith(STYLE_ID, "doc-1", false),
-    );
+    await waitFor(() => expect(getViewUrlMock).toHaveBeenCalledWith(STYLE_ID, "doc-1", false));
     await waitFor(() => expect(fakePopup.location.href).toBe("https://s3.example/get"));
   });
 
@@ -129,9 +140,7 @@ describe("StyleDocumentsTab", () => {
     render(<StyleDocumentsTab styleId={STYLE_ID} />);
     fireEvent.click(screen.getByRole("button", { name: /Tải xuống/i }));
 
-    await waitFor(() =>
-      expect(getViewUrlMock).toHaveBeenCalledWith(STYLE_ID, "doc-1", true),
-    );
+    await waitFor(() => expect(getViewUrlMock).toHaveBeenCalledWith(STYLE_ID, "doc-1", true));
   });
 
   it("removes only the link after confirming, and shows a success toast", async () => {
@@ -144,5 +153,96 @@ describe("StyleDocumentsTab", () => {
 
     await waitFor(() => expect(removeMutateAsyncMock).toHaveBeenCalledWith("doc-1"));
     expect(showToastMock).toHaveBeenCalledWith("Đã gỡ tài liệu khỏi mẫu Fit.");
+  });
+
+  it("assigns a selected current warehouse document to the Fit style", async () => {
+    useStyleDocumentsMock.mockReturnValue({ data: [], isLoading: false });
+    const invalidateQueriesSpy = vi.spyOn(QueryClient.prototype, "invalidateQueries");
+    listLibraryDocumentsMock.mockResolvedValue({
+      data: [
+        {
+          documentId: "library-doc-1",
+          title: "spec.pdf",
+          folderId: "folder-1",
+          folderName: "RD",
+          versionId: "version-4",
+          versionNo: 4,
+          fileName: "spec.pdf",
+          mimeType: "application/pdf",
+          byteSize: 1024,
+          uploadedAt: "2026-01-01T10:00:00.000Z",
+          isPinned: false,
+          isAssigned: false,
+        },
+      ],
+      meta: { total: 1, totalBytes: 1024, page: 1, limit: 100, totalPages: 1 },
+    });
+    assignLibraryDocumentsMock.mockResolvedValue([]);
+
+    render(<StyleDocumentsTab styleId={STYLE_ID} />);
+    fireEvent.click(screen.getByRole("button", { name: "Gán từ kho" }));
+
+    const checkbox = await screen.findByRole("checkbox");
+    fireEvent.click(checkbox);
+    fireEvent.click(screen.getByRole("button", { name: "Gán vào mẫu Fit" }));
+
+    await waitFor(() =>
+      expect(assignLibraryDocumentsMock).toHaveBeenCalledWith(STYLE_ID, ["library-doc-1"]),
+    );
+    await waitFor(() =>
+      expect(invalidateQueriesSpy).toHaveBeenCalledWith({
+        queryKey: ["style-documents", STYLE_ID],
+      }),
+    );
+    expect(invalidateQueriesSpy).toHaveBeenCalledWith({ queryKey: ["document-library"] });
+    expect(showToastMock).toHaveBeenCalledWith("Đã gán 1 tài liệu vào mẫu Fit.");
+  });
+
+  it("paginates warehouse documents and keeps selections across pages", async () => {
+    useStyleDocumentsMock.mockReturnValue({ data: [], isLoading: false });
+    const documentOnPageOne = {
+      documentId: "library-doc-page-1",
+      title: "page-one.pdf",
+      folderId: "folder-1",
+      folderName: "RD",
+      versionId: "version-1",
+      versionNo: 1,
+      fileName: "page-one.pdf",
+      mimeType: "application/pdf",
+      byteSize: 1024,
+      uploadedAt: "2026-01-01T10:00:00.000Z",
+      isPinned: false,
+      isAssigned: false,
+    };
+    const documentOnPageTwo = {
+      ...documentOnPageOne,
+      documentId: "library-doc-page-2",
+      title: "page-two.pdf",
+      versionId: "version-2",
+      fileName: "page-two.pdf",
+    };
+    listLibraryDocumentsMock.mockImplementation(async ({ page = 1 } = {}) => ({
+      data: [page === 1 ? documentOnPageOne : documentOnPageTwo],
+      meta: { total: 2, totalBytes: 2048, page, limit: 20, totalPages: 2 },
+    }));
+    assignLibraryDocumentsMock.mockResolvedValue([]);
+
+    render(<StyleDocumentsTab styleId={STYLE_ID} />);
+    fireEvent.click(screen.getByRole("button", { name: "Gán từ kho" }));
+    fireEvent.click(await screen.findByRole("checkbox"));
+    fireEvent.click(screen.getByRole("button", { name: "Tài liệu trang tiếp theo" }));
+
+    expect(await screen.findByText("page-two.pdf")).toBeTruthy();
+    expect(screen.getByText("Đã chọn 1 tài liệu")).toBeTruthy();
+    fireEvent.click(screen.getByRole("checkbox"));
+    fireEvent.click(screen.getByRole("button", { name: "Gán vào mẫu Fit" }));
+
+    await waitFor(() =>
+      expect(assignLibraryDocumentsMock).toHaveBeenCalledWith(STYLE_ID, [
+        "library-doc-page-1",
+        "library-doc-page-2",
+      ]),
+    );
+    expect(listLibraryDocumentsMock).toHaveBeenCalledWith({ page: 2, limit: 20 });
   });
 });

@@ -1,5 +1,8 @@
 export interface StyleDocumentItem {
   documentId: string;
+  documentVersionId: string;
+  versionNo: number;
+  isCurrentVersion: boolean;
   fileName: string;
   mimeType: string;
   byteSize: number;

@@ -1,7 +1,10 @@
 import { useRef, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button, ConfirmDialog, FileTypeIcon } from "@/components/shared";
 import { DownloadIcon, EyeIcon, FileIcon, PlusIcon, TrashBinIcon } from "@/icons";
 import { styleDocumentsApi } from "@/api/style-documents.api";
+import { documentsLibraryApi } from "@/api/documents-library.api";
 import { EntityHistoryButton } from "@/components/features/audit/EntityHistoryButton";
 import {
   useRemoveStyleDocument,
@@ -11,9 +14,11 @@ import {
 import { useToast } from "@/hooks/useToast";
 import { Toast } from "@/components/shared";
 import { getApiError } from "@/lib/apiError";
+import { useAuthStore } from "@/store/authStore";
 import type { StyleDocumentItem } from "@/types/style-document";
 
 const ALLOWED_EXTENSIONS = [".pdf", ".doc", ".docx", ".xls", ".xlsx", ".png", ".jpg", ".jpeg"];
+const LIBRARY_PAGE_SIZE = 20;
 const MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024;
 
 interface UploadingItem {
@@ -53,6 +58,8 @@ interface Props {
 }
 
 export function StyleDocumentsTab({ styleId }: Props) {
+  const user = useAuthStore((state) => state.user);
+  const queryClient = useQueryClient();
   const { toast, showToast, hideToast } = useToast();
   const documentsQuery = useStyleDocuments(styleId);
   const uploadMutation = useUploadStyleDocument(styleId);
@@ -61,11 +68,29 @@ export function StyleDocumentsTab({ styleId }: Props) {
   const [isDragOver, setIsDragOver] = useState(false);
   const [uploadingItems, setUploadingItems] = useState<UploadingItem[]>([]);
   const [pendingRemove, setPendingRemove] = useState<StyleDocumentItem | null>(null);
+  const [libraryOpen, setLibraryOpen] = useState(false);
+  const [librarySearch, setLibrarySearch] = useState("");
+  const [libraryPage, setLibraryPage] = useState(1);
+  const [selectedLibraryIds, setSelectedLibraryIds] = useState<string[]>([]);
+  const [assigningLibrary, setAssigningLibrary] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const canManageStyleDocuments = user?.permissions.includes("master_data.styles.manage") ?? false;
+  const canAssignLibraryDocuments =
+    user?.permissions.includes("master_data.documents.assign") ?? false;
+  const libraryQuery = useQuery({
+    queryKey: ["document-library", "style-assignment", librarySearch, libraryPage],
+    queryFn: () =>
+      documentsLibraryApi.list({
+        search: librarySearch.trim() || undefined,
+        page: libraryPage,
+        limit: LIBRARY_PAGE_SIZE,
+      }),
+    enabled: libraryOpen,
+  });
 
   const handleFiles = (fileList: FileList | File[]) => {
     const files = Array.from(fileList);
-    if (files.length === 0) return;
+    if (files.length === 0 || !canManageStyleDocuments) return;
 
     files.forEach((file) => {
       const validationError = validateFile(file);
@@ -75,10 +100,7 @@ export function StyleDocumentsTab({ styleId }: Props) {
       }
 
       const tempId = `${file.name}_${file.size}_${Date.now()}_${Math.random()}`;
-      setUploadingItems((prev) => [
-        ...prev,
-        { tempId, fileName: file.name, status: "uploading" },
-      ]);
+      setUploadingItems((prev) => [...prev, { tempId, fileName: file.name, status: "uploading" }]);
 
       uploadMutation
         .mutateAsync(file)
@@ -140,6 +162,31 @@ export function StyleDocumentsTab({ styleId }: Props) {
   };
 
   const documents = documentsQuery.data ?? [];
+  const assignedDocumentIds = new Set(documents.map((document) => document.documentId));
+  const availableLibraryDocuments = (libraryQuery.data?.data ?? []).filter(
+    (document) => !assignedDocumentIds.has(document.documentId),
+  );
+  const libraryPageCount = Math.max(libraryQuery.data?.meta.totalPages ?? 1, 1);
+
+  const handleAssignFromLibrary = async () => {
+    if (selectedLibraryIds.length === 0 || assigningLibrary) return;
+    setAssigningLibrary(true);
+    try {
+      await documentsLibraryApi.assignToStyle(styleId, selectedLibraryIds);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["style-documents", styleId] }),
+        queryClient.invalidateQueries({ queryKey: ["document-library"] }),
+      ]);
+      setLibraryOpen(false);
+      setSelectedLibraryIds([]);
+      setLibrarySearch("");
+      showToast(`Đã gán ${selectedLibraryIds.length} tài liệu vào mẫu Fit.`);
+    } catch (err) {
+      showToast(getApiError(err, "Gán tài liệu thất bại.").message, "error");
+    } finally {
+      setAssigningLibrary(false);
+    }
+  };
 
   return (
     <div
@@ -168,19 +215,35 @@ export function StyleDocumentsTab({ styleId }: Props) {
               parentId={styleId}
               title="Lịch sử: Tài liệu"
             />
-            <Button size="sm" onClick={() => fileInputRef.current?.click()}>
-              <PlusIcon className="h-4 w-4" />
-              Tải tài liệu lên
-            </Button>
+            {canAssignLibraryDocuments && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  setLibraryPage(1);
+                  setLibraryOpen(true);
+                }}
+              >
+                Gán từ kho
+              </Button>
+            )}
+            {canManageStyleDocuments && (
+              <Button size="sm" onClick={() => fileInputRef.current?.click()}>
+                <PlusIcon className="h-4 w-4" />
+                Tải tài liệu lên
+              </Button>
+            )}
           </div>
-          <input
-            ref={fileInputRef}
-            type="file"
-            multiple
-            accept={ALLOWED_EXTENSIONS.join(",")}
-            onChange={handleFileChange}
-            className="hidden"
-          />
+          {canManageStyleDocuments && (
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              accept={ALLOWED_EXTENSIONS.join(",")}
+              onChange={handleFileChange}
+              className="hidden"
+            />
+          )}
         </div>
 
         {uploadingItems.length > 0 && (
@@ -188,7 +251,7 @@ export function StyleDocumentsTab({ styleId }: Props) {
             {uploadingItems.map((item) => (
               <div
                 key={item.tempId}
-                className={`flex items-center justify-between gap-3 rounded-xl border px-3 py-2 text-theme-xs ${
+                className={`text-theme-xs flex items-center justify-between gap-3 rounded-xl border px-3 py-2 ${
                   item.status === "error"
                     ? "border-error-200 bg-error-50/60 dark:border-error-900/40 dark:bg-error-950/20"
                     : "border-gray-200 bg-gray-50/60 dark:border-gray-800 dark:bg-gray-800/40"
@@ -201,7 +264,7 @@ export function StyleDocumentsTab({ styleId }: Props) {
                   </span>
                 </div>
                 {item.status === "uploading" ? (
-                  <span className="flex shrink-0 items-center gap-1.5 text-brand-600 dark:text-brand-400">
+                  <span className="text-brand-600 dark:text-brand-400 flex shrink-0 items-center gap-1.5">
                     <span className="h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
                     Đang tải lên...
                   </span>
@@ -223,7 +286,7 @@ export function StyleDocumentsTab({ styleId }: Props) {
         )}
 
         {documentsQuery.isLoading ? (
-          <div className="p-10 text-center text-theme-sm text-gray-500 dark:text-gray-400">
+          <div className="text-theme-sm p-10 text-center text-gray-500 dark:text-gray-400">
             Đang tải danh sách tài liệu...
           </div>
         ) : documents.length === 0 ? (
@@ -231,17 +294,17 @@ export function StyleDocumentsTab({ styleId }: Props) {
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800">
               <FileIcon className="h-6 w-6 text-gray-400" />
             </div>
-            <p className="mt-3 text-theme-base font-semibold text-gray-900 dark:text-white">
+            <p className="text-theme-base mt-3 font-semibold text-gray-900 dark:text-white">
               Chưa có tài liệu nào được đính kèm.
             </p>
-            <p className="mt-1 text-theme-xs text-gray-500 dark:text-gray-400">
+            <p className="text-theme-xs mt-1 text-gray-500 dark:text-gray-400">
               Bấm "Tải tài liệu lên" hoặc kéo thả tệp vào đây để đính kèm vào mẫu Fit này.
             </p>
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-theme-sm text-gray-700 dark:text-gray-300">
-              <thead className="border-b border-gray-200 bg-gray-50/80 text-theme-xs font-semibold uppercase tracking-wider text-gray-500 dark:border-gray-800 dark:bg-gray-800/60 dark:text-gray-400">
+            <table className="text-theme-sm w-full text-left text-gray-700 dark:text-gray-300">
+              <thead className="text-theme-xs border-b border-gray-200 bg-gray-50/80 font-semibold tracking-wider text-gray-500 uppercase dark:border-gray-800 dark:bg-gray-800/60 dark:text-gray-400">
                 <tr>
                   <th className="px-5 py-3.5">Tên tài liệu</th>
                   <th className="px-5 py-3.5">Dung lượng</th>
@@ -258,15 +321,18 @@ export function StyleDocumentsTab({ styleId }: Props) {
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-3">
                         <FileTypeIcon fileName={doc.fileName} size="md" />
-                        <span className="truncate font-semibold text-gray-900 dark:text-white max-w-md" title={doc.fileName}>
+                        <span
+                          className="max-w-md truncate font-semibold text-gray-900 dark:text-white"
+                          title={doc.fileName}
+                        >
                           {doc.fileName}
                         </span>
                       </div>
                     </td>
-                    <td className="px-5 py-4 font-mono text-theme-xs text-gray-500 dark:text-gray-400">
+                    <td className="text-theme-xs px-5 py-4 font-mono text-gray-500 dark:text-gray-400">
                       {formatBytes(doc.byteSize)}
                     </td>
-                    <td className="px-5 py-4 text-theme-xs text-gray-500 dark:text-gray-400">
+                    <td className="text-theme-xs px-5 py-4 text-gray-500 dark:text-gray-400">
                       {formatDate(doc.uploadedAt)}
                     </td>
                     <td className="px-5 py-4 text-right">
@@ -274,7 +340,7 @@ export function StyleDocumentsTab({ styleId }: Props) {
                         <button
                           type="button"
                           onClick={() => void handleView(doc, false)}
-                          className="inline-flex items-center gap-1 rounded-lg border border-brand-200 bg-brand-50 px-2.5 py-1.5 text-theme-xs font-medium text-brand-700 shadow-xs hover:bg-brand-100 dark:border-brand-900/50 dark:bg-brand-950/40 dark:text-brand-300 dark:hover:bg-brand-900/50 transition-colors cursor-pointer"
+                          className="border-brand-200 bg-brand-50 text-theme-xs text-brand-700 hover:bg-brand-100 dark:border-brand-900/50 dark:bg-brand-950/40 dark:text-brand-300 dark:hover:bg-brand-900/50 inline-flex cursor-pointer items-center gap-1 rounded-lg border px-2.5 py-1.5 font-medium shadow-xs transition-colors"
                           title="Xem tài liệu"
                         >
                           <EyeIcon className="h-3.5 w-3.5" />
@@ -283,20 +349,26 @@ export function StyleDocumentsTab({ styleId }: Props) {
                         <button
                           type="button"
                           onClick={() => void handleView(doc, true)}
-                          className="inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-theme-xs font-medium text-gray-700 shadow-xs hover:bg-gray-50 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700 transition-colors cursor-pointer"
+                          className="text-theme-xs inline-flex cursor-pointer items-center gap-1 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 font-medium text-gray-700 shadow-xs transition-colors hover:bg-gray-50 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
                           title="Tải xuống"
                         >
                           <DownloadIcon className="h-3.5 w-3.5" />
                           Tải xuống
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => setPendingRemove(doc)}
-                          className="rounded-lg p-1.5 text-gray-400 hover:bg-error-50 hover:text-error-600 dark:hover:bg-error-950/40 dark:hover:text-error-400 transition-colors cursor-pointer"
-                          title="Gỡ khỏi mẫu Fit"
-                        >
-                          <TrashBinIcon className="h-4 w-4" />
-                        </button>
+                        <span className="rounded-md bg-gray-100 px-2 py-1 text-xs text-gray-600 dark:bg-gray-800 dark:text-gray-300">
+                          v{doc.versionNo}
+                          {doc.isCurrentVersion ? " · hiện tại" : " · đã ghim"}
+                        </span>
+                        {canManageStyleDocuments && (
+                          <button
+                            type="button"
+                            onClick={() => setPendingRemove(doc)}
+                            className="hover:bg-error-50 hover:text-error-600 dark:hover:bg-error-950/40 dark:hover:text-error-400 cursor-pointer rounded-lg p-1.5 text-gray-400 transition-colors"
+                            title="Gỡ khỏi mẫu Fit"
+                          >
+                            <TrashBinIcon className="h-4 w-4" />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -306,6 +378,148 @@ export function StyleDocumentsTab({ styleId }: Props) {
           </div>
         )}
       </div>
+
+      {libraryOpen && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setLibraryOpen(false);
+          }}
+        >
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="assign-library-title"
+            className="flex max-h-[82vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl bg-white shadow-xl dark:bg-gray-900"
+          >
+            <header className="flex items-start justify-between border-b border-gray-100 p-5 dark:border-gray-800">
+              <div>
+                <h2
+                  id="assign-library-title"
+                  className="font-semibold text-gray-900 dark:text-white"
+                >
+                  Gán tài liệu từ kho
+                </h2>
+                <p className="mt-1 text-sm text-gray-500">
+                  Mẫu Fit sẽ giữ version hiện hành tại thời điểm gán.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setLibraryOpen(false)}
+                className="rounded-lg px-2 py-1 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800"
+              >
+                Đóng
+              </button>
+            </header>
+            <div className="border-b border-gray-100 p-4 dark:border-gray-800">
+              <input
+                value={librarySearch}
+                onChange={(event) => {
+                  setLibrarySearch(event.target.value);
+                  setLibraryPage(1);
+                }}
+                placeholder="Tìm theo tên file hoặc thư mục"
+                className="h-10 w-full rounded-lg border border-gray-200 px-3 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+              />
+            </div>
+            <div className="flex-1 divide-y divide-gray-100 overflow-y-auto dark:divide-gray-800">
+              {libraryQuery.isLoading ? (
+                <p className="p-8 text-center text-sm text-gray-500">Đang tải kho tài liệu...</p>
+              ) : availableLibraryDocuments.length === 0 ? (
+                <p className="p-8 text-center text-sm text-gray-500">
+                  Không có tài liệu chưa gán phù hợp.
+                </p>
+              ) : (
+                availableLibraryDocuments.map((document) => {
+                  const checked = selectedLibraryIds.includes(document.documentId);
+                  return (
+                    <label
+                      key={document.documentId}
+                      className={`flex cursor-pointer items-center gap-3 p-4 ${
+                        checked
+                          ? "bg-brand-50/60 dark:bg-brand-950/20"
+                          : "hover:bg-gray-50 dark:hover:bg-gray-800/60"
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() =>
+                          setSelectedLibraryIds((current) =>
+                            checked
+                              ? current.filter((id) => id !== document.documentId)
+                              : [...current, document.documentId],
+                          )
+                        }
+                        className="text-brand-600 h-4 w-4 rounded border-gray-300"
+                      />
+                      <FileTypeIcon fileName={document.fileName} size="md" />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-semibold text-gray-900 dark:text-white">
+                          {document.fileName}
+                        </span>
+                        <span className="mt-1 block truncate text-xs text-gray-500">
+                          {document.folderName} · v{document.versionNo} ·{" "}
+                          {formatBytes(document.byteSize)}
+                        </span>
+                      </span>
+                    </label>
+                  );
+                })
+              )}
+            </div>
+            <footer className="flex items-center justify-between border-t border-gray-100 p-4 dark:border-gray-800">
+              <span className="text-sm text-gray-500">
+                Đã chọn {selectedLibraryIds.length} tài liệu
+              </span>
+              <div className="flex items-center gap-2">
+                {libraryPageCount > 1 && (
+                  <div className="mr-2 flex items-center gap-1 text-xs text-gray-500">
+                    <button
+                      type="button"
+                      aria-label="Tài liệu trang trước"
+                      disabled={libraryPage <= 1 || libraryQuery.isLoading}
+                      onClick={() => setLibraryPage((page) => Math.max(1, page - 1))}
+                      className="rounded-md p-1.5 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-gray-800"
+                    >
+                      <ChevronLeft aria-hidden="true" className="h-4 w-4" />
+                    </button>
+                    <span>
+                      {libraryPage} / {libraryPageCount}
+                    </span>
+                    <button
+                      type="button"
+                      aria-label="Tài liệu trang tiếp theo"
+                      disabled={libraryPage >= libraryPageCount || libraryQuery.isLoading}
+                      onClick={() => setLibraryPage((page) => Math.min(libraryPageCount, page + 1))}
+                      className="rounded-md p-1.5 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-gray-800"
+                    >
+                      <ChevronRight aria-hidden="true" className="h-4 w-4" />
+                    </button>
+                  </div>
+                )}
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => setLibraryOpen(false)}
+                    disabled={assigningLibrary}
+                  >
+                    Hủy
+                  </Button>
+                  <Button
+                    onClick={() => void handleAssignFromLibrary()}
+                    disabled={selectedLibraryIds.length === 0 || assigningLibrary}
+                  >
+                    {assigningLibrary ? "Đang gán..." : "Gán vào mẫu Fit"}
+                  </Button>
+                </div>
+              </div>
+            </footer>
+          </section>
+        </div>
+      )}
 
       <ConfirmDialog
         open={pendingRemove !== null}

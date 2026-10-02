@@ -1,12 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import type { Style, StyleStatus, CreateStylePayload } from "@/types/style";
-import {
-  useStyles,
-  useCreateStyle,
-  useUpdateStyle,
-  useDeleteStyle,
-} from "@/hooks/useStyles";
+import { useStyles, useCreateStyle, useUpdateStyle, useDeleteStyle } from "@/hooks/useStyles";
 import { useToast } from "@/hooks/useToast";
 import { ConfirmDialog, PageHeader, Pagination, Toast } from "@/components/shared";
 import { StyleFormModal } from "@/components/features/styles/StyleFormModal";
@@ -15,12 +10,16 @@ import { StyleStatusBadge } from "@/components/features/styles/StyleStatusBadge"
 import { StyleTable } from "@/components/features/styles/StyleTable";
 import { getApiError, isConflictError } from "@/lib/apiError";
 import { TableIcon, GridIcon, EyeIcon, PencilIcon } from "@/icons";
+import { useAuthStore } from "@/store/authStore";
 
 type ViewMode = "table" | "grid";
 
 const emptyStyles: Style[] = [];
 
 export default function StyleListPage() {
+  const user = useAuthStore((state) => state.user);
+  const canManageStyles = user?.permissions.includes("master_data.styles.manage") ?? false;
+  const canCreateStyle = canManageStyles;
   const { toast, showToast, hideToast } = useToast();
   const [viewMode, setViewMode] = useState<ViewMode>("table");
 
@@ -107,16 +106,24 @@ export default function StyleListPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        breadcrumb={[{ label: "Dashboard", to: "/dashboard" }, { label: "Mẫu Fit" }]}
+        breadcrumb={[
+          { label: "Dashboard", to: "/dashboard" },
+          { label: "Quản lý Mẫu Fit" },
+          { label: "Mẫu Fit" },
+        ]}
         title="Mẫu Fit"
-        action={{ label: "+ Tạo Mẫu Fit Mới", onClick: () => setEditingStyle("create") }}
+        action={
+          canCreateStyle
+            ? { label: "+ Tạo Mẫu Fit Mới", onClick: () => setEditingStyle("create") }
+            : undefined
+        }
       />
 
       {/* Enterprise Toolbar */}
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div className="flex flex-1 flex-wrap items-center gap-2.5">
           {/* Search Box */}
-          <div className="relative min-w-[220px] flex-1 max-w-sm">
+          <div className="relative max-w-sm min-w-[220px] flex-1">
             <input
               type="text"
               value={search}
@@ -125,7 +132,7 @@ export default function StyleListPage() {
                 setPage(1);
               }}
               placeholder="Tìm theo Mã mẫu hoặc Tên mẫu..."
-              className="h-10 w-full rounded-lg border border-gray-200 bg-white px-3 text-xs text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-800 dark:bg-gray-900 dark:text-white transition-colors"
+              className="h-10 w-full rounded-lg border border-gray-200 bg-white px-3 text-xs text-gray-900 placeholder-gray-400 transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none dark:border-gray-800 dark:bg-gray-900 dark:text-white"
             />
             {search && (
               <button
@@ -146,7 +153,7 @@ export default function StyleListPage() {
               setPage(1);
             }}
             placeholder="Dòng sản phẩm..."
-            className="h-10 w-36 rounded-lg border border-gray-200 bg-white px-3 text-xs text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-800 dark:bg-gray-900 dark:text-white transition-colors"
+            className="h-10 w-36 rounded-lg border border-gray-200 bg-white px-3 text-xs text-gray-900 placeholder-gray-400 transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none dark:border-gray-800 dark:bg-gray-900 dark:text-white"
           />
 
           {/* Status Segmented Filter */}
@@ -166,7 +173,7 @@ export default function StyleListPage() {
                   }}
                   className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${
                     isSelected
-                      ? "bg-white text-blue-600 shadow-xs dark:bg-gray-800 dark:text-blue-400 font-semibold"
+                      ? "bg-white font-semibold text-blue-600 shadow-xs dark:bg-gray-800 dark:text-blue-400"
                       : "text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
                   }`}
                 >
@@ -179,7 +186,7 @@ export default function StyleListPage() {
           {isFiltering && (
             <button
               onClick={handleClearFilters}
-              className="h-10 px-3 text-xs font-medium text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition-colors"
+              className="h-10 px-3 text-xs font-medium text-gray-500 transition-colors hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
             >
               Xóa bộ lọc
             </button>
@@ -193,7 +200,7 @@ export default function StyleListPage() {
               onClick={() => setViewMode("table")}
               className={`flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors ${
                 viewMode === "table"
-                  ? "bg-white text-gray-900 shadow-xs dark:bg-gray-800 dark:text-white font-semibold"
+                  ? "bg-white font-semibold text-gray-900 shadow-xs dark:bg-gray-800 dark:text-white"
                   : "text-gray-500 hover:text-gray-900 dark:text-gray-400"
               }`}
               title="Xem dạng Bảng (Table)"
@@ -205,7 +212,7 @@ export default function StyleListPage() {
               onClick={() => setViewMode("grid")}
               className={`flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors ${
                 viewMode === "grid"
-                  ? "bg-white text-gray-900 shadow-xs dark:bg-gray-800 dark:text-white font-semibold"
+                  ? "bg-white font-semibold text-gray-900 shadow-xs dark:bg-gray-800 dark:text-white"
                   : "text-gray-500 hover:text-gray-900 dark:text-gray-400"
               }`}
               title="Xem dạng Thẻ (Grid)"
@@ -237,7 +244,10 @@ export default function StyleListPage() {
       {list.isLoading && (
         <div className="space-y-2">
           {[1, 2, 3, 4, 5].map((i) => (
-            <div key={i} className="h-14 w-full animate-pulse rounded-lg bg-gray-100 dark:bg-gray-800/60" />
+            <div
+              key={i}
+              className="h-14 w-full animate-pulse rounded-lg bg-gray-100 dark:bg-gray-800/60"
+            />
           ))}
         </div>
       )}
@@ -251,12 +261,14 @@ export default function StyleListPage() {
           <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
             Chưa có dữ liệu nào khớp với từ khóa hoặc bộ lọc của bạn.
           </p>
-          <button
-            onClick={() => setEditingStyle("create")}
-            className="mt-4 rounded-lg bg-blue-600 px-3.5 py-1.5 text-xs font-medium text-white hover:bg-blue-700 transition-colors"
-          >
-            + Tạo Mẫu Fit Mới
-          </button>
+          {canCreateStyle && (
+            <button
+              onClick={() => setEditingStyle("create")}
+              className="mt-4 rounded-lg bg-blue-600 px-3.5 py-1.5 text-xs font-medium text-white transition-colors hover:bg-blue-700"
+            >
+              + Tạo Mẫu Fit Mới
+            </button>
+          )}
         </div>
       )}
 
@@ -266,6 +278,7 @@ export default function StyleListPage() {
           {viewMode === "table" ? (
             <StyleTable
               styles={styles}
+              canManage={canManageStyles}
               togglingId={statusUpdate.isPending ? statusUpdate.variables?.id : undefined}
               onToggleStatus={setStyleToToggle}
               onEdit={setEditingStyle}
@@ -274,7 +287,8 @@ export default function StyleListPage() {
           ) : (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
               {styles.map((style) => {
-                const isToggling = statusUpdate.isPending && statusUpdate.variables?.id === style.id;
+                const isToggling =
+                  statusUpdate.isPending && statusUpdate.variables?.id === style.id;
                 return (
                   <div
                     key={style.id}
@@ -294,24 +308,31 @@ export default function StyleListPage() {
                             {style.styleCode}
                           </span>
                           <div className="flex shrink-0 items-center gap-1.5">
-                            <button
-                              type="button"
-                              onClick={() => setStyleToToggle(style)}
-                              disabled={isToggling}
-                              className={`relative inline-flex h-4 w-7 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
-                                style.status === "active" ? "bg-emerald-500" : "bg-gray-300 dark:bg-gray-700"
-                              }`}
-                            >
-                              <span
-                                className={`pointer-events-none inline-block h-3 w-3 transform rounded-full bg-white shadow-xs ring-0 transition duration-200 ease-in-out ${
-                                  style.status === "active" ? "translate-x-3" : "translate-x-0"
+                            {canManageStyles && (
+                              <button
+                                type="button"
+                                onClick={() => setStyleToToggle(style)}
+                                disabled={isToggling}
+                                className={`relative inline-flex h-4 w-7 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
+                                  style.status === "active"
+                                    ? "bg-emerald-500"
+                                    : "bg-gray-300 dark:bg-gray-700"
                                 }`}
-                              />
-                            </button>
+                              >
+                                <span
+                                  className={`pointer-events-none inline-block h-3 w-3 transform rounded-full bg-white shadow-xs ring-0 transition duration-200 ease-in-out ${
+                                    style.status === "active" ? "translate-x-3" : "translate-x-0"
+                                  }`}
+                                />
+                              </button>
+                            )}
                             <StyleStatusBadge status={style.status} showDot={false} />
                           </div>
                         </div>
-                        <h4 className="truncate text-sm font-medium text-gray-900 dark:text-white" title={style.styleName}>
+                        <h4
+                          className="truncate text-sm font-medium text-gray-900 dark:text-white"
+                          title={style.styleName}
+                        >
                           {style.styleName}
                         </h4>
                         <p className="truncate text-xs text-gray-500 dark:text-gray-400">
@@ -332,13 +353,15 @@ export default function StyleListPage() {
                           <EyeIcon className="h-3 w-3" />
                           <span>Xem</span>
                         </Link>
-                        <button
-                          onClick={() => setEditingStyle(style)}
-                          className="inline-flex items-center gap-1 rounded-md border border-gray-300 bg-white px-2 py-0.5 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
-                        >
-                          <PencilIcon className="h-3 w-3" />
-                          <span>Sửa</span>
-                        </button>
+                        {canManageStyles && (
+                          <button
+                            onClick={() => setEditingStyle(style)}
+                            className="inline-flex items-center gap-1 rounded-md border border-gray-300 bg-white px-2 py-0.5 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
+                          >
+                            <PencilIcon className="h-3 w-3" />
+                            <span>Sửa</span>
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
