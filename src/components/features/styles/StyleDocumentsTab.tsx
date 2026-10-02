@@ -357,7 +357,7 @@ export function StyleDocumentsTab({ styleId }: Props) {
                         </button>
                         <span className="rounded-md bg-gray-100 px-2 py-1 text-xs text-gray-600 dark:bg-gray-800 dark:text-gray-300">
                           v{doc.versionNo}
-                          {doc.isCurrentVersion ? " · hiện tại" : " · đã ghim"}
+                          {doc.isCurrentVersion ? " · hiện tại" : " · phiên bản đã gán"}
                         </span>
                         {canManageStyleDocuments && (
                           <button

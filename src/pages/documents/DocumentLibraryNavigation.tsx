@@ -1,16 +1,7 @@
-import {
-  BadgeCheck,
-  Check,
-  Clock3,
-  Files,
-  FolderClosed,
-  House,
-  LoaderCircle,
-  Star,
-} from "lucide-react";
+import { BadgeCheck, Check, Clock3, Files, FolderClosed, House, LoaderCircle } from "lucide-react";
 
 export type DocumentLibraryView = "overview" | "folders" | "documents";
-export type DocumentLibraryFilter = "recent" | "pinned" | "processing" | "assigned";
+export type DocumentLibraryFilter = "recent" | "processing" | "assigned";
 
 type NavigationItem = {
   id: DocumentLibraryView | DocumentLibraryFilter;
@@ -22,7 +13,6 @@ type NavigationItem = {
 const navigationItems: NavigationItem[] = [
   { id: "overview", label: "Tổng quan", icon: House, kind: "view" },
   { id: "recent", label: "Gần đây", icon: Clock3, kind: "filter" },
-  { id: "pinned", label: "Được ghim", icon: Star, kind: "filter" },
   { id: "folders", label: "Tất cả thư mục", icon: FolderClosed, kind: "view" },
   { id: "documents", label: "Tất cả tài liệu", icon: Files, kind: "view" },
   { id: "processing", label: "Đang xử lý", icon: LoaderCircle, kind: "filter" },

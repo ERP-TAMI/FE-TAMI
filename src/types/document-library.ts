@@ -19,7 +19,6 @@ export interface DocumentLibraryItem {
   mimeType: string;
   byteSize: number;
   uploadedAt: string;
-  isPinned: boolean;
   isAssigned: boolean;
 }
 

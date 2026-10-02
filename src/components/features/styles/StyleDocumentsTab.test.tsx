@@ -171,7 +171,6 @@ describe("StyleDocumentsTab", () => {
           mimeType: "application/pdf",
           byteSize: 1024,
           uploadedAt: "2026-01-01T10:00:00.000Z",
-          isPinned: false,
           isAssigned: false,
         },
       ],
@@ -211,7 +210,6 @@ describe("StyleDocumentsTab", () => {
       mimeType: "application/pdf",
       byteSize: 1024,
       uploadedAt: "2026-01-01T10:00:00.000Z",
-      isPinned: false,
       isAssigned: false,
     };
     const documentOnPageTwo = {

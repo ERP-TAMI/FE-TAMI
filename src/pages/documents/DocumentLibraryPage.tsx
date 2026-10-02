@@ -4,8 +4,6 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createPortal } from "react-dom";
 import {
   BadgeCheck,
-  Bookmark,
-  BookmarkCheck,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -134,7 +132,6 @@ export default function DocumentLibraryPage() {
   const [openFileMenu, setOpenFileMenu] = useState<OpenFileMenu>(null);
   const [selectedActionsOpen, setSelectedActionsOpen] = useState(false);
   const [bulkActionPending, setBulkActionPending] = useState(false);
-  const [pinningDocumentIds, setPinningDocumentIds] = useState<Set<string>>(() => new Set());
   const [selectedDocumentKeys, setSelectedDocumentKeys] = useState<Set<string>>(new Set());
   const selectedDocumentCache = useRef<Map<string, DocumentLibraryItem>>(new Map());
   const uploadInputRef = useRef<HTMLInputElement>(null);
@@ -161,7 +158,6 @@ export default function DocumentLibraryPage() {
         folderId,
         search,
         assignmentStatus,
-        pinned: activeFilters.has("pinned"),
         page: currentPage,
         limit: requestLimit,
         category: formatFilter,
@@ -173,7 +169,6 @@ export default function DocumentLibraryPage() {
         ...(folderId ? { folderId } : {}),
         ...(search.trim() ? { search: search.trim() } : {}),
         ...(assignmentStatus !== undefined ? { assigned: assignmentStatus } : {}),
-        ...(activeFilters.has("pinned") ? { pinned: true } : {}),
         page: currentPage,
         limit: requestLimit,
         ...(formatFilter !== "all"
@@ -528,64 +523,6 @@ export default function DocumentLibraryPage() {
     setArchiveConfirmation({ documents: [document], clearSelection: false });
   };
 
-  const handleTogglePin = async (document: DocumentLibraryItem) => {
-    if (pinningDocumentIds.has(document.documentId)) return;
-    setPinningDocumentIds((current) => new Set(current).add(document.documentId));
-    try {
-      if (document.isPinned) {
-        await documentsLibraryApi.unpin(document.documentId);
-        showToast("Đã bỏ ghim tài liệu.");
-      } else {
-        await documentsLibraryApi.pin(document.documentId);
-        showToast("Đã ghim tài liệu.");
-      }
-      await refreshLibrary();
-    } catch (err) {
-      showToast(getApiError(err, "Cập nhật ghim tài liệu thất bại.").message, "error");
-    } finally {
-      setPinningDocumentIds((current) => {
-        const next = new Set(current);
-        next.delete(document.documentId);
-        return next;
-      });
-    }
-  };
-
-  const handleBulkPin = async () => {
-    setSelectedActionsOpen(false);
-    const documentsToPin = selectedDocuments.filter((document) => !document.isPinned);
-    if (documentsToPin.length === 0) {
-      showToast("Tất cả tài liệu đã chọn đều được ghim.");
-      return;
-    }
-
-    const documentIds = documentsToPin.map((document) => document.documentId);
-    setBulkActionPending(true);
-    setPinningDocumentIds((current) => new Set([...current, ...documentIds]));
-    try {
-      const results = await Promise.allSettled(
-        documentsToPin.map((document) => documentsLibraryApi.pin(document.documentId)),
-      );
-      const succeeded = results.filter((result) => result.status === "fulfilled").length;
-      const failed = results.length - succeeded;
-      await refreshLibrary();
-      clearDocumentSelection();
-      showToast(
-        failed === 0
-          ? `Đã ghim ${succeeded} tài liệu.`
-          : `Đã ghim ${succeeded}/${results.length} tài liệu; ${failed} tài liệu thất bại.`,
-        failed === 0 ? "success" : "error",
-      );
-    } finally {
-      setBulkActionPending(false);
-      setPinningDocumentIds((current) => {
-        const next = new Set(current);
-        documentIds.forEach((documentId) => next.delete(documentId));
-        return next;
-      });
-    }
-  };
-
   const handleBulkArchive = () => {
     setSelectedActionsOpen(false);
     const documentsToArchive = selectedDocuments;
@@ -827,23 +764,6 @@ export default function DocumentLibraryPage() {
                   Gán vào mẫu Fit
                 </button>
               )}
-              <button
-                type="button"
-                role="menuitem"
-                disabled={pinningDocumentIds.has(document.documentId)}
-                onClick={() => {
-                  closeMenu();
-                  void handleTogglePin(document);
-                }}
-                className="text-brand-700 hover:bg-brand-50 dark:text-brand-300 dark:hover:bg-brand-950/30 flex w-full items-center gap-2 rounded px-3 py-2 text-left text-xs disabled:opacity-50"
-              >
-                {document.isPinned ? (
-                  <BookmarkCheck aria-hidden="true" className="h-3.5 w-3.5" />
-                ) : (
-                  <Bookmark aria-hidden="true" className="h-3.5 w-3.5" />
-                )}
-                {document.isPinned ? "Bỏ ghim" : "Ghim tài liệu"}
-              </button>
               {canManage && (
                 <>
                   <button
@@ -903,7 +823,6 @@ export default function DocumentLibraryPage() {
     activeFilters.has("recent") ? "Gần đây" : null,
     activeFilters.has("assigned") ? "Đã gán" : null,
     activeFilters.has("processing") ? "Đang xử lý" : null,
-    activeFilters.has("pinned") ? "Được ghim" : null,
   ].filter((label): label is string => Boolean(label));
   const pageTitle =
     activeView === "folders"
@@ -1122,16 +1041,6 @@ export default function DocumentLibraryPage() {
                         Gán {selectedDocuments.length} tài liệu vào mẫu Fit
                       </button>
                     )}
-                    <button
-                      type="button"
-                      role="menuitem"
-                      disabled={bulkActionPending}
-                      onClick={() => void handleBulkPin()}
-                      className="text-brand-700 hover:bg-brand-50 dark:text-brand-300 dark:hover:bg-brand-950/30 flex w-full items-center gap-2 rounded px-3 py-2 text-left text-xs disabled:opacity-50"
-                    >
-                      <Bookmark aria-hidden="true" className="h-3.5 w-3.5" />
-                      Ghim {selectedDocuments.length} tài liệu
-                    </button>
                     {canManage && (
                       <button
                         type="button"
@@ -1166,11 +1075,9 @@ export default function DocumentLibraryPage() {
           <div className="text-error-600 p-12 text-center text-sm">Không tải được tài liệu.</div>
         ) : totalDocumentCount === 0 ? (
           <div className="p-12 text-center text-sm text-gray-500">
-            {activeFilters.has("pinned")
-              ? "Bạn chưa ghim tài liệu nào."
-              : documents.length > 0 || selectedFilterLabels.length > 0
-                ? "Không có tài liệu phù hợp với bộ lọc."
-                : "Chưa có tài liệu trong thư mục này."}
+            {documents.length > 0 || selectedFilterLabels.length > 0
+              ? "Không có tài liệu phù hợp với bộ lọc."
+              : "Chưa có tài liệu trong thư mục này."}
           </div>
         ) : displayMode === "list" ? (
           <div className="min-w-0 flex-1 overflow-x-auto">

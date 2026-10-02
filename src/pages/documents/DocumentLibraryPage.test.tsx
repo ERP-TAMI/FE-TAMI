@@ -28,8 +28,6 @@ vi.mock("@/api/documents-library.api", () => ({
     listVersions: vi.fn(),
     getViewUrl: vi.fn(),
     archive: vi.fn(),
-    pin: vi.fn(),
-    unpin: vi.fn(),
     assignToStyle: vi.fn(),
   },
 }));
@@ -108,8 +106,6 @@ beforeEach(() => {
     },
   });
   vi.mocked(documentsLibraryApi.list).mockResolvedValue(libraryPage([]));
-  vi.mocked(documentsLibraryApi.pin).mockResolvedValue(undefined);
-  vi.mocked(documentsLibraryApi.unpin).mockResolvedValue(undefined);
   vi.mocked(documentsLibraryApi.assignToStyle).mockResolvedValue([]);
   vi.mocked(stylesApi.getStyles).mockResolvedValue({
     data: [],
@@ -198,7 +194,6 @@ describe("DocumentLibraryPage folder browser", () => {
     for (const label of [
       "Tổng quan",
       "Gần đây",
-      "Được ghim",
       "Tất cả thư mục",
       "Tất cả tài liệu",
       "Đang xử lý",
@@ -206,6 +201,7 @@ describe("DocumentLibraryPage folder browser", () => {
     ]) {
       expect(within(sidebar).getByRole("button", { name: label })).toBeTruthy();
     }
+    expect(within(sidebar).queryByRole("button", { name: "Được ghim" })).toBeNull();
     expect(
       within(sidebar).getByRole("button", { name: "Tất cả thư mục" }).getAttribute("aria-current"),
     ).toBe("page");
@@ -242,7 +238,6 @@ describe("DocumentLibraryPage folder browser", () => {
           mimeType: "application/pdf",
           byteSize: 1024,
           uploadedAt: "2026-10-01T10:00:00.000Z",
-          isPinned: false,
           isAssigned: false,
         },
       ]),
@@ -374,7 +369,6 @@ describe("DocumentLibraryPage folder browser", () => {
         mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         byteSize: 2048,
         uploadedAt: "2026-10-01T10:00:00.000Z",
-        isPinned: false,
         isAssigned: false,
       },
       {
@@ -388,7 +382,6 @@ describe("DocumentLibraryPage folder browser", () => {
         mimeType: "application/pdf",
         byteSize: 4096,
         uploadedAt: "2026-10-01T09:00:00.000Z",
-        isPinned: false,
         isAssigned: true,
       },
     ];
@@ -434,7 +427,6 @@ describe("DocumentLibraryPage folder browser", () => {
           mimeType: "application/pdf",
           byteSize: 1024,
           uploadedAt: "2026-10-01T10:00:00.000Z",
-          isPinned: false,
           isAssigned: false,
         },
       ]),
@@ -467,7 +459,6 @@ describe("DocumentLibraryPage folder browser", () => {
       mimeType: "application/pdf",
       byteSize: 1024,
       uploadedAt: "2026-10-01T10:00:00.000Z",
-      isPinned: false,
       isAssigned: false,
     }));
     vi.mocked(documentsLibraryApi.list).mockImplementation(async ({ page = 1, limit = 10 } = {}) =>
@@ -506,11 +497,7 @@ describe("DocumentLibraryPage folder browser", () => {
     const bulkToolbar = screen.getByRole("toolbar", { name: "Thao tác tài liệu đã chọn" });
     expect(within(bulkToolbar).getByText("Đã chọn 2 tài liệu")).toBeTruthy();
     fireEvent.click(within(bulkToolbar).getByRole("button", { name: "Thao tác chung" }));
-    fireEvent.click(within(bulkToolbar).getByRole("menuitem", { name: "Ghim 2 tài liệu" }));
-    await waitFor(() => {
-      expect(documentsLibraryApi.pin).toHaveBeenCalledWith("page-doc-0");
-      expect(documentsLibraryApi.pin).toHaveBeenCalledWith("page-doc-10");
-    });
+    expect(within(bulkToolbar).queryByRole("menuitem", { name: /Ghim/ })).toBeNull();
   });
 
   it("shows Fit assignment status and closes the file menu outside its row", async () => {
@@ -527,7 +514,6 @@ describe("DocumentLibraryPage folder browser", () => {
           mimeType: "application/pdf",
           byteSize: 1024,
           uploadedAt: "2026-10-01T10:00:00.000Z",
-          isPinned: false,
           isAssigned: true,
         },
         {
@@ -541,7 +527,6 @@ describe("DocumentLibraryPage folder browser", () => {
           mimeType: "application/pdf",
           byteSize: 1024,
           uploadedAt: "2026-10-01T09:00:00.000Z",
-          isPinned: false,
           isAssigned: false,
         },
       ]),
@@ -566,6 +551,7 @@ describe("DocumentLibraryPage folder browser", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Thao tác assigned.pdf" }));
     const menu = await screen.findByRole("menu");
+    expect(within(menu).queryByRole("menuitem", { name: /Ghim|Bỏ ghim/ })).toBeNull();
     expect(menu.parentElement).toBe(document.body);
     expect(within(table).queryByRole("menu")).toBeNull();
     expect(assignedRow.getAttribute("data-file-menu-open")).toBe("true");
@@ -589,7 +575,6 @@ describe("DocumentLibraryPage folder browser", () => {
       mimeType: "application/pdf",
       byteSize: 1024,
       uploadedAt: "2026-10-01T10:00:00.000Z",
-      isPinned: false,
       isAssigned: false,
     };
     const style: Style = {
@@ -646,7 +631,6 @@ describe("DocumentLibraryPage folder browser", () => {
         mimeType: "application/pdf",
         byteSize: 1024,
         uploadedAt: "2026-10-01T10:00:00.000Z",
-        isPinned: false,
         isAssigned: false,
       },
       {
@@ -660,7 +644,6 @@ describe("DocumentLibraryPage folder browser", () => {
         mimeType: "application/pdf",
         byteSize: 2048,
         uploadedAt: "2026-10-01T09:00:00.000Z",
-        isPinned: false,
         isAssigned: false,
       },
     ];
@@ -695,7 +678,7 @@ describe("DocumentLibraryPage folder browser", () => {
     const bulkToolbar = screen.getByRole("toolbar", { name: "Thao tác tài liệu đã chọn" });
     expect(bulkToolbar).toBeTruthy();
     fireEvent.click(within(bulkToolbar).getByRole("button", { name: "Thao tác chung" }));
-    expect(within(bulkToolbar).getByRole("menuitem", { name: "Ghim 2 tài liệu" })).toBeTruthy();
+    expect(within(bulkToolbar).queryByRole("menuitem", { name: /Ghim/ })).toBeNull();
     expect(
       within(bulkToolbar).getByRole("menuitem", { name: "Xóa 2 tài liệu khỏi kho" }),
     ).toBeTruthy();
@@ -734,7 +717,6 @@ describe("DocumentLibraryPage folder browser", () => {
       mimeType: "application/pdf",
       byteSize: 1024,
       uploadedAt: "2026-10-01T10:00:00.000Z",
-      isPinned: false,
       isAssigned: false,
     }));
     vi.mocked(documentsLibraryApi.list).mockImplementation(async (params = {}) => {
@@ -775,60 +757,6 @@ describe("DocumentLibraryPage folder browser", () => {
     expect(screen.getByText("Đã chọn 100 tài liệu")).toBeTruthy();
   });
 
-  it("pins selected documents together and skips documents that are already pinned", async () => {
-    vi.mocked(documentsLibraryApi.list).mockResolvedValue(
-      libraryPage([
-        {
-          documentId: "doc-to-pin",
-          title: "spec-a.pdf",
-          folderId: rootFolder.id,
-          folderName: rootFolder.folderName,
-          versionId: "version-a",
-          versionNo: 1,
-          fileName: "spec-a.pdf",
-          mimeType: "application/pdf",
-          byteSize: 1024,
-          uploadedAt: "2026-10-01T10:00:00.000Z",
-          isPinned: false,
-          isAssigned: false,
-        },
-        {
-          documentId: "already-pinned",
-          title: "spec-b.pdf",
-          folderId: rootFolder.id,
-          folderName: rootFolder.folderName,
-          versionId: "version-b",
-          versionNo: 1,
-          fileName: "spec-b.pdf",
-          mimeType: "application/pdf",
-          byteSize: 1024,
-          uploadedAt: "2026-10-01T10:00:00.000Z",
-          isPinned: true,
-          isAssigned: false,
-        },
-      ]),
-    );
-    renderPage();
-    fireEvent.click(
-      within(screen.getByRole("navigation", { name: "Điều hướng kho tài liệu" })).getByRole(
-        "button",
-        { name: "Tất cả tài liệu" },
-      ),
-    );
-    const table = await screen.findByRole("table", { name: "Tài liệu trong kho" });
-    fireEvent.click(within(table).getByRole("checkbox", { name: "Chọn spec-a.pdf" }));
-    fireEvent.click(within(table).getByRole("checkbox", { name: "Chọn spec-b.pdf" }));
-    const bulkToolbar = screen.getByRole("toolbar", { name: "Thao tác tài liệu đã chọn" });
-    fireEvent.click(within(bulkToolbar).getByRole("button", { name: "Thao tác chung" }));
-    fireEvent.click(within(bulkToolbar).getByRole("menuitem", { name: "Ghim 2 tài liệu" }));
-
-    await waitFor(() => expect(documentsLibraryApi.pin).toHaveBeenCalledWith("doc-to-pin"));
-    expect(documentsLibraryApi.pin).toHaveBeenCalledTimes(1);
-    expect(documentsLibraryApi.pin).not.toHaveBeenCalledWith("already-pinned");
-    expect(await screen.findByText("Đã ghim 1 tài liệu.")).toBeTruthy();
-    expect(screen.queryByRole("toolbar", { name: "Thao tác tài liệu đã chọn" })).toBeNull();
-  });
-
   it("archives selected documents together after confirmation", async () => {
     vi.mocked(documentsLibraryApi.list).mockResolvedValue(
       libraryPage([
@@ -843,7 +771,6 @@ describe("DocumentLibraryPage folder browser", () => {
           mimeType: "application/pdf",
           byteSize: 1024,
           uploadedAt: "2026-10-01T10:00:00.000Z",
-          isPinned: false,
           isAssigned: false,
         },
         {
@@ -857,7 +784,6 @@ describe("DocumentLibraryPage folder browser", () => {
           mimeType: "application/pdf",
           byteSize: 1024,
           uploadedAt: "2026-10-01T10:00:00.000Z",
-          isPinned: false,
           isAssigned: false,
         },
       ]),
@@ -896,42 +822,6 @@ describe("DocumentLibraryPage folder browser", () => {
     expect(screen.queryByRole("toolbar", { name: "Thao tác tài liệu đã chọn" })).toBeNull();
   });
 
-  it("pins a document from its actions menu", async () => {
-    vi.mocked(documentsLibraryApi.list).mockResolvedValue(
-      libraryPage([
-        {
-          documentId: "doc-to-pin",
-          title: "spec.pdf",
-          folderId: rootFolder.id,
-          folderName: rootFolder.folderName,
-          versionId: "version-1",
-          versionNo: 1,
-          fileName: "spec.pdf",
-          mimeType: "application/pdf",
-          byteSize: 1024,
-          uploadedAt: "2026-10-01T10:00:00.000Z",
-          isPinned: false,
-          isAssigned: false,
-        },
-      ]),
-    );
-    renderPage();
-    fireEvent.click(
-      within(screen.getByRole("navigation", { name: "Điều hướng kho tài liệu" })).getByRole(
-        "button",
-        { name: "Tất cả tài liệu" },
-      ),
-    );
-    await screen.findByRole("table", { name: "Tài liệu trong kho" });
-    fireEvent.click(screen.getByRole("button", { name: "Thao tác spec.pdf" }));
-    fireEvent.click(screen.getByRole("menuitem", { name: "Ghim tài liệu" }));
-
-    await waitFor(() => {
-      expect(documentsLibraryApi.pin).toHaveBeenCalledWith("doc-to-pin");
-    });
-    expect(await screen.findByText("Đã ghim tài liệu.")).toBeTruthy();
-  });
-
   it("deletes an individual document from its actions menu after modal confirmation", async () => {
     vi.mocked(documentsLibraryApi.list).mockResolvedValue(
       libraryPage([
@@ -946,7 +836,6 @@ describe("DocumentLibraryPage folder browser", () => {
           mimeType: "application/pdf",
           byteSize: 1024,
           uploadedAt: "2026-10-01T10:00:00.000Z",
-          isPinned: false,
           isAssigned: false,
         },
       ]),
@@ -971,46 +860,6 @@ describe("DocumentLibraryPage folder browser", () => {
 
     await waitFor(() => expect(documentsLibraryApi.archive).toHaveBeenCalledWith("doc-to-delete"));
     expect(await screen.findByText("Đã xóa 1 tài liệu khỏi kho.")).toBeTruthy();
-  });
-
-  it("loads only documents pinned by the current user", async () => {
-    vi.mocked(documentsLibraryApi.list).mockResolvedValue(
-      libraryPage([
-        {
-          documentId: "pinned-doc",
-          title: "pinned.pdf",
-          folderId: rootFolder.id,
-          folderName: rootFolder.folderName,
-          versionId: "version-1",
-          versionNo: 1,
-          fileName: "pinned.pdf",
-          mimeType: "application/pdf",
-          byteSize: 1024,
-          uploadedAt: "2026-10-01T10:00:00.000Z",
-          isPinned: true,
-          isAssigned: true,
-        },
-      ]),
-    );
-    renderPage();
-    fireEvent.click(screen.getByRole("button", { name: "Được ghim" }));
-
-    await waitFor(() => {
-      expect(documentsLibraryApi.list).toHaveBeenLastCalledWith({
-        pinned: true,
-        page: 1,
-        limit: 10,
-      });
-    });
-    expect(await screen.findByRole("table", { name: "Tài liệu trong kho" })).toBeTruthy();
-    expect(screen.getByText("pinned.pdf")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Thao tác pinned.pdf" }));
-    fireEvent.click(screen.getByRole("menuitem", { name: "Bỏ ghim" }));
-
-    await waitFor(() => {
-      expect(documentsLibraryApi.unpin).toHaveBeenCalledWith("pinned-doc");
-    });
-    expect(await screen.findByText("Đã bỏ ghim tài liệu.")).toBeTruthy();
   });
 
   it("loads documents assigned to at least one Fit style", async () => {
@@ -1044,7 +893,6 @@ describe("DocumentLibraryPage folder browser", () => {
         mimeType: "application/pdf",
         byteSize: 1024,
         uploadedAt: "2026-10-01T10:00:00.000Z",
-        isPinned: false,
         isAssigned: true,
       },
       {
@@ -1058,7 +906,6 @@ describe("DocumentLibraryPage folder browser", () => {
         mimeType: "application/pdf",
         byteSize: 1024,
         uploadedAt: "2026-10-01T09:00:00.000Z",
-        isPinned: false,
         isAssigned: false,
       },
     ];
@@ -1131,7 +978,6 @@ describe("DocumentLibraryPage folder browser", () => {
       mimeType: "application/pdf",
       byteSize: 1024,
       uploadedAt: new Date(Date.UTC(2026, 0, index + 1)).toISOString(),
-      isPinned: true,
       isAssigned: true,
     }));
     const newestAssignedDocuments = [...assignedDocuments].reverse();
@@ -1180,7 +1026,6 @@ describe("DocumentLibraryPage folder browser", () => {
       mimeType: "application/pdf",
       byteSize: 1024,
       uploadedAt: new Date(Date.UTC(2026, 0, index + 1)).toISOString(),
-      isPinned: false,
       isAssigned: false,
     }));
     const newestFirst = [...documents].reverse();
@@ -1219,7 +1064,6 @@ describe("DocumentLibraryPage folder browser", () => {
           mimeType: "application/pdf",
           byteSize: 1024,
           uploadedAt: "2026-10-01T10:00:00.000Z",
-          isPinned: false,
           isAssigned: false,
         },
       ]),
