@@ -71,6 +71,60 @@ describe("DashboardSummaryView", () => {
     );
   });
 
+  it("keeps month and day context on trend labels when the selected range crosses boundaries", () => {
+    const { rerender } = render(
+      <MemoryRouter>
+        <DashboardSummaryView
+          period={{ periodType: "range", fromDate: "2025-12-01", toDate: "2026-01-31" }}
+          onPeriodChange={vi.fn()}
+          data={{
+            ...data,
+            periodType: "range",
+            periodStart: "2025-12-01",
+            periodEnd: "2026-01-31",
+            trendGranularity: "month",
+            trend: [
+              { period: "2025-12", received: 2, completed: 1 },
+              { period: "2026-01", received: 3, completed: 2 },
+            ],
+          }}
+          isLoading={false}
+          isError={false}
+          onRetry={vi.fn()}
+        />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText("12/2025")).toBeTruthy();
+    expect(screen.getByText("01/2026")).toBeTruthy();
+
+    rerender(
+      <MemoryRouter>
+        <DashboardSummaryView
+          period={{ periodType: "range", fromDate: "2026-08-28", toDate: "2026-09-03" }}
+          onPeriodChange={vi.fn()}
+          data={{
+            ...data,
+            periodType: "range",
+            periodStart: "2026-08-28",
+            periodEnd: "2026-09-03",
+            trendGranularity: "day",
+            trend: [
+              { period: "2026-08-28", received: 2, completed: 1 },
+              { period: "2026-09-03", received: 3, completed: 2 },
+            ],
+          }}
+          isLoading={false}
+          isError={false}
+          onRetry={vi.fn()}
+        />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText("28/08")).toBeTruthy();
+    expect(screen.getByText("03/09")).toBeTruthy();
+  });
+
   it("lets the user switch to a selected calendar year", () => {
     const onPeriodChange = vi.fn();
     render(

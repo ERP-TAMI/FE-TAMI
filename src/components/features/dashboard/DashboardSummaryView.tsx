@@ -99,8 +99,8 @@ function formatDay(date: string): string {
 }
 
 function formatTrendLabel(period: string, granularity: "day" | "month" | "year"): string {
-  if (granularity === "day") return period.slice(8);
-  if (granularity === "month") return period.slice(5);
+  if (granularity === "day") return `${period.slice(8)}/${period.slice(5, 7)}`;
+  if (granularity === "month") return `${period.slice(5)}/${period.slice(0, 4)}`;
   return period;
 }
 
