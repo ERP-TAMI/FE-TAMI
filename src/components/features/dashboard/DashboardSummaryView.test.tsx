@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { DashboardSummaryView } from "./DashboardSummaryView";
@@ -86,11 +86,9 @@ describe("DashboardSummaryView", () => {
       </MemoryRouter>,
     );
 
-    fireEvent.click(
-      within(screen.getByRole("group", { name: "Kỳ thống kê" })).getByRole("button", {
-        name: "Năm",
-      }),
-    );
+    fireEvent.change(screen.getByRole("combobox", { name: "Kỳ thống kê" }), {
+      target: { value: "year" },
+    });
     expect(onPeriodChange).toHaveBeenCalledWith({ periodType: "year", year: "2026" });
   });
 
@@ -116,11 +114,15 @@ describe("DashboardSummaryView", () => {
       </MemoryRouter>,
     );
 
-    const periodGroup = within(screen.getByRole("group", { name: "Kỳ thống kê" }));
-    expect(periodGroup.getAllByRole("button")).toHaveLength(4);
-    expect(periodGroup.getByRole("button", { name: label }).getAttribute("aria-pressed")).toBe(
-      "true",
+    const periodSelect = screen.getByRole("combobox", {
+      name: "Kỳ thống kê",
+    }) as HTMLSelectElement;
+    const periodOptions = Array.from(periodSelect.querySelectorAll("option")).map(
+      (option) => option.value,
     );
+    expect(periodOptions).toEqual(["month", "year", "range", "all"]);
+    expect(periodSelect.value).toBe(period.periodType);
+    expect(periodSelect.selectedOptions[0].textContent).toBe(label);
   });
 
   it("switches to the all-time period and explains its date scope", () => {
@@ -138,11 +140,9 @@ describe("DashboardSummaryView", () => {
       </MemoryRouter>,
     );
 
-    fireEvent.click(
-      within(screen.getByRole("group", { name: "Kỳ thống kê" })).getByRole("button", {
-        name: "Toàn thời gian",
-      }),
-    );
+    fireEvent.change(screen.getByRole("combobox", { name: "Kỳ thống kê" }), {
+      target: { value: "all" },
+    });
     expect(onPeriodChange).toHaveBeenCalledWith({ periodType: "all" });
 
     rerender(
@@ -176,7 +176,7 @@ describe("DashboardSummaryView", () => {
     expect(screen.getByRole("status", { name: "Đang tải số liệu dashboard" })).toBeTruthy();
     expect(container.querySelectorAll('[data-testid="dashboard-kpi-skeleton"]')).toHaveLength(7);
     expect(container.querySelectorAll('[data-testid="dashboard-panel-skeleton"]')).toHaveLength(7);
-    expect(screen.getByRole("group", { name: "Kỳ thống kê" })).toBeTruthy();
+    expect(screen.getByRole("combobox", { name: "Kỳ thống kê" })).toBeTruthy();
   });
 
   it("matches management loading placeholders to the eight management KPIs", () => {

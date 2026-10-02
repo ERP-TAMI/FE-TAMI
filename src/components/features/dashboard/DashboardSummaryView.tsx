@@ -627,116 +627,95 @@ export function DashboardSummaryView({
 
   return (
     <section className="space-y-6" aria-labelledby="dashboard-title" aria-busy={isLoading}>
-      <div>
-        <p className="text-theme-xs text-brand-600 dark:text-brand-400 font-semibold tracking-wide uppercase">
-          Tổng quan vận hành
-        </p>
-        <h1
-          id="dashboard-title"
-          className="mt-1 text-2xl font-semibold tracking-tight text-gray-900 dark:text-white"
-        >
-          {managementView ? "Dashboard quản lý" : "Dashboard"}
-        </h1>
-        <p className="mt-2 max-w-2xl text-sm text-gray-600 dark:text-gray-400">
-          Theo dõi đơn hàng, hạn sản phẩm và tiến độ xử lý BOM trên toàn hệ thống.
-        </p>
-      </div>
-
-      <div className="shadow-theme-xs grid grid-cols-1 items-start gap-4 rounded-2xl border border-gray-200 bg-white p-4 sm:p-5 xl:grid-cols-[minmax(19rem,0.9fr)_minmax(0,1.1fr)] dark:border-gray-800 dark:bg-gray-900">
-        <div className="min-w-0 space-y-2">
-          <p
-            id="dashboard-period-label"
-            className="text-theme-sm font-medium text-gray-700 dark:text-gray-300"
-          >
-            Kỳ thống kê
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+        <div className="min-w-0">
+          <p className="text-theme-xs text-brand-600 dark:text-brand-400 font-semibold tracking-wide uppercase">
+            Tổng quan vận hành
           </p>
-          <div
-            role="group"
-            aria-labelledby="dashboard-period-label"
-            className="grid grid-cols-2 gap-2"
+          <h1
+            id="dashboard-title"
+            className="mt-1 text-2xl font-semibold tracking-tight text-gray-900 dark:text-white"
           >
-            {periodTypeOptions.map((option) => {
-              const isSelected = period.periodType === option.value;
-              return (
-                <Button
-                  key={option.value}
-                  type="button"
-                  variant="outline"
-                  size="lg"
-                  aria-pressed={isSelected}
-                  className={`min-w-0 cursor-pointer px-2 whitespace-nowrap transition-none focus-visible:ring-3 sm:px-3 ${
-                    isSelected
-                      ? "border-brand-500 bg-brand-50 text-brand-700 hover:bg-brand-50 dark:border-brand-400 dark:bg-brand-500/10 dark:text-brand-300 dark:hover:bg-brand-500/10"
-                      : ""
-                  }`}
-                  onClick={() => onPeriodChange(changeDashboardPeriodType(period, option.value))}
-                >
-                  {option.value === "all" && (
-                    <History aria-hidden="true" className="size-4 shrink-0" />
-                  )}
-                  {option.label}
-                </Button>
-              );
-            })}
-          </div>
+            {managementView ? "Dashboard quản lý" : "Dashboard"}
+          </h1>
+          <p className="mt-2 max-w-2xl text-sm text-gray-600 dark:text-gray-400">
+            Theo dõi đơn hàng, hạn sản phẩm và tiến độ xử lý BOM trên toàn hệ thống.
+          </p>
         </div>
 
-        <div className="grid min-h-24 min-w-0 grid-cols-2 gap-3">
-          {period.periodType === "month" && (
-            <Input
-              className="col-span-2 cursor-pointer bg-white focus-visible:ring-3 dark:bg-gray-900 dark:[color-scheme:dark]"
-              label="Tháng tiếp nhận PO"
-              type="month"
-              min="0001-01"
-              value={period.month}
-              onChange={(event) => updatePeriod("month", event.target.value)}
-              error={monthError}
-            />
-          )}
-          {period.periodType === "year" && (
-            <Select
-              className="col-span-2 cursor-pointer bg-white tabular-nums focus-visible:ring-3 dark:bg-gray-900 dark:focus-visible:ring-3"
-              label="Năm tiếp nhận PO"
-              options={getDashboardYearOptions(period.year).map((year) => ({
-                label: year,
-                value: year,
-              }))}
-              value={period.year}
-              onChange={(event) => updatePeriod("year", event.target.value)}
-              error={yearError}
-            />
-          )}
-          {period.periodType === "range" && (
-            <>
+        <div className="grid w-full grid-cols-1 items-end gap-3 xl:w-auto xl:shrink-0 xl:grid-cols-[10rem_26rem]">
+          <Select
+            label="Kỳ thống kê"
+            options={periodTypeOptions}
+            value={period.periodType}
+            onChange={(event) =>
+              onPeriodChange(
+                changeDashboardPeriodType(period, event.target.value as DashboardPeriodType),
+              )
+            }
+            className="cursor-pointer bg-white focus-visible:ring-3 dark:bg-gray-900 dark:focus-visible:ring-3"
+          />
+
+          <div className="min-w-0 xl:w-[26rem]">
+            {period.periodType === "month" && (
               <Input
-                label="Từ ngày"
-                type="date"
-                value={period.fromDate}
-                error={fromDateError}
-                onChange={(event) => updatePeriod("fromDate", event.target.value)}
                 className="cursor-pointer bg-white focus-visible:ring-3 dark:bg-gray-900 dark:[color-scheme:dark]"
+                label="Tháng tiếp nhận PO"
+                type="month"
+                min="0001-01"
+                value={period.month}
+                onChange={(event) => updatePeriod("month", event.target.value)}
+                error={monthError}
               />
-              <Input
-                label="Đến ngày"
-                type="date"
-                value={period.toDate}
-                error={toDateError}
-                onChange={(event) => updatePeriod("toDate", event.target.value)}
-                className="cursor-pointer bg-white focus-visible:ring-3 dark:bg-gray-900 dark:[color-scheme:dark]"
+            )}
+            {period.periodType === "year" && (
+              <Select
+                className="cursor-pointer bg-white tabular-nums focus-visible:ring-3 dark:bg-gray-900 dark:focus-visible:ring-3"
+                label="Năm tiếp nhận PO"
+                options={getDashboardYearOptions(period.year).map((year) => ({
+                  label: year,
+                  value: year,
+                }))}
+                value={period.year}
+                onChange={(event) => updatePeriod("year", event.target.value)}
+                error={yearError}
               />
-            </>
-          )}
-          {period.periodType === "all" && (
-            <div className="col-span-2 min-h-24 space-y-2">
-              <p className="text-theme-sm font-medium text-gray-700 dark:text-gray-300">
-                Phạm vi dữ liệu
-              </p>
-              <div className="flex h-11 items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-4 text-sm text-gray-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
-                <History aria-hidden="true" className="size-4 shrink-0" />
-                <span>Từ dữ liệu cũ nhất đến mới nhất</span>
+            )}
+            {period.periodType === "range" && (
+              <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
+                <Input
+                  label="Từ ngày"
+                  type="date"
+                  value={period.fromDate}
+                  error={fromDateError}
+                  onChange={(event) => updatePeriod("fromDate", event.target.value)}
+                  className="cursor-pointer bg-white focus-visible:ring-3 dark:bg-gray-900 dark:[color-scheme:dark]"
+                />
+                <Input
+                  label="Đến ngày"
+                  type="date"
+                  value={period.toDate}
+                  error={toDateError}
+                  onChange={(event) => updatePeriod("toDate", event.target.value)}
+                  className="cursor-pointer bg-white focus-visible:ring-3 dark:bg-gray-900 dark:[color-scheme:dark]"
+                />
               </div>
-            </div>
-          )}
+            )}
+            {period.periodType === "all" && (
+              <div className="space-y-2">
+                <p className="text-theme-sm font-medium text-gray-700 dark:text-gray-300">
+                  Phạm vi
+                </p>
+                <div
+                  aria-label="Phạm vi dữ liệu: từ dữ liệu cũ nhất đến mới nhất"
+                  className="flex h-11 items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 text-sm text-gray-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
+                >
+                  <History aria-hidden="true" className="size-4 shrink-0" />
+                  <span className="truncate">Từ dữ liệu cũ nhất đến mới nhất</span>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
