@@ -20,6 +20,7 @@ const hooks = vi.hoisted(() => ({
   useUnlinkPoDocument: vi.fn(),
   useUploadPoDocument: vi.fn(),
   useUploadPoDocuments: vi.fn(),
+  useUploadPoDocumentVersion: vi.fn(),
   useUpdatePoDocumentPurpose: vi.fn(),
   usePoProducts: vi.fn(),
   usePoDocuments: vi.fn(),
@@ -98,6 +99,7 @@ describe("PoDetailPage Management read-only mode", () => {
     hooks.useUnlinkPoDocument.mockReturnValue({ isPending: false, mutateAsync: vi.fn() });
     hooks.useUploadPoDocument.mockReturnValue({ isPending: false, mutateAsync: vi.fn() });
     hooks.useUploadPoDocuments.mockReturnValue({ isPending: false, mutateAsync: vi.fn() });
+    hooks.useUploadPoDocumentVersion.mockReturnValue({ isPending: false, mutateAsync: vi.fn() });
     hooks.useUpdatePoDocumentPurpose.mockReturnValue({ isPending: false, mutateAsync: vi.fn() });
     hooks.usePoProducts.mockReturnValue({ data: undefined, isLoading: false });
     hooks.usePoDocuments.mockReturnValue({ data: poDocumentsPage, isFetching: false });

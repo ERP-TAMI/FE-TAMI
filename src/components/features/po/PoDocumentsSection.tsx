@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { Button, ConfirmDialog, FileTypeIcon } from "@/components/shared";
 import { FileIcon, DownloadIcon, TrashBinIcon, EyeIcon } from "@/icons";
 import type { PurchaseOrderDocumentItem } from "@/types/po";
+import { DocumentVersionDetails } from "./DocumentVersionDetails";
+import { DocumentVersionUploadModal } from "./DocumentVersionUploadModal";
 import type { UploadProgress } from "@/api/po.api";
 import { useUploadStore } from "@/hooks/useUploadStore";
 import { EntityHistoryButton } from "@/components/features/audit/EntityHistoryButton";
@@ -20,6 +22,7 @@ interface Props {
   ) => Promise<void>;
   onUnlink: (documentId: string) => Promise<void>;
   onUpdatePurpose?: (documentId: string, purpose: string) => Promise<void>;
+  onUploadVersion?: (document: PurchaseOrderDocumentItem, file: File, changeReason: string, evidence?: File) => Promise<void>;
 }
 
 function formatBytes(bytes: number | null | undefined): string {
@@ -54,6 +57,7 @@ export function PoDocumentsSection({
   onUpload,
   onUnlink,
   onUpdatePurpose,
+  onUploadVersion,
 }: Props) {
   const [updatingDocId, setUpdatingDocId] = useState<string | null>(null);
   const [isUploadOpen, setIsUploadOpen] = useState(false);
@@ -61,6 +65,8 @@ export function PoDocumentsSection({
     useState<PurchaseOrderDocumentItem | null>(null);
   const [isRemoving, setIsRemoving] = useState(false);
   const [activeCategoryTab, setActiveCategoryTab] = useState<string>("all");
+  const [expandedDocumentId, setExpandedDocumentId] = useState<string | null>(null);
+  const [versionTarget, setVersionTarget] = useState<PurchaseOrderDocumentItem | null>(null);
   const startUpload = useUploadStore((st) => st.startUpload);
   const tickUpload = useUploadStore((st) => st.tickUpload);
   const finishUpload = useUploadStore((st) => st.finishUpload);
@@ -267,8 +273,8 @@ export function PoDocumentsSection({
                   const fullUrl = doc.fileUrl || null;
 
                   return (
+                    <Fragment key={doc.documentId}>
                     <tr
-                      key={doc.documentId}
                       className="transition-colors hover:bg-gray-50/70 dark:hover:bg-gray-800/40"
                     >
                       <td className="px-5 py-4">
@@ -278,6 +284,19 @@ export function PoDocumentsSection({
                             <span className="block truncate max-w-md font-semibold text-gray-900 dark:text-white">
                               {doc.fileName || doc.title}
                             </span>
+                            <span className="mt-1 inline-flex rounded-md border border-brand-200 bg-brand-50 px-2 py-0.5 font-mono text-[10px] font-bold text-brand-600 dark:border-brand-900/60 dark:bg-brand-950/40 dark:text-brand-300">
+                              v{doc.currentVersionNo || 1}
+                            </span>
+                            {(doc.versions?.length || 0) > 0 && (
+                              <button
+                                type="button"
+                                aria-expanded={expandedDocumentId === doc.documentId}
+                                onClick={() => setExpandedDocumentId(expandedDocumentId === doc.documentId ? null : doc.documentId)}
+                                className="mt-1 block cursor-pointer text-[11px] font-semibold text-brand-600 hover:underline dark:text-brand-300"
+                              >
+                                {expandedDocumentId === doc.documentId ? "Ẩn" : "Xem"} lịch sử phiên bản ({doc.versions?.length})
+                              </button>
+                            )}
                           </div>
                         </div>
                       </td>
@@ -337,6 +356,17 @@ export function PoDocumentsSection({
                           {!isLocked && (
                             <button
                               type="button"
+                              onClick={() => setVersionTarget(doc)}
+                              disabled={isPending || !onUploadVersion}
+                              className="shrink-0 rounded-lg border border-brand-200 bg-brand-50/50 px-2.5 py-1.5 text-theme-xs font-semibold text-brand-600 transition hover:bg-brand-100 disabled:opacity-50 dark:border-brand-800 dark:bg-brand-950/40 dark:text-brand-300"
+                              title={`Cập nhật phiên bản mới v${(doc.currentVersionNo || 1) + 1}`}
+                            >
+                              + Cập nhật v{(doc.currentVersionNo || 1) + 1}
+                            </button>
+                          )}
+                          {!isLocked && (
+                            <button
+                              type="button"
                               onClick={() => setPendingRemove(doc)}
                               disabled={isPending}
                               className="rounded-lg p-1.5 text-gray-400 hover:bg-error-50 hover:text-error-600 dark:hover:bg-error-950/40 dark:hover:text-error-400 transition-colors"
@@ -348,6 +378,18 @@ export function PoDocumentsSection({
                         </div>
                       </td>
                     </tr>
+                    {expandedDocumentId === doc.documentId && (
+                      <tr className="bg-gray-50/70 dark:bg-gray-800/30">
+                        <td colSpan={5} className="px-5 py-4">
+                          <div className="grid gap-3 md:grid-cols-2">
+                            {doc.versions?.map((version) => (
+                              <DocumentVersionDetails key={version.id} version={version} />
+                            ))}
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                    </Fragment>
                   );
                 })}
               </tbody>
@@ -355,6 +397,20 @@ export function PoDocumentsSection({
           </div>
         )}
       </div>
+
+      {versionTarget && onUploadVersion && (
+        <DocumentVersionUploadModal
+          key={versionTarget.documentId}
+          title={versionTarget.title}
+          currentVersionNo={versionTarget.currentVersionNo || 1}
+          isPending={isPending}
+          onClose={() => setVersionTarget(null)}
+          onSave={async (file, reason, evidence) => {
+            await onUploadVersion(versionTarget, file, reason, evidence);
+            setVersionTarget(null);
+          }}
+        />
+      )}
 
       <ConfirmDialog
         open={pendingRemove !== null}

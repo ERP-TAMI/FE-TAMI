@@ -484,13 +484,15 @@ export function useUploadProductDocumentVersion() {
       file,
       purpose,
       changeReason,
+      evidence,
     }: {
       poId: string;
       productId: string;
       documentId: string;
       file: File;
       purpose: string;
-      changeReason?: string;
+      changeReason: string;
+      evidence?: File;
     }) =>
       poApi.uploadProductDocumentVersion(
         poId,
@@ -499,12 +501,35 @@ export function useUploadProductDocumentVersion() {
         file,
         purpose,
         changeReason,
+        evidence,
       ),
     onSuccess: (_, { poId, productId }) => {
       void queryClient.invalidateQueries({
         queryKey: PO_KEYS.productDocumentsOf(poId, productId),
       });
       void queryClient.invalidateQueries({ queryKey: PO_KEYS.productsOf(poId) });
+      void queryClient.invalidateQueries({ queryKey: PO_KEYS.detail(poId) });
+      void queryClient.invalidateQueries({ queryKey: PO_KEYS.documentsOf(poId) });
+      void queryClient.invalidateQueries({ queryKey: [...PO_KEYS.all, "productDocuments", poId] });
+    },
+  });
+}
+
+export function useUploadPoDocumentVersion() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ poId, documentId, file, purpose, changeReason, evidence }: {
+      poId: string;
+      documentId: string;
+      file: File;
+      purpose: string;
+      changeReason: string;
+      evidence?: File;
+    }) => poApi.uploadPoDocumentVersion(poId, documentId, file, purpose, changeReason, evidence),
+    onSuccess: (_, { poId }) => {
+      void queryClient.invalidateQueries({ queryKey: PO_KEYS.documentsOf(poId) });
+      void queryClient.invalidateQueries({ queryKey: PO_KEYS.productsOf(poId) });
+      void queryClient.invalidateQueries({ queryKey: [...PO_KEYS.all, "productDocuments", poId] });
       void queryClient.invalidateQueries({ queryKey: PO_KEYS.detail(poId) });
     },
   });

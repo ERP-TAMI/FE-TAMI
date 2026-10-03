@@ -344,7 +344,7 @@ describe("poApi", () => {
       expect(res).toEqual(mockRes);
     });
 
-    it("confirmProductDocumentVersion falls back to the base payload if the backend rejects changeReason as an unknown field", async () => {
+    it("confirmProductDocumentVersion never drops the required change reason on a 400", async () => {
       const whitelistError = {
         isAxiosError: true,
         response: {
@@ -352,13 +352,10 @@ describe("poApi", () => {
           data: { message: ["property changeReason should not exist"] },
         },
       };
-      const mockRes = { documentId: "doc-1", currentVersionNo: 2 };
-      vi.mocked(apiClient.post)
-        .mockRejectedValueOnce(whitelistError)
-        .mockResolvedValueOnce({ data: mockRes });
+      vi.mocked(apiClient.post).mockRejectedValueOnce(whitelistError);
 
       const file = new File(["dummy"], "test_v2.pdf", { type: "application/pdf" });
-      const res = await poApi.confirmProductDocumentVersion(
+      await expect(poApi.confirmProductDocumentVersion(
         "po-1",
         "prod-1",
         "doc-1",
@@ -366,20 +363,9 @@ describe("poApi", () => {
         file,
         "tech_pack",
         "Khách yêu cầu chỉnh sửa",
-      );
+      )).rejects.toBe(whitelistError);
 
-      expect(apiClient.post).toHaveBeenCalledTimes(2);
-      expect(apiClient.post).toHaveBeenLastCalledWith(
-        "/purchase-orders/po-1/products/prod-1/documents/doc-1/versions/confirm",
-        {
-          objectKey: "k2",
-          fileName: "test_v2.pdf",
-          mimeType: "application/pdf",
-          sizeBytes: file.size,
-          purpose: "tech_pack",
-        },
-      );
-      expect(res).toEqual(mockRes);
+      expect(apiClient.post).toHaveBeenCalledTimes(1);
     });
 
     it("uploadProductDocumentVersion runs presign -> S3 PUT -> versions/confirm end to end", async () => {
@@ -397,9 +383,31 @@ describe("poApi", () => {
         "doc-1",
         file,
         "tech_pack",
+        "Khách yêu cầu chỉnh sửa",
       );
 
       expect(res).toEqual({ documentId: "doc-1", currentVersionNo: 2 });
+    });
+
+    it("uploadPoDocumentVersion attaches optional evidence to the shared document version", async () => {
+      const file = new File(["%PDF-test"], "v2.pdf", { type: "application/pdf" });
+      const evidence = new File(["image"], "request.png", { type: "image/png" });
+      vi.mocked(apiClient.post)
+        .mockResolvedValueOnce({ data: { objectKey: "main-key", uploadUrl: "https://s3.example/main" } })
+        .mockResolvedValueOnce({ data: { objectKey: "evidence-key", uploadUrl: "https://s3.example/evidence" } })
+        .mockResolvedValueOnce({ data: { documentId: "doc-1", currentVersionNo: 2 } });
+      vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true }));
+
+      await poApi.uploadPoDocumentVersion("po-1", "doc-1", file, "other", "Khách yêu cầu đổi", evidence);
+
+      expect(apiClient.post).toHaveBeenLastCalledWith(
+        "/purchase-orders/po-1/documents/doc-1/versions/confirm",
+        expect.objectContaining({
+          changeReason: "Khách yêu cầu đổi",
+          evidenceObjectKey: "evidence-key",
+          evidenceFileName: "request.png",
+        }),
+      );
     });
   });
 });
