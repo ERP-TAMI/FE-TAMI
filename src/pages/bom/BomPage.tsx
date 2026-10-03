@@ -6,8 +6,14 @@ import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { useAuthStore } from "@/store/authStore";
 import { useToast } from "@/hooks/useToast";
-import { useBoms, useDiscontinueBom } from "@/hooks/useBoms";
-import { canCreateBom, canViewBomCost, getCurrentMonthString } from "@/lib/bomAccess";
+import { useBoms, useDiscontinueBom, useRestoreBom } from "@/hooks/useBoms";
+import {
+  canCreateBom,
+  canDiscontinueBom,
+  canRestoreBom,
+  canViewBomCost,
+  getCurrentMonthString,
+} from "@/lib/bomAccess";
 import type { BomType, BomListItem } from "@/types/bom";
 
 import type { PeriodMode } from "@/components/features/bom/BomStatsCards";
@@ -24,9 +30,11 @@ export default function BomPage() {
 
   // Modal create wizard state
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [deletingBom, setDeletingBom] = useState<BomListItem | null>(null);
+  const [discontinuingBom, setDiscontinuingBom] = useState<BomListItem | null>(null);
+  const [restoringBom, setRestoringBom] = useState<BomListItem | null>(null);
 
-  const discontinueMutation = useDiscontinueBom(deletingBom?.id || "");
+  const discontinueMutation = useDiscontinueBom(discontinuingBom?.id || "");
+  const restoreMutation = useRestoreBom(restoringBom?.id || "");
 
   // Permission checks
   const canCreate = canCreateBom(user);
@@ -230,23 +238,44 @@ export default function BomPage() {
 
   const handleOpenBom = (item: BomListItem) => handleViewDetail(item.id);
 
-  const handleDelete = (item: BomListItem) => {
-    setDeletingBom(item);
+  const handleDiscontinue = (item: BomListItem) => {
+    setDiscontinuingBom(item);
   };
 
   const handleConfirmDiscontinue = async () => {
-    if (!deletingBom) return;
+    if (!discontinuingBom) return;
     try {
-      const detail = await bomsApi.getBomById(deletingBom.id);
+      const detail = await bomsApi.getBomById(discontinuingBom.id);
       await discontinueMutation.mutateAsync({
         reason: "Ngừng sử dụng từ danh sách NPL",
         expectedRowVersion: detail.rowVersion,
       });
-      showToast(`Đã ngừng sử dụng bảng định mức ${deletingBom.bomCode}`, "success");
-      setDeletingBom(null);
-    } catch {
+      showToast(`Đã ngừng sử dụng bảng định mức ${discontinuingBom.bomCode}`, "success");
+      setDiscontinuingBom(null);
+    } catch (err: unknown) {
+      const apiError = err as { response?: { data?: { message?: unknown } } };
+      const message = apiError.response?.data?.message;
       showToast(
-        "Không thể ngừng sử dụng bảng NPL này. Vui lòng kiểm tra quyền hạn của bạn.",
+        typeof message === "string"
+          ? message
+          : "Không thể ngừng sử dụng bảng NPL. Vui lòng thử lại.",
+        "error",
+      );
+    }
+  };
+
+  const handleConfirmRestore = async () => {
+    if (!restoringBom) return;
+    try {
+      const detail = await bomsApi.getBomById(restoringBom.id);
+      await restoreMutation.mutateAsync({ expectedRowVersion: detail.rowVersion });
+      showToast(`Đã mở khóa NPL ${restoringBom.bomCode}`, "success");
+      setRestoringBom(null);
+    } catch (err: unknown) {
+      const apiError = err as { response?: { data?: { message?: unknown } } };
+      const message = apiError.response?.data?.message;
+      showToast(
+        typeof message === "string" ? message : "Không thể mở khóa NPL. Vui lòng thử lại.",
         "error",
       );
     }
@@ -300,8 +329,11 @@ export default function BomPage() {
         onClearFilters={handleClearFilters}
         canCreate={canCreate}
         onCreateClick={() => setIsCreateOpen(true)}
+        canDiscontinue={(item) => canDiscontinueBom(user, item) && !item.discontinuedAt}
+        canRestore={(item) => canRestoreBom(user) && Boolean(item.discontinuedAt)}
         onOpenBom={handleOpenBom}
-        onDelete={handleDelete}
+        onDiscontinue={handleDiscontinue}
+        onRestore={setRestoringBom}
       />
 
       {/* Pagination Footer */}
@@ -321,15 +353,26 @@ export default function BomPage() {
 
       {/* Discontinue Confirm Dialog */}
       <ConfirmDialog
-        open={Boolean(deletingBom)}
+        open={Boolean(discontinuingBom)}
         title="Ngừng sử dụng NPL"
-        description={`Bạn có chắc chắn muốn ngừng sử dụng (khóa) bảng định mức "${deletingBom?.bomCode}"? Sau khi ngừng sử dụng, bảng NPL sẽ chuyển sang trạng thái Đã khóa và không thể chỉnh sửa.`}
+        description={`Bạn có chắc chắn muốn ngừng sử dụng (khóa) bảng định mức "${discontinuingBom?.bomCode}"? NPL đã khóa chỉ có thể được TPKH hoặc Quản trị hệ thống mở khóa.`}
         confirmLabel="Ngừng sử dụng"
         closeOnClickOutside
         variant="danger"
         isSubmitting={discontinueMutation.isPending}
         onConfirm={handleConfirmDiscontinue}
-        onClose={() => setDeletingBom(null)}
+        onClose={() => setDiscontinuingBom(null)}
+      />
+
+      <ConfirmDialog
+        open={Boolean(restoringBom)}
+        title="Mở khóa NPL"
+        description={`Khôi phục sử dụng bảng định mức "${restoringBom?.bomCode}"? NPL sẽ quay lại trạng thái theo phiên bản hiện tại.`}
+        confirmLabel="Mở khóa"
+        closeOnClickOutside
+        isSubmitting={restoreMutation.isPending}
+        onConfirm={handleConfirmRestore}
+        onClose={() => setRestoringBom(null)}
       />
 
       {/* Global Toast */}

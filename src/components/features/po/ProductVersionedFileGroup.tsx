@@ -10,6 +10,7 @@ import {
   PurchaseOrderDocumentVersionItem,
 } from "@/types/po";
 import { uploadsApi } from "@/api/uploads.api";
+import { DocumentVersionDetails } from "./DocumentVersionDetails";
 
 interface ProductVersionedFileGroupProps {
   doc: ProductDocumentItem;
@@ -20,6 +21,7 @@ interface ProductVersionedFileGroupProps {
     currentVersionNo: number,
     title: string,
     purpose: string,
+    sharedWithPo: boolean,
   ) => void;
   onDelete: (documentId: string) => void;
   onPreview: (doc: ProductDocumentItem, version?: PurchaseOrderDocumentVersionItem) => void;
@@ -156,16 +158,12 @@ export function ProductVersionedFileGroup({
               <span>•</span>
               <span>Cập nhật: {formatDate(activeUploadedAt)}</span>
             </div>
-
-            {/* Change Reason Note if any */}
             {activeChangeReason && (
-              <div className="pt-0.5">
-                <span className="inline-flex items-center gap-1 text-[11px] text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-800/80 px-2 py-0.5 rounded-md border border-gray-200 dark:border-gray-700">
-                  <span className="font-semibold text-gray-700 dark:text-gray-200">Ghi chú:</span>
-                  <span className="italic">{activeChangeReason}</span>
-                </span>
-              </div>
+              <p className="max-w-sm truncate text-[11px] text-gray-600 dark:text-gray-300" title={activeChangeReason}>
+                <span className="font-semibold">Ghi chú:</span> {activeChangeReason}
+              </p>
             )}
+
           </div>
         </div>
 
@@ -207,6 +205,7 @@ export function ProductVersionedFileGroup({
                   maxVersion,
                   doc.title || activeFileName,
                   doc.purpose || "other",
+                  Boolean(doc.sourcePoDocument),
                 )
               }
               className="inline-flex items-center gap-1 rounded-lg border border-brand-200 bg-brand-50/50 px-2.5 py-1 text-xs font-semibold text-brand-600 hover:bg-brand-100 hover:border-brand-300 dark:border-brand-800 dark:bg-brand-950/40 dark:text-brand-300 transition cursor-pointer"
@@ -261,6 +260,14 @@ export function ProductVersionedFileGroup({
               );
             })}
           </div>
+        </div>
+      )}
+      {viewingVersion && (
+        <div className="border-t border-gray-100 px-3.5 py-2.5 dark:border-gray-800">
+          <details>
+            <summary className="cursor-pointer text-[11px] font-semibold text-brand-600 dark:text-brand-300">Chi tiết phiên bản v{viewingVersion.versionNo}</summary>
+            <div className="pt-2"><DocumentVersionDetails version={viewingVersion} /></div>
+          </details>
         </div>
       )}
     </div>

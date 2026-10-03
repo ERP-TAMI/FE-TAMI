@@ -87,6 +87,25 @@ describe("StyleListPage", () => {
     });
   });
 
+  it("uses one search field for style code, name, and product line", async () => {
+    vi.mocked(stylesApi.getStyles).mockResolvedValue({
+      data: mockStyles,
+      meta: { total: 1, page: 1, limit: 10, totalPages: 1 },
+    });
+
+    renderPage();
+
+    const search = screen.getByPlaceholderText("Tìm theo mã, tên mẫu hoặc dòng sản phẩm...");
+    fireEvent.change(search, { target: { value: "Áo Polo" } });
+
+    await waitFor(() => {
+      expect(stylesApi.getStyles).toHaveBeenLastCalledWith(
+        expect.objectContaining({ search: "Áo Polo" }),
+      );
+    });
+    expect(vi.mocked(stylesApi.getStyles).mock.lastCall?.[0]).not.toHaveProperty("category");
+  });
+
   it("renders empty state when no styles found", async () => {
     vi.mocked(stylesApi.getStyles).mockResolvedValueOnce({
       data: [],

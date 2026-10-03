@@ -30,6 +30,7 @@ const hooks = vi.hoisted(() => ({
   createRevision: { isPending: false, mutateAsync: vi.fn() },
   copyFit: { isPending: false, mutateAsync: vi.fn() },
   discontinueBom: { isPending: false, mutateAsync: vi.fn() },
+  restoreBom: { isPending: false, mutateAsync: vi.fn() },
   mockNavigate: vi.fn(),
   mockUser: { roleCode: "TPKH", fullName: "Trưởng phòng KH" } as {
     roleCode: string;
@@ -80,6 +81,7 @@ vi.mock("@/hooks/useBoms", () => ({
   useCreateBomRevision: () => hooks.createRevision,
   useCopyFitToPoBom: () => hooks.copyFit,
   useDiscontinueBom: () => hooks.discontinueBom,
+  useRestoreBom: () => hooks.restoreBom,
 }));
 
 vi.mock("@/components/features/audit/EntityHistoryButton", () => ({
@@ -894,7 +896,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       expect(screen.getAllByText("Phụ liệu may").length).toBeGreaterThan(0);
     });
 
-    it("exports the materials list to CSV when 'Xuất Excel' is clicked", () => {
+    it("exports the materials list as a real XLSX file when 'Xuất Excel' is clicked", async () => {
       const createObjectURL = vi.fn().mockReturnValue("blob:mock-url");
       const revokeObjectURL = vi.fn();
       vi.stubGlobal("URL", { ...URL, createObjectURL, revokeObjectURL });
@@ -907,9 +909,10 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
 
       fireEvent.click(screen.getByRole("button", { name: /Xuất Excel/ }));
 
-      expect(createObjectURL).toHaveBeenCalledTimes(1);
+      await waitFor(() => expect(createObjectURL).toHaveBeenCalledTimes(1));
       const blob = createObjectURL.mock.calls[0][0] as Blob;
-      expect(blob.type).toContain("text/csv");
+      expect(blob.type).toBe("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+      expect(blob.size).toBeGreaterThan(0);
       expect(revokeObjectURL).toHaveBeenCalledWith("blob:mock-url");
 
       vi.unstubAllGlobals();

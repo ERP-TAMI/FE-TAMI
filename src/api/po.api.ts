@@ -1,4 +1,3 @@
-import axios from "axios";
 import apiClient from "@/lib/apiClient";
 import type {
   CreatePoInput,
@@ -36,20 +35,6 @@ export interface UploadProgress {
 export interface UploadDocumentsOptions {
   concurrency?: number;
   onProgress?: (progress: UploadProgress) => void;
-}
-
-/**
- * Detects a NestJS `ValidationPipe({ whitelist: true, forbidNonWhitelisted: true })`
- * 400 rejection caused specifically by an unrecognized `fieldName` in the
- * request body (message shape: `["property <field> should not exist"]`).
- */
-function isWhitelistRejection(error: unknown, fieldName: string): boolean {
-  if (!axios.isAxiosError(error) || error.response?.status !== 400) return false;
-  const rawMessage = error.response?.data?.message;
-  const messages = Array.isArray(rawMessage) ? rawMessage : [rawMessage];
-  return messages.some(
-    (m) => typeof m === "string" && m.includes(fieldName) && m.includes("should not exist"),
-  );
 }
 
 export const poApi = {
@@ -446,48 +431,25 @@ export const poApi = {
     objectKey: string,
     file: File,
     purpose: string,
-    changeReason?: string,
+    changeReason: string,
+    evidence?: File,
+    evidenceObjectKey?: string,
   ): Promise<import("@/types/po").ProductDocumentItem> {
     const url = `/purchase-orders/${poId}/products/${productId}/documents/${documentId}/versions/confirm`;
-    const basePayload = {
+    const response = await apiClient.post<import("@/types/po").ProductDocumentItem>(url, {
       objectKey,
       fileName: file.name,
       mimeType: file.type,
       sizeBytes: file.size,
       purpose,
-    };
-    const trimmedReason = changeReason?.trim();
-    if (!trimmedReason) {
-      const response = await apiClient.post<import("@/types/po").ProductDocumentItem>(
-        url,
-        basePayload,
-      );
-      return response.data;
-    }
-    // NOTE: `changeReason` isn't part of the base confirm body shared with
-    // documents/confirm, but the existing version-upload UI requires a
-    // customer change-reason note (see PoProductDetailPage's "Lý do / Ghi
-    // chú thay đổi" field, historically sent to the old multipart versions
-    // endpoint). Try sending it along; the backend's global ValidationPipe
-    // runs with forbidNonWhitelisted, so if the versions/confirm DTO hasn't
-    // been extended to accept it yet, fall back to the base payload rather
-    // than failing the whole upload.
-    try {
-      const response = await apiClient.post<import("@/types/po").ProductDocumentItem>(
-        url,
-        { ...basePayload, changeReason: trimmedReason },
-      );
-      return response.data;
-    } catch (err: unknown) {
-      if (isWhitelistRejection(err, "changeReason")) {
-        const response = await apiClient.post<import("@/types/po").ProductDocumentItem>(
-          url,
-          basePayload,
-        );
-        return response.data;
-      }
-      throw err;
-    }
+      changeReason: changeReason.trim(),
+      ...(evidence && evidenceObjectKey ? {
+        evidenceObjectKey,
+        evidenceFileName: evidence.name,
+        evidenceMimeType: evidence.type,
+      } : {}),
+    });
+    return response.data;
   },
 
   async uploadProductDocumentVersion(
@@ -496,10 +458,17 @@ export const poApi = {
     documentId: string,
     file: File,
     purpose: string,
-    changeReason?: string,
+    changeReason: string,
+    evidence?: File,
   ): Promise<import("@/types/po").ProductDocumentItem> {
     const presign = await poApi.presignProductDocument(poId, productId, file, purpose);
     await poApi.uploadToS3(presign.uploadUrl, file);
+    const evidencePresign = evidence
+      ? await poApi.presignProductDocument(poId, productId, evidence, purpose)
+      : null;
+    if (evidence && evidencePresign) {
+      await poApi.uploadToS3(evidencePresign.uploadUrl, evidence);
+    }
     return poApi.confirmProductDocumentVersion(
       poId,
       productId,
@@ -508,7 +477,44 @@ export const poApi = {
       file,
       purpose,
       changeReason,
+      evidence,
+      evidencePresign?.objectKey,
     );
+  },
+
+  async uploadPoDocumentVersion(
+    poId: string,
+    documentId: string,
+    file: File,
+    purpose: string,
+    changeReason: string,
+    evidence?: File,
+  ): Promise<PurchaseOrderDocumentItem> {
+    const presign = await poApi.presignDocument(poId, file, purpose);
+    await poApi.uploadToS3(presign.uploadUrl, file);
+    const evidencePresign = evidence
+      ? await poApi.presignDocument(poId, evidence, purpose)
+      : null;
+    if (evidence && evidencePresign) {
+      await poApi.uploadToS3(evidencePresign.uploadUrl, evidence);
+    }
+    const response = await apiClient.post<PurchaseOrderDocumentItem>(
+      `/purchase-orders/${poId}/documents/${documentId}/versions/confirm`,
+      {
+        objectKey: presign.objectKey,
+        fileName: file.name,
+        mimeType: file.type,
+        sizeBytes: file.size,
+        purpose,
+        changeReason: changeReason.trim(),
+        ...(evidence && evidencePresign ? {
+          evidenceObjectKey: evidencePresign.objectKey,
+          evidenceFileName: evidence.name,
+          evidenceMimeType: evidence.type,
+        } : {}),
+      },
+    );
+    return response.data;
   },
 
   async getProductOperationSteps(

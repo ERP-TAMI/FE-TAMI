@@ -180,6 +180,10 @@ export interface DiscontinueBomPayload {
   expectedRowVersion: number;
 }
 
+export interface RestoreBomPayload {
+  expectedRowVersion: number;
+}
+
 export interface SaveBomLineRow {
   lineId?: string;
   materialId?: string;
@@ -370,4 +374,41 @@ export interface BomAggregateParams {
   breakdown?: AggregateBreakdownType;
   page?: number;
   limit?: number;
+}
+export interface EligiblePurchaseOrder {
+  id: string;
+  poCode: string;
+  customerNameSnapshot: string;
+}
+
+export interface EligibleFitStyle {
+  id: string;
+  styleCode: string;
+  styleName: string;
+  category: string | null;
+}
+
+export interface EligibleFitStylePage {
+  items: EligibleFitStyle[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+export interface EligiblePoProduct {
+  id: string;
+  status: string;
+  productCode: string;
+  productName: string;
+  colors: string[];
+  totalQuantity: number;
+}
+
+export interface EligiblePoPage {
+  items: EligiblePurchaseOrder[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
 }

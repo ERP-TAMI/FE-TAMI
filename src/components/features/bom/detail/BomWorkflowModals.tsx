@@ -443,8 +443,8 @@ export function BomDiscontinueModal({ isOpen, bomCode, onClose, onSubmit }: Disc
           <div className="text-theme-xs flex items-start gap-2.5 rounded-xl border border-rose-200 bg-rose-50/70 p-3 text-rose-800 dark:border-rose-900/40 dark:bg-rose-950/20 dark:text-rose-300">
             <AlertTriangle className="h-4 w-4 shrink-0 text-rose-600" />
             <span>
-              Cảnh báo: Sau khi ngừng sử dụng, toàn bộ các phiên bản sẽ bị đóng băng. Thao tác này{" "}
-              <strong>không thể hoàn tác</strong>!
+              Cảnh báo: Sau khi ngừng sử dụng, NPL sẽ bị khóa. Chỉ Trưởng phòng Kế hoạch hoặc Quản
+              trị hệ thống mới có thể mở khóa lại.
             </span>
           </div>
 

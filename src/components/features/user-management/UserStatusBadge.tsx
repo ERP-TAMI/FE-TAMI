@@ -1,4 +1,5 @@
 import type { UserAccountStatus } from "@/types/user-management";
+import { STATUS_BADGE_BASE as BASE } from "@/components/shared/badgeStyles";
 
 const statusConfig: Record<UserAccountStatus, { label: string; className: string }> = {
   active: {
@@ -22,11 +23,5 @@ const statusConfig: Record<UserAccountStatus, { label: string; className: string
 
 export function UserStatusBadge({ status }: { status: UserAccountStatus }) {
   const config = statusConfig[status];
-  return (
-    <span
-      className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${config.className}`}
-    >
-      {config.label}
-    </span>
-  );
+  return <span className={`${BASE} border-transparent ${config.className}`}>{config.label}</span>;
 }
