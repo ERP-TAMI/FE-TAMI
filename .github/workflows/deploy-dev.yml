@@ -20,8 +20,9 @@ jobs:
   deploy:
     name: Build and publish static site
     needs: checks
-    if: ${{ github.ref == 'refs/heads/dev' && vars.AWS_ROLE_ARN != '' }}
+    if: ${{ github.ref == 'refs/heads/dev' }}
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     permissions:
       contents: read
       id-token: write
@@ -57,16 +58,36 @@ jobs:
           AWS_REGION: ${{ vars.AWS_REGION }}
           S3_FRONTEND_BUCKET: ${{ vars.S3_FRONTEND_BUCKET }}
           CLOUDFRONT_DIST_ID: ${{ vars.CLOUDFRONT_DIST_ID }}
+          APP_URL: ${{ vars.APP_URL }}
         run: |
           set -euo pipefail
           [[ "$AWS_REGION" =~ ^[a-z]{2}(-gov)?-[a-z]+-[0-9]+$ ]]
           [[ "$S3_FRONTEND_BUCKET" =~ ^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$ ]]
           [[ "$CLOUDFRONT_DIST_ID" =~ ^[A-Z0-9]+$ ]]
-          aws s3 sync dist/ "s3://${S3_FRONTEND_BUCKET}/" \
-            --delete --exclude index.html \
+          [[ "$APP_URL" =~ ^https://[A-Za-z0-9.-]+$ ]]
+          aws s3 sync dist/assets/ "s3://${S3_FRONTEND_BUCKET}/assets/" \
             --cache-control 'public,max-age=31536000,immutable'
+          aws s3 sync dist/ "s3://${S3_FRONTEND_BUCKET}/" \
+            --exclude index.html --exclude 'assets/*' --cache-control 'no-cache,max-age=0,must-revalidate'
+          # Keep existing hashed assets for browsers with an older entry point.
           aws s3 cp dist/index.html "s3://${S3_FRONTEND_BUCKET}/index.html" \
             --cache-control 'no-cache,max-age=0,must-revalidate'
-          aws cloudfront create-invalidation \
+          invalidation_id="$(aws cloudfront create-invalidation \
             --distribution-id "$CLOUDFRONT_DIST_ID" \
-            --paths '/index.html'
+            --paths '/index.html' '/' --query Invalidation.Id --output text)"
+          aws cloudfront wait invalidation-completed --distribution-id "$CLOUDFRONT_DIST_ID" --id "$invalidation_id"
+          node --input-type=module <<'JS'
+          const origin = process.env.APP_URL;
+          const response = await fetch(origin);
+          if (!response.ok) throw new Error(`Frontend returned ${response.status}`);
+          const html = await response.text();
+          const scripts = [...html.matchAll(/<script[^>]+src="([^"]+)"/g)].map(match => match[1]);
+          if (!scripts.length) throw new Error('Frontend HTML has no application script');
+          for (const path of scripts) {
+            const asset = await fetch(new URL(path, origin));
+            if (!asset.ok || !asset.headers.get('content-type')?.includes('javascript')) {
+              throw new Error(`Application script unavailable: ${path}`);
+            }
+          }
+          console.log('Frontend HTML and application scripts are available.');
+          JS
