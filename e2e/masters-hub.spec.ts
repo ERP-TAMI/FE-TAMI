@@ -1,7 +1,13 @@
 import { expect, test, type Page } from "@playwright/test";
 
+const createTestAccessToken = () => {
+  const encode = (value: Record<string, unknown>) =>
+    Buffer.from(JSON.stringify(value)).toString('base64url');
+  return `${encode({ alg: 'none', typ: 'JWT' })}.${encode({ exp: 2000000000 })}.test`;
+};
+
 const session = {
-  accessToken: "e30.eyJleHAiOjQxMDI0NDQ4MDB9.signature",
+  accessToken: createTestAccessToken(),
   user: {
     id: "11111111-1111-1111-1111-111111111111",
     email: "sa@tami.test",
