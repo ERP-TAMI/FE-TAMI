@@ -1,4 +1,5 @@
 import type { ManagementPurchaseOrderSummaryStatus } from "@/types/management-dashboard";
+import { STATUS_BADGE_BASE as BASE } from "@/components/shared/badgeStyles";
 import {
   getManagementPoDeadlineDisplay,
   getManagementPoStatusDisplay,
@@ -14,7 +15,7 @@ export function ManagementPoSummaryStatusBadge({ status }: StatusBadgeProps) {
   return (
     <span
       aria-label={`Trạng thái: ${display.label}`}
-      className={`text-theme-xs inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 leading-none font-medium ${display.badgeClassName}`}
+      className={`${BASE} py-1 ${display.badgeClassName}`}
     >
       <span
         aria-hidden="true"

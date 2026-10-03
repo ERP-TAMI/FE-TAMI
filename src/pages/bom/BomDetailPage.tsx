@@ -36,12 +36,11 @@ import {
 } from "@/components/features/bom/detail/BomWorkflowModals";
 import { BomRevisionsTab } from "@/components/features/bom/detail/BomRevisionsTab";
 import { BomRevisionDiffModal } from "@/components/features/bom/detail/BomRevisionDiffModal";
-import { BomAggregateTab } from "@/components/features/bom/detail/BomAggregateTab";
 import { BomCopyFitModal } from "@/components/features/bom/detail/BomCopyFitModal";
 import { useAuthStore } from "@/store/authStore";
 import { canPromoteRevision } from "@/lib/bomAccess";
 
-type ActiveTab = "lines" | "revisions" | "aggregate";
+type ActiveTab = "lines" | "revisions";
 
 export default function BomDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -51,15 +50,14 @@ export default function BomDetailPage() {
   const user = useAuthStore((state) => state.user);
 
   const tabFromUrl = searchParams.get("tab");
-  const initialTab: ActiveTab =
-    tabFromUrl === "revisions" || tabFromUrl === "aggregate" ? tabFromUrl : "lines";
+  const initialTab: ActiveTab = tabFromUrl === "revisions" ? "revisions" : "lines";
   const [activeTab, setActiveTab] = useState<ActiveTab>(initialTab);
 
   const selectedRevisionParam = searchParams.get("revision");
 
   useEffect(() => {
     const t = searchParams.get("tab");
-    if (t === "revisions" || t === "aggregate" || t === "lines") {
+    if (t === "revisions" || t === "lines") {
       setActiveTab(t);
     }
   }, [searchParams]);
@@ -416,19 +414,6 @@ export default function BomDetailPage() {
               <span>Lịch sử</span>
             </button>
 
-            {bom.type === "po" && (
-              <button
-                type="button"
-                onClick={() => setActiveTab("aggregate")}
-                className={`cursor-pointer border-b-2 py-3 text-sm font-semibold transition-colors ${
-                  activeTab === "aggregate"
-                    ? "border-brand-600 text-brand-600 dark:border-brand-400 dark:text-brand-400"
-                    : "border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-                }`}
-              >
-                Tổng hợp
-              </button>
-            )}
           </div>
         </div>
 
@@ -482,7 +467,6 @@ export default function BomDetailPage() {
           />
         )}
 
-        {activeTab === "aggregate" && bom.type === "po" && <BomAggregateTab bomId={bom.id} />}
       </div>
 
       {/* 6. Modals */}

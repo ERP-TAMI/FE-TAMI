@@ -1,4 +1,5 @@
 import { memo, useMemo, useState, type ReactNode } from "react";
+import ExcelJS from "exceljs";
 import {
   Search,
   Plus,
@@ -38,7 +39,7 @@ interface BomLinesTableProps {
   onMove: (key: string, delta: -1 | 1) => void;
 }
 
-function exportRowsToCsv(rows: DraftLine[], bomCode: string, canViewCost: boolean) {
+async function exportRowsToXlsx(rows: DraftLine[], bomCode: string, canViewCost: boolean) {
   const headers = [
     "#",
     "Nhóm",
@@ -65,16 +66,37 @@ function exportRowsToCsv(rows: DraftLine[], bomCode: string, canViewCost: boolea
     row.note || "",
   ]);
 
-  const csvContent =
-    "﻿" +
-    [headers, ...body]
-      .map((cells) => cells.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(","))
-      .join("\n");
-  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = "TAMI ERP";
+  workbook.subject = `Danh sách nguyên liệu NPL ${bomCode}`;
+  const worksheet = workbook.addWorksheet("Nguyên liệu");
+  worksheet.addRow(headers);
+  worksheet.addRows(body);
+  worksheet.columns = headers.map((header, index) => ({
+    header,
+    key: `column${index}`,
+    width: Math.min(36, Math.max(12, header.length + 4)),
+  }));
+  worksheet.getRow(1).font = { bold: true, color: { argb: "FFFFFFFF" } };
+  worksheet.getRow(1).fill = {
+    type: "pattern",
+    pattern: "solid",
+    fgColor: { argb: "FF465FFF" },
+  };
+  worksheet.views = [{ state: "frozen", ySplit: 1 }];
+  worksheet.autoFilter = {
+    from: { row: 1, column: 1 },
+    to: { row: 1, column: headers.length },
+  };
+
+  const buffer = await workbook.xlsx.writeBuffer();
+  const blob = new Blob([buffer as BlobPart], {
+    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.setAttribute("href", url);
-  link.setAttribute("download", `NPL_${bomCode}_${Date.now()}.csv`);
+  link.setAttribute("download", `NPL_${bomCode}_${Date.now()}.xlsx`);
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
@@ -394,7 +416,7 @@ export function BomLinesTable({
           {rows.length > 0 && !isEditing && (
             <button
               type="button"
-              onClick={() => exportRowsToCsv(rows, bomCode, canViewCost)}
+              onClick={() => void exportRowsToXlsx(rows, bomCode, canViewCost)}
               className="text-theme-sm inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-blue-200/80 bg-white px-3.5 py-2 font-semibold text-blue-600 shadow-2xs transition-colors hover:bg-blue-50 dark:border-blue-800 dark:bg-gray-900 dark:text-blue-400"
             >
               <Download className="h-4 w-4" />

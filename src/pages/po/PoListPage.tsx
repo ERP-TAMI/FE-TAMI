@@ -13,8 +13,11 @@ import { poApi } from "@/api/po.api";
 import { useToast } from "@/hooks/useToast";
 import { getApiError } from "@/lib/apiError";
 import { getDeadlineInfo, deadlinePillClasses } from "@/lib/poDeadline";
-import { TrashBinIcon } from "@/icons";
-import type { CreatePoInput, PoStatus, AttachedDocItem } from "@/types/po";
+import { GridIcon, TableIcon, TrashBinIcon } from "@/icons";
+import type { CreatePoInput, PoStatus, AttachedDocItem, PurchaseOrderListItem } from "@/types/po";
+
+type ViewMode = "table" | "grid";
+const PO_VIEW_MODE_KEY = "tami.po-list.view-mode";
 
 function formatDate(dateStr: string | null | undefined): string {
   if (!dateStr) return "—";
@@ -33,6 +36,14 @@ export default function PoListPage() {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [page, setPage] = useState(1);
+  const [viewMode, setViewMode] = useState<ViewMode>(() =>
+    localStorage.getItem(PO_VIEW_MODE_KEY) === "grid" ? "grid" : "table",
+  );
+
+  const changeViewMode = (mode: ViewMode) => {
+    localStorage.setItem(PO_VIEW_MODE_KEY, mode);
+    setViewMode(mode);
+  };
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(null);
@@ -279,9 +290,33 @@ export default function PoListPage() {
             </Button>
           )}
 
-          <Button className="ml-auto" onClick={() => setIsCreateOpen(true)}>
+          <div className="ml-auto flex items-center gap-2">
+            <div className="flex items-center rounded-lg border border-gray-200 bg-gray-50/80 p-0.5 dark:border-gray-800 dark:bg-gray-900">
+              <button
+                type="button"
+                aria-pressed={viewMode === "table"}
+                onClick={() => changeViewMode("table")}
+                className={`flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors ${viewMode === "table" ? "bg-white font-semibold text-gray-900 shadow-xs dark:bg-gray-800 dark:text-white" : "text-gray-500 hover:text-gray-900 dark:text-gray-400"}`}
+                title="Xem dạng Bảng"
+              >
+                <TableIcon className="h-4 w-4" />
+                <span>Bảng</span>
+              </button>
+              <button
+                type="button"
+                aria-pressed={viewMode === "grid"}
+                onClick={() => changeViewMode("grid")}
+                className={`flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors ${viewMode === "grid" ? "bg-white font-semibold text-gray-900 shadow-xs dark:bg-gray-800 dark:text-white" : "text-gray-500 hover:text-gray-900 dark:text-gray-400"}`}
+                title="Xem dạng Thẻ"
+              >
+                <GridIcon className="h-4 w-4" />
+                <span>Thẻ</span>
+              </button>
+            </div>
+            <Button onClick={() => setIsCreateOpen(true)}>
             + Tạo PO mới
-          </Button>
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -309,6 +344,83 @@ export default function PoListPage() {
           <p className="mt-1 text-theme-xs text-gray-500 dark:text-gray-400">
             Thử thay đổi bộ lọc tìm kiếm hoặc nhấn nút tạo PO mới ở trên.
           </p>
+        </div>
+      ) : viewMode === "grid" ? (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {items.map((po: PurchaseOrderListItem) => (
+            <article
+              key={po.id}
+              role="link"
+              tabIndex={0}
+              aria-label={`Mở đơn hàng PO ${po.poCode}`}
+              onClick={() => navigate(`/po/${po.id}`)}
+              onKeyDown={(event) => {
+                if (event.target === event.currentTarget && (event.key === "Enter" || event.key === " ")) {
+                  event.preventDefault();
+                  navigate(`/po/${po.id}`);
+                }
+              }}
+              className="flex cursor-pointer flex-col justify-between rounded-xl border border-gray-200 bg-white p-4 shadow-xs transition hover:border-brand-300 hover:shadow-sm focus-visible:outline-2 focus-visible:outline-brand-500 dark:border-gray-800 dark:bg-gray-900"
+            >
+              <div>
+                <div className="flex items-start justify-between gap-3 border-b border-gray-100 pb-3 dark:border-gray-800">
+                  <div className="min-w-0">
+                    <h3 className="truncate font-mono text-sm font-semibold text-brand-600 dark:text-brand-400">
+                      {po.poCode}
+                    </h3>
+                    <p className="mt-1 truncate text-xs text-gray-500 dark:text-gray-400">
+                      Mã PO khách hàng: {po.customerPoCode || "—"}
+                    </p>
+                  </div>
+                  <PoStatusBadge status={po.status} />
+                </div>
+                <p className="mt-3 truncate text-sm font-semibold text-gray-900 dark:text-white" title={po.customerNameSnapshot}>
+                  {po.customerNameSnapshot}
+                </p>
+                <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 text-xs">
+                  <div>
+                    <dt className="text-gray-500 dark:text-gray-400">Số sản phẩm</dt>
+                    <dd className="mt-1 font-semibold text-gray-900 dark:text-white">{po.productsCount ?? 0}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-gray-500 dark:text-gray-400">Ngày nhận</dt>
+                    <dd className="mt-1 font-medium text-gray-700 dark:text-gray-300">{formatDate(po.receivedDate)}</dd>
+                  </div>
+                  <div className="col-span-2">
+                    <dt className="text-gray-500 dark:text-gray-400">Hạn hoàn thành</dt>
+                    <dd className="mt-1 font-medium text-gray-700 dark:text-gray-300">{formatDate(po.deadline)}</dd>
+                  </div>
+                </dl>
+              </div>
+              <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-3 dark:border-gray-800">
+                <span className="text-xs font-medium text-brand-600 dark:text-brand-400">Mở đơn hàng →</span>
+                {po.status === "draft" && (
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      setDeleteTarget({ id: po.id, poCode: po.poCode });
+                    }}
+                    title="Xóa PO"
+                    aria-label={`Xóa PO ${po.poCode}`}
+                    className="inline-flex items-center justify-center rounded-lg border border-gray-200 p-2 text-red-600 hover:bg-red-50 dark:border-gray-700 dark:text-red-400 dark:hover:bg-red-950/30"
+                  >
+                    <TrashBinIcon className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+            </article>
+          ))}
+          <div className="col-span-full">
+            <Pagination
+              page={page}
+              pageSize={10}
+              totalItems={total}
+              totalPages={totalPages}
+              itemLabel="đơn hàng PO"
+              onPageChange={(nextPage) => setPage(nextPage)}
+            />
+          </div>
         </div>
       ) : (
         <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xs dark:border-gray-800 dark:bg-gray-900">

@@ -6,13 +6,11 @@ import {
   GitBranch,
   Copy,
   Ban,
-  MoreHorizontal,
   AlertOctagon,
   History,
   Pencil,
   Unlock,
 } from "lucide-react";
-import { useState, useRef, useEffect } from "react";
 import type { BomDetail, RevisionListItem } from "@/types/bom";
 import { BomTypeBadge } from "../BomTypeBadge";
 import { BomStatusBadge } from "../BomStatusBadge";
@@ -65,19 +63,6 @@ export function BomDetailHeader({
   onOpenRestoreConfirm,
 }: BomDetailHeaderProps) {
   const user = useAuthStore((state) => state.user);
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setIsMenuOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
   const currentStatus = isHistorical
     ? (bom.status as import("@/types/bom").BomStatus) || "closed"
     : bom.status === "discontinued" || Boolean(bom.discontinuedAt)
@@ -226,50 +211,7 @@ export function BomDetailHeader({
             </button>
           )}
 
-          {/* A dropdown only earns its keep once there are 2+ extra actions to
-           * hide — with just one, show it directly instead of making the
-           * user open a menu for a single item. */}
-          {showCopyFit && showDiscontinue ? (
-            <div className="relative" ref={menuRef}>
-              <button
-                type="button"
-                onClick={() => setIsMenuOpen(!isMenuOpen)}
-                className="inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded-xl border border-gray-200/80 bg-white text-gray-600 shadow-2xs transition-colors hover:bg-gray-50 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800"
-                aria-label="Thao tác khác"
-                title="Thao tác khác"
-              >
-                <MoreHorizontal className="h-4 w-4" />
-              </button>
-
-              {isMenuOpen && (
-                <div className="absolute top-full right-0 z-30 mt-1.5 w-52 rounded-xl border border-gray-200/80 bg-white p-1.5 shadow-lg dark:border-gray-800 dark:bg-gray-900">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsMenuOpen(false);
-                      onOpenCopyFitModal();
-                    }}
-                    className="text-theme-xs flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2 text-left font-medium text-gray-700 transition-colors hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-800"
-                  >
-                    <Copy className="text-brand-600 h-4 w-4" />
-                    <span>Nhập từ Fit NPL</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsMenuOpen(false);
-                      onOpenDiscontinueModal();
-                    }}
-                    className="text-theme-xs flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2 text-left font-medium text-rose-600 transition-colors hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/30"
-                  >
-                    <Ban className="h-4 w-4 text-rose-600" />
-                    <span>Ngừng sử dụng</span>
-                  </button>
-                </div>
-              )}
-            </div>
-          ) : showCopyFit ? (
+          {showCopyFit && (
             <button
               type="button"
               onClick={onOpenCopyFitModal}
@@ -278,7 +220,9 @@ export function BomDetailHeader({
               <Copy className="text-brand-600 h-3.5 w-3.5" />
               <span>Nhập từ Fit NPL</span>
             </button>
-          ) : showDiscontinue ? (
+          )}
+
+          {showDiscontinue && (
             <button
               type="button"
               onClick={onOpenDiscontinueModal}
@@ -287,7 +231,7 @@ export function BomDetailHeader({
               <Ban className="h-3.5 w-3.5" />
               <span>Ngừng sử dụng</span>
             </button>
-          ) : null}
+          )}
 
           {showRestore && (
             <button

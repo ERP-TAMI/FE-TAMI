@@ -980,43 +980,6 @@ export default function PoProductDetailPage({
             </div>
           </div>
 
-          {/* Cột phải: Nhóm nút hành động */}
-          <div className="flex flex-wrap items-center gap-2 shrink-0">
-            {canManageProductStatus && !readOnlyManagement && !isPoLocked &&
-              (isProductLocked ? (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setIsUnlockModalOpen(true)}
-                  disabled={updateStatusMutation.isPending}
-                  className="border-emerald-300 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-300 flex items-center gap-1.5"
-                >
-                  <UnlockIcon className="w-4 h-4 shrink-0" />
-                  <span>Mở khoá để xử lý tiếp</span>
-                </Button>
-              ) : (
-                <Button
-                  size="sm"
-                  onClick={() => setIsLockModalOpen(true)}
-                  disabled={updateStatusMutation.isPending}
-                  className="bg-rose-600 hover:bg-rose-700 text-white font-semibold flex items-center gap-1.5"
-                >
-                  <LockIcon className="w-4 h-4 shrink-0" />
-                  <span>Khóa sản phẩm</span>
-                </Button>
-              ))}
-            {!isReadOnly && (
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={handleOpenEditModal}
-                className="flex items-center gap-1.5"
-              >
-                <PencilIcon className="w-3.5 h-3.5 shrink-0" />
-                <span>Chỉnh sửa</span>
-              </Button>
-            )}
-          </div>
         </div>
 
         {/* Lock Banner notification khi sản phẩm bị khóa */}
@@ -1168,7 +1131,51 @@ export default function PoProductDetailPage({
       {/* TAB 1: THÔNG TIN SẢN PHẨM (Y XÌ GENERALTAB CỦA MẪU FIT)                   */}
       {/* ========================================================================= */}
       {activeTab === "general" && (
-        <div className="grid grid-cols-1 gap-10 lg:grid-cols-12 items-start pt-3">
+        <div className="space-y-3 pt-3">
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            {canManageProductStatus && !readOnlyManagement && !isPoLocked &&
+              (isProductLocked ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsUnlockModalOpen(true)}
+                  disabled={updateStatusMutation.isPending}
+                  className="border-emerald-300 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-300 flex items-center gap-1.5"
+                >
+                  <UnlockIcon className="w-4 h-4 shrink-0" />
+                  <span>Mở khoá để xử lý tiếp</span>
+                </Button>
+              ) : (
+                <Button
+                  size="sm"
+                  onClick={() => setIsLockModalOpen(true)}
+                  disabled={updateStatusMutation.isPending}
+                  className="bg-rose-600 hover:bg-rose-700 text-white font-semibold flex items-center gap-1.5"
+                >
+                  <LockIcon className="w-4 h-4 shrink-0" />
+                  <span>Khóa sản phẩm</span>
+                </Button>
+              ))}
+            {!isReadOnly && (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={handleOpenEditModal}
+                className="flex items-center gap-1.5"
+              >
+                <PencilIcon className="w-3.5 h-3.5 shrink-0" />
+                <span>Chỉnh sửa</span>
+              </Button>
+            )}
+            <EntityHistoryButton
+              aggregateType="PurchaseOrderProduct"
+              aggregateId={product.id}
+              title="Lịch sử: Thông tin sản phẩm"
+              size="sm"
+              className="!font-semibold"
+            />
+          </div>
+          <div className="grid grid-cols-1 gap-10 lg:grid-cols-12 items-start">
           {/* Cột trái (4 cols / ~33%): Visual Focus hình ảnh sản phẩm */}
           <div className="lg:col-span-4 space-y-4">
             <div className="overflow-hidden rounded-2xl border border-gray-200/80 bg-white p-3 shadow-xs dark:border-gray-800 dark:bg-gray-900">
@@ -1348,14 +1355,8 @@ export default function PoProductDetailPage({
               <span>Tạo lúc {formatDateTime(product.createdAt)}</span>
               <span>•</span>
               <span>Cập nhật {formatDateTime(product.updatedAt)}</span>
-              <EntityHistoryButton
-                aggregateType="PurchaseOrderProduct"
-                aggregateId={product.id}
-                title="Lịch sử: Thông tin sản phẩm"
-                size="xs"
-                className="ml-auto !font-semibold"
-              />
             </div>
+          </div>
           </div>
         </div>
       )}
