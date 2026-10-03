@@ -127,7 +127,7 @@ const dashboardSummarySchema = z
           poCode: z.string(),
           customerName: z.string(),
           deadline: z.string().date(),
-          productCount: z.number().int().positive(),
+          productCount: z.number().int().nonnegative(),
         })
         .strict(),
     ),

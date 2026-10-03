@@ -186,7 +186,7 @@ describe("DashboardSummaryView", () => {
       "2",
     );
     expect(screen.getAllByText("PO sắp đến hạn")[0].parentElement?.textContent).toContain("3");
-    expect(screen.getAllByText("BOM chờ xử lý")[0].parentElement?.textContent).toContain("5");
+    expect(screen.getAllByText("NPL chờ xử lý")[0].parentElement?.textContent).toContain("5");
     expect(screen.queryByText("Tổng quan vận hành")).toBeNull();
     expect(screen.queryByText(/Theo dõi đơn hàng, hạn sản phẩm/)).toBeNull();
     expect(screen.queryByText(/PO lọc theo ngày tiếp nhận/)).toBeNull();
@@ -195,9 +195,31 @@ describe("DashboardSummaryView", () => {
     expect(screen.getByRole("link", { name: "Mở đơn hàng PO-OVERDUE" }).getAttribute("href")).toBe(
       "/po/00000000-0000-4000-8000-000000000001",
     );
-    expect(screen.getByRole("link", { name: "Mở BOM BOM-1" }).getAttribute("href")).toBe(
+    expect(screen.getByRole("link", { name: "Mở NPL BOM-1" }).getAttribute("href")).toBe(
       "/bom/00000000-0000-4000-8000-000000000002",
     );
+  });
+
+  it("highlights the hovered PO status and shows its label on the donut", () => {
+    render(
+      <MemoryRouter>
+        <DashboardSummaryView
+          period={{ periodType: "month", month: "2026-09" }}
+          onPeriodChange={vi.fn()}
+          data={data}
+          isLoading={false}
+          isError={false}
+          onRetry={vi.fn()}
+        />
+      </MemoryRouter>,
+    );
+
+    const panel = screen.getByRole("region", { name: "Trạng thái PO trong kỳ" });
+    const segment = panel.querySelector('path[aria-label="Đang xử lý: 6 PO"]');
+    expect(segment).toBeTruthy();
+    fireEvent.mouseEnter(segment!);
+    expect(screen.getByRole("tooltip").textContent).toContain("Đang xử lý");
+    expect(screen.getByRole("tooltip").textContent).toContain("6");
   });
 
   it("keeps month and day context on trend labels when the selected range crosses boundaries", () => {

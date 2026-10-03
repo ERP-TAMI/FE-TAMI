@@ -14,6 +14,7 @@ import {
 import { Alert, Button, Input, Select } from "@/components/shared";
 import { ManagementStatCard } from "@/components/features/management-dashboard/ManagementStatCard";
 import { DashboardPeriodTrendChart } from "./DashboardPeriodTrendChart";
+import { HorizontalCountChart, PoStatusDonut } from "./DashboardCharts";
 import type {
   DashboardBomQueueItem,
   DashboardCustomerCount,
@@ -71,17 +72,12 @@ const bomStatusLabels: Record<string, string> = {
   closed: "Đã duyệt",
 };
 
-const statusColors: Record<string, string> = {
-  draft: "bg-gray-400",
-  pending_rd: "bg-warning-500",
-  in_progress: "bg-brand-500",
-  closed: "bg-success-500",
-  cancelled: "bg-error-500",
-  wait_nvkh: "bg-warning-500",
-  wait_rd: "bg-brand-500",
-  wait_tpkh_confirm: "bg-purple-500",
-  wait_accounting: "bg-orange-500",
-  wait_sa_approve: "bg-pink-500",
+const poStatusChartColors: Record<string, string> = {
+  draft: "#9ca3af",
+  pending_rd: "#f59e0b",
+  in_progress: "#465fff",
+  closed: "#12b76a",
+  cancelled: "#f04438",
 };
 
 function formatNumber(value: number): string {
@@ -171,64 +167,53 @@ function StatusBreakdown({
   order: string[];
 }) {
   const counts = new Map(items.map((item) => [item.status, item.count]));
-  const rows = order.map((status) => ({ status, count: counts.get(status) ?? 0 }));
-  const max = Math.max(1, ...rows.map((row) => row.count));
   return (
-    <div className="space-y-4">
-      {rows.map((row) => (
-        <div key={row.status}>
-          <div className="mb-1.5 flex items-center justify-between gap-4 text-xs">
-            <span className="min-w-0 truncate font-medium text-gray-700 dark:text-gray-300">
-              {labels[row.status] ?? row.status}
-            </span>
-            <span className="shrink-0 text-gray-600 tabular-nums dark:text-gray-400">
-              {formatNumber(row.count)}
-            </span>
-          </div>
-          <div
-            className="h-2 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800"
-            role="img"
-            aria-label={`${labels[row.status] ?? row.status}: ${formatNumber(row.count)}`}
-          >
-            <div
-              className={`h-full rounded-full transition-[width] duration-300 ${statusColors[row.status] ?? "bg-gray-400"}`}
-              style={{ width: `${(row.count / max) * 100}%` }}
-            />
-          </div>
-        </div>
-      ))}
-    </div>
+    <HorizontalCountChart
+      label="Trạng thái"
+      unit="NPL"
+      rows={order.map((status) => ({
+        key: status,
+        label: labels[status] ?? status,
+        count: counts.get(status) ?? 0,
+      }))}
+    />
+  );
+}
+
+function PurchaseOrderStatusDonut({
+  items,
+  order,
+}: {
+  items: DashboardStatusCount[];
+  order: string[];
+}) {
+  const counts = new Map(items.map((item) => [item.status, item.count]));
+  return (
+    <PoStatusDonut
+      rows={order.map((status) => ({
+        key: status,
+        label: poStatusLabels[status] ?? status,
+        count: counts.get(status) ?? 0,
+        color: poStatusChartColors[status] ?? "#9ca3af",
+      }))}
+    />
   );
 }
 
 function CustomerBreakdown({ items }: { items: DashboardCustomerCount[] }) {
   if (items.length === 0) return <EmptyState message="Chưa có khách hàng trong kỳ được chọn." />;
-  const max = Math.max(1, ...items.map((item) => item.count));
   return (
-    <ol className="space-y-4">
-      {items.map((item, index) => (
-        <li key={`${item.customerName}-${index}`}>
-          <div className="mb-1.5 flex items-center justify-between gap-4 text-xs">
-            <span className="min-w-0 truncate font-medium text-gray-700 dark:text-gray-300">
-              <span className="mr-2 text-gray-500 dark:text-gray-400">{index + 1}.</span>
-              {item.customerName}
-            </span>
-            <span className="shrink-0 font-semibold text-gray-900 tabular-nums dark:text-white">
-              {formatNumber(item.count)} PO
-            </span>
-          </div>
-          <div className="h-2 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
-            <div
-              className="bg-brand-500 h-full rounded-full"
-              style={{ width: `${(item.count / max) * 100}%` }}
-            />
-          </div>
-        </li>
-      ))}
-    </ol>
+    <HorizontalCountChart
+      label="Khách hàng"
+      unit="PO"
+      rows={items.map((item, index) => ({
+        key: `${item.customerName}-${index}`,
+        label: item.customerName,
+        count: item.count,
+      }))}
+    />
   );
 }
-
 function EmptyState({ message }: { message: string }) {
   return (
     <p className="rounded-xl border border-dashed border-gray-200 px-4 py-8 text-center text-sm text-gray-600 dark:border-gray-700 dark:text-gray-400">
@@ -269,10 +254,10 @@ function PurchaseOrderQueue({
               Khách hàng
             </th>
             <th scope="col" className="pr-3 pb-3 font-medium">
-              Hạn gần nhất
+              {type === "upcoming" ? "Hạn PO" : "Hạn sản phẩm"}
             </th>
             <th scope="col" className="pb-3 text-right font-medium">
-              Sản phẩm
+              {type === "upcoming" ? "SP đang mở" : "SP quá hạn"}
             </th>
           </tr>
         </thead>
@@ -312,14 +297,14 @@ function PurchaseOrderQueue({
 }
 
 function BomQueue({ items }: { items: DashboardBomQueueItem[] }) {
-  if (items.length === 0) return <EmptyState message="Không có BOM chờ xử lý." />;
+  if (items.length === 0) return <EmptyState message="Không có NPL chờ xử lý." />;
   return (
     <div className="overflow-x-auto">
       <table className="w-full min-w-[520px] text-left text-xs">
         <thead className="text-gray-500 dark:text-gray-400">
           <tr>
             <th scope="col" className="pr-3 pb-3 font-medium">
-              Mã BOM
+              Mã NPL
             </th>
             <th scope="col" className="pr-3 pb-3 font-medium">
               Sản phẩm
@@ -342,7 +327,7 @@ function BomQueue({ items }: { items: DashboardBomQueueItem[] }) {
                 <Link
                   to={`/bom/${item.bomId}`}
                   className="text-brand-600 hover:text-brand-700 focus-visible:outline-brand-500 dark:text-brand-400 dark:hover:text-brand-300 cursor-pointer rounded-sm font-semibold transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2"
-                  aria-label={`Mở BOM ${item.bomCode}`}
+                  aria-label={`Mở NPL ${item.bomCode}`}
                 >
                   {item.bomCode}
                 </Link>
@@ -442,7 +427,7 @@ export function DashboardSummaryView({
           tone: "warning" as const,
         },
         {
-          label: "BOM chờ xử lý",
+          label: "NPL chờ xử lý",
           value: data.pendingBomCount,
           icon: <RotateCw />,
           tone: "brand" as const,
@@ -468,7 +453,7 @@ export function DashboardSummaryView({
 
   return (
     <section className="space-y-6" aria-labelledby="dashboard-title" aria-busy={isLoading}>
-      <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
         <div className="min-w-0">
           <h1
             id="dashboard-title"
@@ -596,9 +581,8 @@ export function DashboardSummaryView({
               count={data.purchaseOrderStatuses.reduce((total, row) => total + row.count, 0)}
               className="xl:col-span-5"
             >
-              <StatusBreakdown
+              <PurchaseOrderStatusDonut
                 items={data.purchaseOrderStatuses}
-                labels={poStatusLabels}
                 order={["in_progress", "pending_rd", "draft", "closed", "cancelled"]}
               />
             </Panel>
@@ -608,7 +592,7 @@ export function DashboardSummaryView({
             </Panel>
 
             <Panel
-              title="Trạng thái revision BOM"
+              title="Trạng thái NPL"
               count={data.bomRevisionStatuses.reduce((total, row) => total + row.count, 0)}
               className="xl:col-span-6"
             >
@@ -650,7 +634,7 @@ export function DashboardSummaryView({
               />
             </Panel>
 
-            <Panel title="BOM chờ xử lý" count={data.pendingBomCount} className="xl:col-span-12">
+            <Panel title="NPL chờ xử lý" count={data.pendingBomCount} className="xl:col-span-12">
               <BomQueue items={data.pendingBomQueue} />
             </Panel>
           </div>
