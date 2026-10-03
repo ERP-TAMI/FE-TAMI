@@ -49,10 +49,9 @@ export function getApiError(
       : undefined;
   const message =
     overrides?.[code] ??
-    defaultApiErrorMessages[code] ??
-    (code === "VALIDATION_ERROR" || code === "BAD_REQUEST" || Array.isArray(rawMessage)
-      ? serverMessage
-      : undefined);
+    (code === "VALIDATION_ERROR" || code === "BAD_REQUEST"
+      ? serverMessage ?? defaultApiErrorMessages[code]
+      : defaultApiErrorMessages[code] ?? (Array.isArray(rawMessage) ? serverMessage : undefined));
 
   const lockedUntil = error.response?.data?.lockedUntil;
   return {

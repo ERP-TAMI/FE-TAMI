@@ -11,7 +11,8 @@ import {
   Plus,
   History,
   Download,
-  Trash2,
+  Ban,
+  Unlock,
 } from "lucide-react";
 import type { BomListItem } from "@/types/bom";
 import { BomTypeBadge } from "./BomTypeBadge";
@@ -32,13 +33,20 @@ interface BomTableProps {
   onClearFilters: () => void;
   canCreate?: boolean;
   onCreateClick?: () => void;
+  canDiscontinue?: (item: BomListItem) => boolean;
+  canRestore?: (item: BomListItem) => boolean;
   onOpenBom?: (item: BomListItem) => void;
-  onDelete?: (item: BomListItem) => void;
+  onDiscontinue?: (item: BomListItem) => void;
+  onRestore?: (item: BomListItem) => void;
 }
 
 function getColorHex(colorName?: string | null): string {
   if (!colorName) return "#cbd5e1";
-  const lower = colorName.toLowerCase();
+  const lower = colorName
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .toLowerCase();
   if (lower.includes("den") || lower.includes("black")) return "#0f172a";
   if (lower.includes("trang") || lower.includes("white")) return "#e2e8f0";
   if (lower.includes("do") || lower.includes("red")) return "#ef4444";
@@ -50,7 +58,19 @@ function getColorHex(colorName?: string | null): string {
   if (lower.includes("cam") || lower.includes("orange")) return "#f97316";
   if (lower.includes("hong") || lower.includes("pink")) return "#ec4899";
   if (lower.includes("tim") || lower.includes("purple")) return "#a855f7";
+  if (lower.includes("ivory")) return "#f2e8cf";
+  if (lower.includes("chocolate")) return "#6f4e37";
   return "#94a3b8";
+}
+
+function shouldShowColorSwatch(colorName: string): boolean {
+  const normalized = colorName
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/đ/g, "d")
+    .trim();
+  return !/^(den|black|xam|gray|grey|ghi)(\s|$)/.test(normalized);
 }
 
 function exportBomToCsv(item: BomListItem) {
@@ -116,8 +136,11 @@ export function BomTable({
   onClearFilters,
   canCreate,
   onCreateClick,
+  canDiscontinue,
+  canRestore,
   onOpenBom,
-  onDelete,
+  onDiscontinue,
+  onRestore,
 }: BomTableProps) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [menuState, setMenuState] = useState<{
@@ -387,11 +410,13 @@ export function BomTable({
                     <td className="px-4 py-3.5 whitespace-nowrap">
                       {colorName ? (
                         <div className="flex items-center gap-2">
-                          <span
-                            className="h-2.5 w-2.5 shrink-0 rounded-full border border-gray-300/60"
-                            style={{ backgroundColor: colorHex }}
-                          />
-                          <span className="text-xs text-gray-700 dark:text-gray-300">
+                          {shouldShowColorSwatch(colorName) && (
+                            <span
+                              className="h-2.5 w-2.5 shrink-0 rounded-full border border-gray-300/60"
+                              style={{ backgroundColor: colorHex }}
+                            />
+                          )}
+                          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                             {colorName}
                           </span>
                         </div>
@@ -541,20 +566,42 @@ export function BomTable({
               <Download className="h-3.5 w-3.5 text-gray-400" />
               <span>Xuất dữ liệu</span>
             </button>
-            <div className="my-1 border-t border-gray-100 dark:border-gray-800" />
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                const item = menuState.item;
-                setMenuState(null);
-                if (onDelete) onDelete(item);
-              }}
-              className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs font-medium text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/30"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-              <span>Xóa</span>
-            </button>
+            {onDiscontinue && (canDiscontinue?.(menuState.item) ?? true) && (
+              <>
+                <div className="my-1 border-t border-gray-100 dark:border-gray-800" />
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const item = menuState.item;
+                    setMenuState(null);
+                    onDiscontinue(item);
+                  }}
+                  className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs font-medium text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/30"
+                >
+                  <Ban className="h-3.5 w-3.5" />
+                  <span>Ngừng sử dụng</span>
+                </button>
+              </>
+            )}
+            {onRestore && canRestore?.(menuState.item) && (
+              <>
+                <div className="my-1 border-t border-gray-100 dark:border-gray-800" />
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const item = menuState.item;
+                    setMenuState(null);
+                    onRestore(item);
+                  }}
+                  className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs font-medium text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/30"
+                >
+                  <Unlock className="h-3.5 w-3.5" />
+                  <span>Mở khóa</span>
+                </button>
+              </>
+            )}
           </div>,
           document.body
         )}

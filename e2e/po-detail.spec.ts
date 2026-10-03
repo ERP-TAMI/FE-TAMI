@@ -15,7 +15,7 @@ const SA = {
 async function login(page: Page) {
   await page.goto("/login");
   await page.getByLabel("Email").fill(SA.email);
-  await page.getByLabel("Mật khẩu").fill(SA.password);
+  await page.getByLabel("Mật khẩu", { exact: true }).fill(SA.password);
   await page.getByRole("button", { name: "Đăng nhập" }).click();
   await expect(page).toHaveURL(/\/dashboard$/);
 }
@@ -77,6 +77,15 @@ test.describe("Màn chi tiết PO", () => {
     await expect(page.getByText("Hạn hoàn thành", { exact: true })).toBeVisible();
   });
 
+  test("badge trạng thái PO dùng chung cỡ chữ và độ đậm", async ({ page }) => {
+    const statusBadge = page
+      .getByText(/^(Nháp|Chờ R&D|Đang xử lý|Khóa|Đã hủy)$/)
+      .first();
+    await expect(statusBadge).toBeVisible();
+    await expect(statusBadge).toHaveClass(/text-xs/);
+    await expect(statusBadge).toHaveClass(/font-semibold/);
+  });
+
   test("ngày hiển thị có pad số 0 (dd/mm/yyyy)", async ({ page }) => {
     const ngayNhan = page
       .locator("dl div", { has: page.getByText("Ngày nhận đơn", { exact: true }) })
@@ -95,7 +104,8 @@ test.describe("Màn chi tiết PO", () => {
   test("tab Sản phẩm không chớp trạng thái rỗng trước khi dữ liệu về", async ({
     page,
   }) => {
-    await page.getByRole("button", { name: /Sản phẩm \/ Mẫu Fit/ }).click();
+    await page.getByRole("button", { name: /Sản phẩm/ }).click();
+    await expect(page.getByRole("button", { name: /Chia khung 50\/50/ })).toHaveCount(0);
     // Lỗi cũ: danh sách tải lười nhưng mảng rỗng bị hiểu là "chưa có sản phẩm",
     // nên hiện lời mời thêm sản phẩm rồi mới đổi thành danh sách.
     const emptyInvite = page.getByText("Chưa có sản phẩm nào thuộc đơn hàng PO này.");
@@ -179,7 +189,7 @@ test.describe("Màn chi tiết sản phẩm trong PO", () => {
   test("không còn tab Lịch sử", async ({ page }) => {
     await login(page);
     await openPoWithData(page, "products");
-    await page.getByRole("button", { name: /Sản phẩm \/ Mẫu Fit/ }).click();
+    await page.getByRole("button", { name: /Sản phẩm/ }).click();
 
     // Thẻ sản phẩm điều hướng bằng onClick trên <div>, không phải thẻ <a>,
     // nên bấm thẳng vào thẻ thay vì tìm link.
@@ -189,6 +199,13 @@ test.describe("Màn chi tiết sản phẩm trong PO", () => {
     await expect(card.first()).toBeVisible({ timeout: 15_000 });
     await card.first().click();
     await expect(page).toHaveURL(/\/products\/[0-9a-f-]{36}/i);
-    await expect(page.getByRole("button", { name: /^Lịch sử/ })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Chỉnh sửa" })).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: /^(Khóa sản phẩm|Mở khoá để xử lý tiếp)$/ }),
+    ).toBeVisible();
+    await expect(page.getByRole("button", { name: "Lịch sử" })).toBeVisible();
+    await expect(
+      page.getByRole("navigation", { name: "Tabs" }).getByRole("button", { name: /^Lịch sử/ }),
+    ).toHaveCount(0);
   });
 });

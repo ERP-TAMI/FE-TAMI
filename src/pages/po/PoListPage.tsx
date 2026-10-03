@@ -33,7 +33,6 @@ export default function PoListPage() {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [page, setPage] = useState(1);
-
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(null);
 
@@ -279,9 +278,11 @@ export default function PoListPage() {
             </Button>
           )}
 
-          <Button className="ml-auto" onClick={() => setIsCreateOpen(true)}>
+          <div className="ml-auto flex items-center gap-2">
+            <Button onClick={() => setIsCreateOpen(true)}>
             + Tạo PO mới
-          </Button>
+            </Button>
+          </div>
         </div>
       </div>
 

@@ -1,4 +1,5 @@
 import type { ProductionDocStatus } from "@/types/production-doc";
+import { STATUS_BADGE_BASE as BASE } from "@/components/shared/badgeStyles";
 
 const config: Record<ProductionDocStatus, { label: string; className: string }> = {
   draft: {
@@ -25,11 +26,5 @@ interface Props {
 
 export function ProductionDocStatusBadge({ status, className = "" }: Props) {
   const item = config[status] ?? config.draft;
-  return (
-    <span
-      className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold tracking-wide transition-colors ${item.className} ${className}`}
-    >
-      {item.label}
-    </span>
-  );
+  return <span className={`${BASE} ${item.className} ${className}`}>{item.label}</span>;
 }

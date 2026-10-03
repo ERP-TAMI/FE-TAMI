@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Select, Table } from "@/components/shared";
+import { STATUS_BADGE_BASE } from "@/components/shared/badgeStyles";
 import type { TableColumn } from "@/components/shared/Table";
 import { HorizontaLDots } from "@/icons";
 import { StageGroupItemActions } from "./StageGroupItemActions";
@@ -154,7 +155,7 @@ export function StageGroupItemTable({
           />
         ) : (
           <span
-            className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${
+            className={`${STATUS_BADGE_BASE} px-2 py-1 ${
               row.status === "active"
                 ? "bg-success-50 text-success-700 dark:bg-success-500/10 dark:text-success-400"
                 : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300"

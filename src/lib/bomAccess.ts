@@ -182,6 +182,15 @@ export function canDiscontinueBom(
   return role === "sa" || role === "tpkh";
 }
 
+export function canRestoreBom(
+  user: AuthUser | { roleCode?: string } | null,
+  isHistorical = false,
+): boolean {
+  if (!user?.roleCode || isHistorical) return false;
+  const role = user.roleCode.toLowerCase().trim();
+  return role === "sa" || role === "tpkh";
+}
+
 export function canCreateRevision(
   user: AuthUser | { roleCode?: string } | null,
   status: string,

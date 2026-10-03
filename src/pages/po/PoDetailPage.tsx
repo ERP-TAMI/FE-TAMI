@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useCallback } from "react";
+import { useState, useMemo } from "react";
 import { useParams, useNavigate, useLocation, Link } from "react-router-dom";
 import { PageHeader, Toast, Button, ConfirmDialog } from "@/components/shared";
 import { PoStatusBadge } from "@/components/features/po/PoStatusBadge";
@@ -6,8 +6,6 @@ import { ProductStatusBadge } from "@/components/features/po/ProductStatusBadge"
 import { PoReasonModal } from "@/components/features/po/PoReasonModal";
 import { PoAddProductModal } from "@/components/features/po/PoAddProductModal";
 import { PoDocumentsSection } from "@/components/features/po/PoDocumentsSection";
-import { PoAddProductQuickForm } from "@/components/features/po/PoAddProductQuickForm";
-import { PoSplitDocumentPreview } from "@/components/features/po/PoSplitDocumentPreview";
 import { EntityHistoryButton } from "@/components/features/audit/EntityHistoryButton";
 import { StyleImagePlaceholder } from "@/components/features/styles/StyleImagePlaceholder";
 import {
@@ -33,7 +31,7 @@ import {
   getManagementPoOverviewReturnPath,
 } from "@/lib/managementPoNavigation";
 import type { UploadProgress } from "@/api/po.api";
-import { TrashBinIcon, EyeIcon, CalenderIcon } from "@/icons";
+import { TrashBinIcon, CalenderIcon } from "@/icons";
 import type {
   CreatePoProductInput,
   PoStatus,
@@ -155,15 +153,9 @@ export default function PoDetailPage({
 
   const [isAddProductOpen, setIsAddProductOpen] = useState(false);
 
-  // Chế độ xem Tab Sản phẩm: Chia khung 50/50 (true) hoặc Chế độ thường 100% (false) (Mặc định: false - Chế độ thường)
-  const [isSplitMode, setIsSplitMode] = useState(false);
-
-  // Tài liệu PO: tải riêng, có phân trang, và chỉ khi thực sự cần — tab Tài
-  // liệu, chế độ chia khung (kéo thả tài liệu sang sản phẩm) hoặc modal thêm
-  // sản phẩm (bước gán tài liệu từ kho PO).
+  // Tài liệu PO chỉ tải ở tab tài liệu hoặc khi modal thêm sản phẩm cần gán tài liệu.
   const [docPage, setDocPage] = useState(1);
-  const needPoDocuments =
-    activeTab === "documents" || isSplitMode || isAddProductOpen;
+  const needPoDocuments = activeTab === "documents" || isAddProductOpen;
   const { data: poDocumentsPage, isFetching: isFetchingPoDocs } = usePoDocuments(
     id,
     { page: docPage, limit: PO_DOCS_PAGE_SIZE },
@@ -173,41 +165,6 @@ export default function PoDetailPage({
     () => poDocumentsPage?.items ?? [],
     [poDocumentsPage],
   );
-
-  const [splitRatio, setSplitRatio] = useState<number>(50); // Mặc định 50/50
-
-  const isDraggingRef = useRef(false);
-  const splitContainerRef = useRef<HTMLDivElement>(null);
-
-  const handleDividerMouseDown = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    isDraggingRef.current = true;
-    document.body.style.cursor = "col-resize";
-    document.body.style.userSelect = "none";
-
-    const onMouseMove = (ev: MouseEvent) => {
-      if (!isDraggingRef.current || !splitContainerRef.current) return;
-      const rect = splitContainerRef.current.getBoundingClientRect();
-      const x = ev.clientX - rect.left;
-      const ratio = Math.min(80, Math.max(20, (x / rect.width) * 100));
-      setSplitRatio(ratio);
-    };
-
-    const onMouseUp = () => {
-      isDraggingRef.current = false;
-      document.body.style.cursor = "";
-      document.body.style.userSelect = "";
-      window.removeEventListener("mousemove", onMouseMove);
-      window.removeEventListener("mouseup", onMouseUp);
-    };
-
-    window.addEventListener("mousemove", onMouseMove);
-    window.addEventListener("mouseup", onMouseUp);
-  }, []);
-
-  const handleDividerDoubleClick = useCallback(() => {
-    setSplitRatio(50); // Double-click reset về 50/50
-  }, []);
 
   // Chế độ hiển thị danh sách sản phẩm trong ô Sản phẩm: "grid" (thẻ) hoặc "table" (bảng).
   // Nhớ lựa chọn gần nhất của người dùng qua localStorage, để lần sau mở lại
@@ -220,10 +177,6 @@ export default function PoDetailPage({
     setProductLayoutState(layout);
     localStorage.setItem(PRODUCT_LAYOUT_STORAGE_KEY, layout);
   };
-  const [draggedDocId, setDraggedDocId] = useState<string | null>(null);
-  const [showInlineSplitForm, setShowInlineSplitForm] = useState(false);
-  const [quickFormDocIds, setQuickFormDocIds] = useState<string[]>([]);
-  const [splitPreviewDoc, setSplitPreviewDoc] = useState<PurchaseOrderDocumentItem | null>(null);
 
   // Form states for general info edit
   const [customerPoCode, setCustomerPoCode] = useState("");
@@ -443,46 +396,6 @@ export default function PoDetailPage({
     }
   };
 
-  // Drag & Drop Handlers for Split Screen in Tab Sản phẩm
-  const handleDragStart = (e: React.DragEvent, docId: string) => {
-    e.dataTransfer.setData("text/plain", docId);
-    e.dataTransfer.effectAllowed = "copy";
-    setDraggedDocId(docId);
-  };
-
-  // Map tất cả assignments: docId -> danh sách sản phẩm { productId, productCode }
-  const docAssignmentsMap = useMemo(() => {
-    const map: Record<string, { productId: string; productCode: string }[]> = {};
-    const prods: PurchaseOrderProductItem[] = productsData || [];
-    prods.forEach((prod) => {
-      (prod.documents || []).forEach((d) => {
-        if (!map[d.documentId]) map[d.documentId] = [];
-        if (!map[d.documentId].some((x) => x.productId === prod.id)) {
-          map[d.documentId].push({
-            productId: prod.id,
-            productCode: prod.productCode || prod.styleCode || "SP",
-          });
-        }
-      });
-    });
-    return map;
-  }, [productsData]);
-
-  // Sắp xếp danh sách tài liệu PO:
-  // 1. Chưa gán (ưu tiên lên trên)
-  // 2. Đã gán với sản phẩm khác (hiển thị phía dưới)
-  const sortedPoDocs = useMemo(() => {
-    const docs = poDocuments;
-    return [...docs].sort((a, b) => {
-      const aAssigned = (docAssignmentsMap[a.documentId] || []).length > 0;
-      const bAssigned = (docAssignmentsMap[b.documentId] || []).length > 0;
-      if (aAssigned !== bAssigned) {
-        return aAssigned ? 1 : -1; // Chưa gán lên trước
-      }
-      return 0;
-    });
-  }, [poDocuments, docAssignmentsMap]);
-
   if (isLoading) {
     return (
       <div className="rounded-2xl border border-gray-200 bg-white p-12 text-center text-theme-sm text-gray-500 dark:border-gray-800 dark:bg-gray-900">
@@ -625,7 +538,7 @@ export default function PoDetailPage({
         )}
       </div>
 
-      {/* Tabs Navigation & Split Screen Toggle */}
+      {/* Tabs Navigation */}
       <div className="-mt-1 flex flex-wrap items-center justify-between border-b border-gray-200 dark:border-gray-800 gap-2">
         <nav className="-mb-px flex gap-6 text-theme-sm font-semibold">
           <button
@@ -646,7 +559,7 @@ export default function PoDetailPage({
                 : "border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400"
               }`}
           >
-            Sản phẩm / Mẫu Fit ({productsPage?.total ?? po.productsCount ?? 0})
+            Sản phẩm ({productsPage?.total ?? po.productsCount ?? 0})
           </button>
           <button
             type="button"
@@ -660,35 +573,13 @@ export default function PoDetailPage({
           </button>
         </nav>
 
-        {/* Nút bật/tắt chế độ chia khung 50/50 khi ở tab Sản phẩm / Mẫu Fit */}
         {activeTab === "lines" && (
           <div className="flex items-center gap-2 pb-1.5">
             <EntityHistoryButton
               aggregateType="PurchaseOrderProduct"
               parentId={id}
-              title="Lịch sử: Sản phẩm / Mẫu Fit"
+              title="Lịch sử: Sản phẩm"
             />
-            {!readOnlyManagement && (
-              <button
-                type="button"
-                onClick={() => setIsSplitMode(!isSplitMode)}
-                className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer ${isSplitMode
-                    ? "bg-brand-600 text-white shadow-xs dark:bg-brand-500"
-                    : "border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
-                  }`}
-                title={
-                  isSplitMode
-                    ? "Thoát chế độ chia khung, quay về chế độ xem thường"
-                    : "Chế độ chia khung 50/50: Tài liệu PO bên trái, Sản phẩm bên phải"
-                }
-              >
-                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <rect x="3" y="3" width="18" height="18" rx="2" />
-                  <path d="M12 3v18" />
-                </svg>
-                <span>{isSplitMode ? "Thoát chia khung" : "Chia khung 50/50"}</span>
-              </button>
-            )}
           </div>
         )}
       </div>
@@ -954,512 +845,8 @@ export default function PoDetailPage({
         </div>
       )}
 
-      {/* Tab 2: Sản phẩm / Mẫu Fit */}
+      {/* Tab 2: Sản phẩm */}
       {activeTab === "lines" && (
-        isSplitMode ? (
-          <div ref={splitContainerRef} className="flex gap-0 min-h-[780px]">
-            {/* CỘT TRÁI (50%): TÀI LIỆU PO */}
-            {(() => {
-              const allDocs = poDocuments;
-              const unassignedList = sortedPoDocs.filter(
-                (d) => !(docAssignmentsMap[d.documentId] || []).length,
-              );
-              const assignedList = sortedPoDocs.filter(
-                (d) => (docAssignmentsMap[d.documentId] || []).length > 0,
-              );
-
-              return (
-                <div style={{ width: `${splitRatio}%` }} className="rounded-2xl border border-gray-200 bg-white p-5 shadow-xs dark:border-gray-800 dark:bg-gray-900 flex flex-col h-[780px] shrink-0">
-                  {splitPreviewDoc ? (
-                    /* ─── XEM TRƯỚC TÀI LIỆU CHỈ TRONG Ô BÊN TRÁI ─── */
-                    <PoSplitDocumentPreview
-                      poId={id!}
-                      document={splitPreviewDoc}
-                      onBack={() => setSplitPreviewDoc(null)}
-                      onAttachToQuickForm={
-                        showInlineSplitForm
-                          ? (docId) => {
-                            if (!quickFormDocIds.includes(docId)) {
-                              setQuickFormDocIds([...quickFormDocIds, docId]);
-                            }
-                          }
-                          : undefined
-                      }
-                      isSelectedInQuickForm={quickFormDocIds.includes(splitPreviewDoc.documentId)}
-                    />
-                  ) : (
-                    <>
-                      {/* Header tài liệu PO */}
-                      <div className="flex items-center justify-between border-b border-gray-100 pb-3 dark:border-gray-800 shrink-0">
-                        <div>
-                          <h3 className="text-theme-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider">
-                            Tài liệu PO ({allDocs.length})
-                          </h3>
-                          <p className="text-[11px] text-gray-500 dark:text-gray-400">
-                            {showInlineSplitForm
-                              ? "Kéo thả sang form bên phải để gán tài liệu"
-                              : "Kéo thả sang sản phẩm bên phải để gán tài liệu"}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          <span className="rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[10px] font-bold text-emerald-700 dark:bg-emerald-950/40 dark:border-emerald-900/50 dark:text-emerald-300">
-                            {unassignedList.length} chưa gán
-                          </span>
-                          {assignedList.length > 0 && (
-                            <span className="rounded-full bg-gray-100 border border-gray-200 px-2 py-0.5 text-[10px] font-bold text-gray-500 dark:bg-gray-800 dark:border-gray-700">
-                              {assignedList.length} đã gán
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Danh sách tài liệu PO */}
-                      <div className="flex-1 overflow-y-auto mt-3 space-y-3 pr-1">
-                        {allDocs.length === 0 ? (
-                          <div className="p-8 text-center text-theme-xs text-gray-400 italic">
-                            Chưa có tài liệu nào trong PO. Tải lên tại tab "Tài liệu PO".
-                          </div>
-                        ) : (
-                          <>
-                            {/* NHÓM 1: TÀI LIỆU CHƯA GÁN (ƯU TIÊN LÊN TRÊN) */}
-                            {unassignedList.length > 0 && (
-                              <div className="space-y-1.5">
-                                <div className="flex items-center justify-between px-1">
-                                  <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
-                                    Chưa gán ({unassignedList.length})
-                                  </span>
-                                  <span className="text-[10px] text-gray-400">
-                                    Kéo sang phải để gán
-                                  </span>
-                                </div>
-                                {unassignedList.map((doc) => {
-                                  const isDraggingThis = draggedDocId === doc.documentId;
-                                  const isSelectedInQuickForm = quickFormDocIds.includes(doc.documentId);
-
-                                  return (
-                                    <div
-                                      key={doc.documentId}
-                                      draggable="true"
-                                      onDragStart={(e) => handleDragStart(e, doc.documentId)}
-                                      onDragEnd={() => setDraggedDocId(null)}
-                                      className={`flex items-center justify-between p-3 rounded-xl border transition-all cursor-grab active:cursor-grabbing shadow-2xs group ${isDraggingThis
-                                          ? "border-brand-300 bg-brand-50/40 opacity-60 dark:border-brand-800 dark:bg-brand-950/20"
-                                          : isSelectedInQuickForm
-                                            ? "border-emerald-400 bg-emerald-50/60 dark:border-emerald-700 dark:bg-emerald-950/30"
-                                            : "border-gray-200 bg-white hover:bg-brand-50/40 hover:border-brand-300 dark:border-gray-700 dark:bg-gray-800/60 dark:hover:border-brand-500"
-                                        }`}
-                                    >
-                                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                                        {isSelectedInQuickForm ? (
-                                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-500 text-white font-bold text-xs shadow-xs">
-                                            ✓
-                                          </div>
-                                        ) : (
-                                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-200 dark:bg-emerald-950/40 dark:border-emerald-800 dark:text-emerald-300">
-                                            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                            </svg>
-                                          </div>
-                                        )}
-                                        <div className="min-w-0 flex-1">
-                                          <span className="block text-xs font-semibold text-gray-900 dark:text-white truncate">
-                                            {doc.title || doc.fileName || doc.documentCode || "Tài liệu"}
-                                          </span>
-                                          <div className="flex items-center gap-1.5 mt-0.5">
-                                            <span className="text-[10px] text-gray-400 font-mono uppercase">
-                                              {doc.purpose}
-                                            </span>
-                                            {isSelectedInQuickForm && (
-                                              <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
-                                                Đang gán
-                                              </span>
-                                            )}
-                                          </div>
-                                        </div>
-                                      </div>
-
-                                      <div className="shrink-0 ml-2 flex items-center gap-1.5">
-                                        {/* Nút Xem trước riêng trong cột trái */}
-                                        <button
-                                          type="button"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            setSplitPreviewDoc(doc);
-                                          }}
-                                          className="inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-2 py-0.5 text-[10px] font-semibold text-gray-600 hover:border-brand-300 hover:bg-brand-50 hover:text-brand-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700 transition cursor-pointer"
-                                          title="Xem trước tài liệu ở ô bên trái"
-                                        >
-                                          <EyeIcon className="h-3 w-3" />
-                                          <span>Xem</span>
-                                        </button>
-
-                                        {isSelectedInQuickForm ? (
-                                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 border border-emerald-300 px-2 py-0.5 text-[10px] font-bold text-emerald-800 dark:bg-emerald-900/60 dark:border-emerald-700 dark:text-emerald-200">
-                                            Đang gán
-                                          </span>
-                                        ) : (
-                                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:border-emerald-900/40 dark:text-emerald-300">
-                                            Kéo để gán
-                                          </span>
-                                        )}
-                                      </div>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            )}
-
-                            {/* NHÓM 2: TÀI LIỆU ĐÃ GÁN (HIỂN THỊ PHÍA DƯỚI) */}
-                            {assignedList.length > 0 && (
-                              <div className="space-y-1.5 pt-2">
-                                <div className="flex items-center justify-between px-1">
-                                  <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                                    Đã gán ({assignedList.length})
-                                  </span>
-                                  <span className="text-[10px] text-gray-400">
-                                    Có thể kéo gán thêm SP
-                                  </span>
-                                </div>
-                                {assignedList.map((doc) => {
-                                  const assignments = docAssignmentsMap[doc.documentId] || [];
-                                  const isDraggingThis = draggedDocId === doc.documentId;
-
-                                  return (
-                                    <div
-                                      key={doc.documentId}
-                                      draggable="true"
-                                      onDragStart={(e) => handleDragStart(e, doc.documentId)}
-                                      onDragEnd={() => setDraggedDocId(null)}
-                                      className={`flex items-center justify-between p-3 rounded-xl border transition-all cursor-grab active:cursor-grabbing group ${isDraggingThis
-                                          ? "border-brand-300 bg-brand-50/40 opacity-60 dark:border-brand-800 dark:bg-brand-950/20"
-                                          : "border-gray-200/80 bg-gray-50/40 hover:bg-gray-100/70 hover:border-gray-300 dark:border-gray-800 dark:bg-gray-800/30"
-                                        }`}
-                                    >
-                                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gray-100 text-gray-500 border border-gray-200 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400">
-                                          <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                                          </svg>
-                                        </div>
-                                        <div className="min-w-0 flex-1">
-                                          <span className="block text-xs font-semibold text-gray-700 dark:text-gray-300 truncate">
-                                            {doc.title || doc.fileName || doc.documentCode || "Tài liệu"}
-                                          </span>
-                                          <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                                            <span className="text-[10px] text-gray-400 font-mono uppercase">
-                                              {doc.purpose}
-                                            </span>
-                                            {assignments.map((a) => (
-                                              <span
-                                                key={a.productId}
-                                                className="inline-flex items-center gap-0.5 rounded-md bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700 dark:bg-emerald-950/30 dark:border-emerald-900/40 dark:text-emerald-300"
-                                                title={`Đã gán cho sản phẩm ${a.productCode}`}
-                                              >
-                                                SP: {a.productCode}
-                                              </span>
-                                            ))}
-                                          </div>
-                                        </div>
-                                      </div>
-
-                                      <div className="shrink-0 ml-2 flex items-center gap-1.5">
-                                        {/* Nút Xem trước riêng trong cột trái */}
-                                        <button
-                                          type="button"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            setSplitPreviewDoc(doc);
-                                          }}
-                                          className="inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-2 py-0.5 text-[10px] font-semibold text-gray-600 hover:border-brand-300 hover:bg-brand-50 hover:text-brand-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700 transition cursor-pointer"
-                                          title="Xem trước tài liệu ở ô bên trái"
-                                        >
-                                          <EyeIcon className="h-3 w-3" />
-                                          <span>Xem</span>
-                                        </button>
-                                        <span className="inline-flex items-center rounded-md bg-blue-50 px-2 py-0.5 text-[10px] font-medium text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border border-blue-200/60 dark:border-blue-800">
-                                          Đã gán ({assignments.length})
-                                        </span>
-                                      </div>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            )}
-                          </>
-                        )}
-                      </div>
-                    </>
-                  )}
-                </div>
-              );
-            })()}
-
-            {/* ─── DRAG DIVIDER ─── */}
-            <div
-              className="w-2 shrink-0 cursor-col-resize flex items-center justify-center group hover:bg-brand-50 dark:hover:bg-brand-950/30 transition-colors rounded"
-              onMouseDown={handleDividerMouseDown}
-              onDoubleClick={handleDividerDoubleClick}
-              title="Kéo để thay đổi tỉ lệ • Nhấn đúp để reset 50/50"
-            >
-              <div className="w-0.5 h-12 bg-gray-300 group-hover:bg-brand-500 dark:bg-gray-600 dark:group-hover:bg-brand-400 rounded-full transition-colors" />
-            </div>
-
-            {/* CỘT PHẢI: SẢN PHẨM PO */}
-            <div style={{ width: `${100 - splitRatio}%` }} className="rounded-2xl border border-gray-200 bg-white p-5 shadow-xs dark:border-gray-800 dark:bg-gray-900 flex flex-col h-[780px] shrink-0">
-              <div className="flex items-center justify-between border-b border-gray-100 pb-3 dark:border-gray-800 shrink-0">
-                <div>
-                  <h3 className="text-theme-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider">
-                    Sản phẩm PO ({lines.length})
-                  </h3>
-                  <p className="text-[11px] text-gray-500 dark:text-gray-400">
-                    Danh sách sản phẩm trong đơn hàng PO
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  {/* 2 dạng grid, table với icon phù hợp */}
-                  {!showInlineSplitForm && lines.length > 0 && (
-                    <div className="inline-flex rounded-lg bg-gray-100 p-0.5 dark:bg-gray-800 border border-gray-200/80 dark:border-gray-700/80">
-                      <button
-                        type="button"
-                        onClick={() => setProductLayout("grid")}
-                        className={`p-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${productLayout === "grid"
-                            ? "bg-white text-brand-600 shadow-2xs dark:bg-gray-700 dark:text-brand-400"
-                            : "text-gray-400 hover:text-gray-700 dark:text-gray-500 dark:hover:text-gray-300"
-                          }`}
-                        title="Dạng thẻ lưới (Grid)"
-                      >
-                        <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <rect x="3" y="3" width="7" height="7" rx="1.5" />
-                          <rect x="14" y="3" width="7" height="7" rx="1.5" />
-                          <rect x="3" y="14" width="7" height="7" rx="1.5" />
-                          <rect x="14" y="14" width="7" height="7" rx="1.5" />
-                        </svg>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setProductLayout("table")}
-                        className={`p-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${productLayout === "table"
-                            ? "bg-white text-brand-600 shadow-2xs dark:bg-gray-700 dark:text-brand-400"
-                            : "text-gray-400 hover:text-gray-700 dark:text-gray-500 dark:hover:text-gray-300"
-                          }`}
-                        title="Dạng bảng (Table)"
-                      >
-                        <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
-                        </svg>
-                      </button>
-                    </div>
-                  )}
-
-                  {!isReadOnly && (
-                    showInlineSplitForm ? (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setQuickFormDocIds([]);
-                          setShowInlineSplitForm(false);
-                        }}
-                        className="text-xs font-semibold text-gray-500 hover:text-gray-700 dark:text-gray-400 cursor-pointer"
-                      >
-                        ← Danh sách SP
-                      </button>
-                    ) : (
-                      <Button size="sm" onClick={() => setShowInlineSplitForm(true)}>
-                        + Thêm SP
-                      </Button>
-                    )
-                  )}
-                </div>
-              </div>
-
-              <div className="flex-1 overflow-y-auto mt-3 pr-1">
-                {showInlineSplitForm ? (
-                  /* ─── INLINE FORM THÊM SẢN PHẨM ─────────────────────────────────── */
-                  <PoAddProductQuickForm
-                    isPending={addProductMutation.isPending}
-                    poDocuments={poDocuments}
-                    onAttachedDocsChange={setQuickFormDocIds}
-                    onClose={() => {
-                      setQuickFormDocIds([]);
-                      setShowInlineSplitForm(false);
-                    }}
-                    onSubmit={async (input) => {
-                      await handleAddProduct(input);
-                      setQuickFormDocIds([]);
-                      setShowInlineSplitForm(false);
-                    }}
-                  />
-                ) : lines.length === 0 ? (
-                  <div className="p-8 text-center text-theme-xs text-gray-400 italic">
-                    Chưa có sản phẩm nào trong PO. Nhấn "+ Thêm SP" ở trên để tạo mới.
-                  </div>
-                ) : productLayout === "grid" ? (
-                  /* ─── DẠNG GRID (THẺ SẢN PHẨM TỈ LỆ 3*4) ────────────────────────── */
-                  <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 gap-3.5">
-                    {lines.map((line) => {
-                      const resolvedImg = line.structureImageUrl ?? null;
-                      return (
-                        <div
-                          key={line.id}
-                          onClick={readOnlyManagement ? undefined : () => navigate(productDetailPath(line.id))}
-                          className={`group relative flex flex-col overflow-hidden rounded-xl border border-gray-200 bg-white p-2.5 shadow-2xs transition-all hover:border-brand-400 hover:shadow-md dark:border-gray-800 dark:bg-gray-800/50 ${readOnlyManagement ? "" : "cursor-pointer"}`}
-                        >
-                          {/* Khung ảnh tỉ lệ 3*4 (aspect-[3/4]) */}
-                          <div className="relative aspect-[3/4] w-full overflow-hidden rounded-lg bg-gray-100 dark:bg-gray-800/70 border border-gray-100 dark:border-gray-700/60 flex items-center justify-center">
-                            {resolvedImg ? (
-                              <img
-                                src={resolvedImg}
-                                alt={line.productName}
-                                className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                              />
-                            ) : (
-                              <div className="flex flex-col items-center justify-center p-3 text-center">
-                                <StyleImagePlaceholder className="h-16 w-16 text-gray-300 dark:text-gray-600 opacity-60 transition-transform duration-200 group-hover:scale-105" />
-                              </div>
-                            )}
-
-                            {/* Floating Badges trên khung 3*4 */}
-                            <div className="absolute top-2 right-2 flex items-start justify-end pointer-events-none">
-                              <div className="pointer-events-auto">
-                                <ProductStatusBadge status={line.status} />
-                              </div>
-                            </div>
-
-                            {!isReadOnly && (
-                              <div className="absolute bottom-2 right-2 pointer-events-auto opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setProductPendingRemoval(line);
-                                  }}
-                                  disabled={removeProductMutation.isPending}
-                                  className="rounded-md bg-white/90 p-1 text-gray-400 hover:bg-error-50 hover:text-error-600 dark:bg-gray-900/90 dark:hover:bg-error-950/40 dark:hover:text-error-400 shadow-2xs border border-gray-200/60 dark:border-gray-700/60 transition cursor-pointer"
-                                  title="Xóa khỏi PO"
-                                >
-                                  <TrashBinIcon className="h-3.5 w-3.5" />
-                                </button>
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Thông tin sản phẩm: Mã chủ đạo, tên phụ */}
-                          <div className="mt-2.5 space-y-1">
-                            <Link
-                              to={productDetailPath(line.id)}
-                              onClick={(event) => event.stopPropagation()}
-                              className="block truncate font-mono text-lg font-bold text-brand-600 group-hover:text-brand-700 dark:text-brand-400"
-                            >
-                              {line.productCode || line.styleCode}
-                            </Link>
-                            <div className="text-xs text-gray-500 dark:text-gray-400 truncate" title={line.productName}>
-                              {line.productName}
-                            </div>
-                            <div className="flex items-center justify-between text-[10px] text-gray-400 pt-0.5">
-                              <span className="truncate max-w-[80px]">{line.category || "—"}</span>
-                              <span className="font-mono font-semibold text-gray-700 dark:text-gray-300">
-                                {line.totalQuantity ? `${line.totalQuantity.toLocaleString()} pcs` : "—"}
-                              </span>
-                              {line.deadline && <span>{formatDate(line.deadline)}</span>}
-                            </div>
-                            {line.colors && line.colors.length > 0 && (
-                              <div className="flex items-center gap-1 pt-0.5 overflow-hidden">
-                                <span className="text-[10px] text-gray-400 shrink-0">{line.colors.length} màu:</span>
-                                <span className="text-[10px] text-gray-500 dark:text-gray-400 truncate">
-                                  {line.colors.slice(0, 4).map((c) => c.colorName).join(", ")}
-                                  {line.colors.length > 4 && ` +${line.colors.length - 4}`}
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  /* ─── DẠNG TABLE (BẢNG SẢN PHẨM COMPACT) ────────────────────────── */
-                  <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-800/40">
-                    <table className="w-full text-left text-xs text-gray-700 dark:text-gray-300">
-                      <thead className="border-b border-gray-200 bg-gray-50/80 text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:border-gray-800 dark:bg-gray-800/60 dark:text-gray-400">
-                        <tr>
-                          <th className="px-3 py-2.5">Mã SP</th>
-                          <th className="px-3 py-2.5">Tên SP</th>
-                          <th className="px-2.5 py-2.5 text-right">SL (pcs)</th>
-                          <th className="px-3 py-2.5">Nguồn Fit</th>
-                          <th className="px-3 py-2.5">Hạn giao</th>
-                          <th className="px-3 py-2.5 text-right">Trạng thái</th>
-                          {!isReadOnly && <th className="w-10 px-2 py-2.5"></th>}
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                        {lines.map((line) => (
-                          <tr
-                            key={line.id}
-                            className="transition-colors hover:bg-brand-50/50 dark:hover:bg-gray-800/60 group"
-                          >
-                            <td className="px-3 py-3">
-                              <button
-                                type="button"
-                                onClick={() => navigate(productDetailPath(line.id))}
-                                className="cursor-pointer font-mono text-base font-bold text-brand-600 hover:underline group-hover:text-brand-700 dark:text-brand-400"
-                              >
-                                {line.productCode || line.styleCode}
-                              </button>
-                            </td>
-                            <td className="px-3 py-3 text-xs text-gray-500 dark:text-gray-400 truncate max-w-[120px]" title={line.productName}>
-                              <button
-                                type="button"
-                                onClick={() => navigate(productDetailPath(line.id))}
-                                className="cursor-pointer hover:text-brand-600 hover:underline dark:hover:text-brand-400"
-                              >
-                                {line.productName}
-                              </button>
-                            </td>
-                            <td className="px-2.5 py-3 text-right font-mono font-bold text-xs text-gray-800 dark:text-gray-200">
-                              {line.totalQuantity ? line.totalQuantity.toLocaleString() : "—"}
-                            </td>
-                            <td className="px-3 py-3">
-                              {line.sourceStyle ? (
-                                <span className="rounded bg-brand-50 px-1.5 py-0.5 text-[10px] font-semibold text-brand-700 dark:bg-brand-950 dark:text-brand-300">
-                                  {line.sourceStyle.styleCode}
-                                </span>
-                              ) : (
-                                <span className="text-gray-400 text-[11px]">—</span>
-                              )}
-                            </td>
-                            <td className="px-3 py-3 text-[11px] text-gray-500">
-                              {formatDate(line.deadline)}
-                            </td>
-                            <td className="px-3 py-3 text-right">
-                              <ProductStatusBadge status={line.status} />
-                            </td>
-                            {!isReadOnly && (
-                              <td className="px-2 py-3 text-right">
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setProductPendingRemoval(line);
-                                  }}
-                                  disabled={removeProductMutation.isPending}
-                                  className="rounded-lg p-1 text-gray-400 hover:bg-error-50 hover:text-error-600 dark:hover:bg-error-950/40 dark:hover:text-error-400 transition-colors cursor-pointer"
-                                  title="Xóa khỏi PO"
-                                >
-                                  <TrashBinIcon className="h-3.5 w-3.5" />
-                                </button>
-                              </td>
-                            )}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        ) : (
-          /* ─── CHẾ ĐỘ THƯỜNG (TOÀN MÀN HÌNH 100% WIDTH) ─── */
           <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-xs dark:border-gray-800 dark:bg-gray-900">
             {/* Header chế độ thường */}
             <div className="flex flex-wrap items-center justify-between border-b border-gray-100 pb-4 dark:border-gray-800 gap-3">
@@ -1733,9 +1120,7 @@ export default function PoDetailPage({
               </div>
             )}
           </div>
-        )
       )}
-
       {/* Tab 3: Tài liệu PO */}
       {activeTab === "documents" && (
         <div className="space-y-4">

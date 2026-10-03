@@ -2,6 +2,7 @@ import {
   Calendar,
   Shirt,
 } from "lucide-react";
+import { Link } from "react-router-dom";
 import type { BomDetail } from "@/types/bom";
 import { canViewBomCost, formatUSD, formatDate } from "@/lib/bomAccess";
 import { useAuthStore } from "@/store/authStore";
@@ -37,6 +38,13 @@ export function BomDetailKpiCards({ bom }: BomDetailKpiCardsProps) {
         bom.productNameSnapshot ||
         bom.style?.styleName;
 
+  const productHref =
+    bom.type === "fit" && bom.style?.id
+      ? `/styles/${bom.style.id}`
+      : bom.purchaseOrder?.id && (bom.product?.id || bom.purchaseOrderProduct?.id)
+        ? `/po/${bom.purchaseOrder.id}/products/${bom.product?.id || bom.purchaseOrderProduct?.id}`
+        : undefined;
+
   // colorNameSnapshot is only set on BOMs created before/without the live PO
   // product colors — fall back to those (same precedence BomTable's list row
   // already uses) instead of just going straight to "—".
@@ -49,39 +57,53 @@ export function BomDetailKpiCards({ bom }: BomDetailKpiCardsProps) {
   const effectiveDeadline =
     bom.deadline || bom.product?.deadline || bom.purchaseOrder?.deadline;
 
+  const productSummary = (
+    <>
+      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-gray-200/60 bg-gray-100/80 text-gray-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400">
+        <Shirt className="h-6 w-6 stroke-[1.5]" />
+      </div>
+      <div className="flex min-w-0 flex-col">
+        <div className="flex items-center gap-2">
+          <span className="text-theme-xs font-medium text-gray-400 dark:text-gray-500">
+            {bom.type === "fit" ? "Mẫu Fit / Style" : "Sản phẩm"}
+          </span>
+          {bom.purchaseOrder?.poCode && (
+            <span className="rounded bg-brand-50 px-1.5 py-0.5 text-[10px] font-semibold text-brand-700 dark:bg-brand-950/40 dark:text-brand-300">
+              {bom.purchaseOrder.poCode}
+            </span>
+          )}
+          {productColors && (
+            <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-300">
+              Màu: {productColors}
+            </span>
+          )}
+        </div>
+        <div className="truncate text-base font-bold text-gray-900 dark:text-white group-hover:text-brand-700 dark:group-hover:text-brand-300">
+          {productCode}
+        </div>
+        {productName && (
+          <div className="truncate text-xs text-gray-500 dark:text-gray-400">{productName}</div>
+        )}
+      </div>
+    </>
+  );
+
   return (
     <div className="flex flex-col md:flex-row items-stretch md:items-center rounded-2xl border border-gray-200/80 bg-white p-4 shadow-xs dark:border-gray-800 dark:bg-gray-900 divide-y md:divide-y-0 md:divide-x divide-gray-100 dark:divide-gray-800">
       {/* 1. Sản phẩm */}
-      <div className="flex flex-1 items-center gap-3.5 pr-6 pb-3 md:pb-0">
-        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gray-100/80 border border-gray-200/60 dark:bg-gray-800 dark:border-gray-700 text-gray-500 dark:text-gray-400">
-          <Shirt className="h-6 w-6 stroke-[1.5]" />
+      {productHref ? (
+        <Link
+          to={productHref}
+          aria-label={`Mở ${bom.type === "fit" ? "mẫu Fit" : "sản phẩm PO"} ${productCode}`}
+          className="group flex flex-1 cursor-pointer items-center gap-3.5 pr-6 pb-3 focus-visible:rounded-lg focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-500 md:pb-0"
+        >
+          {productSummary}
+        </Link>
+      ) : (
+        <div className="flex flex-1 items-center gap-3.5 pr-6 pb-3 md:pb-0">
+          {productSummary}
         </div>
-        <div className="flex flex-col min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="text-theme-xs font-medium text-gray-400 dark:text-gray-500">
-              {bom.type === "fit" ? "Mẫu Fit / Style" : "Sản phẩm"}
-            </span>
-            {bom.purchaseOrder?.poCode && (
-              <span className="rounded bg-brand-50 px-1.5 py-0.5 text-[10px] font-semibold text-brand-700 dark:bg-brand-950/40 dark:text-brand-300">
-                {bom.purchaseOrder.poCode}
-              </span>
-            )}
-            {productColors && (
-              <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-300">
-                Màu: {productColors}
-              </span>
-            )}
-          </div>
-          <div className="truncate text-base font-bold text-gray-900 dark:text-white">
-            {productCode}
-          </div>
-          {productName && (
-            <div className="truncate text-xs text-gray-500 dark:text-gray-400">
-              {productName}
-            </div>
-          )}
-        </div>
-      </div>
+      )}
 
       {/* 2. Đơn hàng */}
       <div className="flex flex-col justify-center px-6 py-3 md:py-0 min-w-36 shrink-0">

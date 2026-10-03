@@ -34,6 +34,7 @@ const hooks = vi.hoisted(() => ({
   useCreateRevision: { isPending: false, mutateAsync: vi.fn() },
   useCopyFit: { isPending: false, mutateAsync: vi.fn() },
   useDiscontinueBom: { isPending: false, mutateAsync: vi.fn() },
+  useRestoreBom: { isPending: false, mutateAsync: vi.fn() },
   refetchBom: vi.fn(),
   useBomAggregate: vi.fn(),
   refetchAggregate: vi.fn(),
@@ -89,10 +90,27 @@ vi.mock("@/hooks/useBoms", () => ({
     if (options && options.enabled === false) return { data: undefined, isLoading: false };
     return hooks.useBoms(params);
   },
-  useMultiPoBoms: (poIds: string[]) =>
-    poIds.map(() => ({
-      data: { data: [] },
+  useEligibleFitStyles: () => ({
+    data: { pages: [{ items: hooks.useStyles()?.data?.data ?? [] }] },
+    isLoading: false,
+    isError: false,
+    hasNextPage: false,
+    fetchNextPage: vi.fn(),
+    isFetchingNextPage: false,
+  }),
+  useEligiblePurchaseOrders: () => ({
+    data: { pages: [{ items: hooks.usePurchaseOrders()?.data?.items ?? [] }] },
+    isLoading: false,
+    isError: false,
+    hasNextPage: false,
+    fetchNextPage: vi.fn(),
+    isFetchingNextPage: false,
+  }),
+  useMultiEligiblePoProducts: (poIds: string[]) =>
+    poIds.map((id) => ({
+      data: hooks.usePoProducts(id)?.data?.items ?? [],
       isLoading: false,
+      isError: false,
     })),
   useBomStats: () => hooks.useBomStats(),
   useCreateBom: () => hooks.useCreateBom,
@@ -113,6 +131,7 @@ vi.mock("@/hooks/useBoms", () => ({
   useCopyFit: () => hooks.useCopyFit,
   useCopyFitToPoBom: () => hooks.useCopyFit,
   useDiscontinueBom: () => hooks.useDiscontinueBom,
+  useRestoreBom: () => hooks.useRestoreBom,
   useBomAggregate: (params?: unknown) => hooks.useBomAggregate(params),
 }));
 
@@ -626,11 +645,11 @@ describe("PR-11: NPL V2 Final Integration & E2E Regression", () => {
       fireEvent.click(screen.getByLabelText("Thêm nguyên liệu - Tạo NPL"));
 
       // Step 1: Select FIT NPL
-      fireEvent.click(screen.getByText("FIT NPL (Mẫu Fit)"));
+      fireEvent.click(screen.getByText("FIT NPL"));
       fireEvent.click(screen.getByRole("button", { name: /Tiếp tục/i }));
 
       // Step 2: Select Style ST-01
-      fireEvent.click(screen.getByText("ST-01"));
+      fireEvent.click(screen.getByLabelText("Chọn mẫu ST-01"));
       fireEvent.click(screen.getByRole("button", { name: /Tiếp tục/i }));
 
       // Step 3: Confirm Create
@@ -662,9 +681,9 @@ describe("PR-11: NPL V2 Final Integration & E2E Regression", () => {
       fireEvent.click(screen.getByRole("button", { name: /Tiếp tục/i }));
 
       // Step 2: Select PO and Product
-      fireEvent.click(screen.getByPlaceholderText(/Tìm kiếm đơn hàng PO/i));
+      fireEvent.click(screen.getByPlaceholderText("Tìm mã PO hoặc tên khách hàng"));
       fireEvent.click(screen.getByRole("option", { name: /PO-2026-888/ }));
-      fireEvent.click(screen.getAllByText("PRD-QUAN-01")[1]);
+      fireEvent.click(screen.getByLabelText("Chọn sản phẩm PRD-QUAN-01"));
 
       fireEvent.click(screen.getByRole("button", { name: /Tiếp tục/i }));
 
@@ -936,9 +955,9 @@ describe("PR-11: NPL V2 Final Integration & E2E Regression", () => {
 
       renderWithRouter(<BomDetailPage />, { initialEntries: ["/bom/bom-v2-test-id"] });
 
-      const moreBtn = screen.getByLabelText("Thao tác khác");
-      fireEvent.click(moreBtn);
-
+      expect(screen.getByText("Sửa thông tin")).toBeTruthy();
+      expect(screen.getByText("Ngừng sử dụng")).toBeTruthy();
+      expect(screen.queryByLabelText("Thao tác khác")).toBeNull();
       const copyFitOption = screen.getByText("Nhập từ Fit NPL");
       fireEvent.click(copyFitOption);
 

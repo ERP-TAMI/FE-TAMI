@@ -1,4 +1,5 @@
 import { Table, type TableColumn } from "@/components/shared/Table";
+import { STATUS_BADGE_BASE } from "@/components/shared/badgeStyles";
 import { PencilIcon, TrashBinIcon } from "@/icons";
 import type { MaterialGroup } from "@/types/material-group";
 
@@ -63,7 +64,7 @@ export function MaterialGroupTable({
               />
             </button>
             <span
-              className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${
+              className={`${STATUS_BADGE_BASE} py-1 ${
                 group.status === "active"
                   ? "bg-success-50 text-success-700 dark:bg-success-500/15 dark:text-success-400"
                   : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300"
