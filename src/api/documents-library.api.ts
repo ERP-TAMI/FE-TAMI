@@ -16,7 +16,6 @@ export const documentsLibraryApi = {
       search?: string;
       archived?: boolean;
       assigned?: boolean;
-      pinned?: boolean;
       page?: number;
       limit?: number;
       category?: "word" | "excel" | "pdf" | "image";
@@ -150,14 +149,6 @@ export const documentsLibraryApi = {
 
   archive: async (documentId: string) => {
     await apiClient.delete(`/documents/${documentId}`);
-  },
-
-  pin: async (documentId: string) => {
-    await apiClient.put(`/documents/${documentId}/pin`);
-  },
-
-  unpin: async (documentId: string) => {
-    await apiClient.delete(`/documents/${documentId}/pin`);
   },
 
   assignToStyle: async (styleId: string, documentIds: string[]) => {

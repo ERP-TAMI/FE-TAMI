@@ -4,15 +4,11 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createPortal } from "react-dom";
 import {
   BadgeCheck,
-  Bookmark,
-  BookmarkCheck,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
   CircleDashed,
-  Grid2X2,
   Link2,
-  List,
   LoaderCircle,
   MoreVertical,
   Trash2,
@@ -37,11 +33,7 @@ import type {
   DocumentVersionItem,
 } from "@/types/document-library";
 import type { Style } from "@/types/style";
-import {
-  DocumentLibrarySidebar,
-  type DocumentLibraryFilter,
-  type DocumentLibraryView,
-} from "@/pages/documents/DocumentLibrarySidebar";
+import type { DocumentLibraryFilter } from "@/pages/documents/DocumentLibraryStatusFilter";
 import { DocumentFoldersView } from "@/pages/documents/DocumentFoldersView";
 
 const VIEW_PERMISSION = "master_data.documents.view";
@@ -51,7 +43,6 @@ const FILE_MENU_WIDTH = 176;
 const STYLE_PICKER_PAGE_SIZE = 20;
 const MAX_BULK_DOCUMENT_SELECTION = 100;
 const EMPTY_DOCUMENTS: DocumentLibraryItem[] = [];
-
 type FolderDialogState = { mode: "rename"; folder: DocumentFolderItem; name: string } | null;
 type ArchiveConfirmation = {
   documents: DocumentLibraryItem[];
@@ -96,8 +87,7 @@ export default function DocumentLibraryPage() {
 
   const [selectedFolder, setSelectedFolder] = useState<DocumentFolderItem | null>(null);
   const [folderPath, setFolderPath] = useState<DocumentFolderItem[]>([]);
-  const [activeView, setActiveView] = useState<DocumentLibraryView>("folders");
-  const [activeFilters, setActiveFilters] = useState<Set<DocumentLibraryFilter>>(() => new Set());
+  const [activeFilter, setActiveFilter] = useState<DocumentLibraryFilter>("all");
   const folderId = selectedFolder?.id ?? "";
   const [search, setSearch] = useState("");
   const [folderDialog, setFolderDialog] = useState<FolderDialogState>(null);
@@ -126,15 +116,12 @@ export default function DocumentLibraryPage() {
   const [assignmentPage, setAssignmentPage] = useState(1);
   const [selectedStyleId, setSelectedStyleId] = useState<string | null>(null);
   const [isAssigningDocument, setIsAssigningDocument] = useState(false);
-  const [formatFilter, setFormatFilter] = useState("all");
-  const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest");
-  const [displayMode, setDisplayMode] = useState<"list" | "grid">("list");
+  const [folderDisplayMode, setFolderDisplayMode] = useState<"list" | "grid">("grid");
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [openFileMenu, setOpenFileMenu] = useState<OpenFileMenu>(null);
   const [selectedActionsOpen, setSelectedActionsOpen] = useState(false);
   const [bulkActionPending, setBulkActionPending] = useState(false);
-  const [pinningDocumentIds, setPinningDocumentIds] = useState<Set<string>>(() => new Set());
   const [selectedDocumentKeys, setSelectedDocumentKeys] = useState<Set<string>>(new Set());
   const selectedDocumentCache = useRef<Map<string, DocumentLibraryItem>>(new Map());
   const uploadInputRef = useRef<HTMLInputElement>(null);
@@ -146,14 +133,8 @@ export default function DocumentLibraryPage() {
     setSelectedDocumentKeys(new Set());
     setSelectedActionsOpen(false);
   };
-  const assignmentStatus = activeFilters.has("assigned")
-    ? true
-    : activeFilters.has("processing")
-      ? false
-      : undefined;
-  const requestLimit = activeFilters.has("recent") ? Math.min(pageSize, 10) : pageSize;
-  const querySortOrder = activeFilters.has("recent") ? "newest" : sortOrder;
-
+  const assignmentStatus = activeFilter === "all" ? undefined : activeFilter === "assigned";
+  const requestLimit = pageSize;
   const documentsQuery = useQuery({
     queryKey: [
       "document-library",
@@ -161,11 +142,8 @@ export default function DocumentLibraryPage() {
         folderId,
         search,
         assignmentStatus,
-        pinned: activeFilters.has("pinned"),
         page: currentPage,
         limit: requestLimit,
-        category: formatFilter,
-        sortOrder: querySortOrder,
       },
     ],
     queryFn: () =>
@@ -173,15 +151,10 @@ export default function DocumentLibraryPage() {
         ...(folderId ? { folderId } : {}),
         ...(search.trim() ? { search: search.trim() } : {}),
         ...(assignmentStatus !== undefined ? { assigned: assignmentStatus } : {}),
-        ...(activeFilters.has("pinned") ? { pinned: true } : {}),
         page: currentPage,
         limit: requestLimit,
-        ...(formatFilter !== "all"
-          ? { category: formatFilter as "word" | "excel" | "pdf" | "image" }
-          : {}),
-        ...(querySortOrder === "oldest" ? { sortOrder: querySortOrder } : {}),
       }),
-    enabled: canView && (activeView !== "folders" || Boolean(folderId)),
+    enabled: canView && Boolean(folderId),
   });
   const versionsQuery = useQuery({
     queryKey: ["document-library", versionsDocument?.documentId, "versions"],
@@ -208,16 +181,11 @@ export default function DocumentLibraryPage() {
     }
     return Array.from(selectedByDocumentId.values());
   }, [selectedDocumentKeys]);
-  const totalDocumentCount = activeFilters.has("recent")
-    ? Math.min(documentsQuery.data?.meta.total ?? 0, 10)
-    : (documentsQuery.data?.meta.total ?? 0);
+  const totalDocumentCount = documentsQuery.data?.meta.total ?? 0;
   const pageCount = Math.max(1, Math.ceil(totalDocumentCount / requestLimit));
   const visiblePage = Math.min(currentPage, pageCount);
-  const visibleDocuments =
-    activeFilters.has("recent") && sortOrder === "oldest" ? [...documents].reverse() : documents;
-  const totalBytes = activeFilters.has("recent")
-    ? documents.reduce((sum, document) => sum + document.byteSize, 0)
-    : (documentsQuery.data?.meta.totalBytes ?? 0);
+  const visibleDocuments = documents;
+  const activeDisplayMode = folderDisplayMode;
   const uploadProgressPercent =
     uploadProgress.totalBytes > 0
       ? Math.min(
@@ -246,7 +214,7 @@ export default function DocumentLibraryPage() {
   useEffect(() => {
     setCurrentPage(1);
     clearDocumentSelection();
-  }, [activeView, activeFilters, folderId, search, formatFilter, pageSize]);
+  }, [activeFilter, folderId, search, pageSize]);
 
   useEffect(() => {
     if (documentsQuery.data && currentPage > pageCount) setCurrentPage(pageCount);
@@ -305,40 +273,18 @@ export default function DocumentLibraryPage() {
 
   if (!canView) return <Navigate to="/forbidden" replace />;
 
-  const navigateToView = (view: DocumentLibraryView) => {
-    setActiveView(view);
-    setActiveFilters(new Set());
-    setSearch("");
-    if (view !== "folders") {
-      setFolderPath([]);
-      setSelectedFolder(null);
-    }
-  };
-
   const toggleFilter = (filter: DocumentLibraryFilter) => {
-    setActiveFilters((current) => {
-      const next = new Set(current);
-      if (filter === "assigned" || filter === "processing") {
-        next.delete(filter === "assigned" ? "processing" : "assigned");
-        next.add(filter);
-      } else if (next.has(filter)) {
-        next.delete(filter);
-      } else {
-        next.add(filter);
-      }
-      return next;
-    });
-    if (activeView === "overview" || (activeView === "folders" && !folderId)) {
-      setActiveView("documents");
-    }
+    setActiveFilter(filter);
   };
 
   const openFolder = (folder: DocumentFolderItem) => {
+    setSearch("");
     setFolderPath((path) => [...path, folder]);
     setSelectedFolder(folder);
   };
 
   const goToParentFolder = () => {
+    setSearch("");
     setFolderPath((path) => {
       const nextPath = path.slice(0, -1);
       setSelectedFolder(nextPath.at(-1) ?? null);
@@ -518,7 +464,7 @@ export default function DocumentLibraryPage() {
       await refreshLibrary();
       showToast("Đã xóa thư mục.");
     } catch (err) {
-      showToast(getApiError(err, "Chỉ xóa được thư mục rỗng.").message, "error");
+      showToast(getApiError(err, "Không thể xóa thư mục.").message, "error");
     } finally {
       setDeleteFolderPending(false);
     }
@@ -526,64 +472,6 @@ export default function DocumentLibraryPage() {
 
   const handleArchive = (document: DocumentLibraryItem) => {
     setArchiveConfirmation({ documents: [document], clearSelection: false });
-  };
-
-  const handleTogglePin = async (document: DocumentLibraryItem) => {
-    if (pinningDocumentIds.has(document.documentId)) return;
-    setPinningDocumentIds((current) => new Set(current).add(document.documentId));
-    try {
-      if (document.isPinned) {
-        await documentsLibraryApi.unpin(document.documentId);
-        showToast("Đã bỏ ghim tài liệu.");
-      } else {
-        await documentsLibraryApi.pin(document.documentId);
-        showToast("Đã ghim tài liệu.");
-      }
-      await refreshLibrary();
-    } catch (err) {
-      showToast(getApiError(err, "Cập nhật ghim tài liệu thất bại.").message, "error");
-    } finally {
-      setPinningDocumentIds((current) => {
-        const next = new Set(current);
-        next.delete(document.documentId);
-        return next;
-      });
-    }
-  };
-
-  const handleBulkPin = async () => {
-    setSelectedActionsOpen(false);
-    const documentsToPin = selectedDocuments.filter((document) => !document.isPinned);
-    if (documentsToPin.length === 0) {
-      showToast("Tất cả tài liệu đã chọn đều được ghim.");
-      return;
-    }
-
-    const documentIds = documentsToPin.map((document) => document.documentId);
-    setBulkActionPending(true);
-    setPinningDocumentIds((current) => new Set([...current, ...documentIds]));
-    try {
-      const results = await Promise.allSettled(
-        documentsToPin.map((document) => documentsLibraryApi.pin(document.documentId)),
-      );
-      const succeeded = results.filter((result) => result.status === "fulfilled").length;
-      const failed = results.length - succeeded;
-      await refreshLibrary();
-      clearDocumentSelection();
-      showToast(
-        failed === 0
-          ? `Đã ghim ${succeeded} tài liệu.`
-          : `Đã ghim ${succeeded}/${results.length} tài liệu; ${failed} tài liệu thất bại.`,
-        failed === 0 ? "success" : "error",
-      );
-    } finally {
-      setBulkActionPending(false);
-      setPinningDocumentIds((current) => {
-        const next = new Set(current);
-        documentIds.forEach((documentId) => next.delete(documentId));
-        return next;
-      });
-    }
   };
 
   const handleBulkArchive = () => {
@@ -827,23 +715,6 @@ export default function DocumentLibraryPage() {
                   Gán vào mẫu Fit
                 </button>
               )}
-              <button
-                type="button"
-                role="menuitem"
-                disabled={pinningDocumentIds.has(document.documentId)}
-                onClick={() => {
-                  closeMenu();
-                  void handleTogglePin(document);
-                }}
-                className="text-brand-700 hover:bg-brand-50 dark:text-brand-300 dark:hover:bg-brand-950/30 flex w-full items-center gap-2 rounded px-3 py-2 text-left text-xs disabled:opacity-50"
-              >
-                {document.isPinned ? (
-                  <BookmarkCheck aria-hidden="true" className="h-3.5 w-3.5" />
-                ) : (
-                  <Bookmark aria-hidden="true" className="h-3.5 w-3.5" />
-                )}
-                {document.isPinned ? "Bỏ ghim" : "Ghim tài liệu"}
-              </button>
               {canManage && (
                 <>
                   <button
@@ -897,21 +768,7 @@ export default function DocumentLibraryPage() {
     </span>
   );
 
-  const showDocumentList =
-    activeView === "documents" || (activeView === "folders" && Boolean(folderId));
-  const selectedFilterLabels = [
-    activeFilters.has("recent") ? "Gần đây" : null,
-    activeFilters.has("assigned") ? "Đã gán" : null,
-    activeFilters.has("processing") ? "Đang xử lý" : null,
-    activeFilters.has("pinned") ? "Được ghim" : null,
-  ].filter((label): label is string => Boolean(label));
-  const pageTitle =
-    activeView === "folders"
-      ? (selectedFolder?.folderName ?? "Tất cả thư mục")
-      : selectedFilterLabels.length > 0
-        ? selectedFilterLabels.join(" · ")
-        : "Tất cả tài liệu";
-  const latestDocuments = documents.slice(0, 5);
+  const showDocumentList = Boolean(folderId);
   const uploadProgressBanner = uploading ? (
     <div
       role="status"
@@ -974,111 +831,18 @@ export default function DocumentLibraryPage() {
   const documentListPanel = (
     folderRows: ReactNode | null = null,
     folderCards: ReactNode | null = null,
-    folderCount = 0,
   ) =>
     showDocumentList ? (
-      <section
-        className={`flex min-w-0 flex-col overflow-hidden ${
-          activeView === "folders"
-            ? "border-t border-gray-100 dark:border-gray-800"
-            : "rounded-2xl border border-gray-200 bg-white shadow-xs dark:border-gray-800 dark:bg-gray-900"
-        }`}
-      >
-        <header className="space-y-3 border-b border-gray-100 px-4 py-3 dark:border-gray-800">
-          <div className="min-w-0">
-            <h2 className="truncate text-base font-semibold tracking-tight text-gray-900 dark:text-white">
-              {activeView === "folders" ? "Nội dung thư mục" : pageTitle}
-            </h2>
-            <p className="mt-1 text-xs text-gray-500">
-              {activeView === "folders" && selectedFolder?.parentFolderName
-                ? `${selectedFolder.parentFolderName} · `
-                : ""}
-              {activeView === "folders" && folderCount > 0 ? `${folderCount} thư mục · ` : ""}
-              {totalDocumentCount} tài liệu · Dung lượng {formatBytes(totalBytes)}
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              aria-label="Tìm tên file"
-              placeholder="Tìm tên file..."
-              className="focus:border-brand-300 focus:ring-brand-100 dark:focus:ring-brand-950 h-9 w-full min-w-0 rounded-lg border border-gray-200 bg-white px-3 text-sm transition-colors outline-none placeholder:text-gray-400 focus:ring-2 sm:w-48 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-            />
-            <select
-              aria-label="Lọc định dạng"
-              value={formatFilter}
-              onChange={(event) => setFormatFilter(event.target.value)}
-              className="focus:border-brand-300 focus:ring-brand-100 dark:focus:ring-brand-950 h-9 max-w-full rounded-lg border border-gray-200 bg-white px-2.5 text-xs text-gray-700 transition-colors outline-none focus:ring-2 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
-            >
-              <option value="all">Tất cả định dạng</option>
-              <option value="word">Word</option>
-              <option value="excel">Excel</option>
-              <option value="pdf">PDF</option>
-              <option value="image">Hình ảnh</option>
-            </select>
-            <select
-              aria-label="Sắp xếp ngày cập nhật"
-              value={sortOrder}
-              onChange={(event) => setSortOrder(event.target.value as "newest" | "oldest")}
-              className="focus:border-brand-300 focus:ring-brand-100 dark:focus:ring-brand-950 h-9 max-w-full rounded-lg border border-gray-200 bg-white px-2.5 text-xs text-gray-700 transition-colors outline-none focus:ring-2 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
-            >
-              <option value="newest">Ngày cập nhật (mới nhất)</option>
-              <option value="oldest">Ngày cập nhật (cũ nhất)</option>
-            </select>
-            <div className="ml-auto flex shrink-0 items-center gap-2">
-              <div className="flex rounded-lg border border-gray-200 bg-gray-50/70 p-0.5 dark:border-gray-700 dark:bg-gray-800/70">
-                <button
-                  type="button"
-                  aria-label="Dạng danh sách"
-                  aria-pressed={displayMode === "list"}
-                  onClick={() => setDisplayMode("list")}
-                  className={`focus-visible:outline-brand-500 rounded-md p-1.5 transition-colors focus-visible:outline-2 focus-visible:outline-offset-1 ${displayMode === "list" ? "text-brand-600 dark:text-brand-300 bg-white shadow-xs dark:bg-gray-700" : "text-gray-500 hover:bg-white dark:text-gray-400 dark:hover:bg-gray-700"}`}
-                >
-                  <List aria-hidden="true" className="h-4 w-4" />
-                </button>
-                <button
-                  type="button"
-                  aria-label="Dạng lưới"
-                  aria-pressed={displayMode === "grid"}
-                  onClick={() => setDisplayMode("grid")}
-                  className={`focus-visible:outline-brand-500 rounded-md p-1.5 transition-colors focus-visible:outline-2 focus-visible:outline-offset-1 ${displayMode === "grid" ? "text-brand-600 dark:text-brand-300 bg-white shadow-xs dark:bg-gray-700" : "text-gray-500 hover:bg-white dark:text-gray-400 dark:hover:bg-gray-700"}`}
-                >
-                  <Grid2X2 aria-hidden="true" className="h-4 w-4" />
-                </button>
-              </div>
-              {canManage && Boolean(folderId) && (
-                <>
-                  <input
-                    ref={uploadInputRef}
-                    type="file"
-                    multiple
-                    accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.webp,.gif"
-                    className="hidden"
-                    onChange={(event) => void handleUploadFiles(event.target.files)}
-                  />
-                  <input
-                    ref={versionInputRef}
-                    type="file"
-                    accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.webp,.gif"
-                    className="hidden"
-                    onChange={(event) => void handleVersionFile(event.target.files?.[0])}
-                  />
-                  <button
-                    type="button"
-                    disabled={!folderId || uploading}
-                    onClick={() => uploadInputRef.current?.click()}
-                    className="bg-brand-600 hover:bg-brand-700 focus-visible:outline-brand-500 h-9 rounded-lg px-3 text-sm font-semibold text-white transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transition-none"
-                  >
-                    {uploading
-                      ? `Đang tải ${uploadProgress.done}/${uploadProgress.total}`
-                      : "Tải file lên"}
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
-        </header>
+      <section className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden border-t border-gray-100 dark:border-gray-800">
+        {canManage && Boolean(folderId) && (
+          <input
+            ref={versionInputRef}
+            type="file"
+            accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.webp,.gif"
+            className="hidden"
+            onChange={(event) => void handleVersionFile(event.target.files?.[0])}
+          />
+        )}
 
         {selectedDocuments.length > 0 && (
           <div
@@ -1124,16 +888,6 @@ export default function DocumentLibraryPage() {
                         Gán {selectedDocuments.length} tài liệu vào mẫu Fit
                       </button>
                     )}
-                    <button
-                      type="button"
-                      role="menuitem"
-                      disabled={bulkActionPending}
-                      onClick={() => void handleBulkPin()}
-                      className="text-brand-700 hover:bg-brand-50 dark:text-brand-300 dark:hover:bg-brand-950/30 flex w-full items-center gap-2 rounded px-3 py-2 text-left text-xs disabled:opacity-50"
-                    >
-                      <Bookmark aria-hidden="true" className="h-3.5 w-3.5" />
-                      Ghim {selectedDocuments.length} tài liệu
-                    </button>
                     {canManage && (
                       <button
                         type="button"
@@ -1168,29 +922,22 @@ export default function DocumentLibraryPage() {
           <div className="text-error-600 p-12 text-center text-sm">Không tải được tài liệu.</div>
         ) : totalDocumentCount === 0 ? (
           <div className="p-12 text-center text-sm text-gray-500">
-            {activeFilters.has("pinned")
-              ? "Bạn chưa ghim tài liệu nào."
-              : documents.length > 0 || selectedFilterLabels.length > 0
-                ? "Không có tài liệu phù hợp với bộ lọc."
-                : "Chưa có tài liệu trong thư mục này."}
+            Không có tài liệu phù hợp với bộ lọc.
           </div>
-        ) : displayMode === "list" ? (
+        ) : activeDisplayMode === "list" ? (
           <div className="min-w-0 flex-1 overflow-x-auto">
             <table
               aria-label="Tài liệu trong kho"
-              className={`w-full ${
-                activeView === "folders" ? "min-w-[720px]" : "min-w-[880px]"
-              } table-fixed border-collapse text-left text-xs`}
+              className="w-full min-w-[720px] table-fixed border-collapse text-left text-xs"
             >
               <colgroup>
                 <col className="w-10" />
                 <col />
-                {activeView !== "folders" && <col className="w-36" />}
                 <col className="w-24" />
                 <col className="w-24" />
                 <col className="w-40" />
                 <col className="w-24" />
-                <col className="w-14" />
+                <col className="w-20" />
               </colgroup>
               <thead className="bg-gray-50 text-gray-600 dark:bg-gray-800/70 dark:text-gray-300">
                 <tr>
@@ -1203,19 +950,12 @@ export default function DocumentLibraryPage() {
                       className="text-brand-600 focus:ring-brand-500 rounded border-gray-300"
                     />
                   </th>
-                  <th className="min-w-48 px-3 py-3 font-medium">
-                    {activeView === "folders" ? "Tên" : "Tên file"}
-                  </th>
-                  {activeView !== "folders" && (
-                    <th className="w-36 px-3 py-3 font-medium">Thư mục</th>
-                  )}
-                  <th className="w-24 px-3 py-3 font-medium">
-                    {activeView === "folders" ? "Loại" : "Định dạng"}
-                  </th>
+                  <th className="min-w-48 px-3 py-3 font-medium">Tên</th>
+                  <th className="w-24 px-3 py-3 font-medium">Loại</th>
                   <th className="w-24 px-3 py-3 font-medium">Dung lượng</th>
                   <th className="w-40 px-3 py-3 font-medium">Ngày cập nhật</th>
                   <th className="w-24 px-3 py-3 font-medium">Version</th>
-                  <th className="w-14 px-3 py-3 text-right font-medium">Thao tác</th>
+                  <th className="w-20 px-3 py-3 text-right font-medium">Thao tác</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
@@ -1264,13 +1004,6 @@ export default function DocumentLibraryPage() {
                           </div>
                         </div>
                       </td>
-                      {activeView !== "folders" && (
-                        <td className="px-3 py-3">
-                          <span className="inline-flex max-w-full items-center gap-1 rounded-md border border-gray-200 px-2 py-1 text-[11px] text-gray-600 dark:border-gray-700 dark:text-gray-300">
-                            <span className="truncate">{document.folderName}</span>
-                          </span>
-                        </td>
-                      )}
                       <td className="px-3 py-3">
                         <span
                           className={`rounded-md px-2 py-1 text-[10px] font-medium ${meta.chipClass}`}
@@ -1339,9 +1072,12 @@ export default function DocumentLibraryPage() {
                       </span>
                     </span>
                   </button>
-                  <p className="mt-3 truncate border-t border-gray-100 pt-2 text-xs text-gray-500 dark:border-gray-800">
-                    {document.folderName} · {formatDate(document.uploadedAt)}
-                  </p>
+                  <div className="mt-3 flex min-w-0 items-center justify-between gap-3 border-t border-gray-100 pt-2 text-xs text-gray-500 dark:border-gray-800">
+                    <span className="min-w-0 truncate">{document.folderName}</span>
+                    <time className="shrink-0 text-right whitespace-nowrap">
+                      {formatDate(document.uploadedAt)}
+                    </time>
+                  </div>
                 </article>
               );
             })}
@@ -1349,15 +1085,7 @@ export default function DocumentLibraryPage() {
         )}
 
         <footer className="mt-auto flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 px-4 py-3 text-xs text-gray-500 dark:border-gray-800">
-          <div className="flex flex-wrap items-center gap-3">
-            <span>
-              {activeView === "folders" && folderCount > 0 ? `${folderCount} thư mục · ` : ""}
-              {totalDocumentCount === 0
-                ? "Hiển thị 0 tài liệu"
-                : `Hiển thị ${(visiblePage - 1) * requestLimit + 1}–${Math.min(visiblePage * requestLimit, totalDocumentCount)} trên ${totalDocumentCount} tài liệu`}
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
+          <div className="ml-auto flex items-center gap-2">
             <button
               type="button"
               aria-label="Trang trước"
@@ -1405,170 +1133,62 @@ export default function DocumentLibraryPage() {
           { label: "Kho tài liệu" },
         ]}
         title="Kho tài liệu"
-        description="Quản lý tập trung tài liệu dùng cho các mẫu Fit."
       />
 
-      <div className="grid min-w-0 items-start gap-4 xl:grid-cols-[220px_minmax(0,1fr)]">
-        <DocumentLibrarySidebar
-          activeView={activeView}
-          activeFilters={activeFilters}
-          onNavigate={navigateToView}
-          onToggleFilter={toggleFilter}
-        />
-
+      <div className="space-y-4">
         <main className="min-w-0 space-y-4">
           {uploadProgressBanner}
 
-          {activeView === "overview" && (
-            <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xs dark:border-gray-800 dark:bg-gray-900">
-              <header className="border-b border-gray-100 px-5 py-4 dark:border-gray-800">
-                <h2 className="text-base font-semibold tracking-tight text-gray-900 dark:text-white">
-                  Tổng quan kho tài liệu
-                </h2>
-                <p className="mt-1 text-sm leading-5 text-gray-500">
-                  Tài liệu dùng chung và hoạt động mới nhất.
-                </p>
-              </header>
-              <div className="grid gap-3 p-4 sm:grid-cols-3">
-                <div className="min-w-0 rounded-xl border border-gray-100 bg-gray-50/70 p-4 dark:border-gray-800 dark:bg-gray-800/50">
-                  <p className="text-xs font-medium text-gray-500">Tài liệu đang hoạt động</p>
-                  <p className="mt-2 text-2xl font-semibold tracking-tight text-gray-900 tabular-nums dark:text-white">
-                    {documentsQuery.isLoading ? "—" : documents.length}
-                  </p>
-                </div>
-                <div className="min-w-0 rounded-xl border border-gray-100 bg-gray-50/70 p-4 dark:border-gray-800 dark:bg-gray-800/50">
-                  <p className="text-xs font-medium text-gray-500">Thư mục có tài liệu</p>
-                  <p className="mt-2 text-2xl font-semibold tracking-tight text-gray-900 tabular-nums dark:text-white">
-                    {documentsQuery.isLoading
-                      ? "—"
-                      : new Set(documents.map((document) => document.folderId)).size}
-                  </p>
-                </div>
-                <div className="min-w-0 rounded-xl border border-gray-100 bg-gray-50/70 p-4 dark:border-gray-800 dark:bg-gray-800/50">
-                  <p className="text-xs font-medium text-gray-500">Dung lượng đang dùng</p>
-                  <p className="mt-2 text-2xl font-semibold tracking-tight text-gray-900 tabular-nums dark:text-white">
-                    {documentsQuery.isLoading
-                      ? "—"
-                      : formatBytes(
-                          documents.reduce((sum, document) => sum + document.byteSize, 0),
-                        )}
-                  </p>
-                </div>
-              </div>
-              <div className="border-t border-gray-100 p-4 dark:border-gray-800">
-                <div className="mb-2 flex items-center justify-between gap-3">
-                  <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-100">
-                    Tài liệu cập nhật gần đây
-                  </h3>
-                  <button
-                    type="button"
-                    onClick={() => navigateToView("documents")}
-                    className="text-brand-600 dark:text-brand-300 text-xs font-medium hover:underline"
-                  >
-                    Tất cả tài liệu
-                  </button>
-                </div>
-                {documentsQuery.isLoading ? (
-                  <p className="py-5 text-center text-sm text-gray-500">Đang tải tài liệu...</p>
-                ) : latestDocuments.length === 0 ? (
-                  <p className="py-5 text-center text-sm text-gray-500">
-                    Chưa có tài liệu trong kho.
-                  </p>
-                ) : (
-                  <div className="divide-y divide-gray-100 dark:divide-gray-800">
-                    {latestDocuments.map((document) => (
-                      <button
-                        key={document.documentId}
-                        type="button"
-                        onClick={() => void openFile(document.documentId, document.versionId)}
-                        className="focus-visible:outline-brand-500 flex w-full min-w-0 items-center justify-between gap-3 rounded-lg px-2 py-3 text-left transition-colors hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-2 dark:hover:bg-gray-800/50"
-                      >
-                        <span className="flex min-w-0 flex-1 items-center gap-1">
-                          <span className="min-w-0 truncate text-sm font-medium text-gray-800 dark:text-gray-100">
-                            {document.fileName}
-                          </span>
-                          {renderAssignmentStatus(document)}
-                        </span>
-                        <span className="shrink-0 text-xs text-gray-500">
-                          {formatDate(document.uploadedAt)}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </section>
-          )}
-
-          {activeFilters.has("assigned") && !activeFilters.has("processing") && (
-            <div className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-600 shadow-xs dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300">
-              <BadgeCheck aria-hidden="true" className="h-4 w-4" />
-              Tài liệu đã được gán vào ít nhất một mẫu Fit.
-            </div>
-          )}
-
-          {activeFilters.has("processing") && !activeFilters.has("assigned") && (
-            <div className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-600 shadow-xs dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300">
-              <BadgeCheck aria-hidden="true" className="h-4 w-4" />
-              Hiển thị tài liệu chưa được gán vào mẫu Fit.
-            </div>
-          )}
-
-          {selectedFilterLabels.length > 0 && (
-            <div
-              aria-label="Bộ lọc đang áp dụng"
-              className="flex flex-wrap items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-xs dark:border-gray-800 dark:bg-gray-900"
-            >
-              <span className="mr-1 text-xs text-gray-500">Bộ lọc:</span>
-              {selectedFilterLabels.map((label) => (
-                <span
-                  key={label}
-                  className="bg-brand-50 text-brand-700 dark:bg-brand-950/40 dark:text-brand-300 rounded-full px-2.5 py-1 text-xs font-medium"
-                >
-                  {label}
-                </span>
-              ))}
-              <button
-                type="button"
-                onClick={() => setActiveFilters(new Set())}
-                className="ml-auto text-xs font-medium text-gray-500 hover:text-gray-800 dark:hover:text-white"
-              >
-                Xóa bộ lọc
-              </button>
-            </div>
-          )}
-
-          {activeView === "folders" && (
-            <DocumentFoldersView
-              path={folderPath}
-              canManage={canManage}
-              onOpenFolder={openFolder}
-              onSelectPath={(path) => {
-                setFolderPath(path);
-                setSelectedFolder(path.at(-1) ?? null);
-              }}
-              onOpenRoot={() => {
-                setFolderPath([]);
-                setSelectedFolder(null);
-              }}
-              onBack={goToParentFolder}
-              onCreate={handleCreateFolder}
-              onRename={(folder) =>
-                setFolderDialog({ mode: "rename", folder, name: folder.folderName })
-              }
-              onDelete={setDeletingFolder}
-              mergeContents={
-                !documentsQuery.isLoading && !documentsQuery.isError && visibleDocuments.length > 0
-              }
-              renderDocumentPanel={
-                folderId
-                  ? (folderRows, folderCards, folderCount) =>
-                      documentListPanel(folderRows, folderCards, folderCount)
-                  : undefined
-              }
+          {canManage && Boolean(folderId) && (
+            <input
+              ref={uploadInputRef}
+              type="file"
+              multiple
+              accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.webp,.gif"
+              className="hidden"
+              onChange={(event) => void handleUploadFiles(event.target.files)}
             />
           )}
-          {activeView !== "folders" && documentListPanel()}
+          <DocumentFoldersView
+            path={folderPath}
+            search={search}
+            onSearchChange={setSearch}
+            showAssignmentFilter={Boolean(folderId)}
+            assignmentFilter={activeFilter}
+            onAssignmentFilterChange={toggleFilter}
+            displayMode={folderDisplayMode}
+            onDisplayModeChange={setFolderDisplayMode}
+            canManage={canManage}
+            canUpload={canManage && Boolean(folderId)}
+            uploading={uploading}
+            uploadButtonLabel={
+              uploading ? `Đang tải ${uploadProgress.done}/${uploadProgress.total}` : "Tải tài liệu"
+            }
+            onUploadClick={() => uploadInputRef.current?.click()}
+            onOpenFolder={openFolder}
+            onSelectPath={(path) => {
+              setFolderPath(path);
+              setSelectedFolder(path.at(-1) ?? null);
+            }}
+            onOpenRoot={() => {
+              setFolderPath([]);
+              setSelectedFolder(null);
+            }}
+            onBack={goToParentFolder}
+            onCreate={handleCreateFolder}
+            onRename={(folder) =>
+              setFolderDialog({ mode: "rename", folder, name: folder.folderName })
+            }
+            onDelete={setDeletingFolder}
+            mergeContents={
+              !documentsQuery.isLoading && !documentsQuery.isError && visibleDocuments.length > 0
+            }
+            renderDocumentPanel={
+              folderId
+                ? (folderRows, folderCards) => documentListPanel(folderRows, folderCards)
+                : undefined
+            }
+          />
         </main>
       </div>
 
@@ -1798,16 +1418,52 @@ export default function DocumentLibraryPage() {
 
       <ConfirmDialog
         open={Boolean(deletingFolder)}
-        title="Xóa thư mục?"
-        description={
-          <>
-            Thư mục <strong>{deletingFolder?.folderName}</strong> chỉ xóa được khi không chứa tài
-            liệu hoặc thư mục con.
-          </>
+        title={
+          deletingFolder?.hasChildren
+            ? "Không thể xóa thư mục"
+            : deletingFolder?.documentCount
+              ? "Xóa thư mục và tài liệu?"
+              : "Xóa thư mục?"
         }
-        confirmLabel="Xóa thư mục"
+        description={
+          deletingFolder?.hasChildren ? (
+            <>
+              Thư mục <strong>{deletingFolder.folderName}</strong>
+              {deletingFolder.documentCount > 0 && (
+                <>
+                  {" "}
+                  đang chứa <strong>{deletingFolder.documentCount} tài liệu</strong> và có thư mục
+                  con. Hãy xóa hoặc di chuyển thư mục con trước khi xóa thư mục này.
+                </>
+              )}
+              {deletingFolder.documentCount === 0 && (
+                <> đang có thư mục con. Hãy xóa hoặc di chuyển thư mục con trước khi xóa.</>
+              )}
+            </>
+          ) : deletingFolder && deletingFolder.documentCount > 0 ? (
+            <>
+              Thư mục <strong>{deletingFolder.folderName}</strong> đang chứa{" "}
+              <strong>{deletingFolder.documentCount} tài liệu</strong>. Nếu tiếp tục, thư mục sẽ bị
+              xóa; tài liệu chỉ nằm trong thư mục này sẽ được lưu trữ khỏi kho, còn file gốc vẫn
+              được giữ. Tài liệu còn nằm trong thư mục khác sẽ tiếp tục ở đó.
+            </>
+          ) : (
+            <>
+              Bạn có chắc muốn xóa thư mục <strong>{deletingFolder?.folderName}</strong>? Thư mục
+              này không chứa tài liệu hoặc thư mục con.
+            </>
+          )
+        }
+        confirmLabel={
+          deletingFolder?.hasChildren
+            ? "Xóa thư mục"
+            : deletingFolder?.documentCount
+              ? `Xóa thư mục và ${deletingFolder.documentCount} tài liệu`
+              : "Xóa thư mục"
+        }
         variant="danger"
         isSubmitting={deleteFolderPending}
+        confirmDisabled={Boolean(deletingFolder?.hasChildren)}
         onConfirm={() => void handleDeleteFolder()}
         onClose={() => setDeletingFolder(null)}
       />
