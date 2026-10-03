@@ -1,7 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { authApi } from "@/api/auth.api";
 import { useAuthStore, type AuthUser } from "@/store/authStore";
 import { PurchaseOrderModeToggle } from "@/components/features/po/PurchaseOrderModeToggle";
 
@@ -33,23 +32,10 @@ describe("PurchaseOrderModeToggle", () => {
     useAuthStore.setState({ status: "unauthenticated", user: null, accessToken: null });
   });
 
-  it("persists the SA mode change and updates the session from the API response", async () => {
-    vi.spyOn(authApi, "updatePurchaseOrderMode").mockResolvedValue({
-      ...saUser,
-      purchaseOrderMode: "FULL_ACCESS",
-    });
+  it("does not render a mode switch because SA access is always full", async () => {
     renderToggle(saUser);
-
-    const toggle = screen.getByRole("switch", { name: "Chế độ chỉnh sửa PO" });
-    expect(toggle.getAttribute("aria-checked")).toBe("false");
-
-    fireEvent.click(toggle);
-
-    await waitFor(() => {
-      expect(authApi.updatePurchaseOrderMode).toHaveBeenCalledWith("FULL_ACCESS");
-      expect(useAuthStore.getState().user?.purchaseOrderMode).toBe("FULL_ACCESS");
-    });
-    expect(toggle.getAttribute("aria-checked")).toBe("true");
+    expect(screen.queryByRole("switch", { name: "Chế độ chỉnh sửa PO" })).toBeNull();
+    expect(useAuthStore.getState().user?.purchaseOrderMode).toBe("READ_ONLY");
   });
 
   it("does not render for roles other than SA", () => {

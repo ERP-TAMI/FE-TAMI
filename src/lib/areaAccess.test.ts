@@ -40,15 +40,15 @@ describe("area access policy", () => {
     expect(getLandingPath(sa)).toBe("/management/dashboard");
   });
 
-  it("does not grant user management from role or area alone", () => {
+  it("grants SA full management access while keeping other roles permission based", () => {
     expect(canManageUsers(user("IT"))).toBe(false);
-    expect(canManageUsers(user("SA", ["management.area.access"]))).toBe(false);
+    expect(canManageUsers(user("SA", ["management.area.access"]))).toBe(true);
     expect(canManageUsers(user("NVKH"))).toBe(false);
     expect(getLandingPath(user("IT"))).toBe("/it/profile");
   });
 
-  it("allows only full-access SA users into the editable PO module", () => {
-    expect(canAccessEditablePurchaseOrderModule(user("SA"))).toBe(false);
+  it("allows SA into the editable PO module regardless of legacy PO mode", () => {
+    expect(canAccessEditablePurchaseOrderModule(user("SA"))).toBe(true);
     expect(
       canAccessEditablePurchaseOrderModule({
         ...user("SA"),

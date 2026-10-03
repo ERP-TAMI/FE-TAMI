@@ -85,9 +85,10 @@ export default function DocumentLibraryPage() {
   const user = useAuthStore((state) => state.user);
   const queryClient = useQueryClient();
   const { toast, showToast, hideToast } = useToast();
-  const canView = user?.permissions.includes(VIEW_PERMISSION) ?? false;
-  const canManage = user?.permissions.includes(MANAGE_PERMISSION) ?? false;
-  const canAssignDocuments = user?.permissions.includes(ASSIGN_PERMISSION) ?? false;
+  const isSa = user?.roleCode === "SA";
+  const canView = isSa || (user?.permissions.includes(VIEW_PERMISSION) ?? false);
+  const canManage = isSa || (user?.permissions.includes(MANAGE_PERMISSION) ?? false);
+  const canAssignDocuments = isSa || (user?.permissions.includes(ASSIGN_PERMISSION) ?? false);
 
   const [selectedFolder, setSelectedFolder] = useState<DocumentFolderItem | null>(null);
   const [folderPath, setFolderPath] = useState<DocumentFolderItem[]>([]);
