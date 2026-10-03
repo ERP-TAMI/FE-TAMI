@@ -13,7 +13,7 @@ async function signIn(page: Page) {
   await expect(page).toHaveURL(/\/dashboard$/);
 }
 
-test.describe("List view preferences", () => {
+test.describe("Mẫu Fit list view preference", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/login");
     await page.evaluate(() => localStorage.clear());
@@ -37,20 +37,9 @@ test.describe("List view preferences", () => {
     await expect(page).toHaveURL(/\/styles\/[0-9a-f-]+\/detail/i);
   });
 
-  test("remembers the PO card view and opens a card by clicking anywhere on it", async ({ page }) => {
+  test("keeps PO in table list view without a card view toggle", async ({ page }) => {
     await page.goto("/po");
-    const cardView = page.getByRole("button", { name: "Thẻ" });
-    await cardView.click();
-    await expect(cardView).toHaveAttribute("aria-pressed", "true");
-    await expect
-      .poll(() => page.evaluate(() => localStorage.getItem("tami.po-list.view-mode")))
-      .toBe("grid");
-
-    await page.reload();
-    await expect(page.getByRole("button", { name: "Thẻ" })).toHaveAttribute("aria-pressed", "true");
-    const firstCard = page.getByRole("link", { name: /^Mở đơn hàng PO/ }).first();
-    await expect(firstCard).toBeVisible();
-    await firstCard.click();
-    await expect(page).toHaveURL(/\/po\/[0-9a-f-]+/i);
+    await expect(page.getByRole("button", { name: "Thẻ" })).toHaveCount(0);
+    await expect(page.getByRole("table")).toBeVisible();
   });
 });

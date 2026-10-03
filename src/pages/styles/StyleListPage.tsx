@@ -164,7 +164,6 @@ export default function StyleListPage() {
 
   // Filters
   const [search, setSearch] = useState("");
-  const [category, setCategory] = useState("");
   const [status, setStatus] = useState<StyleStatus | "">("");
   const [page, setPage] = useState(1);
   const limit = 10;
@@ -176,7 +175,6 @@ export default function StyleListPage() {
 
   const filter = {
     search: search.trim() || undefined,
-    category: category.trim() || undefined,
     status: status !== "" ? status : undefined,
     page,
     limit,
@@ -199,12 +197,11 @@ export default function StyleListPage() {
 
   const handleClearFilters = () => {
     setSearch("");
-    setCategory("");
     setStatus("");
     setPage(1);
   };
 
-  const isFiltering = search.trim() !== "" || category.trim() !== "" || status !== "";
+  const isFiltering = search.trim() !== "" || status !== "";
 
   const closeForm = () => setEditingStyle(undefined);
 
@@ -262,7 +259,7 @@ export default function StyleListPage() {
                 setSearch(e.target.value);
                 setPage(1);
               }}
-              placeholder="Tìm theo Mã mẫu hoặc Tên mẫu..."
+              placeholder="Tìm theo mã, tên mẫu hoặc dòng sản phẩm..."
               className="h-10 w-full rounded-lg border border-gray-200 bg-white px-3 text-xs text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-800 dark:bg-gray-900 dark:text-white transition-colors"
             />
             {search && (
@@ -274,18 +271,6 @@ export default function StyleListPage() {
               </button>
             )}
           </div>
-
-          {/* Category Filter Input */}
-          <input
-            type="text"
-            value={category}
-            onChange={(e) => {
-              setCategory(e.target.value);
-              setPage(1);
-            }}
-            placeholder="Dòng sản phẩm..."
-            className="h-10 w-36 rounded-lg border border-gray-200 bg-white px-3 text-xs text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-gray-800 dark:bg-gray-900 dark:text-white transition-colors"
-          />
 
           {/* Status Segmented Filter */}
           <div className="flex items-center rounded-lg border border-gray-200 bg-gray-50/80 p-0.5 dark:border-gray-800 dark:bg-gray-900">
