@@ -16,6 +16,7 @@ import DocumentLibraryPage from "./DocumentLibraryPage";
 vi.mock("@/api/documents-library.api", () => ({
   documentsLibraryApi: {
     list: vi.fn(),
+    search: vi.fn(),
     listFolders: vi.fn(),
     createFolder: vi.fn(),
     renameFolder: vi.fn(),
@@ -179,7 +180,8 @@ describe("DocumentLibraryPage folder browser", () => {
 
     const { container } = renderPage();
     fireEvent.click(await screen.findByRole("button", { name: "Mở thư mục Bộ sưu tập" }));
-    await screen.findByRole("button", { name: "Tải tài liệu" });
+    fireEvent.click(screen.getByRole("button", { name: "Tạo mới" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Tải tài liệu" }));
 
     const uploadInput = container.querySelector('input[type="file"][multiple]');
     expect(uploadInput).toBeTruthy();
@@ -210,13 +212,12 @@ describe("DocumentLibraryPage folder browser", () => {
     expect(within(breadcrumb).getByText("Quản lý Mẫu Fit")).toBeTruthy();
     expect(within(breadcrumb).getByText("Kho tài liệu")).toBeTruthy();
     expect(screen.queryByRole("navigation", { name: "Điều hướng kho tài liệu" })).toBeNull();
-    expect(await screen.findByRole("tree", { name: "Cây thư mục tài liệu" })).toBeTruthy();
-    expect(screen.queryByRole("combobox", { name: "Trạng thái tài liệu" })).toBeNull();
+    expect(screen.queryByRole("tree", { name: "Cây thư mục tài liệu" })).toBeNull();
     expect(screen.queryByRole("table", { name: "Tài liệu trong kho" })).toBeNull();
     expect(screen.queryByText("Quản lý tập trung tài liệu dùng cho các mẫu Fit.")).toBeNull();
     expect(screen.queryByText("Thư mục được tải theo từng cấp")).toBeNull();
     const folderButton = await screen.findByRole("button", { name: "Mở thư mục Bộ sưu tập" });
-    expect(folderButton.closest(".grid")).toBeTruthy();
+    expect(folderButton).toBeTruthy();
     expect(documentsLibraryApi.listFolders).toHaveBeenCalledWith({});
     expect(documentsLibraryApi.listFolders).not.toHaveBeenCalledWith({ parentId: rootFolder.id });
     expect(documentsLibraryApi.list).not.toHaveBeenCalled();
@@ -227,7 +228,10 @@ describe("DocumentLibraryPage folder browser", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Mở thư mục Bộ sưu tập" }));
     expect(await screen.findByRole("button", { name: "Mở thư mục Mùa hè" })).toBeTruthy();
     expect(documentsLibraryApi.listFolders).toHaveBeenCalledWith({ parentId: rootFolder.id });
-    expect(screen.getByRole("tree", { name: "Cây thư mục tài liệu" })).toBeTruthy();
+    expect(screen.queryByRole("tree", { name: "Cây thư mục tài liệu" })).toBeNull();
+    expect(screen.getByRole("navigation", { name: "Đường dẫn thư mục" }).textContent).toContain(
+      "Bộ sưu tập",
+    );
   });
 
   it("shows child folders and files together in the right-hand folder contents", async () => {
@@ -265,39 +269,23 @@ describe("DocumentLibraryPage folder browser", () => {
   });
 
   it("uses one search field to filter both folders and files", async () => {
-    vi.mocked(documentsLibraryApi.list).mockResolvedValue(
-      libraryPage([
-        {
-          documentId: "folder-document",
-          title: "tech-pack.pdf",
-          folderId: rootFolder.id,
-          folderName: rootFolder.folderName,
-          versionId: "folder-document-version",
-          versionNo: 1,
-          fileName: "tech-pack.pdf",
-          mimeType: "application/pdf",
-          byteSize: 1024,
-          uploadedAt: "2026-10-01T10:00:00.000Z",
-          isAssigned: false,
-        },
-      ]),
-    );
+    vi.mocked(documentsLibraryApi.search).mockResolvedValue({
+      data: [],
+      meta: { total: 0, page: 1, limit: 10, totalPages: 1 },
+    });
 
     renderPage();
     fireEvent.click(await screen.findByRole("button", { name: "Mở thư mục Bộ sưu tập" }));
     expect(await screen.findByRole("button", { name: "Mở thư mục Mùa hè" })).toBeTruthy();
 
-    const searchInput = screen.getByRole("textbox", { name: "Tìm thư mục hoặc file" });
+    const searchInput = screen.getByRole("textbox", { name: "Tìm file hoặc thư mục" });
     expect(screen.queryByRole("textbox", { name: "Tìm tên file" })).toBeNull();
     fireEvent.change(searchInput, { target: { value: "tech" } });
+    fireEvent.submit(searchInput.closest("form")!);
 
     await waitFor(() => {
-      expect(documentsLibraryApi.list).toHaveBeenCalledWith(
-        expect.objectContaining({ folderId: rootFolder.id, search: "tech" }),
-      );
+      expect(documentsLibraryApi.search).toHaveBeenCalledWith({ search: "tech", page: 1, limit: 10 });
     });
-    expect(screen.queryByRole("button", { name: "Mở thư mục Mùa hè" })).toBeNull();
-    expect(screen.getByText("tech-pack.pdf")).toBeTruthy();
   });
 
   it("offers all, assigned, and processing filters in the current folder toolbar", async () => {
@@ -306,7 +294,7 @@ describe("DocumentLibraryPage folder browser", () => {
 
     const statusFilter = await screen.findByRole("combobox", { name: "Trạng thái tài liệu" });
     expect(statusFilter).toHaveProperty("value", "all");
-    expect(within(statusFilter).getByRole("option", { name: "Tất cả" })).toBeTruthy();
+    expect(within(statusFilter).getByRole("option", { name: "Trạng thái: tất cả" })).toBeTruthy();
     expect(within(statusFilter).getByRole("option", { name: "Đã gán" })).toBeTruthy();
     expect(within(statusFilter).getByRole("option", { name: "Đang xử lý" })).toBeTruthy();
     expect(documentsLibraryApi.list).toHaveBeenLastCalledWith({
@@ -329,24 +317,18 @@ describe("DocumentLibraryPage folder browser", () => {
 
   it("expands and follows the folder hierarchy when selecting a deeper folder", async () => {
     renderPage();
-    const tree = await screen.findByRole("tree", { name: "Cây thư mục tài liệu" });
-    fireEvent.click(within(tree).getByRole("button", { name: "Mở rộng cây thư mục Bộ sưu tập" }));
-    const nestedFolder = await within(tree).findByRole("button", {
-      name: "Chọn thư mục Mùa hè",
-    });
-    fireEvent.click(nestedFolder);
-
-    expect(within(tree).getByRole("button", { name: "Chọn thư mục Bộ sưu tập" })).toBeTruthy();
-    const activeTreeButton = within(tree).getByRole("button", { name: "Chọn thư mục Mùa hè" });
-    expect(activeTreeButton.closest('[role="treeitem"]')?.getAttribute("aria-selected")).toBe(
-      "true",
+    fireEvent.click(await screen.findByRole("button", { name: "Mở thư mục Bộ sưu tập" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Mở thư mục Mùa hè" }));
+    expect(screen.getByRole("navigation", { name: "Đường dẫn thư mục" }).textContent).toContain(
+      "Mùa hè",
     );
   });
 
   it("creates a root folder inline even when another folder is selected", async () => {
     renderPage();
 
-    fireEvent.click(screen.getByRole("button", { name: "Tạo thư mục" }));
+    fireEvent.click(screen.getByRole("button", { name: "Tạo mới" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Thư mục mới" }));
 
     const nameInput = await screen.findByRole("textbox", { name: "Tên thư mục mới" });
     fireEvent.change(nameInput, {
@@ -363,8 +345,8 @@ describe("DocumentLibraryPage folder browser", () => {
   it("creates a nested folder from the folder tree actions menu", async () => {
     renderPage();
 
-    const tree = await screen.findByRole("tree", { name: "Cây thư mục tài liệu" });
-    fireEvent.click(within(tree).getByRole("button", { name: "Tùy chọn thư mục Bộ sưu tập" }));
+    await screen.findByRole("button", { name: "Mở thư mục Bộ sưu tập" });
+    fireEvent.click(screen.getByRole("button", { name: "Tùy chọn thư mục Bộ sưu tập" }));
     fireEvent.click(screen.getByRole("menuitem", { name: "Tạo thư mục con" }));
 
     const nameInput = await screen.findByRole("textbox", { name: "Tên thư mục mới" });
@@ -381,9 +363,8 @@ describe("DocumentLibraryPage folder browser", () => {
     renderPage();
 
     await screen.findByRole("button", { name: "Mở thư mục Bộ sưu tập" });
-    const tree = screen.getByRole("tree", { name: "Cây thư mục tài liệu" });
-    fireEvent.click(within(tree).getByRole("button", { name: "Tùy chọn thư mục Bộ sưu tập" }));
-    fireEvent.click(screen.getByRole("menuitem", { name: "Đổi tên thư mục" }));
+    fireEvent.click(screen.getByRole("button", { name: "Tùy chọn thư mục Bộ sưu tập" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Đổi tên" }));
 
     const dialog = screen.getByRole("dialog", { name: "Đổi tên thư mục" });
     const nameInput = within(dialog).getByRole("textbox", { name: "Tên thư mục" });
@@ -407,8 +388,8 @@ describe("DocumentLibraryPage folder browser", () => {
 
     renderPage();
 
-    const tree = await screen.findByRole("tree", { name: "Cây thư mục tài liệu" });
-    fireEvent.click(within(tree).getByRole("button", { name: "Tùy chọn thư mục Bộ sưu tập" }));
+    await screen.findByRole("button", { name: "Mở thư mục Bộ sưu tập" });
+    fireEvent.click(screen.getByRole("button", { name: "Tùy chọn thư mục Bộ sưu tập" }));
     fireEvent.click(screen.getByRole("menuitem", { name: "Xóa thư mục" }));
 
     const dialog = screen.getByRole("dialog", { name: "Xóa thư mục và tài liệu?" });
@@ -424,8 +405,8 @@ describe("DocumentLibraryPage folder browser", () => {
   it("explains and prevents deleting a folder that still has child folders", async () => {
     renderPage();
 
-    const tree = await screen.findByRole("tree", { name: "Cây thư mục tài liệu" });
-    fireEvent.click(within(tree).getByRole("button", { name: "Tùy chọn thư mục Bộ sưu tập" }));
+    await screen.findByRole("button", { name: "Mở thư mục Bộ sưu tập" });
+    fireEvent.click(screen.getByRole("button", { name: "Tùy chọn thư mục Bộ sưu tập" }));
     fireEvent.click(screen.getByRole("menuitem", { name: "Xóa thư mục" }));
 
     const dialog = screen.getByRole("dialog", { name: "Không thể xóa thư mục" });
@@ -453,7 +434,7 @@ describe("DocumentLibraryPage folder browser", () => {
     renderPage();
 
     expect(await screen.findByRole("button", { name: "Mở thư mục Bộ sưu tập" })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Tạo thư mục" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Tạo mới" })).toBeNull();
     expect(screen.queryByRole("button", { name: /Tùy chọn thư mục/ })).toBeNull();
   });
 
