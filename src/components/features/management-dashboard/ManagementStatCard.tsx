@@ -5,7 +5,7 @@ type ManagementStatCardTone = "brand" | "success" | "warning" | "danger" | "neut
 export type ManagementStatCardProps = {
   label: string;
   value: number;
-  helper: string;
+  helper?: string;
   icon: ReactNode;
   tone?: ManagementStatCardTone;
   compact?: boolean;
@@ -37,9 +37,7 @@ export function ManagementStatCard({
         <>
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-theme-sm font-medium text-gray-600 dark:text-gray-300">
-                {label}
-              </p>
+              <p className="text-theme-sm font-medium text-gray-600 dark:text-gray-300">{label}</p>
               <p className="mt-1 text-2xl font-semibold tracking-tight text-gray-900 dark:text-white">
                 {value.toLocaleString("vi-VN")}
               </p>
@@ -52,7 +50,9 @@ export function ManagementStatCard({
               </span>
             </div>
           </div>
-          <p className="text-theme-xs mt-2 text-gray-600 dark:text-gray-300">{helper}</p>
+          {helper && (
+            <p className="text-theme-xs mt-2 text-gray-600 dark:text-gray-300">{helper}</p>
+          )}
         </>
       ) : (
         <>
@@ -67,7 +67,9 @@ export function ManagementStatCard({
           <p className="mt-2 text-3xl font-semibold tracking-tight text-gray-900 dark:text-white">
             {value.toLocaleString("vi-VN")}
           </p>
-          <p className="text-theme-xs mt-2 text-gray-600 dark:text-gray-300">{helper}</p>
+          {helper && (
+            <p className="text-theme-xs mt-2 text-gray-600 dark:text-gray-300">{helper}</p>
+          )}
         </>
       )}
     </article>

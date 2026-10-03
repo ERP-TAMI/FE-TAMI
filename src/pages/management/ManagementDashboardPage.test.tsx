@@ -11,10 +11,24 @@ vi.mock("@/hooks/useManagementDashboard", () => ({
 }));
 
 const summary = {
-  month: "2026-09",
+  periodType: "month" as const,
+  periodStart: "2026-09-01",
+  periodEnd: "2026-09-30",
+  trendGranularity: "day" as const,
   totalPurchaseOrders: 12,
   completedPurchaseOrders: 5,
-  overduePurchaseOrders: 3,
+  cancelledPurchaseOrders: 2,
+  processingPurchaseOrders: 18,
+  overdueProductPurchaseOrders: 3,
+  upcomingProductPurchaseOrders: 4,
+  pendingBomCount: 7,
+  trend: [],
+  purchaseOrderStatuses: [],
+  bomRevisionStatuses: [],
+  topCustomers: [],
+  overdueQueue: [],
+  upcomingQueue: [],
+  pendingBomQueue: [],
   activeEmployees: 24,
 };
 
@@ -36,24 +50,45 @@ describe("ManagementDashboardPage", () => {
     vi.useRealTimers();
   });
 
-  it("shows the four approved metrics", () => {
+  it("shows operational metrics and management employee count", () => {
     render(<ManagementDashboardPage />);
 
-    expect(screen.getByText("Tổng số PO").nextElementSibling?.textContent).toBe("12");
-    expect(screen.getByText("PO đã hoàn thành").nextElementSibling?.textContent).toBe("5");
-    expect(screen.getByText("PO trễ hạn").nextElementSibling?.textContent).toBe("3");
-    expect(screen.getByText("Nhân viên đang hoạt động").nextElementSibling?.textContent).toBe("24");
-    expect(hooks.useManagementDashboardSummary).toHaveBeenCalledWith("2026-09");
+    expect(screen.getByText("Tổng PO tháng").nextElementSibling?.textContent).toBe("12");
+    expect(screen.getByText("PO hoàn thành").nextElementSibling?.textContent).toBe("5");
+    expect(screen.getAllByText("PO có sản phẩm quá hạn")[0].nextElementSibling?.textContent).toBe(
+      "3",
+    );
+    expect(screen.getByText("Nhân viên hoạt động").nextElementSibling?.textContent).toBe("24");
+    expect(hooks.useManagementDashboardSummary).toHaveBeenCalledWith({
+      periodType: "month",
+      month: "2026-09",
+    });
   });
 
   it("loads PO metrics again when the selected month changes", () => {
     render(<ManagementDashboardPage />);
 
-    fireEvent.change(screen.getByLabelText("Tháng báo cáo"), {
+    fireEvent.change(screen.getByLabelText("Tháng tiếp nhận PO"), {
       target: { value: "2026-08" },
     });
 
-    expect(hooks.useManagementDashboardSummary).toHaveBeenLastCalledWith("2026-08");
+    expect(hooks.useManagementDashboardSummary).toHaveBeenLastCalledWith({
+      periodType: "month",
+      month: "2026-08",
+    });
+  });
+
+  it("loads metrics for the selected year", () => {
+    render(<ManagementDashboardPage />);
+    fireEvent.change(screen.getByRole("combobox", { name: "Kỳ thống kê" }), {
+      target: { value: "year" },
+    });
+    fireEvent.change(screen.getByLabelText("Năm tiếp nhận PO"), { target: { value: "2025" } });
+
+    expect(hooks.useManagementDashboardSummary).toHaveBeenLastCalledWith({
+      periodType: "year",
+      year: "2025",
+    });
   });
 
   it("defaults to the current business month in Vietnam even when the browser uses UTC", () => {
@@ -62,14 +97,32 @@ describe("ManagementDashboardPage", () => {
 
     render(<ManagementDashboardPage />);
 
-    expect(hooks.useManagementDashboardSummary).toHaveBeenCalledWith("2026-10");
-    expect(screen.getByLabelText("Tháng báo cáo")).toHaveProperty("value", "2026-10");
+    expect(hooks.useManagementDashboardSummary).toHaveBeenCalledWith({
+      periodType: "month",
+      month: "2026-10",
+    });
+    expect(screen.getByLabelText("Tháng tiếp nhận PO")).toHaveProperty("value", "2026-10");
   });
 
   it("prevents selecting the unsupported year zero", () => {
     render(<ManagementDashboardPage />);
 
-    expect(screen.getByLabelText("Tháng báo cáo").getAttribute("min")).toBe("0001-01");
+    expect(screen.getByLabelText("Tháng tiếp nhận PO").getAttribute("min")).toBe("0001-01");
+  });
+
+  it("requests the exact inclusive date range selected by the user", () => {
+    render(<ManagementDashboardPage />);
+    fireEvent.change(screen.getByRole("combobox", { name: "Kỳ thống kê" }), {
+      target: { value: "range" },
+    });
+    fireEvent.change(screen.getByLabelText("Từ ngày"), { target: { value: "2026-09-05" } });
+    fireEvent.change(screen.getByLabelText("Đến ngày"), { target: { value: "2026-09-19" } });
+
+    expect(hooks.useManagementDashboardSummary).toHaveBeenLastCalledWith({
+      periodType: "range",
+      fromDate: "2026-09-05",
+      toDate: "2026-09-19",
+    });
   });
 
   it("shows an accessible loading state", () => {
@@ -100,13 +153,17 @@ describe("ManagementDashboardPage", () => {
     expect(refetch).toHaveBeenCalledOnce();
   });
 
-  it("keeps all four cards visible when every metric is zero", () => {
+  it("keeps the KPI cards visible when every metric is zero", () => {
     hooks.useManagementDashboardSummary.mockReturnValue({
       data: {
         ...summary,
         totalPurchaseOrders: 0,
         completedPurchaseOrders: 0,
-        overduePurchaseOrders: 0,
+        cancelledPurchaseOrders: 0,
+        processingPurchaseOrders: 0,
+        overdueProductPurchaseOrders: 0,
+        upcomingProductPurchaseOrders: 0,
+        pendingBomCount: 0,
         activeEmployees: 0,
       },
       isLoading: false,
@@ -116,6 +173,7 @@ describe("ManagementDashboardPage", () => {
 
     render(<ManagementDashboardPage />);
 
-    expect(screen.getAllByText("0")).toHaveLength(4);
+    expect(screen.getByText("Tổng PO tháng").nextElementSibling?.textContent).toBe("0");
+    expect(screen.getByText("Nhân viên hoạt động").nextElementSibling?.textContent).toBe("0");
   });
 });

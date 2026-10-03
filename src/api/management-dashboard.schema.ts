@@ -3,16 +3,33 @@ import type { ManagementPurchaseOrderSummaryStatus } from "@/types/management-da
 import type { PoStatus } from "@/types/po";
 
 export const managementDashboardMonthSchema = z.string().regex(/^(?!0000)\d{4}-(0[1-9]|1[0-2])$/);
-
-export const managementDashboardSummarySchema = z
-  .object({
-    month: managementDashboardMonthSchema,
-    totalPurchaseOrders: z.number().int().nonnegative(),
-    completedPurchaseOrders: z.number().int().nonnegative(),
-    overduePurchaseOrders: z.number().int().nonnegative(),
-    activeEmployees: z.number().int().nonnegative(),
-  })
-  .strict();
+const dashboardYearSchema = z.string().regex(/^(?!0000)\d{4}$/);
+const dashboardDateSchema = z
+  .string()
+  .date()
+  .refine((value) => !value.startsWith("0000-"), "Year zero is not supported");
+export const dashboardPeriodSchema = z
+  .discriminatedUnion("periodType", [
+    z.object({ periodType: z.literal("month"), month: managementDashboardMonthSchema }).strict(),
+    z.object({ periodType: z.literal("year"), year: dashboardYearSchema }).strict(),
+    z
+      .object({
+        periodType: z.literal("range"),
+        fromDate: dashboardDateSchema,
+        toDate: dashboardDateSchema,
+      })
+      .strict(),
+    z.object({ periodType: z.literal("all") }).strict(),
+  ])
+  .superRefine((period, context) => {
+    if (period.periodType === "range" && period.fromDate > period.toDate) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["toDate"],
+        message: "End date must be on or after start date",
+      });
+    }
+  });
 
 const poStatusSchema = z.enum([
   "draft",
@@ -21,6 +38,204 @@ const poStatusSchema = z.enum([
   "closed",
   "cancelled",
 ]) satisfies z.ZodType<PoStatus>;
+
+const dashboardSummarySchema = z
+  .object({
+    periodType: z.enum(["month", "year", "range", "all"]),
+    periodStart: dashboardDateSchema,
+    periodEnd: dashboardDateSchema,
+    trendGranularity: z.enum(["day", "month", "year"]),
+    totalPurchaseOrders: z.number().int().nonnegative(),
+    completedPurchaseOrders: z.number().int().nonnegative(),
+    cancelledPurchaseOrders: z.number().int().nonnegative(),
+    processingPurchaseOrders: z.number().int().nonnegative(),
+    overdueProductPurchaseOrders: z.number().int().nonnegative(),
+    upcomingProductPurchaseOrders: z.number().int().nonnegative(),
+    pendingBomCount: z.number().int().nonnegative(),
+    trend: z.array(
+      z
+        .object({
+          period: z.string(),
+          received: z.number().int().nonnegative(),
+          completed: z.number().int().nonnegative(),
+        })
+        .strict(),
+    ),
+    comparison: z
+      .object({
+        periodStart: dashboardDateSchema,
+        periodEnd: dashboardDateSchema,
+        currentEnd: dashboardDateSchema,
+        trend: z.array(
+          z
+            .object({
+              period: z.string(),
+              received: z.number().int().nonnegative().nullable(),
+            })
+            .strict(),
+        ),
+      })
+      .strict()
+      .nullable()
+      .optional(),
+    purchaseOrderStatuses: z.array(
+      z
+        .object({
+          status: poStatusSchema,
+          count: z.number().int().nonnegative(),
+        })
+        .strict(),
+    ),
+    bomRevisionStatuses: z.array(
+      z
+        .object({
+          status: z.enum([
+            "wait_nvkh",
+            "wait_rd",
+            "wait_tpkh_confirm",
+            "wait_accounting",
+            "wait_sa_approve",
+            "closed",
+          ]),
+          count: z.number().int().nonnegative(),
+        })
+        .strict(),
+    ),
+    topCustomers: z.array(
+      z
+        .object({
+          customerName: z.string(),
+          count: z.number().int().nonnegative(),
+        })
+        .strict(),
+    ),
+    overdueQueue: z.array(
+      z
+        .object({
+          purchaseOrderId: z.string().uuid(),
+          poCode: z.string(),
+          customerName: z.string(),
+          deadline: z.string().date(),
+          productCount: z.number().int().positive(),
+        })
+        .strict(),
+    ),
+    upcomingQueue: z.array(
+      z
+        .object({
+          purchaseOrderId: z.string().uuid(),
+          poCode: z.string(),
+          customerName: z.string(),
+          deadline: z.string().date(),
+          productCount: z.number().int().nonnegative(),
+        })
+        .strict(),
+    ),
+    pendingBomQueue: z.array(
+      z
+        .object({
+          bomId: z.string().uuid(),
+          bomCode: z.string(),
+          productName: z.string(),
+          bomType: z.enum(["fit", "po"]),
+          status: z.enum([
+            "wait_nvkh",
+            "wait_rd",
+            "wait_tpkh_confirm",
+            "wait_accounting",
+            "wait_sa_approve",
+          ]),
+          createdAt: z.string().datetime({ offset: true }),
+        })
+        .strict(),
+    ),
+    activeEmployees: z.number().int().nonnegative().optional(),
+  })
+  .strict();
+
+const dashboardTrendPeriodSchemas = {
+  day: dashboardDateSchema,
+  month: managementDashboardMonthSchema,
+  year: dashboardYearSchema,
+} as const;
+
+function validateDashboardTrendPeriods(
+  summary: z.infer<typeof dashboardSummarySchema>,
+  context: z.RefinementCtx,
+) {
+  const periodSchema = dashboardTrendPeriodSchemas[summary.trendGranularity];
+
+  summary.trend.forEach(({ period }, index) => {
+    if (!periodSchema.safeParse(period).success) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["trend", index, "period"],
+        message: `Trend period must match ${summary.trendGranularity} granularity`,
+      });
+    }
+  });
+
+  if (!summary.comparison) return;
+
+  if (
+    summary.comparison.periodStart > summary.comparison.periodEnd ||
+    summary.comparison.periodEnd >= summary.periodStart
+  ) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["comparison"],
+      message: "Comparison dates must be ordered before the selected period",
+    });
+  }
+
+  if (
+    summary.comparison.currentEnd < summary.periodStart ||
+    summary.comparison.currentEnd > summary.periodEnd
+  ) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["comparison", "currentEnd"],
+      message: "Current comparison end must be inside the selected period",
+    });
+  }
+
+  if (summary.periodType === "all") {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["comparison"],
+      message: "All-time dashboard summaries cannot have a comparison period",
+    });
+  }
+
+  if (summary.comparison.trend.length !== summary.trend.length) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["comparison", "trend"],
+      message: "Comparison trend must align with selected trend buckets",
+    });
+  }
+
+  summary.comparison.trend.forEach(({ period }, index) => {
+    if (period !== summary.trend[index]?.period) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["comparison", "trend", index, "period"],
+        message: "Comparison trend periods must match selected trend periods",
+      });
+    }
+  });
+}
+
+export const managementDashboardSummarySchema = dashboardSummarySchema
+  .extend({
+    activeEmployees: z.number().int().nonnegative(),
+  })
+  .strict()
+  .superRefine(validateDashboardTrendPeriods);
+
+export const businessDashboardSummarySchema = dashboardSummarySchema.superRefine(
+  validateDashboardTrendPeriods,
+);
 
 const managementPurchaseOrderSummaryStatusSchema = z.enum([
   "not_completed",

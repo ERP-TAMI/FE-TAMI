@@ -3,7 +3,11 @@ import { NavLink, useLocation } from "react-router-dom";
 import { BoxCubeIcon, ChevronDownIcon, GridIcon, ListIcon, PageIcon } from "@/icons";
 import { useSidebar } from "@/context/SidebarContext";
 import { useAuthStore } from "@/store/authStore";
-import { canAccessEditablePurchaseOrderModule, canViewAuditLog } from "@/lib/areaAccess";
+import {
+  canAccessBusinessDashboard,
+  canAccessEditablePurchaseOrderModule,
+  canViewAuditLog,
+} from "@/lib/areaAccess";
 
 type NavChild = {
   name: string;
@@ -75,6 +79,7 @@ export default function AppSidebar() {
         continue;
       }
 
+      if (item.path === "/dashboard" && !canAccessBusinessDashboard(user)) continue;
       if (item.path === "/po" && !canAccessEditablePurchaseOrderModule(user)) continue;
       if (item.path === "/audit-log" && !canViewAuditLog(user)) continue;
       visibleItems.push(item);
@@ -168,7 +173,7 @@ export default function AppSidebar() {
                         to={child.path}
                         end={child.path === "/bom"}
                         className={({ isActive }) =>
-                          `menu-dropdown-item flex items-center gap-2 ${
+                           `menu-dropdown-item flex items-center gap-2 ${
                             isActive
                               ? "menu-dropdown-item-active font-semibold"
                               : "menu-dropdown-item-inactive"
