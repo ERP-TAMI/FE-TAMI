@@ -1,12 +1,6 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { NavLink, useLocation } from "react-router-dom";
-import {
-  BoxCubeIcon,
-  ChevronDownIcon,
-  GridIcon,
-  ListIcon,
-  PageIcon,
-} from "@/icons";
+import { BoxCubeIcon, ChevronDownIcon, GridIcon, ListIcon, PageIcon } from "@/icons";
 import { useSidebar } from "@/context/SidebarContext";
 import { useAuthStore } from "@/store/authStore";
 import { canAccessEditablePurchaseOrderModule, canViewAuditLog } from "@/lib/areaAccess";
@@ -14,6 +8,7 @@ import { canAccessEditablePurchaseOrderModule, canViewAuditLog } from "@/lib/are
 type NavChild = {
   name: string;
   path: string;
+  permission?: string;
 };
 
 type NavItem = {
@@ -25,7 +20,18 @@ type NavItem = {
 
 const ALL_NAV_ITEMS: NavItem[] = [
   { name: "Dashboard", path: "/dashboard", icon: <GridIcon /> },
-  { name: "Mẫu Fit", path: "/styles", icon: <PageIcon /> },
+  {
+    name: "Quản lý Mẫu Fit",
+    icon: <PageIcon />,
+    children: [
+      { name: "Mẫu Fit", path: "/styles", permission: "master_data.styles.view" },
+      {
+        name: "Kho tài liệu",
+        path: "/documents",
+        permission: "master_data.documents.view",
+      },
+    ],
+  },
   {
     name: "Quản lý NPL",
     icon: <BoxCubeIcon />,
@@ -58,15 +64,23 @@ export default function AppSidebar() {
   // SA mặc định ở chế độ "Chỉ xem" PO (xem PurchaseOrderModeToggle ở khu Quản
   // lý) — route /po bị PurchaseOrderModuleRoute chặn/redirect trong trường
   // hợp đó, nên ẩn luôn mục này thay vì để một nút bấm vào là bị đá đi.
-  const navItems = useMemo(
-    () =>
-      ALL_NAV_ITEMS.filter((item) => {
-        if (item.path === "/po") return canAccessEditablePurchaseOrderModule(user);
-        if (item.path === "/audit-log") return canViewAuditLog(user);
-        return true;
-      }),
-    [user],
-  );
+  const navItems = useMemo(() => {
+    const visibleItems: NavItem[] = [];
+    for (const item of ALL_NAV_ITEMS) {
+      if (item.children) {
+        const children = item.children.filter(
+          (child) => !child.permission || (user?.permissions.includes(child.permission) ?? false),
+        );
+        if (children.length > 0) visibleItems.push({ ...item, children });
+        continue;
+      }
+
+      if (item.path === "/po" && !canAccessEditablePurchaseOrderModule(user)) continue;
+      if (item.path === "/audit-log" && !canViewAuditLog(user)) continue;
+      visibleItems.push(item);
+    }
+    return visibleItems;
+  }, [user]);
 
   const toggleGroup = (name: string) =>
     setOpenGroups((prev) => {
@@ -154,12 +168,25 @@ export default function AppSidebar() {
                         to={child.path}
                         end={child.path === "/bom"}
                         className={({ isActive }) =>
-                          `menu-dropdown-item ${
-                            isActive ? "menu-dropdown-item-active font-semibold" : "menu-dropdown-item-inactive"
+                          `menu-dropdown-item flex items-center gap-2 ${
+                            isActive
+                              ? "menu-dropdown-item-active font-semibold"
+                              : "menu-dropdown-item-inactive"
                           }`
                         }
                       >
-                        {child.name}
+                        {({ isActive }) => (
+                          <>
+                            <span
+                              className={`h-1.5 w-1.5 shrink-0 rounded-full transition-colors ${
+                                isActive
+                                  ? "bg-brand-500 ring-brand-500/20 ring-2"
+                                  : "bg-gray-300 dark:bg-gray-700"
+                              }`}
+                            />
+                            <span>{child.name}</span>
+                          </>
+                        )}
                       </NavLink>
                     ))}
                   </div>

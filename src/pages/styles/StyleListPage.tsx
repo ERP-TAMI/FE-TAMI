@@ -2,12 +2,7 @@ import { useEffect, useState, type MouseEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { uploadsApi } from "@/api/uploads.api";
 import type { Style, StyleStatus, CreateStylePayload } from "@/types/style";
-import {
-  useStyles,
-  useCreateStyle,
-  useUpdateStyle,
-  useDeleteStyle,
-} from "@/hooks/useStyles";
+import { useStyles, useCreateStyle, useUpdateStyle, useDeleteStyle } from "@/hooks/useStyles";
 import { useToast } from "@/hooks/useToast";
 import { ConfirmDialog, PageHeader, Pagination, Toast } from "@/components/shared";
 import { StyleFormModal } from "@/components/features/styles/StyleFormModal";
@@ -16,6 +11,7 @@ import { StyleStatusBadge } from "@/components/features/styles/StyleStatusBadge"
 import { StyleTable } from "@/components/features/styles/StyleTable";
 import { getApiError, isConflictError } from "@/lib/apiError";
 import { TableIcon, GridIcon, EyeIcon, PencilIcon } from "@/icons";
+import { useAuthStore } from "@/store/authStore";
 
 type ViewMode = "table" | "grid";
 
@@ -24,11 +20,13 @@ const STYLE_VIEW_MODE_KEY = "tami.styles.view-mode";
 
 function StyleGridCard({
   style,
+  canManage,
   isToggling,
   onToggle,
   onEdit,
 }: {
   style: Style;
+  canManage: boolean;
   isToggling: boolean;
   onToggle: () => void;
   onEdit: () => void;
@@ -98,7 +96,7 @@ function StyleGridCard({
               {style.styleCode}
             </span>
             <div className="flex shrink-0 items-center gap-1.5">
-              <button
+              {canManage && <button
                 type="button"
                 aria-label={`Đổi trạng thái ${style.styleCode}`}
                 onClick={(event) => {
@@ -109,7 +107,7 @@ function StyleGridCard({
                 className={`relative inline-flex h-4 w-7 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${style.status === "active" ? "bg-emerald-500" : "bg-gray-300 dark:bg-gray-700"}`}
               >
                 <span className={`pointer-events-none inline-block h-3 w-3 transform rounded-full bg-white shadow-xs ring-0 transition duration-200 ease-in-out ${style.status === "active" ? "translate-x-3" : "translate-x-0"}`} />
-              </button>
+              </button>}
               <StyleStatusBadge status={style.status} showDot={false} />
             </div>
           </div>
@@ -134,7 +132,7 @@ function StyleGridCard({
             <EyeIcon className="h-3 w-3" />
             <span>Xem</span>
           </Link>
-          <button
+          {canManage && <button
             type="button"
             onClick={(event) => {
               event.stopPropagation();
@@ -144,7 +142,7 @@ function StyleGridCard({
           >
             <PencilIcon className="h-3 w-3" />
             <span>Sửa</span>
-          </button>
+          </button>}
         </div>
       </div>
     </div>
@@ -152,6 +150,9 @@ function StyleGridCard({
 }
 
 export default function StyleListPage() {
+  const user = useAuthStore((state) => state.user);
+  const canManageStyles = user?.permissions.includes("master_data.styles.manage") ?? false;
+  const canCreateStyle = canManageStyles;
   const { toast, showToast, hideToast } = useToast();
   const [viewMode, setViewMode] = useState<ViewMode>(() =>
     localStorage.getItem(STYLE_VIEW_MODE_KEY) === "grid" ? "grid" : "table",
@@ -242,16 +243,24 @@ export default function StyleListPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        breadcrumb={[{ label: "Dashboard", to: "/dashboard" }, { label: "Mẫu Fit" }]}
+        breadcrumb={[
+          { label: "Dashboard", to: "/dashboard" },
+          { label: "Quản lý Mẫu Fit" },
+          { label: "Mẫu Fit" },
+        ]}
         title="Mẫu Fit"
-        action={{ label: "+ Tạo Mẫu Fit Mới", onClick: () => setEditingStyle("create") }}
+        action={
+          canCreateStyle
+            ? { label: "+ Tạo Mẫu Fit Mới", onClick: () => setEditingStyle("create") }
+            : undefined
+        }
       />
 
       {/* Enterprise Toolbar */}
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div className="flex flex-1 flex-wrap items-center gap-2.5">
           {/* Search Box */}
-          <div className="relative min-w-[220px] flex-1 max-w-sm">
+          <div className="relative max-w-sm min-w-[220px] flex-1">
             <input
               type="text"
               value={search}
@@ -289,7 +298,7 @@ export default function StyleListPage() {
                   }}
                   className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${
                     isSelected
-                      ? "bg-white text-blue-600 shadow-xs dark:bg-gray-800 dark:text-blue-400 font-semibold"
+                      ? "bg-white font-semibold text-blue-600 shadow-xs dark:bg-gray-800 dark:text-blue-400"
                       : "text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
                   }`}
                 >
@@ -302,7 +311,7 @@ export default function StyleListPage() {
           {isFiltering && (
             <button
               onClick={handleClearFilters}
-              className="h-10 px-3 text-xs font-medium text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition-colors"
+              className="h-10 px-3 text-xs font-medium text-gray-500 transition-colors hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
             >
               Xóa bộ lọc
             </button>
@@ -318,7 +327,7 @@ export default function StyleListPage() {
               onClick={() => changeViewMode("table")}
               className={`flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors ${
                 viewMode === "table"
-                  ? "bg-white text-gray-900 shadow-xs dark:bg-gray-800 dark:text-white font-semibold"
+                  ? "bg-white font-semibold text-gray-900 shadow-xs dark:bg-gray-800 dark:text-white"
                   : "text-gray-500 hover:text-gray-900 dark:text-gray-400"
               }`}
               title="Xem dạng Bảng (Table)"
@@ -332,7 +341,7 @@ export default function StyleListPage() {
               onClick={() => changeViewMode("grid")}
               className={`flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors ${
                 viewMode === "grid"
-                  ? "bg-white text-gray-900 shadow-xs dark:bg-gray-800 dark:text-white font-semibold"
+                  ? "bg-white font-semibold text-gray-900 shadow-xs dark:bg-gray-800 dark:text-white"
                   : "text-gray-500 hover:text-gray-900 dark:text-gray-400"
               }`}
               title="Xem dạng Thẻ (Grid)"
@@ -364,7 +373,10 @@ export default function StyleListPage() {
       {list.isLoading && (
         <div className="space-y-2">
           {[1, 2, 3, 4, 5].map((i) => (
-            <div key={i} className="h-14 w-full animate-pulse rounded-lg bg-gray-100 dark:bg-gray-800/60" />
+            <div
+              key={i}
+              className="h-14 w-full animate-pulse rounded-lg bg-gray-100 dark:bg-gray-800/60"
+            />
           ))}
         </div>
       )}
@@ -378,12 +390,14 @@ export default function StyleListPage() {
           <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
             Chưa có dữ liệu nào khớp với từ khóa hoặc bộ lọc của bạn.
           </p>
-          <button
-            onClick={() => setEditingStyle("create")}
-            className="mt-4 rounded-lg bg-blue-600 px-3.5 py-1.5 text-xs font-medium text-white hover:bg-blue-700 transition-colors"
-          >
-            + Tạo Mẫu Fit Mới
-          </button>
+          {canCreateStyle && (
+            <button
+              onClick={() => setEditingStyle("create")}
+              className="mt-4 rounded-lg bg-blue-600 px-3.5 py-1.5 text-xs font-medium text-white transition-colors hover:bg-blue-700"
+            >
+              + Tạo Mẫu Fit Mới
+            </button>
+          )}
         </div>
       )}
 
@@ -393,6 +407,7 @@ export default function StyleListPage() {
           {viewMode === "table" ? (
             <StyleTable
               styles={styles}
+              canManage={canManageStyles}
               togglingId={statusUpdate.isPending ? statusUpdate.variables?.id : undefined}
               onToggleStatus={setStyleToToggle}
               onEdit={setEditingStyle}
@@ -404,6 +419,7 @@ export default function StyleListPage() {
                 <StyleGridCard
                   key={style.id}
                   style={style}
+                  canManage={canManageStyles}
                   isToggling={statusUpdate.isPending && statusUpdate.variables?.id === style.id}
                   onToggle={() => setStyleToToggle(style)}
                   onEdit={() => setEditingStyle(style)}
