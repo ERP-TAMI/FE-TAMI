@@ -8,6 +8,8 @@ import {
   ChevronLeft,
   ChevronRight,
   CircleDashed,
+  Folder,
+  History,
   Link2,
   LoaderCircle,
   MoreVertical,
@@ -30,11 +32,13 @@ import { useAuthStore } from "@/store/authStore";
 import type {
   DocumentFolderItem,
   DocumentLibraryItem,
+  DocumentLibrarySearchResult,
   DocumentVersionItem,
 } from "@/types/document-library";
 import type { Style } from "@/types/style";
 import type { DocumentLibraryFilter } from "@/pages/documents/DocumentLibraryStatusFilter";
 import { DocumentFoldersView } from "@/pages/documents/DocumentFoldersView";
+import { MoveDocumentsDialog } from "@/pages/documents/MoveDocumentsDialog";
 
 const VIEW_PERMISSION = "master_data.documents.view";
 const MANAGE_PERMISSION = "master_data.documents.manage";
@@ -116,17 +120,34 @@ export default function DocumentLibraryPage() {
   const [assignmentPage, setAssignmentPage] = useState(1);
   const [selectedStyleId, setSelectedStyleId] = useState<string | null>(null);
   const [isAssigningDocument, setIsAssigningDocument] = useState(false);
-  const [folderDisplayMode, setFolderDisplayMode] = useState<"list" | "grid">("grid");
+  const [folderDisplayMode, setFolderDisplayMode] = useState<"list" | "grid">(() => {
+    try {
+      return window.localStorage.getItem("document-library-view") === "grid" ? "grid" : "list";
+    } catch {
+      return "list";
+    }
+  });
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [openFileMenu, setOpenFileMenu] = useState<OpenFileMenu>(null);
   const [selectedActionsOpen, setSelectedActionsOpen] = useState(false);
   const [bulkActionPending, setBulkActionPending] = useState(false);
+  const [documentsToMove, setDocumentsToMove] = useState<DocumentLibraryItem[] | null>(null);
+  const [clearSelectionAfterMove, setClearSelectionAfterMove] = useState(false);
+  const [movingDocuments, setMovingDocuments] = useState(false);
   const [selectedDocumentKeys, setSelectedDocumentKeys] = useState<Set<string>>(new Set());
   const selectedDocumentCache = useRef<Map<string, DocumentLibraryItem>>(new Map());
   const uploadInputRef = useRef<HTMLInputElement>(null);
   const versionInputRef = useRef<HTMLInputElement>(null);
   const selectedActionsRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem("document-library-view", folderDisplayMode);
+    } catch {
+      // Keep the current view for this session when browser storage is unavailable.
+    }
+  }, [folderDisplayMode]);
 
   const clearDocumentSelection = () => {
     selectedDocumentCache.current.clear();
@@ -135,6 +156,11 @@ export default function DocumentLibraryPage() {
   };
   const assignmentStatus = activeFilter === "all" ? undefined : activeFilter === "assigned";
   const requestLimit = pageSize;
+  const globalSearchQuery = useQuery({
+    queryKey: ["document-library", "search", search.trim(), currentPage, requestLimit],
+    queryFn: () => documentsLibraryApi.search({ search: search.trim(), page: currentPage, limit: requestLimit }),
+    enabled: canView && search.trim().length > 0,
+  });
   const documentsQuery = useQuery({
     queryKey: [
       "document-library",
@@ -154,7 +180,7 @@ export default function DocumentLibraryPage() {
         page: currentPage,
         limit: requestLimit,
       }),
-    enabled: canView && Boolean(folderId),
+    enabled: canView && Boolean(folderId) && !search.trim(),
   });
   const versionsQuery = useQuery({
     queryKey: ["document-library", versionsDocument?.documentId, "versions"],
@@ -217,8 +243,8 @@ export default function DocumentLibraryPage() {
   }, [activeFilter, folderId, search, pageSize]);
 
   useEffect(() => {
-    if (documentsQuery.data && currentPage > pageCount) setCurrentPage(pageCount);
-  }, [currentPage, pageCount, documentsQuery.data]);
+    if (!search.trim() && documentsQuery.data && currentPage > pageCount) setCurrentPage(pageCount);
+  }, [currentPage, pageCount, documentsQuery.data, search]);
 
   useEffect(() => {
     if (!selectedActionsOpen) return;
@@ -281,6 +307,46 @@ export default function DocumentLibraryPage() {
     setSearch("");
     setFolderPath((path) => [...path, folder]);
     setSelectedFolder(folder);
+  };
+
+  const openSearchPath = (path: DocumentLibrarySearchResult["path"]) => {
+    const folders = path.map((folder, index): DocumentFolderItem => ({
+      ...folder,
+      parentFolderName: index > 0 ? path[index - 1].folderName : null,
+      createdAt: "",
+      documentCount: 0,
+      hasChildren: index < path.length - 1,
+    }));
+    setFolderPath(folders);
+    setSelectedFolder(folders.at(-1) ?? null);
+    setSearch("");
+  };
+
+  const renderSearchResults = () => {
+    if (globalSearchQuery.isLoading) return <p className="p-10 text-center text-sm text-gray-500">Đang tìm...</p>;
+    if (globalSearchQuery.isError) return <div className="p-10 text-center text-sm text-gray-500">Không thể tìm kiếm. <button className="text-brand-600 hover:underline" onClick={() => void globalSearchQuery.refetch()}>Thử lại</button></div>;
+    const results = globalSearchQuery.data?.data ?? [];
+    if (!results.length) return <p className="p-10 text-center text-sm text-gray-500">Không tìm thấy file hoặc thư mục phù hợp.</p>;
+    return <div className="divide-y divide-gray-100 dark:divide-gray-800">
+      {results.map((result) => {
+        const isFolder = result.kind === "folder";
+        const name = isFolder ? result.folderName : result.fileName;
+        const pathLabel = isFolder ? result.path.slice(0, -1).map((item) => item.folderName).join(" / ") : result.path.map((item) => item.folderName).join(" / ");
+        return <div key={`${result.kind}:${isFolder ? result.id : result.documentId}`} className="flex min-w-0 items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800/40">
+          {isFolder ? <Folder aria-hidden="true" className="text-brand-500 h-5 w-5 shrink-0" /> : <FileTypeIcon fileName={name} variant="icon-only" className="shrink-0" />}
+          <div className="min-w-0 flex-1">
+            <button className="block max-w-full truncate text-left text-sm font-medium text-gray-900 hover:text-brand-600 dark:text-gray-100" onClick={() => isFolder ? openSearchPath(result.path) : void openFile(result.documentId, result.versionId)}>{name}</button>
+            <button className="block max-w-full truncate text-left text-xs text-gray-500 hover:underline" onClick={() => openSearchPath(result.path)}>{pathLabel || "Drive của tôi"}</button>
+          </div>
+          <span className="hidden shrink-0 text-xs text-gray-500 sm:block">{isFolder ? "Thư mục" : formatBytes(result.byteSize)}</span>
+          <span className="hidden shrink-0 text-xs text-gray-500 md:block">{formatDate(isFolder ? result.createdAt : result.uploadedAt)}</span>
+        </div>;
+      })}
+      <div className="flex items-center justify-between px-4 py-3 text-sm text-gray-500">
+        <span>{globalSearchQuery.data?.meta.total ?? 0} kết quả</span>
+        <div className="flex items-center gap-2"><button disabled={currentPage <= 1} onClick={() => setCurrentPage((page) => Math.max(1, page - 1))} aria-label="Trang trước" className="rounded border px-2 py-1 disabled:opacity-40">‹</button><span>{currentPage} / {globalSearchQuery.data?.meta.totalPages ?? 1}</span><button disabled={currentPage >= (globalSearchQuery.data?.meta.totalPages ?? 1)} onClick={() => setCurrentPage((page) => page + 1)} aria-label="Trang sau" className="rounded border px-2 py-1 disabled:opacity-40">›</button></div>
+      </div>
+    </div>;
   };
 
   const goToParentFolder = () => {
@@ -447,6 +513,38 @@ export default function DocumentLibraryPage() {
     } catch (err) {
       popup?.close();
       showToast(getApiError(err, "Không thể mở tài liệu.").message, "error");
+    }
+  };
+
+  const openMoveDialog = (
+    documents: DocumentLibraryItem[],
+    clearSelectionOnSuccess = false,
+  ) => {
+    if (!documents.length) return;
+    setClearSelectionAfterMove(clearSelectionOnSuccess);
+    setDocumentsToMove(documents);
+  };
+
+  const handleMoveDocuments = async (targetFolderId: string) => {
+    if (!documentsToMove?.length || movingDocuments) return;
+    setMovingDocuments(true);
+    try {
+      const result = await documentsLibraryApi.moveDocuments(
+        documentsToMove.map((document) => document.documentId),
+        targetFolderId,
+      );
+      await refreshLibrary();
+      if (clearSelectionAfterMove) clearDocumentSelection();
+      setDocumentsToMove(null);
+      showToast(
+        result.movedCount === 0
+          ? "Các tài liệu này đã nằm trong thư mục đích."
+          : `Đã di chuyển ${result.movedCount} tài liệu.`,
+      );
+    } catch (err) {
+      showToast(getApiError(err, "Di chuyển tài liệu thất bại.").message, "error");
+    } finally {
+      setMovingDocuments(false);
     }
   };
 
@@ -635,7 +733,7 @@ export default function DocumentLibraryPage() {
         return;
       }
       const rect = event.currentTarget.getBoundingClientRect();
-      const menuItemCount = 4 + Number(canAssignDocuments) + (canManage ? 2 : 0);
+      const menuItemCount = 4 + Number(canAssignDocuments) + (canManage ? 3 : 0);
       const menuHeight = menuItemCount * 32 + 12;
       const top =
         rect.bottom + menuHeight <= window.innerHeight - 8
@@ -717,6 +815,17 @@ export default function DocumentLibraryPage() {
               )}
               {canManage && (
                 <>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      closeMenu();
+                      openMoveDialog([document]);
+                    }}
+                    className="block w-full rounded px-3 py-2 text-left text-xs text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-800"
+                  >
+                    Di chuyển đến...
+                  </button>
                   <button
                     type="button"
                     role="menuitem"
@@ -872,7 +981,21 @@ export default function DocumentLibraryPage() {
                   <div
                     role="menu"
                     className="absolute top-full right-0 z-20 mt-1 w-64 rounded-lg border border-gray-200 bg-white p-1 shadow-lg dark:border-gray-700 dark:bg-gray-900"
-                  >
+                    >
+                    {canManage && (
+                      <button
+                        type="button"
+                        role="menuitem"
+                        disabled={bulkActionPending}
+                        onClick={() => {
+                          setSelectedActionsOpen(false);
+                          openMoveDialog(selectedDocuments, true);
+                        }}
+                        className="flex w-full items-center gap-2 rounded px-3 py-2 text-left text-xs text-gray-700 hover:bg-gray-50 disabled:opacity-50 dark:text-gray-200 dark:hover:bg-gray-800"
+                      >
+                        Di chuyển {selectedDocuments.length} tài liệu đến...
+                      </button>
+                    )}
                     {canAssignDocuments && (
                       <button
                         type="button"
@@ -922,7 +1045,9 @@ export default function DocumentLibraryPage() {
           <div className="text-error-600 p-12 text-center text-sm">Không tải được tài liệu.</div>
         ) : totalDocumentCount === 0 ? (
           <div className="p-12 text-center text-sm text-gray-500">
-            Không có tài liệu phù hợp với bộ lọc.
+            {activeFilter === "all"
+              ? "Thư mục này chưa có tài liệu."
+              : "Không có tài liệu phù hợp với bộ lọc."}
           </div>
         ) : activeDisplayMode === "list" ? (
           <div className="min-w-0 flex-1 overflow-x-auto">
@@ -932,11 +1057,11 @@ export default function DocumentLibraryPage() {
             >
               <colgroup>
                 <col className="w-10" />
-                <col />
+                <col className="w-[32rem]" />
                 <col className="w-24" />
                 <col className="w-24" />
                 <col className="w-40" />
-                <col className="w-24" />
+                <col className="w-36" />
                 <col className="w-20" />
               </colgroup>
               <thead className="bg-gray-50 text-gray-600 dark:bg-gray-800/70 dark:text-gray-300">
@@ -950,11 +1075,11 @@ export default function DocumentLibraryPage() {
                       className="text-brand-600 focus:ring-brand-500 rounded border-gray-300"
                     />
                   </th>
-                  <th className="min-w-48 px-3 py-3 font-medium">Tên</th>
+                  <th className="w-[32rem] min-w-48 px-3 py-3 font-medium">Tên</th>
                   <th className="w-24 px-3 py-3 font-medium">Loại</th>
                   <th className="w-24 px-3 py-3 font-medium">Dung lượng</th>
                   <th className="w-40 px-3 py-3 font-medium">Ngày cập nhật</th>
-                  <th className="w-24 px-3 py-3 font-medium">Version</th>
+                  <th className="w-36 px-3 py-3 font-medium">Phiên bản</th>
                   <th className="w-20 px-3 py-3 text-right font-medium">Thao tác</th>
                 </tr>
               </thead>
@@ -1017,8 +1142,18 @@ export default function DocumentLibraryPage() {
                       <td className="px-3 py-3 whitespace-nowrap text-gray-600 dark:text-gray-300">
                         {formatDateOnly(document.uploadedAt)}
                       </td>
-                      <td className="px-3 py-3 text-gray-600 dark:text-gray-300">
-                        v{document.versionNo}
+                      <td className="px-3 py-3">
+                        <button
+                          type="button"
+                          onClick={() => setVersionsDocument(document)}
+                          aria-label={`Lịch sử phiên bản của ${document.fileName}`}
+                          title={`Phiên bản v${document.versionNo} hiện tại · Xem lịch sử`}
+                          className="inline-flex flex-nowrap items-center gap-1.5 whitespace-nowrap rounded-lg px-1.5 py-1 hover:bg-gray-50 focus-visible:outline-brand-500 focus-visible:outline-2 focus-visible:outline-offset-1 dark:hover:bg-gray-800"
+                        >
+                          <span className="shrink-0 rounded-md border border-brand-200 bg-brand-50 px-2 py-0.5 font-mono text-[11px] font-semibold text-brand-700 dark:border-brand-900/60 dark:bg-brand-950/40 dark:text-brand-300">v{document.versionNo}</span>
+                          <span className="shrink-0 text-[10px] font-medium text-emerald-700 dark:text-emerald-400">Hiện tại</span>
+                          <History aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-gray-400" />
+                        </button>
                       </td>
                       <td className="px-3 py-2">{renderFileActions(document)}</td>
                     </tr>
@@ -1067,8 +1202,9 @@ export default function DocumentLibraryPage() {
                         </span>
                         {renderAssignmentStatus(document)}
                       </span>
-                      <span className="mt-1 block text-xs text-gray-500">
-                        v{document.versionNo} · {formatBytes(document.byteSize)}
+                      <span className="mt-1 flex items-center gap-2 text-xs text-gray-500">
+                        <span className="rounded border border-brand-200 bg-brand-50 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-brand-700 dark:border-brand-900/60 dark:bg-brand-950/40 dark:text-brand-300">v{document.versionNo}</span>
+                        <span>{formatBytes(document.byteSize)}</span>
                       </span>
                     </span>
                   </button>
@@ -1188,9 +1324,18 @@ export default function DocumentLibraryPage() {
                 ? (folderRows, folderCards) => documentListPanel(folderRows, folderCards)
                 : undefined
             }
+            searchResults={search.trim() ? renderSearchResults() : undefined}
           />
         </main>
       </div>
+
+      <MoveDocumentsDialog
+        open={Boolean(documentsToMove)}
+        documentCount={documentsToMove?.length ?? 0}
+        moving={movingDocuments}
+        onClose={() => setDocumentsToMove(null)}
+        onMove={(targetFolderId) => void handleMoveDocuments(targetFolderId)}
+      />
 
       <Modal
         open={Boolean(assignmentDocuments)}
@@ -1490,6 +1635,10 @@ export default function DocumentLibraryPage() {
                 </h2>
                 <p className="mt-1 truncate text-sm text-gray-500">{versionsDocument.fileName}</p>
               </div>
+              <div className="ml-4 flex shrink-0 flex-col items-end gap-1">
+                <span className="rounded-md border border-brand-200 bg-brand-50 px-2 py-1 font-mono text-xs font-semibold text-brand-700 dark:border-brand-900/60 dark:bg-brand-950/40 dark:text-brand-300">v{versionsDocument.versionNo}</span>
+                <span className="text-[10px] font-medium text-emerald-700 dark:text-emerald-400">Bản hiện tại</span>
+              </div>
               <button
                 type="button"
                 onClick={() => setVersionsDocument(null)}
@@ -1498,32 +1647,46 @@ export default function DocumentLibraryPage() {
                 Đóng
               </button>
             </header>
-            <div className="max-h-[60vh] divide-y divide-gray-100 overflow-y-auto dark:divide-gray-800">
+            <div className="max-h-[60vh] space-y-2 overflow-y-auto p-4">
               {versionsQuery.isLoading ? (
-                <p className="p-6 text-center text-sm text-gray-500">Đang tải lịch sử...</p>
-              ) : (
-                versions.map((version: DocumentVersionItem) => (
-                  <div key={version.versionId} className="flex flex-wrap items-center gap-3 p-4">
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold text-gray-900 dark:text-white">
-                        v{version.versionNo} · {version.fileName}
-                        {version.isCurrent ? " · Hiện tại" : ""}
-                      </p>
-                      <p className="mt-1 text-xs text-gray-500">
-                        {formatBytes(version.byteSize)} · {formatDate(version.uploadedAt)}
-                        {version.changeReason ? ` · ${version.changeReason}` : ""}
-                      </p>
+                <p className="p-8 text-center text-sm text-gray-500">Đang tải lịch sử phiên bản...</p>
+              ) : versionsQuery.isError ? (
+                <div className="p-8 text-center text-sm text-gray-500">
+                  Không tải được lịch sử phiên bản.{" "}
+                  <button type="button" onClick={() => void versionsQuery.refetch()} className="text-brand-600 hover:underline">Thử lại</button>
+                </div>
+              ) : versions.length === 0 ? (
+                <p className="p-8 text-center text-sm text-gray-500">Chưa có phiên bản khả dụng.</p>
+              ) : versions.map((version: DocumentVersionItem) => (
+                <article
+                  key={version.versionId}
+                  className={`flex items-start gap-3 rounded-xl border p-3 ${version.isCurrent ? "border-brand-200 bg-brand-50/50 dark:border-brand-900/60 dark:bg-brand-950/20" : "border-gray-200 dark:border-gray-800"}`}
+                >
+                  <FileTypeIcon fileName={version.fileName} size="sm" />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="rounded-md border border-brand-200 bg-brand-50 px-2 py-0.5 font-mono text-[11px] font-semibold text-brand-700 dark:border-brand-900/60 dark:bg-brand-950/40 dark:text-brand-300">v{version.versionNo}</span>
+                      <span className={`rounded-md px-2 py-0.5 text-[10px] font-medium ${version.isCurrent ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400" : "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400"}`}>
+                        {version.isCurrent ? "Hiện tại" : "Bản cũ"}
+                      </span>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => void openFile(versionsDocument.documentId, version.versionId)}
-                      className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
-                    >
-                      Mở version
-                    </button>
+                    <p className="mt-2 break-all text-sm font-medium text-gray-900 dark:text-white">{version.fileName}</p>
+                    <p className="mt-1 text-xs text-gray-500">{formatBytes(version.byteSize)} <span aria-hidden="true">·</span> {formatDate(version.uploadedAt)}</p>
+                    {version.changeReason && (
+                      <p className="mt-2 rounded-lg bg-white/70 px-2.5 py-2 text-xs text-gray-600 dark:bg-gray-900/70 dark:text-gray-300">
+                        <span className="font-semibold">Ghi chú:</span> {version.changeReason}
+                      </p>
+                    )}
                   </div>
-                ))
-              )}
+                  <button
+                    type="button"
+                    onClick={() => void openFile(versionsDocument.documentId, version.versionId)}
+                    className="shrink-0 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 hover:border-brand-300 hover:text-brand-700 dark:border-gray-700 dark:text-gray-200 dark:hover:text-brand-300"
+                  >
+                    Mở
+                  </button>
+                </article>
+              ))}
             </div>
           </section>
         </div>

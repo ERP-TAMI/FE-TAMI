@@ -33,6 +33,46 @@ export interface DocumentLibraryPageResult {
   };
 }
 
+export interface DocumentLibrarySearchPathItem {
+  id: string;
+  parentId: string | null;
+  folderName: string;
+}
+
+export type DocumentLibrarySearchResult =
+  | {
+      kind: "folder";
+      id: string;
+      folderName: string;
+      createdAt: string;
+      path: DocumentLibrarySearchPathItem[];
+    }
+  | {
+      kind: "file";
+      documentId: string;
+      title: string;
+      folderId: string;
+      folderName: string;
+      versionId: string;
+      versionNo: number;
+      fileName: string;
+      mimeType: string;
+      byteSize: number;
+      uploadedAt: string;
+      isAssigned: boolean;
+      path: DocumentLibrarySearchPathItem[];
+    };
+
+export interface DocumentLibrarySearchPageResult {
+  data: DocumentLibrarySearchResult[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+}
+
 export interface DocumentVersionItem {
   versionId: string;
   versionNo: number;

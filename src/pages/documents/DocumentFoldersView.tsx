@@ -1,25 +1,29 @@
-import { useMemo, useState, type MouseEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { createPortal } from "react-dom";
 import {
   ArrowLeft,
   Check,
+  ChevronDown,
   Folder,
   FolderPlus,
   Grid2X2,
   List,
-  MoreHorizontal,
+  MoreVertical,
   Pencil,
+  Search,
   Trash2,
   Upload,
   X,
 } from "lucide-react";
 import { documentsLibraryApi } from "@/api/documents-library.api";
 import type { DocumentFolderItem } from "@/types/document-library";
-import { DocumentFolderTree } from "@/pages/documents/DocumentFolderTree";
 import {
   DocumentLibraryStatusFilter,
   type DocumentLibraryFilter,
 } from "@/pages/documents/DocumentLibraryStatusFilter";
+
+type OpenFolderMenu = { id: string; top: number; left: number } | null;
 
 type DocumentFoldersViewProps = {
   path: DocumentFolderItem[];
@@ -44,6 +48,7 @@ type DocumentFoldersViewProps = {
   onDelete: (folder: DocumentFolderItem) => void;
   mergeContents?: boolean;
   renderDocumentPanel?: (folderRows: ReactNode | null, folderCards: ReactNode | null) => ReactNode;
+  searchResults?: ReactNode;
 };
 
 export function DocumentFoldersView({
@@ -69,23 +74,67 @@ export function DocumentFoldersView({
   onDelete,
   mergeContents = false,
   renderDocumentPanel,
+  searchResults,
 }: DocumentFoldersViewProps) {
   const [creating, setCreating] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
   const [saving, setSaving] = useState(false);
-  const [openMenu, setOpenMenu] = useState<string | null>(null);
+  const [openMenu, setOpenMenu] = useState<OpenFolderMenu>(null);
+  const [createMenuOpen, setCreateMenuOpen] = useState(false);
+  const createMenuRef = useRef<HTMLDivElement>(null);
+  const createMenuButtonRef = useRef<HTMLButtonElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const [searchInput, setSearchInput] = useState(search);
   const currentFolder = path.at(-1) ?? null;
+  useEffect(() => setSearchInput(search), [search]);
+  useEffect(() => {
+    if (!createMenuOpen) return;
+    const closeOutside = (event: globalThis.MouseEvent) => {
+      if (event.target instanceof Node && !createMenuRef.current?.contains(event.target)) {
+        setCreateMenuOpen(false);
+      }
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setCreateMenuOpen(false);
+        createMenuButtonRef.current?.focus();
+      }
+    };
+    document.addEventListener("mousedown", closeOutside);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("mousedown", closeOutside);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [createMenuOpen]);
+  useEffect(() => {
+    if (!openMenu) return;
+    const closeOutside = (event: globalThis.MouseEvent) => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      if (target.closest("[data-folder-actions]") || target.closest("[data-folder-actions-menu]")) return;
+      setOpenMenu(null);
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpenMenu(null);
+    };
+    const closeOnScroll = () => setOpenMenu(null);
+    document.addEventListener("mousedown", closeOutside);
+    document.addEventListener("keydown", closeOnEscape);
+    document.addEventListener("scroll", closeOnScroll, true);
+    window.addEventListener("resize", closeOnScroll);
+    return () => {
+      document.removeEventListener("mousedown", closeOutside);
+      document.removeEventListener("keydown", closeOnEscape);
+      document.removeEventListener("scroll", closeOnScroll, true);
+      window.removeEventListener("resize", closeOnScroll);
+    };
+  }, [openMenu]);
   const foldersQuery = useQuery({
     queryKey: ["document-library", "folders", { parentId: currentFolder?.id }],
     queryFn: () => documentsLibraryApi.listFolders({ parentId: currentFolder?.id }),
   });
-  const folders = useMemo(() => {
-    const term = search.trim().toLocaleLowerCase("vi");
-    if (!term) return foldersQuery.data ?? [];
-    return (foldersQuery.data ?? []).filter((folder) =>
-      folder.folderName.toLocaleLowerCase("vi").includes(term),
-    );
-  }, [foldersQuery.data, search]);
+  const folders = foldersQuery.data ?? [];
 
   const saveFolder = async () => {
     const name = newFolderName.trim();
@@ -119,47 +168,52 @@ export function DocumentFoldersView({
     setNewFolderName("");
   };
 
+  const showFolderMenu = (folderId: string, rect: Pick<DOMRect, "top" | "bottom" | "left" | "right">) => {
+    const menuWidth = 184;
+    const menuHeight = 136;
+    const top = rect.bottom + menuHeight <= window.innerHeight - 8
+      ? rect.bottom + 4
+      : Math.max(8, rect.top - menuHeight - 4);
+    const left = Math.max(8, Math.min(rect.right - menuWidth, window.innerWidth - menuWidth - 8));
+    setOpenMenu({ id: folderId, top, left });
+  };
+
   const renderFolderActions = (folder: DocumentFolderItem) => {
     if (!canManage) return null;
+    const isOpen = openMenu?.id === folder.id;
 
     return (
-      <div className="relative">
+      <div className="relative flex justify-end" data-folder-actions>
         <button
           type="button"
           aria-label={`Tùy chọn thư mục ${folder.folderName}`}
-          aria-expanded={openMenu === folder.id}
-          onClick={() => setOpenMenu((current) => (current === folder.id ? null : folder.id))}
+          aria-haspopup="menu"
+          aria-expanded={isOpen}
+          onClick={(event) => isOpen ? setOpenMenu(null) : showFolderMenu(folder.id, event.currentTarget.getBoundingClientRect())}
           className="focus-visible:outline-brand-500 rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700 focus-visible:outline-2 focus-visible:outline-offset-2 motion-reduce:transition-none dark:hover:bg-gray-700 dark:hover:text-white"
         >
-          <MoreHorizontal aria-hidden="true" className="h-4 w-4" />
+          <MoreVertical aria-hidden="true" className="h-4 w-4" />
         </button>
-        {openMenu === folder.id && (
-          <div
-            role="menu"
-            className="absolute top-9 right-0 z-20 flex items-center gap-1 rounded-lg border border-gray-200 bg-white p-1 shadow-lg dark:border-gray-700 dark:bg-gray-900"
-          >
+        {isOpen && openMenu && createPortal(
+          <div role="menu" data-folder-actions-menu style={{ top: openMenu.top, left: openMenu.left }} className="fixed z-[100] w-48 rounded-lg border border-gray-200 bg-white p-1 shadow-lg dark:border-gray-700 dark:bg-gray-900">
             <button
               type="button"
               role="menuitem"
-              aria-label="Tạo thư mục mới"
-              title="Tạo thư mục mới"
               onClick={() => beginCreateChild(folder)}
-              className="hover:bg-brand-50 hover:text-brand-600 dark:hover:bg-brand-950/30 rounded-md p-2 text-gray-600 dark:text-gray-300"
+              className="flex w-full items-center gap-2 rounded px-3 py-2 text-left text-xs text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-800"
             >
-              <FolderPlus aria-hidden="true" className="h-4 w-4" />
+              <FolderPlus aria-hidden="true" className="h-3.5 w-3.5" />Tạo thư mục con
             </button>
             <button
               type="button"
               role="menuitem"
-              aria-label="Đổi tên thư mục"
-              title="Đổi tên thư mục"
               onClick={() => {
                 setOpenMenu(null);
                 onRename(folder);
               }}
-              className="rounded-md p-2 text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
+              className="flex w-full items-center gap-2 rounded px-3 py-2 text-left text-xs text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-800"
             >
-              <Pencil aria-hidden="true" className="h-4 w-4" />
+              <Pencil aria-hidden="true" className="h-3.5 w-3.5" />Đổi tên
             </button>
             <button
               type="button"
@@ -170,11 +224,11 @@ export function DocumentFoldersView({
                 setOpenMenu(null);
                 onDelete(folder);
               }}
-              className="text-error-600 hover:bg-error-50 dark:text-error-300 dark:hover:bg-error-950/30 rounded-md p-2"
+              className="text-error-600 hover:bg-error-50 dark:text-error-300 dark:hover:bg-error-950/30 flex w-full items-center gap-2 rounded px-3 py-2 text-left text-xs"
             >
-              <Trash2 aria-hidden="true" className="h-4 w-4" />
+              <Trash2 aria-hidden="true" className="h-3.5 w-3.5" />Xóa thư mục
             </button>
-          </div>
+          </div>, document.body,
         )}
       </div>
     );
@@ -183,7 +237,7 @@ export function DocumentFoldersView({
   const handleFolderContextMenu = (event: MouseEvent, folder: DocumentFolderItem) => {
     if (!canManage) return;
     event.preventDefault();
-    setOpenMenu(folder.id);
+    showFolderMenu(folder.id, { top: event.clientY, bottom: event.clientY, left: event.clientX, right: event.clientX });
   };
 
   const folderRows = folders.map((folder) => (
@@ -201,21 +255,15 @@ export function DocumentFoldersView({
           className="focus-visible:outline-brand-500 flex w-full min-w-0 items-center gap-3 rounded-lg text-left focus-visible:outline-2 focus-visible:outline-offset-2"
         >
           <Folder aria-hidden="true" className="text-brand-500 h-5 w-5 shrink-0" />
-          <span className="min-w-0 flex-1">
-            <span className="block truncate text-sm font-semibold text-gray-800 dark:text-gray-100">
-              {folder.folderName}
-            </span>
-            <span className="mt-0.5 block text-xs text-gray-500">
-              {folder.documentCount} file{folder.documentCount === 1 ? "" : "s"}
-              {folder.hasChildren ? " · Có thư mục con" : ""}
-            </span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-sm font-semibold text-gray-800 dark:text-gray-100">
+            {folder.folderName}
           </span>
+        </span>
         </button>
       </td>
       <td className="px-3 py-3">
-        <span className="rounded-md bg-gray-100 px-2 py-1 text-[10px] font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-300">
-          Thư mục
-        </span>
+        <span className="rounded-md bg-gray-100 px-2 py-1 text-[10px] font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-300">Folder</span>
       </td>
       <td className="px-3 py-3 text-gray-400">—</td>
       <td className="px-3 py-3 whitespace-nowrap text-gray-600 dark:text-gray-300">
@@ -243,10 +291,6 @@ export function DocumentFoldersView({
           <span className="block truncate text-sm font-medium text-gray-800 dark:text-gray-100">
             {folder.folderName}
           </span>
-          <span className="mt-0.5 block text-xs text-gray-500">
-            {folder.documentCount} file{folder.documentCount === 1 ? "" : "s"}
-            {folder.hasChildren ? " · Có thư mục con" : ""}
-          </span>
         </span>
       </button>
       {renderFolderActions(folder)}
@@ -270,10 +314,6 @@ export function DocumentFoldersView({
           <span className="block truncate text-sm font-medium text-gray-800 dark:text-gray-100">
             {folder.folderName}
           </span>
-          <span className="mt-0.5 block text-xs text-gray-500">
-            {folder.documentCount} file{folder.documentCount === 1 ? "" : "s"}
-            {folder.hasChildren ? " · Có thư mục con" : ""}
-          </span>
         </span>
       </button>
       {renderFolderActions(folder)}
@@ -281,25 +321,7 @@ export function DocumentFoldersView({
   ));
 
   return (
-    <div className="grid min-w-0 gap-4 md:grid-cols-[220px_minmax(0,1fr)]">
-      <div className="min-w-0 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xs md:h-full dark:border-gray-800 dark:bg-gray-900">
-        <DocumentFolderTree
-          path={path}
-          onSelectPath={onSelectPath}
-          onOpenRoot={onOpenRoot}
-          canManage={canManage}
-          onCreateChild={(targetPath) => {
-            onSearchChange("");
-            setOpenMenu(null);
-            onSelectPath(targetPath);
-            setCreating(true);
-            setNewFolderName("");
-          }}
-          onRename={onRename}
-          onDelete={onDelete}
-        />
-      </div>
-
+    <div className="min-w-0">
       <section className="flex min-w-0 flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xs md:h-full md:min-h-0 dark:border-gray-800 dark:bg-gray-900">
         <header className="bg-gray-25/70 flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 px-4 py-3 dark:border-gray-800 dark:bg-gray-900">
           <div className="flex min-w-0 items-center gap-2">
@@ -314,27 +336,32 @@ export function DocumentFoldersView({
               </button>
             )}
             <div className="min-w-0">
-              <h2 className="truncate font-semibold text-gray-900 dark:text-white">
-                {currentFolder?.folderName ?? "Tất cả thư mục"}
-              </h2>
-              {path.length > 1 && (
-                <p className="mt-1 truncate text-xs text-gray-500">
-                  {path
-                    .slice(0, -1)
-                    .map((folder) => folder.folderName)
-                    .join(" / ")}
-                </p>
-              )}
+              {search.trim() ? <h2 className="truncate font-semibold text-gray-900 dark:text-white">Kết quả tìm kiếm</h2> : path.length > 0 ? (
+                <nav aria-label="Đường dẫn thư mục" className="flex min-w-0 items-center gap-2 text-sm">
+                  <button type="button" onClick={() => { onSearchChange(""); onOpenRoot(); }} className={`${path.length ? "text-gray-500 hover:text-brand-600" : "font-semibold text-gray-900 dark:text-white"} shrink-0`}>Kho tài liệu</button>
+                  {path.map((folder, index) => <span key={folder.id} className="flex min-w-0 items-center gap-2">
+                    <span aria-hidden="true" className="text-gray-400">/</span>
+                    {index === path.length - 1 ? <span aria-current="page" className="truncate font-semibold text-gray-900 dark:text-white">{folder.folderName}</span> : <button type="button" onClick={() => { onSearchChange(""); onSelectPath(path.slice(0, index + 1)); }} className="max-w-40 truncate text-gray-500 hover:text-brand-600">{folder.folderName}</button>}
+                  </span>)}
+                </nav>
+              ) : null}
             </div>
           </div>
-          <div className="flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto">
-            <input
-              value={search}
-              onChange={(event) => onSearchChange(event.target.value)}
-              aria-label="Tìm thư mục hoặc file"
-              placeholder="Tìm thư mục hoặc file..."
-              className="focus:border-brand-300 focus:ring-brand-100 dark:focus:ring-brand-950 h-9 w-full min-w-0 rounded-lg border border-gray-200 bg-white px-3 text-sm transition-colors outline-none placeholder:text-gray-400 focus:ring-2 sm:w-48 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-            />
+          <form
+            onSubmit={(event) => { event.preventDefault(); onSearchChange(searchInput.trim()); }}
+            onClick={(event) => {
+              if (!(event.target instanceof HTMLButtonElement)) searchInputRef.current?.focus();
+            }}
+            role="search"
+            className="flex h-10 w-full min-w-0 items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 focus-within:border-brand-300 focus-within:ring-2 focus-within:ring-brand-100 sm:ml-3 sm:w-80 dark:border-gray-700 dark:bg-gray-800 dark:focus-within:ring-brand-950"
+          >
+            <button type="submit" aria-label="Tìm kiếm" title="Tìm kiếm" className="flex h-7 w-7 shrink-0 items-center justify-center rounded text-gray-400 hover:bg-gray-100 hover:text-brand-600 dark:hover:bg-gray-700">
+              <Search aria-hidden="true" className="h-4 w-4" />
+            </button>
+            <input ref={searchInputRef} value={searchInput} onChange={(event) => setSearchInput(event.target.value)} aria-label="Tìm file hoặc thư mục" placeholder="Tìm file hoặc thư mục · Enter" className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-gray-400 dark:text-white" />
+            {searchInput && <button type="button" aria-label="Xóa nội dung tìm kiếm" onClick={() => { setSearchInput(""); onSearchChange(""); searchInputRef.current?.focus(); }} className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-700"><X aria-hidden="true" className="h-4 w-4" /></button>}
+          </form>
+          <div className="ml-auto flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto">
             {showAssignmentFilter && (
               <DocumentLibraryStatusFilter
                 value={assignmentFilter}
@@ -365,29 +392,25 @@ export function DocumentFoldersView({
                 <Grid2X2 aria-hidden="true" className="h-4 w-4" />
               </button>
             </div>
-            {canManage && (
-              <button
-                type="button"
-                onClick={() => {
-                  setCreating(true);
-                  setNewFolderName("");
-                }}
-                className="focus-visible:outline-brand-500 border-brand-200 text-brand-700 hover:bg-brand-50 dark:border-brand-900 dark:text-brand-300 dark:hover:bg-brand-950/30 inline-flex h-9 shrink-0 items-center gap-2 rounded-lg border bg-white px-3 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 motion-reduce:transition-none dark:bg-gray-900"
-              >
-                <FolderPlus aria-hidden="true" className="h-4 w-4" />
-                Tạo thư mục
-              </button>
-            )}
-            {canUpload && (
-              <button
-                type="button"
-                disabled={uploading}
-                onClick={onUploadClick}
-                className="bg-brand-600 hover:bg-brand-700 focus-visible:outline-brand-500 inline-flex h-9 shrink-0 items-center gap-2 rounded-lg px-3 text-sm font-semibold text-white transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-60 motion-reduce:transition-none"
-              >
-                <Upload aria-hidden="true" className="h-4 w-4" />
-                {uploadButtonLabel}
-              </button>
+            {(canManage || canUpload) && (
+              <div className="relative" ref={createMenuRef}>
+                <button
+                  ref={createMenuButtonRef}
+                  type="button"
+                  aria-haspopup="menu"
+                  aria-expanded={createMenuOpen}
+                  onClick={() => setCreateMenuOpen((open) => !open)}
+                  className="bg-brand-600 hover:bg-brand-700 focus-visible:outline-brand-500 inline-flex h-9 w-full items-center justify-center gap-2 rounded-lg px-3 text-sm font-semibold text-white focus-visible:outline-2 focus-visible:outline-offset-2 sm:w-auto"
+                >
+                  <FolderPlus aria-hidden="true" className="h-4 w-4" />
+                  Tạo mới
+                  <ChevronDown aria-hidden="true" className={`h-4 w-4 transition-transform ${createMenuOpen ? "rotate-180" : ""}`} />
+                </button>
+                {createMenuOpen && <div role="menu" className="absolute right-0 z-30 mt-2 min-w-48 rounded-xl border border-gray-200 bg-white p-1 shadow-lg dark:border-gray-700 dark:bg-gray-900">
+                  {canManage && <button type="button" role="menuitem" onClick={() => { setCreating(true); setNewFolderName(""); setCreateMenuOpen(false); }} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-800"><FolderPlus aria-hidden="true" className="h-4 w-4" />Thư mục mới</button>}
+                  {canUpload && <button type="button" role="menuitem" disabled={uploading} onClick={() => { onUploadClick(); setCreateMenuOpen(false); }} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50 dark:text-gray-200 dark:hover:bg-gray-800"><Upload aria-hidden="true" className="h-4 w-4" />{uploadButtonLabel}</button>}
+                </div>}
+              </div>
             )}
           </div>
         </header>
@@ -446,7 +469,9 @@ export function DocumentFoldersView({
             </form>
           )}
 
-          {mergeContents &&
+          {search.trim() ? (
+            searchResults ?? <p className="p-10 text-center text-sm text-gray-500">Đang tìm...</p>
+          ) : mergeContents &&
           renderDocumentPanel &&
           !foldersQuery.isLoading &&
           !foldersQuery.isError ? (

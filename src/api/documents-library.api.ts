@@ -3,6 +3,7 @@ import type {
   DocumentFolderItem,
   DocumentLibraryItem,
   DocumentLibraryPageResult,
+  DocumentLibrarySearchPageResult,
   DocumentVersionItem,
   DocumentViewUrlResponse,
   PresignDocumentUploadResponse,
@@ -25,6 +26,21 @@ export const documentsLibraryApi = {
     const res = await apiClient.get<DocumentLibraryPageResult>("/documents", {
       params,
     });
+    return res.data;
+  },
+
+  search: async (params: { search: string; page?: number; limit?: number }) => {
+    const res = await apiClient.get<DocumentLibrarySearchPageResult>("/documents/search", {
+      params,
+    });
+    return res.data;
+  },
+
+  moveDocuments: async (documentIds: string[], targetFolderId: string) => {
+    const res = await apiClient.post<{ movedCount: number; targetFolderId: string }>(
+      "/documents/move",
+      { documentIds, targetFolderId },
+    );
     return res.data;
   },
 
