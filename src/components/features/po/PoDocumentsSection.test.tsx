@@ -72,4 +72,30 @@ describe("PoDocumentsSection download access", () => {
     expect(screen.getByText("Chưa có tài liệu nào thuộc danh mục PO Tổng.")).toBeTruthy();
     expect(screen.queryByText(/khung tải lên/i)).toBeNull();
   });
+
+  it("shows version details and evidence in the expanded PO row", () => {
+    render(
+      <PoDocumentsSection
+        poCode="PO-2026-001"
+        documents={[{
+          ...documentItem,
+          currentVersionNo: 2,
+          versions: [{
+            id: "version-2", versionNo: 2, originalFileName: "tech-pack-v2.pdf",
+            fileUrl: "https://files.example.test/tech-pack-v2.pdf", fileSize: 2048,
+            changeReason: "Khách yêu cầu sửa mẫu", uploadedAt: "2026-09-02T00:00:00.000Z",
+            evidenceFileName: "request.png", evidenceUrl: "https://files.example.test/request.png",
+          }],
+        }]}
+        isLocked
+        isPending={false}
+        onUpload={vi.fn().mockResolvedValue(undefined)}
+        onUnlink={vi.fn().mockResolvedValue(undefined)}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /Xem lịch sử phiên bản/ }));
+    expect(screen.getByText("Khách yêu cầu sửa mẫu")).toBeTruthy();
+    expect(screen.getByAltText("request.png")).toBeTruthy();
+  });
 });

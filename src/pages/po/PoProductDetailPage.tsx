@@ -43,6 +43,7 @@ import { useDiscardChangesGuard } from "@/hooks/useDiscardChangesGuard";
 import { ProductStatusBadge } from "@/components/features/po/ProductStatusBadge";
 import { ProductColorSizeEditor } from "@/components/features/po/ProductColorSizeEditor";
 import { ProductVersionedFileGroup } from "@/components/features/po/ProductVersionedFileGroup";
+import { DocumentVersionUploadModal } from "@/components/features/po/DocumentVersionUploadModal";
 import { PoSplitDocumentPreview } from "@/components/features/po/PoSplitDocumentPreview";
 import { PoProductBomTab } from "@/components/features/po/PoProductBomTab";
 import { PoProductSampleRoundsTab } from "@/components/features/po/PoProductSampleRoundsTab";
@@ -358,9 +359,8 @@ export default function PoProductDetailPage({
     currentVersionNo: number;
     title: string;
     purpose: string;
+    sharedWithPo: boolean;
   } | null>(null);
-  const [newVersionFile, setNewVersionFile] = useState<File | null>(null);
-  const [newVersionReason, setNewVersionReason] = useState<string>("");
 
   // Local state for document preview modal
   const [previewDocItem, setPreviewDocItem] = useState<(ProductDocumentItem & { versionId?: string }) | null>(null);
@@ -787,36 +787,29 @@ export default function PoProductDetailPage({
     currentVersionNo: number,
     title: string,
     purpose: string,
+    sharedWithPo: boolean,
   ) => {
     if (isReadOnly) return;
-    setVersionTargetInfo({ documentId, currentVersionNo, title, purpose });
-    setNewVersionFile(null);
-    setNewVersionReason("");
+    setVersionTargetInfo({ documentId, currentVersionNo, title, purpose, sharedWithPo });
     setIsUploadVersionOpen(true);
   };
 
-  const handleConfirmUploadVersion = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!poId || !productId || !versionTargetInfo || !newVersionFile || isReadOnly) return;
-    if (!newVersionReason.trim()) {
-      showToast("Vui lòng nhập lý do / ghi chú thay đổi phiên bản từ khách hàng.", "error");
-      return;
-    }
+  const handleConfirmUploadVersion = async (file: File, changeReason: string, evidence?: File) => {
+    if (!poId || !productId || !versionTargetInfo || isReadOnly) return;
     try {
       await uploadVersionMutation.mutateAsync({
         poId,
         productId,
         documentId: versionTargetInfo.documentId,
-        file: newVersionFile,
+        file,
         purpose: versionTargetInfo.purpose,
-        changeReason: newVersionReason.trim(),
+        changeReason,
+        evidence,
       });
       showToast(
         `Đã cập nhật phiên bản mới v${versionTargetInfo.currentVersionNo + 1} thành công.`,
       );
       setIsUploadVersionOpen(false);
-      setNewVersionFile(null);
-      setNewVersionReason("");
       setVersionTargetInfo(null);
     } catch (err: unknown) {
       const apiErr = getApiError(err, "Cập nhật phiên bản thất bại.");
@@ -861,10 +854,6 @@ export default function PoProductDetailPage({
   });
   const uploadDocGuard = useDiscardChangesGuard(docUploadFile !== null, () =>
     setIsUploadDocOpen(false),
-  );
-  const uploadVersionGuard = useDiscardChangesGuard(
-    newVersionFile !== null || newVersionReason.trim() !== "",
-    () => setIsUploadVersionOpen(false),
   );
 
   // Loading Skeleton y xì StyleDetailPage
@@ -2432,76 +2421,15 @@ export default function PoProductDetailPage({
 
       {/* ─── MODAL CẬP NHẬT PHIÊN BẢN MỚI CHO TÀI LIỆU ─────────────────────────── */}
       {isUploadVersionOpen && versionTargetInfo && !isReadOnly && (
-        <Modal
-          open={isUploadVersionOpen}
-          onClose={uploadVersionGuard.requestClose}
-          closeDisabled={uploadVersionMutation.isPending}
-          closeOnClickOutside
-          title={`Cập nhật phiên bản mới: v${versionTargetInfo.currentVersionNo + 1}`}
-          size="md"
-        >
-          <form onSubmit={handleConfirmUploadVersion} className="space-y-4">
-            <div className="rounded-xl border border-blue-100 bg-blue-50/70 p-3 text-xs text-blue-900 dark:border-blue-900/40 dark:bg-blue-950/30 dark:text-blue-300">
-              <div className="font-semibold">
-                Tài liệu gốc: {versionTargetInfo.title}
-              </div>
-              <div className="text-[11px] text-blue-700 dark:text-blue-400 mt-0.5">
-                Phiên bản hiện tại: <strong>v{versionTargetInfo.currentVersionNo}</strong> → Phiên bản mới: <strong>v{versionTargetInfo.currentVersionNo + 1}</strong>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
-                Chọn tệp tin phiên bản mới từ khách hàng
-              </label>
-              <input
-                type="file"
-                required
-                onChange={(e) => {
-                  if (e.target.files && e.target.files[0]) {
-                    setNewVersionFile(e.target.files[0]);
-                  }
-                }}
-                className="w-full text-xs text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-blue-950/60 dark:file:text-blue-300 cursor-pointer"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                Lý do / Ghi chú thay đổi từ khách hàng <span className="text-rose-500 font-bold">*</span>
-              </label>
-              <textarea
-                rows={3}
-                required
-                value={newVersionReason}
-                onChange={(e) => setNewVersionReason(e.target.value)}
-                placeholder="Bắt buộc: Nhập chi tiết lý do/yêu cầu thay đổi từ khách hàng..."
-                className="w-full rounded-xl border border-gray-300 bg-white p-3 text-xs text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-              />
-            </div>
-
-            <div className="flex justify-end gap-2.5 pt-3 border-t border-gray-100 dark:border-gray-800">
-              <Button
-                variant="outline"
-                size="sm"
-                type="button"
-                onClick={uploadVersionGuard.requestClose}
-                disabled={uploadVersionMutation.isPending}
-              >
-                Hủy bỏ
-              </Button>
-              <Button
-                size="sm"
-                type="submit"
-                disabled={!newVersionFile || !newVersionReason.trim() || uploadVersionMutation.isPending}
-              >
-                {uploadVersionMutation.isPending
-                  ? "Đang lưu..."
-                  : `Xác nhận tải lên v${versionTargetInfo.currentVersionNo + 1}`}
-              </Button>
-            </div>
-          </form>
-        </Modal>
+        <DocumentVersionUploadModal
+          key={versionTargetInfo.documentId}
+          title={versionTargetInfo.title}
+          currentVersionNo={versionTargetInfo.currentVersionNo}
+          isPending={uploadVersionMutation.isPending}
+          sharedWithPo={versionTargetInfo.sharedWithPo}
+          onClose={() => setIsUploadVersionOpen(false)}
+          onSave={handleConfirmUploadVersion}
+        />
       )}
 
       {/* ─── MODAL XEM TRƯỚC TÀI LIỆU KỸ THUẬT (PREVIEW) ───────────────────────── */}
@@ -2535,7 +2463,6 @@ export default function PoProductDetailPage({
       {lockGuard.discardDialog}
       {unlockGuard.discardDialog}
       {uploadDocGuard.discardDialog}
-      {uploadVersionGuard.discardDialog}
     </div>
   );
 }

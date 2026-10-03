@@ -16,6 +16,7 @@ import {
   useUpdatePoStatus,
   useUnlinkPoDocument,
   useUploadPoDocument,
+  useUploadPoDocumentVersion,
   useUploadPoDocuments,
   useUpdatePoDocumentPurpose,
   usePoProducts,
@@ -100,6 +101,7 @@ export default function PoDetailPage({
   const updateStatusMutation = useUpdatePoStatus();
   const unlinkDocMutation = useUnlinkPoDocument();
   const uploadDocMutation = useUploadPoDocument();
+  const uploadVersionMutation = useUploadPoDocumentVersion();
   const uploadDocsMutation = useUploadPoDocuments();
   const updateDocPurposeMutation = useUpdatePoDocumentPurpose();
   const addProductMutation = useAddPoProduct();
@@ -415,6 +417,29 @@ export default function PoDetailPage({
     } catch (err: unknown) {
       const apiErr = getApiError(err, "Cập nhật phân loại tài liệu thất bại.");
       showToast(apiErr.message, "error");
+    }
+  };
+
+  const handleUploadDocumentVersion = async (
+    document: PurchaseOrderDocumentItem,
+    file: File,
+    changeReason: string,
+    evidence?: File,
+  ) => {
+    if (!id || isReadOnly) return;
+    try {
+      await uploadVersionMutation.mutateAsync({
+        poId: id,
+        documentId: document.documentId,
+        file,
+        purpose: document.purpose,
+        changeReason,
+        evidence,
+      });
+      showToast(`Đã cập nhật phiên bản v${(document.currentVersionNo || 1) + 1}.`);
+    } catch (err: unknown) {
+      showToast(getApiError(err, "Cập nhật phiên bản thất bại.").message, "error");
+      throw err;
     }
   };
 
@@ -1721,6 +1746,7 @@ export default function PoDetailPage({
             isLocked={isReadOnly}
             isPending={
               uploadDocMutation.isPending ||
+              uploadVersionMutation.isPending ||
               uploadDocsMutation.isPending ||
               unlinkDocMutation.isPending ||
               updateDocPurposeMutation.isPending
@@ -1729,6 +1755,7 @@ export default function PoDetailPage({
             onUpload={handleUploadDocument}
             onUnlink={handleUnlinkAttachment}
             onUpdatePurpose={handleUpdateDocumentPurpose}
+            onUploadVersion={handleUploadDocumentVersion}
           />
 
           {(poDocumentsPage?.totalPages ?? 0) > 1 && (
