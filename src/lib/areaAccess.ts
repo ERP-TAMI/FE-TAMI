@@ -11,15 +11,15 @@ export function canAccessItArea(user: AuthUser | null): boolean {
 }
 
 export function canManageUsers(user: AuthUser | null): boolean {
-  return user?.permissions.includes(USER_MANAGEMENT_PERMISSION) ?? false;
+  return user?.roleCode === "SA" || (user?.permissions.includes(USER_MANAGEMENT_PERMISSION) ?? false);
 }
 
 export function canViewAuditLog(user: AuthUser | null): boolean {
-  return user?.permissions.includes(AUDIT_LOG_PERMISSION) ?? false;
+  return user?.roleCode === "SA" || (user?.permissions.includes(AUDIT_LOG_PERMISSION) ?? false);
 }
 
 export function canManagePurchaseOrders(user: AuthUser | null): boolean {
-  return user?.roleCode === "SA" && user.purchaseOrderMode === "FULL_ACCESS";
+  return user?.roleCode === "SA";
 }
 
 export function canManagePurchaseOrderProductStatus(user: AuthUser | null): boolean {
@@ -28,7 +28,7 @@ export function canManagePurchaseOrderProductStatus(user: AuthUser | null): bool
 
 export function canAccessEditablePurchaseOrderModule(user: AuthUser | null): boolean {
   if (!user) return false;
-  if (user.roleCode === "SA") return canManagePurchaseOrders(user);
+  if (user.roleCode === "SA") return true;
   return !canAccessManagement(user);
 }
 

@@ -197,9 +197,7 @@ export default function BomDetailPage() {
             ? "Sản phẩm đã Khoá"
             : null;
 
-  const isReadOnlyPoBom =
-    poBomLockReason !== null ||
-    (bom.type === "po" && user?.roleCode === "SA" && user.purchaseOrderMode === "READ_ONLY");
+  const isReadOnlyPoBom = poBomLockReason !== null;
 
   // Revision switcher handler
   const handleSelectRevision = (revId: string) => {

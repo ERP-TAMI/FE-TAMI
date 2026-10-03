@@ -575,7 +575,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       expect(screen.getAllByText("$150,000.0000").length).toBeGreaterThan(0);
     });
 
-    it("hides PO NPL write actions for SA in READ_ONLY mode on direct detail", () => {
+    it("shows PO NPL write actions for SA regardless of legacy mode", () => {
       hooks.mockUser = {
         roleCode: "SA",
         fullName: "Giám đốc điều hành",
@@ -589,11 +589,10 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
         </BrowserRouter>,
       );
 
-      expect(screen.queryByText("Sửa thông tin")).toBeNull();
-      expect(screen.queryByRole("button", { name: "Thao tác khác" })).toBeNull();
+      expect(screen.getByText("Sửa thông tin")).toBeTruthy();
     });
 
-    it("hides PO NPL approval for SA in READ_ONLY mode", () => {
+    it("shows PO NPL approval for SA regardless of legacy mode", () => {
       hooks.mockUser = {
         roleCode: "SA",
         fullName: "Giám đốc điều hành",
@@ -610,7 +609,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
         </BrowserRouter>,
       );
 
-      expect(screen.queryByText("Phê duyệt NPL")).toBeNull();
+      expect(screen.getByText("Phê duyệt NPL")).toBeTruthy();
     });
 
     it.each([
@@ -1094,11 +1093,15 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       expect(payload.lines[2].lineId).toBeUndefined();
     });
 
-    it("33. Accounting and SA never see the edit button at wait_nvkh", () => {
+    it("33. Accounting cannot edit at wait_nvkh; SA can", () => {
       for (const roleCode of ["ACCOUNTING", "SA"]) {
         hooks.mockUser = { roleCode, fullName: roleCode };
         const { unmount } = renderPage();
-        expect(screen.queryByRole("button", { name: /Chỉnh sửa/ })).toBeNull();
+        if (roleCode === "SA") {
+          expect(screen.getByRole("button", { name: /Chỉnh sửa/ })).toBeTruthy();
+        } else {
+          expect(screen.queryByRole("button", { name: /Chỉnh sửa/ })).toBeNull();
+        }
         unmount();
       }
     });
@@ -1229,12 +1232,12 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       });
     });
 
-    it("41. SA at wait_sa_approve has read-only access (no edit button)", () => {
+    it("41. SA at wait_sa_approve can edit active revision lines", () => {
       hooks.mockUser = { roleCode: "SA", fullName: "Ban Giám Đốc" };
       const waitSaBom = { ...mockPoBom, status: "wait_sa_approve" as const };
       hooks.useBom.mockReturnValue({ data: waitSaBom, isLoading: false });
       renderPage();
-      expect(screen.queryByRole("button", { name: /Chỉnh sửa/ })).toBeNull();
+      expect(screen.getByRole("button", { name: /Chỉnh sửa/ })).toBeTruthy();
       expect(screen.queryByTestId(/^unit-cost-input-/)).toBeNull();
     });
 

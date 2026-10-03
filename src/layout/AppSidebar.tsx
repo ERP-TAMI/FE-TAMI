@@ -61,15 +61,15 @@ export default function AppSidebar() {
   const [openGroups, setOpenGroups] = useState<Set<string>>(new Set());
   const showLabels = isExpanded || isHovered || isMobileOpen;
 
-  // SA mặc định ở chế độ "Chỉ xem" PO (xem PurchaseOrderModeToggle ở khu Quản
-  // lý) — route /po bị PurchaseOrderModuleRoute chặn/redirect trong trường
-  // hợp đó, nên ẩn luôn mục này thay vì để một nút bấm vào là bị đá đi.
   const navItems = useMemo(() => {
     const visibleItems: NavItem[] = [];
     for (const item of ALL_NAV_ITEMS) {
       if (item.children) {
         const children = item.children.filter(
-          (child) => !child.permission || (user?.permissions.includes(child.permission) ?? false),
+          (child) =>
+            !child.permission ||
+            user?.roleCode === "SA" ||
+            (user?.permissions.includes(child.permission) ?? false),
         );
         if (children.length > 0) visibleItems.push({ ...item, children });
         continue;
