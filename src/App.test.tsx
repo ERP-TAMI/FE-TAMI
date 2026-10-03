@@ -462,7 +462,7 @@ describe("application routes", () => {
     expect(router.state.location.pathname).toBe("/management/dashboard");
   });
 
-  it("does not grant management access from the legacy director role name", () => {
+  it("blocks the legacy director role from the business dashboard", () => {
     signIn();
     useAuthStore.setState({
       user: { ...useAuthStore.getState().user!, roleCode: "DIRECTOR", permissions: [] },
@@ -470,9 +470,9 @@ describe("application routes", () => {
     window.history.pushState({}, "", "/management/dashboard");
     const { router } = renderApp();
 
-    expect(router.state.location.pathname).toBe("/dashboard");
-    fireEvent.click(screen.getByRole("button", { name: "Tài khoản" }));
-    expect(screen.queryByRole("link", { name: "Về khu Quản lý" })).toBeNull();
+    expect(router.state.location.pathname).toBe("/forbidden");
+    expect(screen.getByRole("heading", { name: "Bạn không có quyền truy cập" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Về trang chính" }).getAttribute("href")).toBe("/profile");
   });
 
   it("waits for session bootstrap before showing management", () => {

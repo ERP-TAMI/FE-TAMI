@@ -9,10 +9,24 @@ vi.mock("@/lib/apiClient", () => ({
 }));
 
 const summary = {
-  month: "2026-09",
+  periodType: "month",
+  periodStart: "2026-09-01",
+  periodEnd: "2026-09-30",
+  trendGranularity: "day",
   totalPurchaseOrders: 12,
   completedPurchaseOrders: 5,
-  overduePurchaseOrders: 3,
+  cancelledPurchaseOrders: 2,
+  processingPurchaseOrders: 18,
+  overdueProductPurchaseOrders: 3,
+  upcomingProductPurchaseOrders: 4,
+  pendingBomCount: 7,
+  trend: [],
+  purchaseOrderStatuses: [],
+  bomRevisionStatuses: [],
+  topCustomers: [],
+  overdueQueue: [],
+  upcomingQueue: [],
+  pendingBomQueue: [],
   activeEmployees: 24,
 };
 
@@ -21,29 +35,52 @@ describe("managementDashboardApi", () => {
     vi.clearAllMocks();
   });
 
-  it("requests and validates the dashboard summary for the selected month", async () => {
+  it("requests and validates the dashboard summary for the selected date range", async () => {
     vi.mocked(apiClient.get).mockResolvedValue({ data: summary });
 
-    await expect(managementDashboardApi.getSummary("2026-09")).resolves.toEqual(summary);
+    await expect(
+      managementDashboardApi.getSummary({
+        periodType: "range",
+        fromDate: "2026-09-01",
+        toDate: "2026-09-30",
+      }),
+    ).resolves.toEqual(summary);
     expect(apiClient.get).toHaveBeenCalledWith("/management/dashboard/summary", {
-      params: { month: "2026-09" },
+      params: { periodType: "range", fromDate: "2026-09-01", toDate: "2026-09-30" },
     });
   });
 
   it("rejects an invalid response instead of displaying corrupt metrics", async () => {
     vi.mocked(apiClient.get).mockResolvedValue({
-      data: { ...summary, overduePurchaseOrders: -1 },
+      data: { ...summary, overdueProductPurchaseOrders: -1 },
     });
 
-    await expect(managementDashboardApi.getSummary("2026-09")).rejects.toThrow();
+    await expect(
+      managementDashboardApi.getSummary({ periodType: "month", month: "2026-09" }),
+    ).rejects.toThrow();
   });
 
   it("rejects a response containing the unsupported year zero", async () => {
     vi.mocked(apiClient.get).mockResolvedValue({
-      data: { ...summary, month: "0000-01" },
+      data: { ...summary, periodStart: "0000-09-01" },
     });
 
-    await expect(managementDashboardApi.getSummary("2026-09")).rejects.toThrow();
+    await expect(
+      managementDashboardApi.getSummary({ periodType: "month", month: "2026-09" }),
+    ).rejects.toThrow();
+  });
+
+  it("rejects trend periods that do not match the declared granularity", async () => {
+    vi.mocked(apiClient.get).mockResolvedValue({
+      data: {
+        ...summary,
+        trend: [{ period: "2026-09", received: 12, completed: 5 }],
+      },
+    });
+
+    await expect(
+      managementDashboardApi.getSummary({ periodType: "month", month: "2026-09" }),
+    ).rejects.toThrow();
   });
 
   it("requests and validates management status and deadline-day fields", async () => {

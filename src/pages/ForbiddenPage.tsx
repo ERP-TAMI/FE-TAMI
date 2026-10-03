@@ -1,10 +1,15 @@
 import { Link } from "react-router-dom";
 import PageMeta from "@/components/shared/PageMeta";
-import { getLandingPath } from "@/lib/areaAccess";
+import { canAccessBusinessDashboard, getLandingPath } from "@/lib/areaAccess";
 import { useAuthStore } from "@/store/authStore";
 
 export default function ForbiddenPage() {
   const user = useAuthStore((state) => state.user);
+  const landingPath = getLandingPath(user);
+  const homePath =
+    landingPath === "/dashboard" && !canAccessBusinessDashboard(user)
+      ? "/profile"
+      : landingPath;
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-gray-50 px-4 dark:bg-gray-950">
@@ -21,8 +26,8 @@ export default function ForbiddenPage() {
           Tài khoản hiện tại chưa được cấp quyền sử dụng chức năng này.
         </p>
         <Link
-          to={getLandingPath(user)}
-          className="bg-brand-500 hover:bg-brand-600 focus-visible:outline-brand-500 mt-6 inline-flex rounded-lg px-4 py-3 text-sm font-medium text-white focus-visible:outline-2 focus-visible:outline-offset-2"
+          to={homePath}
+          className="bg-brand-500 hover:bg-brand-600 focus-visible:outline-brand-500 mt-6 inline-flex cursor-pointer rounded-lg px-4 py-3 text-sm font-medium text-white focus-visible:outline-2 focus-visible:outline-offset-2"
         >
           Về trang chính
         </Link>

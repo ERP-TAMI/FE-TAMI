@@ -6,12 +6,84 @@ export type ManagementPurchaseOrderSummaryStatus =
   | "overdue"
   | "cancelled";
 
+export type DashboardPeriodType = "month" | "year" | "range" | "all";
+
+export type DashboardPeriod =
+  | { periodType: "month"; month: string }
+  | { periodType: "year"; year: string }
+  | { periodType: "range"; fromDate: string; toDate: string }
+  | { periodType: "all" };
+
 export type ManagementDashboardSummary = {
-  month: string;
+  periodType: DashboardPeriodType;
+  periodStart: string;
+  periodEnd: string;
+  trendGranularity: "day" | "month" | "year";
   totalPurchaseOrders: number;
   completedPurchaseOrders: number;
-  overduePurchaseOrders: number;
+  cancelledPurchaseOrders: number;
+  processingPurchaseOrders: number;
+  overdueProductPurchaseOrders: number;
+  upcomingProductPurchaseOrders: number;
+  pendingBomCount: number;
+  trend: DashboardTrendBucket[];
+  comparison?: DashboardTrendComparison | null;
+  purchaseOrderStatuses: DashboardStatusCount[];
+  bomRevisionStatuses: DashboardStatusCount[];
+  topCustomers: DashboardCustomerCount[];
+  overdueQueue: DashboardPurchaseOrderQueueItem[];
+  upcomingQueue: DashboardPurchaseOrderQueueItem[];
+  pendingBomQueue: DashboardBomQueueItem[];
+  activeEmployees?: number;
+};
+
+export type ManagementDashboardManagementSummary = ManagementDashboardSummary & {
   activeEmployees: number;
+};
+
+export type DashboardTrendBucket = {
+  period: string;
+  received: number;
+  completed: number;
+};
+
+export type DashboardTrendComparison = {
+  periodStart: string;
+  periodEnd: string;
+  currentEnd: string;
+  trend: DashboardTrendComparisonBucket[];
+};
+
+export type DashboardTrendComparisonBucket = {
+  period: string;
+  received: number | null;
+};
+
+export type DashboardStatusCount = {
+  status: string;
+  count: number;
+};
+
+export type DashboardCustomerCount = {
+  customerName: string;
+  count: number;
+};
+
+export type DashboardPurchaseOrderQueueItem = {
+  purchaseOrderId: string;
+  poCode: string;
+  customerName: string;
+  deadline: string;
+  productCount: number;
+};
+
+export type DashboardBomQueueItem = {
+  bomId: string;
+  bomCode: string;
+  productName: string;
+  bomType: "fit" | "po";
+  status: "wait_nvkh" | "wait_rd" | "wait_tpkh_confirm" | "wait_accounting" | "wait_sa_approve";
+  createdAt: string;
 };
 
 export type ManagementPurchaseOrderItem = {

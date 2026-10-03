@@ -24,10 +24,24 @@ import {
 } from "./useUsers";
 
 const summary = {
-  month: "2026-09",
+  periodType: "month" as const,
+  periodStart: "2026-09-01",
+  periodEnd: "2026-09-30",
+  trendGranularity: "day" as const,
   totalPurchaseOrders: 1,
   completedPurchaseOrders: 0,
-  overduePurchaseOrders: 0,
+  cancelledPurchaseOrders: 0,
+  processingPurchaseOrders: 0,
+  overdueProductPurchaseOrders: 0,
+  upcomingProductPurchaseOrders: 0,
+  pendingBomCount: 0,
+  trend: [],
+  purchaseOrderStatuses: [],
+  bomRevisionStatuses: [],
+  topCustomers: [],
+  overdueQueue: [],
+  upcomingQueue: [],
+  pendingBomQueue: [],
   activeEmployees: 1,
 };
 
@@ -158,12 +172,18 @@ describe("management dashboard after mutations", () => {
       const wrapper = ({ children }: PropsWithChildren) => (
         <QueryClientProvider client={client}>{children}</QueryClientProvider>
       );
-      const keys = ["2026-09", "2026-10"].map(managementDashboardKeys.summary);
+      const keys = [
+        { periodType: "month" as const, month: "2026-09" },
+        { periodType: "month" as const, month: "2026-10" },
+      ].map(managementDashboardKeys.summary);
       keys.forEach((key) => client.setQueryData<typeof summary>(key, summary));
       const mutations = renderHook(useMutations, { wrapper });
       await act(() => mutate(mutations.result.current));
       keys.forEach((key) => expect(client.getQueryState(key)?.isInvalidated).toBe(true));
-      const dashboard = renderHook(() => useManagementDashboardSummary("2026-09"), { wrapper });
+      const dashboard = renderHook(
+        () => useManagementDashboardSummary({ periodType: "month", month: "2026-09" }),
+        { wrapper },
+      );
       await waitFor(() => expect(dashboard.result.current.data).toEqual(updated));
       getSummary.mockResolvedValue({ ...updated, activeEmployees: 3 });
       await act(() => mutate(mutations.result.current));
@@ -201,9 +221,7 @@ describe("management dashboard after mutations", () => {
         items: [],
         meta: { total: 1, page: 1, limit: 10, totalPages: 1 },
       };
-      keys.forEach((key) =>
-        client.setQueryData<typeof staleOverview>(key, staleOverview),
-      );
+      keys.forEach((key) => client.setQueryData<typeof staleOverview>(key, staleOverview));
       const mutations = renderHook(useMutations, { wrapper });
 
       await act(() => mutate(mutations.result.current));
