@@ -247,11 +247,11 @@ describe("application routes", () => {
     expect(screen.queryByRole("link", { name: "Nhóm công đoạn" })).toBeNull();
   });
 
-  it("hides the dead 'Quản lý PO' sidebar link for a read-only SA (route redirects there anyway)", () => {
+  it("shows the PO module link for SA regardless of legacy PO mode", () => {
     signIn(); // default SA, purchaseOrderMode: READ_ONLY
     renderApp();
 
-    expect(screen.queryByRole("link", { name: "Quản lý PO" })).toBeNull();
+    expect(screen.getByRole("link", { name: "Quản lý PO" })).toBeTruthy();
   });
 
   it("shows 'Quản lý PO' again once the SA switches to full PO access", () => {
@@ -344,7 +344,7 @@ describe("application routes", () => {
     expect(screen.queryByRole("link", { name: "Về khu Quản lý" })).toBeNull();
   });
 
-  it("denies a management PO detail deep link without management access", () => {
+  it("allows SA into management PO detail even if its permission list is stale", () => {
     signIn();
     useAuthStore.setState({
       user: { ...useAuthStore.getState().user!, permissions: [] },
@@ -352,23 +352,27 @@ describe("application routes", () => {
     window.history.pushState({}, "", "/management/purchase-orders/11111111-1111-4111-8111-111111111111");
     const { router } = renderApp();
 
-    expect(router.state.location.pathname).toBe("/dashboard");
-    expect(screen.getByRole("heading", { name: "Dashboard" })).toBeTruthy();
+    expect(router.state.location.pathname).toContain("/management/purchase-orders/");
+    expect(screen.getByText("PO detail")).toBeTruthy();
   });
 
-  it("routes an authorized Management PO detail through the shared read-only PO page", () => {
+  it("routes SA Management PO detail with editing enabled", () => {
     signIn();
     window.history.pushState({}, "", "/management/purchase-orders/11111111-1111-4111-8111-111111111111");
     renderApp();
 
-    expect(screen.getByText("Shared PO detail in Management read-only mode")).toBeTruthy();
+    expect(screen.getByText("PO detail")).toBeTruthy();
     expect(screen.getByRole("navigation", { name: "Điều hướng Quản lý" })).toBeTruthy();
   });
 
   it("redirects a management-only account away from editable PO routes", () => {
     signIn();
     useAuthStore.setState({
-      user: { ...useAuthStore.getState().user!, permissions: ["management.area.access"] },
+      user: {
+        ...useAuthStore.getState().user!,
+        roleCode: "NVKH",
+        permissions: ["management.area.access"],
+      },
     });
     window.history.pushState({}, "", "/po/11111111-1111-4111-8111-111111111111");
     const { router } = renderApp();
@@ -377,15 +381,15 @@ describe("application routes", () => {
     expect(screen.getByRole("heading", { name: "Dashboard quản lý" })).toBeTruthy();
   });
 
-  it("redirects an SA in read-only mode away from editable PO routes", () => {
+  it("lets SA open employee PO routes regardless of legacy PO mode", () => {
     signIn();
     window.history.pushState({}, "", "/po/11111111-1111-4111-8111-111111111111");
     const { router } = renderApp();
 
-    expect(router.state.location.pathname).toBe("/management/dashboard");
+    expect(router.state.location.pathname).toBe("/po/11111111-1111-4111-8111-111111111111");
   });
 
-  it("lets an SA in read-only mode inspect product details inside Management", () => {
+  it("lets SA edit product details inside Management", () => {
     signIn();
     window.history.pushState(
       {},
@@ -396,7 +400,7 @@ describe("application routes", () => {
 
     expect(
       screen.getByText(
-        "Shared PO product detail · readOnly=true · management=true",
+        "Shared PO product detail · readOnly=false · management=true",
       ),
     ).toBeTruthy();
     expect(screen.getByRole("navigation", { name: "Điều hướng Quản lý" })).toBeTruthy();

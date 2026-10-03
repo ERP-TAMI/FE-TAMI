@@ -28,13 +28,13 @@ describe("bomAccess - Permission Matrix & Workflow Guards", () => {
     viewer: { roleCode: "viewer" },
   };
 
-  describe("canForwardBom - Strict State-Role Matrix", () => {
+  describe("canForwardBom - SA override with workflow state limits", () => {
     it("at wait_nvkh (N1): nvkh and tpkh can forward", () => {
       expect(canForwardBom(roles.nvkh, "wait_nvkh")).toBe(true);
       expect(canForwardBom(roles.rd, "wait_nvkh")).toBe(false);
       expect(canForwardBom(roles.tpkh, "wait_nvkh")).toBe(true);
       expect(canForwardBom(roles.kt, "wait_nvkh")).toBe(false);
-      expect(canForwardBom(roles.sa, "wait_nvkh")).toBe(false);
+      expect(canForwardBom(roles.sa, "wait_nvkh")).toBe(true);
       expect(canForwardBom(roles.admin, "wait_nvkh")).toBe(false);
     });
 
@@ -43,7 +43,7 @@ describe("bomAccess - Permission Matrix & Workflow Guards", () => {
       expect(canForwardBom(roles.nvkh, "wait_rd")).toBe(false);
       expect(canForwardBom(roles.tpkh, "wait_rd")).toBe(false);
       expect(canForwardBom(roles.kt, "wait_rd")).toBe(false);
-      expect(canForwardBom(roles.sa, "wait_rd")).toBe(false);
+      expect(canForwardBom(roles.sa, "wait_rd")).toBe(true);
       expect(canForwardBom(roles.admin, "wait_rd")).toBe(false);
     });
 
@@ -52,7 +52,7 @@ describe("bomAccess - Permission Matrix & Workflow Guards", () => {
       expect(canForwardBom(roles.nvkh, "wait_tpkh_confirm")).toBe(false);
       expect(canForwardBom(roles.rd, "wait_tpkh_confirm")).toBe(false);
       expect(canForwardBom(roles.kt, "wait_tpkh_confirm")).toBe(false);
-      expect(canForwardBom(roles.sa, "wait_tpkh_confirm")).toBe(false);
+      expect(canForwardBom(roles.sa, "wait_tpkh_confirm")).toBe(true);
       expect(canForwardBom(roles.admin, "wait_tpkh_confirm")).toBe(false);
     });
 
@@ -62,7 +62,7 @@ describe("bomAccess - Permission Matrix & Workflow Guards", () => {
       expect(canForwardBom(roles.nvkh, "wait_accounting")).toBe(false);
       expect(canForwardBom(roles.rd, "wait_accounting")).toBe(false);
       expect(canForwardBom(roles.tpkh, "wait_accounting")).toBe(false);
-      expect(canForwardBom(roles.sa, "wait_accounting")).toBe(false);
+      expect(canForwardBom(roles.sa, "wait_accounting")).toBe(true);
       expect(canForwardBom(roles.admin, "wait_accounting")).toBe(false);
     });
 
@@ -88,25 +88,25 @@ describe("bomAccess - Permission Matrix & Workflow Guards", () => {
       expect(canRejectBom(roles.sa, "wait_nvkh")).toBe(false);
     });
 
-    it("at wait_rd (N2): ONLY rd can reject (tpkh/sa cannot)", () => {
+    it("at wait_rd (N2): SA can reject outside the assigned role matrix", () => {
       expect(canRejectBom(roles.rd, "wait_rd")).toBe(true);
       expect(canRejectBom(roles.nvkh, "wait_rd")).toBe(false);
       expect(canRejectBom(roles.tpkh, "wait_rd")).toBe(false);
-      expect(canRejectBom(roles.sa, "wait_rd")).toBe(false);
+      expect(canRejectBom(roles.sa, "wait_rd")).toBe(true);
     });
 
     it("at wait_tpkh_confirm (N3): ONLY tpkh can reject", () => {
       expect(canRejectBom(roles.tpkh, "wait_tpkh_confirm")).toBe(true);
       expect(canRejectBom(roles.rd, "wait_tpkh_confirm")).toBe(false);
       expect(canRejectBom(roles.nvkh, "wait_tpkh_confirm")).toBe(false);
-      expect(canRejectBom(roles.sa, "wait_tpkh_confirm")).toBe(false);
+      expect(canRejectBom(roles.sa, "wait_tpkh_confirm")).toBe(true);
     });
 
     it("at wait_accounting (N4): ONLY accounting can reject (tpkh/sa cannot)", () => {
       expect(canRejectBom(roles.kt, "wait_accounting")).toBe(false);
       expect(canRejectBom(roles.accounting, "wait_accounting")).toBe(true);
       expect(canRejectBom(roles.tpkh, "wait_accounting")).toBe(false);
-      expect(canRejectBom(roles.sa, "wait_accounting")).toBe(false);
+      expect(canRejectBom(roles.sa, "wait_accounting")).toBe(true);
     });
 
     it("at wait_sa_approve (N5): ONLY sa can reject", () => {
@@ -151,20 +151,21 @@ describe("bomAccess - Permission Matrix & Workflow Guards", () => {
       expect(canEditTechnicalLines(roles.nvkh, "wait_tpkh_confirm")).toBe(false);
     });
 
-    it("N4, N5, closed: nobody can edit technical lines", () => {
+    it("SA can edit active workflow lines; closed stays read-only", () => {
       expect(canEditTechnicalLines(roles.nvkh, "wait_accounting")).toBe(false);
       expect(canEditTechnicalLines(roles.tpkh, "wait_accounting")).toBe(false);
-      expect(canEditTechnicalLines(roles.sa, "wait_sa_approve")).toBe(false);
+      expect(canEditTechnicalLines(roles.sa, "wait_sa_approve")).toBe(true);
+      expect(canEditTechnicalLines(roles.sa, "wait_accounting")).toBe(true);
       expect(canEditTechnicalLines(roles.nvkh, "closed")).toBe(false);
     });
   });
 
   describe("canEditUnitCost", () => {
-    it("only accounting at wait_accounting can edit unit cost", () => {
+    it("accounting and SA at wait_accounting can edit unit cost", () => {
       expect(canEditUnitCost(roles.kt, "wait_accounting")).toBe(false);
       expect(canEditUnitCost(roles.accounting, "wait_accounting")).toBe(true);
       expect(canEditUnitCost(roles.tpkh, "wait_accounting")).toBe(false);
-      expect(canEditUnitCost(roles.sa, "wait_accounting")).toBe(false);
+      expect(canEditUnitCost(roles.sa, "wait_accounting")).toBe(true);
       expect(canEditUnitCost(roles.kt, "wait_tpkh_confirm")).toBe(false);
     });
   });

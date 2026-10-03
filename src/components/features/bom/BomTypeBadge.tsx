@@ -1,4 +1,5 @@
 import type { BomType } from "@/types/bom";
+import { BADGE_BASE, BADGE_BLUE, BADGE_PURPLE } from "@/components/features/audit/auditShared";
 
 interface BomTypeBadgeProps {
   type: BomType;
@@ -6,18 +7,21 @@ interface BomTypeBadgeProps {
 }
 
 export function BomTypeBadge({ type, showDot = true }: BomTypeBadgeProps) {
+  const badgeColor = type === "fit" ? BADGE_PURPLE : BADGE_BLUE;
+  const dotColor = type === "fit" ? "bg-purple-600 dark:bg-purple-400" : "bg-blue-600 dark:bg-blue-400";
+
   if (type === "fit") {
     return (
-      <span className="inline-flex items-center gap-1.5 rounded-full border border-[#dce3fc] bg-[#EEF2FF] px-2.5 py-0.5 text-xs font-medium leading-none text-[#6370A0] dark:border-slate-800 dark:bg-slate-800/60 dark:text-slate-300">
-        {showDot && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#6370A0]" />}
+      <span className={`${BADGE_BASE} ${badgeColor} inline-flex items-center gap-1.5`}>
+        {showDot && <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${dotColor}`} />}
         Mẫu Fit
       </span>
     );
   }
 
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full border border-brand-200/60 bg-brand-50/60 px-2.5 py-0.5 text-xs font-medium leading-none text-brand-600 dark:border-brand-900/40 dark:bg-brand-950/30 dark:text-brand-400">
-      {showDot && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-brand-500" />}
+    <span className={`${BADGE_BASE} ${badgeColor} inline-flex items-center gap-1.5`}>
+      {showDot && <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${dotColor}`} />}
       PO
     </span>
   );

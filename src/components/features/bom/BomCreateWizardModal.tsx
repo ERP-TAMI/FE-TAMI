@@ -2,13 +2,15 @@ import { useState, useMemo, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Modal } from "@/components/shared/Modal";
 import { useDiscardChangesGuard } from "@/hooks/useDiscardChangesGuard";
-import { SearchableSelect } from "@/components/shared/SearchableSelect";
-import { useCreateBom, useMultiPoBoms } from "@/hooks/useBoms";
-import { useStyles } from "@/hooks/useStyles";
-import { usePurchaseOrders, useMultiPoProducts } from "@/hooks/usePurchaseOrders";
+import {
+  useCreateBom,
+  useEligibleFitStyles,
+  useEligiblePurchaseOrders,
+  useMultiEligiblePoProducts,
+} from "@/hooks/useBoms";
 import { useToast } from "@/hooks/useToast";
 import { getApiError, isConflictError } from "@/lib/apiError";
-import type { BomType } from "@/types/bom";
+import type { BomType, EligibleFitStyle, EligiblePurchaseOrder } from "@/types/bom";
 import {
   Shirt,
   ShoppingBag,
@@ -21,8 +23,6 @@ import {
   X,
   ChevronDown,
   ChevronRight,
-  Info,
-  ListFilter,
   Pencil,
   Check,
   Calendar,
@@ -59,8 +59,14 @@ export function BomCreateWizardModal({ open, onClose }: BomCreateWizardModalProp
   // Form selections - default is PO BOM as requested
   const [bomType, setBomType] = useState<BomType>("po");
   const [selectedStyleIds, setSelectedStyleIds] = useState<string[]>([]);
+  const [selectedStyleDetails, setSelectedStyleDetails] = useState<Record<string, EligibleFitStyle>>(
+    {},
+  );
   const [styleSearch, setStyleSearch] = useState<string>("");
   const [selectedPoIds, setSelectedPoIds] = useState<string[]>([]);
+  const [selectedPoDetails, setSelectedPoDetails] = useState<Record<string, EligiblePurchaseOrder>>(
+    {},
+  );
   const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
   const [productSearch, setProductSearch] = useState<string>("");
   type DeadlineMode = "common" | "per_po";
@@ -96,7 +102,6 @@ export function BomCreateWizardModal({ open, onClose }: BomCreateWizardModalProp
 
   // Track user-toggled PO accordions (explicitly expanded or collapsed)
   const [userToggledPoIds, setUserToggledPoIds] = useState<Record<string, boolean>>({});
-  const [onlyAvailableFilter, setOnlyAvailableFilter] = useState<boolean>(false);
 
   // Error state
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -116,136 +121,84 @@ export function BomCreateWizardModal({ open, onClose }: BomCreateWizardModalProp
     };
   }, [isPoDropdownOpen]);
 
-  // Query Styles for FIT BOM — this modal is always mounted on BomPage
-  // (open just toggles visibility), so gate on `open` or it fetches on
-  // every page load even when the wizard was never clicked.
-  const { data: stylesData, isLoading: isLoadingStyles } = useStyles(
-    { limit: 100 },
-    { enabled: open },
+  const {
+    data: stylesData,
+    isLoading: isLoadingStyles,
+    isError: isStylesError,
+    hasNextPage: hasNextFitPage,
+    fetchNextPage: fetchNextFitPage,
+    isFetchingNextPage: isFetchingNextFitPage,
+  } = useEligibleFitStyles(styleSearch, open && bomType === "fit");
+
+  const filteredStyles = useMemo(
+    () => stylesData?.pages.flatMap((page) => page.items) ?? [],
+    [stylesData],
   );
-
-  const allStyles = useMemo(() => stylesData?.data ?? [], [stylesData]);
-
-  const filteredStyles = useMemo(() => {
-    const q = styleSearch.trim().toLowerCase();
-    if (!q) return allStyles;
-    return allStyles.filter(
-      (s) =>
-        s.styleCode.toLowerCase().includes(q) ||
-        (s.styleName && s.styleName.toLowerCase().includes(q)) ||
-        (s.category && s.category.toLowerCase().includes(q)),
-    );
-  }, [allStyles, styleSearch]);
+  const allStyles = useMemo(() => {
+    const byId = new Map<string, EligibleFitStyle>();
+    Object.values(selectedStyleDetails).forEach((style) => byId.set(style.id, style));
+    filteredStyles.forEach((style) => byId.set(style.id, style));
+    return [...byId.values()];
+  }, [filteredStyles, selectedStyleDetails]);
 
   const selectedStyles = useMemo(() => {
     return allStyles.filter((s) => selectedStyleIds.includes(s.id));
   }, [allStyles, selectedStyleIds]);
 
-  const selectedStyleId = selectedStyleIds[0] || "";
-
   const toggleStyle = (styleId: string) => {
+    const style = allStyles.find((item) => item.id === styleId);
+    if (style) setSelectedStyleDetails((prev) => ({ ...prev, [styleId]: style }));
     setSelectedStyleIds((prev) =>
       prev.includes(styleId) ? prev.filter((id) => id !== styleId) : [...prev, styleId],
     );
   };
 
   const handleSelectAllStyles = () => {
-    if (selectedStyleIds.length === filteredStyles.length && filteredStyles.length > 0) {
-      setSelectedStyleIds([]);
+    const visibleIds = filteredStyles.map((style) => style.id);
+    if (visibleIds.every((id) => selectedStyleIds.includes(id))) {
+      setSelectedStyleIds((prev) => prev.filter((id) => !visibleIds.includes(id)));
     } else {
-      setSelectedStyleIds(filteredStyles.map((s) => s.id));
+      setSelectedStyleDetails((prev) => ({
+        ...prev,
+        ...Object.fromEntries(filteredStyles.map((style) => [style.id, style])),
+      }));
+      setSelectedStyleIds((prev) => [...new Set([...prev, ...visibleIds])]);
     }
   };
 
-  const styleOptions = useMemo(() => {
-    return allStyles.map((s) => ({
-      value: s.id,
-      label: s.styleCode,
-      sublabel: s.styleName,
-    }));
-  }, [allStyles]);
+  const {
+    data: posData,
+    isLoading: isLoadingPos,
+    isError: isPosError,
+    hasNextPage,
+    fetchNextPage,
+    isFetchingNextPage,
+  } = useEligiblePurchaseOrders(poSearchQuery, open && bomType === "po");
 
-  // Query Purchase Orders for PO BOM — same reasoning as useStyles above.
-  const { data: posData, isLoading: isLoadingPos } = usePurchaseOrders(
-    { limit: 100 },
-    { enabled: open },
-  );
-
-  const allPos = useMemo(
-    () =>
-      (posData?.items ?? []).filter((po) => po.status !== "closed" && po.status !== "cancelled"),
+  const filteredPosInDropdown = useMemo(
+    () => posData?.pages.flatMap((page) => page.items) ?? [],
     [posData],
   );
+  const allPos = useMemo(() => {
+    const byId = new Map<string, EligiblePurchaseOrder>();
+    Object.values(selectedPoDetails).forEach((po) => byId.set(po.id, po));
+    filteredPosInDropdown.forEach((po) => byId.set(po.id, po));
+    return [...byId.values()];
+  }, [filteredPosInDropdown, selectedPoDetails]);
 
-  useEffect(() => {
-    if (!posData) return;
-    const availablePoIds = new Set(allPos.map((po) => po.id));
-    if (selectedPoIds.some((id) => !availablePoIds.has(id))) {
-      setSelectedPoIds((prev) => prev.filter((id) => availablePoIds.has(id)));
-      setSelectedProductIds([]);
-      setStep(2);
-      setErrorMessage("Đơn hàng PO đã khóa hoặc đã hủy. Vui lòng chọn lại đơn hàng và sản phẩm.");
-    }
-  }, [allPos, posData, selectedPoIds]);
-
-  // Filtered POs in Box 1 dropdown
-  const filteredPosInDropdown = useMemo(() => {
-    const q = poSearchQuery.trim().toLowerCase();
-    if (!q) return allPos;
-    return allPos.filter(
-      (po) =>
-        po.poCode.toLowerCase().includes(q) ||
-        (po.customerNameSnapshot && po.customerNameSnapshot.toLowerCase().includes(q)),
-    );
-  }, [allPos, poSearchQuery]);
-
-  // Query Products of all selected POs in parallel
-  const poProductsQueries = useMultiPoProducts(selectedPoIds, { limit: 100 });
-
-  // Query existing BOMs of all selected POs in parallel to filter out products that already have a BOM
-  const poBomsQueries = useMultiPoBoms(selectedPoIds);
+  const poProductsQueries = useMultiEligiblePoProducts(selectedPoIds);
 
   const isLoadingProductsOrBoms = useMemo(() => {
-    return poProductsQueries.some((q) => q.isLoading) || poBomsQueries.some((q) => q.isLoading);
-  }, [poProductsQueries, poBomsQueries]);
+    return poProductsQueries.some((q) => q.isLoading);
+  }, [poProductsQueries]);
+  const hasPoProductsError = poProductsQueries.some((q) => q.isError);
 
   // Group products by PO with strict filtering (no products that already have BOMs)
   const poGroups = useMemo(() => {
     return selectedPoIds.map((poId, idx) => {
       const po = allPos.find((p) => p.id === poId);
-      const productsData = poProductsQueries[idx]?.data;
-      const bomsData = poBomsQueries[idx]?.data;
-
-      // Extract existing product IDs that already have a BOM for this PO
-      const existingBomProductIds = new Set<string>();
-      const list =
-        (
-          bomsData as {
-            data?: Array<{ product?: { id?: string }; purchaseOrderProductId?: string }>;
-          }
-        )?.data ||
-        (
-          bomsData as {
-            items?: Array<{ product?: { id?: string }; purchaseOrderProductId?: string }>;
-          }
-        )?.items ||
-        [];
-      if (Array.isArray(list)) {
-        for (const item of list) {
-          if (item.product?.id) existingBomProductIds.add(item.product.id);
-          if (item.purchaseOrderProductId) existingBomProductIds.add(item.purchaseOrderProductId);
-        }
-      }
-
-      const allProducts: WizardProduct[] =
-        (productsData as { items?: WizardProduct[] })?.items ??
-        (productsData as { data?: WizardProduct[] })?.data ??
-        [];
-      // Available products: ONLY products that DO NOT have a BOM yet
-      const availableProducts = allProducts.filter(
-        (p: WizardProduct) =>
-          !existingBomProductIds.has(p.id) && p.status !== "closed" && p.status !== "cancelled",
-      );
+      const availableProducts: WizardProduct[] = poProductsQueries[idx]?.data ?? [];
+      const allProducts = availableProducts;
 
       const q = productSearch.trim().toLowerCase();
       const filteredProducts = q
@@ -261,15 +214,9 @@ export function BomCreateWizardModal({ open, onClose }: BomCreateWizardModalProp
         allProducts,
         availableProducts,
         filteredProducts,
-        hasBomsCount: existingBomProductIds.size,
       };
     });
-  }, [selectedPoIds, allPos, poProductsQueries, poBomsQueries, productSearch]);
-
-  const visiblePoGroups = useMemo(() => {
-    if (!onlyAvailableFilter) return poGroups;
-    return poGroups.filter((g) => g.availableProducts.length > 0);
-  }, [poGroups, onlyAvailableFilter]);
+  }, [selectedPoIds, allPos, poProductsQueries, productSearch]);
 
   const totalAvailableProducts = useMemo(() => {
     return poGroups.reduce((acc, g) => acc + g.availableProducts.length, 0);
@@ -280,14 +227,14 @@ export function BomCreateWizardModal({ open, onClose }: BomCreateWizardModalProp
   }, [poGroups]);
 
   useEffect(() => {
-    if (isLoadingProductsOrBoms) return;
+    if (isLoadingProductsOrBoms || hasPoProductsError) return;
     const availableIds = new Set(allAvailableProductIds);
     if (selectedProductIds.some((id) => !availableIds.has(id))) {
       setSelectedProductIds((prev) => prev.filter((id) => availableIds.has(id)));
       setStep(2);
       setErrorMessage("Sản phẩm đã khóa, đã hủy hoặc đã có NPL. Vui lòng chọn lại sản phẩm.");
     }
-  }, [allAvailableProductIds, isLoadingProductsOrBoms, selectedProductIds]);
+  }, [allAvailableProductIds, hasPoProductsError, isLoadingProductsOrBoms, selectedProductIds]);
 
   const totalAllProducts = useMemo(() => {
     return poGroups.reduce((acc, g) => acc + g.allProducts.length, 0);
@@ -295,6 +242,8 @@ export function BomCreateWizardModal({ open, onClose }: BomCreateWizardModalProp
 
   // Toggle single PO selection
   const togglePo = (poId: string) => {
+    const po = allPos.find((item) => item.id === poId);
+    if (po) setSelectedPoDetails((prev) => ({ ...prev, [poId]: po }));
     setSelectedPoIds((prev) => {
       if (prev.includes(poId)) {
         // Remove PO and clean up its products from selectedProductIds
@@ -312,11 +261,17 @@ export function BomCreateWizardModal({ open, onClose }: BomCreateWizardModalProp
 
   // Toggle select/deselect all POs
   const toggleSelectAllPos = () => {
-    if (selectedPoIds.length === allPos.length && selectedPoIds.length > 0) {
-      setSelectedPoIds([]);
+    const visibleIds = filteredPosInDropdown.map((po) => po.id);
+    const allVisibleSelected = visibleIds.every((id) => selectedPoIds.includes(id));
+    if (allVisibleSelected) {
+      setSelectedPoIds((prev) => prev.filter((id) => !visibleIds.includes(id)));
       setSelectedProductIds([]);
     } else {
-      setSelectedPoIds(allPos.map((po) => po.id));
+      setSelectedPoDetails((prev) => ({
+        ...prev,
+        ...Object.fromEntries(filteredPosInDropdown.map((po) => [po.id, po])),
+      }));
+      setSelectedPoIds((prev) => [...new Set([...prev, ...visibleIds])]);
     }
   };
 
@@ -380,14 +335,15 @@ export function BomCreateWizardModal({ open, onClose }: BomCreateWizardModalProp
     setStep(1);
     setBomType("po");
     setSelectedStyleIds([]);
+    setSelectedStyleDetails({});
     setStyleSearch("");
     setSelectedPoIds([]);
+    setSelectedPoDetails({});
     setSelectedProductIds([]);
     setProductSearch("");
     setPoSearchQuery("");
     setIsPoDropdownOpen(false);
     setUserToggledPoIds({});
-    setOnlyAvailableFilter(false);
     setDeadlineMode("common");
     setDeadline("");
     setPoDeadlines({});
@@ -567,7 +523,6 @@ export function BomCreateWizardModal({ open, onClose }: BomCreateWizardModalProp
       <Modal
         open={open}
         title={step === 3 ? "Xác nhận tạo NPL" : "Tạo mới NPL"}
-        subtitle={step === 3 ? "Vui lòng kiểm tra lại thông tin trước khi tạo." : undefined}
         size="lg"
         onClose={requestClose}
         closeDisabled={createBomMutation.isPending}
@@ -580,7 +535,7 @@ export function BomCreateWizardModal({ open, onClose }: BomCreateWizardModalProp
                   type="button"
                   onClick={handleBack}
                   disabled={createBomMutation.isPending}
-                  className="inline-flex items-center gap-1.5 rounded-xl border border-gray-300 bg-white px-4 py-2 text-xs font-semibold text-gray-700 shadow-xs hover:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-xs hover:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
                 >
                   <ArrowLeft className="h-4 w-4" />
                   Quay lại
@@ -593,7 +548,7 @@ export function BomCreateWizardModal({ open, onClose }: BomCreateWizardModalProp
                 type="button"
                 onClick={requestClose}
                 disabled={createBomMutation.isPending}
-                className="rounded-xl border border-gray-300 bg-white px-4 py-2 text-xs font-semibold text-gray-700 shadow-xs hover:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+                className="rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-xs hover:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
               >
                 Hủy
               </button>
@@ -613,7 +568,7 @@ export function BomCreateWizardModal({ open, onClose }: BomCreateWizardModalProp
                       filteredStyles.length === 0 &&
                       selectedStyleIds.length === 0)
                   }
-                  className="bg-brand-500 hover:bg-brand-600 inline-flex items-center gap-1.5 rounded-xl px-5 py-2 text-xs font-semibold text-white shadow-xs disabled:opacity-50"
+                  className="bg-brand-500 hover:bg-brand-600 inline-flex items-center gap-1.5 rounded-xl px-5 py-2 text-sm font-semibold text-white shadow-xs disabled:opacity-50"
                 >
                   Tiếp tục
                   <ArrowRight className="h-4 w-4" />
@@ -623,7 +578,7 @@ export function BomCreateWizardModal({ open, onClose }: BomCreateWizardModalProp
                   type="button"
                   onClick={handleSubmit}
                   disabled={createBomMutation.isPending}
-                  className="bg-brand-500 hover:bg-brand-600 inline-flex items-center gap-1.5 rounded-xl px-5 py-2 text-xs font-semibold text-white shadow-xs disabled:opacity-50"
+                  className="bg-brand-500 hover:bg-brand-600 inline-flex items-center gap-1.5 rounded-xl px-5 py-2 text-sm font-semibold text-white shadow-xs disabled:opacity-50"
                 >
                   {createBomMutation.isPending ? (
                     <>
@@ -742,10 +697,6 @@ export function BomCreateWizardModal({ open, onClose }: BomCreateWizardModalProp
           {/* STEP 1: Select BOM Type (PO BOM is default) */}
           {step === 1 && (
             <div className="flex flex-col gap-3">
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                Vui lòng chọn loại Định mức NPL cần thiết lập (Mặc định: PO NPL):
-              </p>
-
               <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
                 {/* Option PO BOM (Default & Primary) */}
                 <button
@@ -763,15 +714,14 @@ export function BomCreateWizardModal({ open, onClose }: BomCreateWizardModalProp
                   <div>
                     <div className="flex items-center gap-2">
                       <h4 className="text-sm font-bold text-gray-900 dark:text-white">
-                        PO NPL (Sản phẩm Đơn hàng)
+                        PO NPL
                       </h4>
                       <span className="bg-brand-100 text-brand-700 dark:bg-brand-900/50 dark:text-brand-300 rounded-full px-2 py-0.5 text-[10px] font-semibold">
                         Mặc định
                       </span>
                     </div>
-                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                      Áp dụng theo từng sản phẩm của đơn hàng PO. Hỗ trợ chọn nhiều PO và nhiều sản
-                      phẩm cùng lúc.
+                    <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                      Tạo theo sản phẩm của đơn hàng PO.
                     </p>
                   </div>
                 </button>
@@ -791,11 +741,10 @@ export function BomCreateWizardModal({ open, onClose }: BomCreateWizardModalProp
                   </div>
                   <div>
                     <h4 className="text-sm font-bold text-gray-900 dark:text-white">
-                      FIT NPL (Mẫu Fit)
+                      FIT NPL
                     </h4>
-                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                      Áp dụng cho mẫu chuẩn kỹ thuật (Style). Mỗi Style chỉ có tối đa 1 bảng Fit
-                      NPL.
+                    <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                      Tạo theo Mẫu Fit, mỗi mẫu một NPL.
                     </p>
                   </div>
                 </button>
@@ -817,43 +766,21 @@ export function BomCreateWizardModal({ open, onClose }: BomCreateWizardModalProp
                       <h3 className="text-sm font-bold text-gray-900 dark:text-white">
                         Chọn Mẫu Fit (Style) <span className="text-rose-500">*</span>
                       </h3>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">
-                        Tìm kiếm và chọn các mẫu Fit chuẩn kỹ thuật để tạo NPL.
-                      </p>
                     </div>
                   </div>
 
-                  {allStyles.length > 1 && (
+                  {filteredStyles.length > 1 && (
                     <button
                       type="button"
                       onClick={handleSelectAllStyles}
                       className="text-brand-600 hover:text-brand-700 dark:text-brand-400 shrink-0 text-xs font-semibold hover:underline"
                     >
-                      {selectedStyleIds.length === filteredStyles.length &&
-                      filteredStyles.length > 0
-                        ? "Bỏ chọn tất cả"
-                        : `Chọn tất cả (${filteredStyles.length})`}
+                      {filteredStyles.length > 0 &&
+                      filteredStyles.every((style) => selectedStyleIds.includes(style.id))
+                        ? "Bỏ chọn mẫu đang hiển thị"
+                        : `Chọn mẫu đang hiển thị (${filteredStyles.length})`}
                     </button>
                   )}
-                </div>
-
-                {/* Quick Select & Test Compatibility */}
-                <div className="mb-3">
-                  <p className="mb-1.5 text-xs font-semibold text-gray-700 dark:text-gray-300">
-                    Tìm kiếm theo mã Style hoặc tên Style chuẩn:
-                  </p>
-                  <SearchableSelect
-                    value={selectedStyleId}
-                    onChange={(val) => {
-                      if (val) {
-                        setSelectedStyleIds((prev) => (prev.includes(val) ? prev : [...prev, val]));
-                      }
-                    }}
-                    options={styleOptions}
-                    placeholder="-- Chọn Mẫu Fit (Style) --"
-                    searchPlaceholder="Gõ mã Style hoặc tên Style..."
-                    disabled={isLoadingStyles}
-                  />
                 </div>
 
                 {/* Search & Selection Counter */}
@@ -864,8 +791,8 @@ export function BomCreateWizardModal({ open, onClose }: BomCreateWizardModalProp
                       type="text"
                       value={styleSearch}
                       onChange={(e) => setStyleSearch(e.target.value)}
-                      placeholder="Lọc danh sách mẫu Fit bên dưới..."
-                      className="border-gray-250 focus:border-brand-500 focus:ring-brand-500/20 w-full rounded-xl border bg-white py-1.5 pr-8 pl-9 text-xs text-gray-800 shadow-xs placeholder:text-gray-400 focus:ring-2 focus:outline-none dark:border-gray-800 dark:bg-gray-800 dark:text-gray-200"
+                      placeholder="Tìm mã hoặc tên Mẫu Fit"
+                      className="border-gray-250 focus:border-brand-500 focus:ring-brand-500/20 w-full rounded-xl border bg-white py-2 pr-8 pl-9 text-sm text-gray-800 shadow-xs placeholder:text-gray-400 focus:ring-2 focus:outline-none dark:border-gray-800 dark:bg-gray-800 dark:text-gray-200"
                     />
                     {styleSearch && (
                       <button
@@ -880,7 +807,7 @@ export function BomCreateWizardModal({ open, onClose }: BomCreateWizardModalProp
 
                   <div className="flex shrink-0 items-center gap-2 text-xs font-medium text-gray-600 dark:text-gray-300">
                     <span className="inline-flex items-center rounded-lg bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-700 dark:bg-gray-800 dark:text-gray-300">
-                      Đã chọn {selectedStyleIds.length} / {allStyles.length} mẫu Fit
+                      Đã chọn {selectedStyleIds.length}
                     </span>
                   </div>
                 </div>
@@ -892,11 +819,15 @@ export function BomCreateWizardModal({ open, onClose }: BomCreateWizardModalProp
                       <Loader2 className="text-brand-500 mr-2 h-4 w-4 animate-spin" />
                       Đang tải danh sách mẫu Fit...
                     </div>
+                  ) : isStylesError ? (
+                    <div className="p-6 text-center text-sm text-rose-600">
+                      Không tải được Mẫu Fit. Vui lòng thử lại.
+                    </div>
                   ) : filteredStyles.length === 0 ? (
-                    <div className="rounded-xl border border-dashed border-gray-200 p-6 text-center text-xs text-gray-400 dark:border-gray-800">
+                    <div className="rounded-xl border border-dashed border-gray-200 p-6 text-center text-sm text-gray-500 dark:border-gray-800">
                       {styleSearch
-                        ? `Không tìm thấy mẫu Fit nào khớp với từ khóa "${styleSearch}".`
-                        : "Chưa có dữ liệu Mẫu Fit."}
+                        ? "Không có Mẫu Fit phù hợp chưa có NPL."
+                        : "Không còn Mẫu Fit chưa có NPL."}
                     </div>
                   ) : (
                     filteredStyles.map((style) => {
@@ -921,24 +852,16 @@ export function BomCreateWizardModal({ open, onClose }: BomCreateWizardModalProp
                               aria-label={`Chọn mẫu ${style.styleCode}`}
                             />
 
-                            {/* Style Thumbnail */}
-                            <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-gray-200/80 bg-gray-100/80 dark:border-gray-700 dark:bg-gray-800">
-                              <Shirt
-                                className="h-5 w-5 text-gray-400 dark:text-gray-500"
-                                strokeWidth={1.5}
-                              />
-                            </div>
-
                             {/* Style Code & Details */}
                             <div>
                               <div className="flex items-center gap-1.5">
-                                <span className="font-mono text-xs font-bold text-gray-900 dark:text-white">
+                                <span className="font-mono text-sm font-bold text-gray-900 dark:text-white">
                                   {style.styleCode}
                                 </span>
                                 {style.styleName && (
                                   <>
                                     <span className="text-gray-400">•</span>
-                                    <span className="text-xs text-gray-600 dark:text-gray-400">
+                                    <span className="text-sm text-gray-600 dark:text-gray-400">
                                       {style.styleName}
                                     </span>
                                   </>
@@ -959,14 +882,17 @@ export function BomCreateWizardModal({ open, onClose }: BomCreateWizardModalProp
                   )}
                 </div>
 
-                {/* Informational footer note */}
-                <div className="mt-3 flex items-center gap-2 border-t border-gray-100 pt-2 text-xs text-gray-500 dark:border-gray-800 dark:text-gray-400">
-                  <Info className="h-4 w-4 shrink-0 text-gray-400" />
-                  <span>
-                    Mỗi Mẫu Fit được chọn sẽ được tạo một bảng FIT NPL riêng làm tiêu chuẩn kỹ
-                    thuật.
-                  </span>
-                </div>
+                {hasNextFitPage && (
+                  <button
+                    type="button"
+                    onClick={() => void fetchNextFitPage()}
+                    disabled={isFetchingNextFitPage}
+                    className="text-brand-600 mt-2 w-full py-2 text-sm font-semibold hover:underline disabled:opacity-50"
+                  >
+                    {isFetchingNextFitPage ? "Đang tải..." : "Tải thêm Mẫu Fit"}
+                  </button>
+                )}
+
               </div>
             </div>
           )}
@@ -986,21 +912,18 @@ export function BomCreateWizardModal({ open, onClose }: BomCreateWizardModalProp
                       <h3 className="text-sm font-bold text-gray-900 dark:text-white">
                         Chọn Đơn hàng PO <span className="text-rose-500">*</span>
                       </h3>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">
-                        Tìm kiếm và chọn đơn hàng PO để tạo NPL.
-                      </p>
                     </div>
                   </div>
 
-                  {allPos.length > 1 && (
+                  {filteredPosInDropdown.length > 1 && (
                     <button
                       type="button"
                       onClick={toggleSelectAllPos}
                       className="text-brand-600 hover:text-brand-700 dark:text-brand-400 shrink-0 text-xs font-semibold hover:underline"
                     >
-                      {selectedPoIds.length === allPos.length
-                        ? "Bỏ chọn toàn bộ PO"
-                        : `Chọn toàn bộ PO (${allPos.length})`}
+                      {filteredPosInDropdown.every((po) => selectedPoIds.includes(po.id))
+                        ? "Bỏ chọn PO đang hiển thị"
+                        : `Chọn PO đang hiển thị (${filteredPosInDropdown.length})`}
                     </button>
                   )}
                 </div>
@@ -1008,7 +931,7 @@ export function BomCreateWizardModal({ open, onClose }: BomCreateWizardModalProp
                 {/* Box 1 PO Search & Dropdown Picker */}
                 <div ref={poDropdownRef} className="relative">
                   <div
-                    className="border-gray-250 focus-within:border-brand-500 focus-within:ring-brand-500/20 flex cursor-pointer items-center justify-between gap-2 rounded-xl border bg-white px-3.5 py-2 text-xs text-gray-800 shadow-xs focus-within:ring-2 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-200"
+                    className="border-gray-250 focus-within:border-brand-500 focus-within:ring-brand-500/20 flex cursor-pointer items-center justify-between gap-2 rounded-xl border bg-white px-3.5 py-2 text-sm text-gray-800 shadow-xs focus-within:ring-2 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-200"
                     onClick={() => setIsPoDropdownOpen((prev) => !prev)}
                   >
                     <div className="flex flex-1 items-center gap-2">
@@ -1025,11 +948,11 @@ export function BomCreateWizardModal({ open, onClose }: BomCreateWizardModalProp
                         }}
                         onClick={(e) => {
                           e.stopPropagation();
-                          setIsPoDropdownOpen((prev) => !prev);
+                          setIsPoDropdownOpen(true);
                         }}
-                        placeholder="Tìm kiếm đơn hàng PO (mã PO, tên đối tác...)"
+                        placeholder="Tìm mã PO hoặc tên khách hàng"
                         aria-label="-- Chọn Đơn hàng PO --"
-                        className="w-full bg-transparent text-xs text-gray-800 placeholder:text-gray-400 focus:outline-none dark:text-gray-200"
+                        className="w-full bg-transparent text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none dark:text-gray-200"
                         disabled={isLoadingPos}
                       />
                     </div>
@@ -1053,18 +976,23 @@ export function BomCreateWizardModal({ open, onClose }: BomCreateWizardModalProp
 
                   {/* PO Dropdown Popover */}
                   {isPoDropdownOpen && (
-                    <div className="absolute top-full right-0 left-0 z-50 mt-1 max-h-52 overflow-y-auto rounded-xl border border-gray-200 bg-white p-1.5 shadow-xl dark:border-gray-700 dark:bg-gray-800">
+                    <div className="mt-1 max-h-52 overflow-y-auto rounded-xl border border-gray-200 bg-white p-1.5 shadow-sm dark:border-gray-700 dark:bg-gray-800">
                       {isLoadingPos ? (
                         <div className="flex items-center justify-center p-4 text-xs text-gray-400">
                           <Loader2 className="text-brand-500 mr-2 h-4 w-4 animate-spin" />
                           Đang tải danh sách đơn hàng...
                         </div>
+                      ) : isPosError ? (
+                        <div className="p-3 text-center text-sm text-rose-600">
+                          Không tải được danh sách PO. Vui lòng thử lại.
+                        </div>
                       ) : filteredPosInDropdown.length === 0 ? (
-                        <div className="p-3 text-center text-xs text-gray-400">
-                          Không tìm thấy đơn hàng PO nào phù hợp.
+                        <div className="p-3 text-center text-sm text-gray-500">
+                          Không có PO nào còn sản phẩm chưa có NPL.
                         </div>
                       ) : (
-                        filteredPosInDropdown.map((po) => {
+                        <>
+                        {filteredPosInDropdown.map((po) => {
                           const isSelected = selectedPoIds.includes(po.id);
                           return (
                             <div
@@ -1072,7 +1000,7 @@ export function BomCreateWizardModal({ open, onClose }: BomCreateWizardModalProp
                               role="option"
                               aria-selected={isSelected}
                               onClick={() => togglePo(po.id)}
-                              className={`flex cursor-pointer items-center justify-between rounded-lg px-3 py-2 text-xs transition-colors ${
+                              className={`flex cursor-pointer items-center justify-between rounded-lg px-3 py-2 text-sm transition-colors ${
                                 isSelected
                                   ? "bg-brand-50 text-brand-700 dark:bg-brand-950/40 dark:text-brand-300 font-medium"
                                   : "text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-700/60"
@@ -1103,7 +1031,18 @@ export function BomCreateWizardModal({ open, onClose }: BomCreateWizardModalProp
                               )}
                             </div>
                           );
-                        })
+                        })}
+                        {hasNextPage && (
+                          <button
+                            type="button"
+                            onClick={() => void fetchNextPage()}
+                            disabled={isFetchingNextPage}
+                            className="text-brand-600 hover:bg-brand-50 w-full rounded-lg px-3 py-2 text-center text-sm font-semibold disabled:opacity-50"
+                          >
+                            {isFetchingNextPage ? "Đang tải..." : "Tải thêm PO"}
+                          </button>
+                        )}
+                        </>
                       )}
                     </div>
                   )}
@@ -1139,7 +1078,8 @@ export function BomCreateWizardModal({ open, onClose }: BomCreateWizardModalProp
                 )}
               </div>
 
-              {/* BOX 2: Chọn sản phẩm chưa có BOM (Luôn hiển thị ổn định theo Mockup) */}
+              {selectedPoIds.length > 0 && (
+              /* Chỉ hiện danh sách sản phẩm sau khi đã chọn PO. */
               <div className="rounded-2xl border border-gray-200/90 bg-white p-4 shadow-xs dark:border-gray-800 dark:bg-gray-900">
                 {/* Box 2 Header & Toolbar */}
                 <div className="mb-3 flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
@@ -1158,9 +1098,6 @@ export function BomCreateWizardModal({ open, onClose }: BomCreateWizardModalProp
                           </span>
                         )}
                       </div>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">
-                        Chọn sản phẩm thuộc các đơn hàng đã chọn và chưa có NPL.
-                      </p>
                     </div>
                   </div>
 
@@ -1177,24 +1114,6 @@ export function BomCreateWizardModal({ open, onClose }: BomCreateWizardModalProp
                           className="focus:border-brand-500 w-full rounded-xl border border-gray-200/90 bg-white py-1.5 pr-2.5 pl-7 text-xs text-gray-800 placeholder:text-gray-400 focus:outline-none dark:border-gray-800 dark:bg-gray-800 dark:text-gray-200"
                         />
                       </div>
-
-                      <button
-                        type="button"
-                        onClick={() => setOnlyAvailableFilter((prev) => !prev)}
-                        className={`inline-flex items-center gap-1 rounded-xl border px-2.5 py-1.5 text-xs font-medium transition-colors ${
-                          onlyAvailableFilter
-                            ? "border-brand-500 bg-brand-50 text-brand-700 dark:border-brand-500 dark:bg-brand-950/40 dark:text-brand-300"
-                            : "border-gray-200/90 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
-                        }`}
-                        title={
-                          onlyAvailableFilter
-                            ? "Hiện tất cả PO"
-                            : "Chỉ hiện PO có sản phẩm khả dụng"
-                        }
-                      >
-                        <ListFilter className="h-3.5 w-3.5" />
-                        <span>Lọc</span>
-                      </button>
 
                       {totalAvailableProducts > 0 && (
                         <button
@@ -1218,19 +1137,20 @@ export function BomCreateWizardModal({ open, onClose }: BomCreateWizardModalProp
                     <p className="text-xs font-medium text-gray-600 dark:text-gray-400">
                       Chưa có đơn hàng nào được chọn
                     </p>
-                    <p className="mt-0.5 text-[11px] text-gray-400 dark:text-gray-500">
-                      Vui lòng tìm kiếm và chọn ít nhất một đơn hàng PO ở trên để hiển thị danh sách
-                      sản phẩm.
-                    </p>
+                    <p className="mt-1 text-sm text-gray-500">Chọn PO để xem sản phẩm.</p>
                   </div>
                 ) : isLoadingProductsOrBoms ? (
                   <div className="flex items-center justify-center gap-2 rounded-xl border border-gray-200/80 bg-gray-50/50 p-6 text-xs text-gray-500 dark:border-gray-800 dark:bg-gray-900">
                     <Loader2 className="text-brand-500 h-4 w-4 animate-spin" />
                     <span>Đang kiểm tra danh sách sản phẩm và trạng thái NPL...</span>
                   </div>
+                ) : hasPoProductsError ? (
+                  <div className="p-4 text-center text-sm text-rose-600">
+                    Không tải được sản phẩm. Vui lòng thử lại.
+                  </div>
                 ) : totalAllProducts === 0 ? (
                   <div className="rounded-xl border border-gray-200/80 bg-gray-50/50 p-4 text-center text-xs text-gray-500 dark:border-gray-800 dark:bg-gray-900">
-                    Các đơn hàng PO được chọn hiện chưa có sản phẩm nào.
+                    PO đã chọn không còn sản phẩm có thể tạo NPL. Hãy chọn PO khác.
                   </div>
                 ) : totalAvailableProducts === 0 ? (
                   <div className="rounded-xl border border-blue-200/80 bg-blue-50/60 p-4 text-xs dark:border-blue-900/40 dark:bg-blue-950/20">
@@ -1246,7 +1166,7 @@ export function BomCreateWizardModal({ open, onClose }: BomCreateWizardModalProp
                   <div className="flex flex-col gap-2.5">
                     {/* Accordion List for each PO */}
                     <div className="max-h-60 space-y-2 overflow-y-auto pr-1 sm:max-h-68">
-                      {visiblePoGroups.map((group) => {
+                      {poGroups.map((group) => {
                         const groupAvail = group.availableProducts;
                         const groupFiltered = group.filteredProducts;
                         const isExpanded =
@@ -1341,32 +1261,16 @@ export function BomCreateWizardModal({ open, onClose }: BomCreateWizardModalProp
                                               aria-label={`Chọn sản phẩm ${product.productCode}`}
                                             />
 
-                                            {/* Product Thumbnail */}
-                                            <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-gray-200/80 bg-gray-100/80 dark:border-gray-700 dark:bg-gray-800">
-                                              {product.structureImageUrl ? (
-                                                <img
-                                                  src={product.structureImageUrl}
-                                                  alt={product.productCode}
-                                                  className="h-full w-full object-cover"
-                                                />
-                                              ) : (
-                                                <Shirt
-                                                  className="h-5 w-5 text-gray-400 dark:text-gray-500"
-                                                  strokeWidth={1.5}
-                                                />
-                                              )}
-                                            </div>
-
                                             {/* Product Code & Details */}
                                             <div>
                                               <div className="flex items-center gap-1.5">
-                                                <span className="font-mono text-xs font-bold text-gray-900 dark:text-white">
+                                                <span className="font-mono text-sm font-bold text-gray-900 dark:text-white">
                                                   {product.productCode}
                                                 </span>
                                                 {product.productName && (
                                                   <>
                                                     <span className="text-gray-400">•</span>
-                                                    <span className="text-xs text-gray-600 dark:text-gray-400">
+                                                    <span className="text-sm text-gray-600 dark:text-gray-400">
                                                       {product.productName}
                                                     </span>
                                                   </>
@@ -1416,21 +1320,10 @@ export function BomCreateWizardModal({ open, onClose }: BomCreateWizardModalProp
                       })}
                     </div>
 
-                    {/* Informational footer note */}
-                    <div className="flex items-center gap-2 pt-1 text-xs text-gray-500 dark:text-gray-400">
-                      <Info className="h-4 w-4 shrink-0 text-gray-400" />
-                      <span>
-                        Chỉ hiển thị sản phẩm chưa có NPL. Mỗi sản phẩm sẽ tạo một bảng NPL riêng
-                        với màu sắc và kích cỡ tương ứng.
-                      </span>
-                      <span className="sr-only">
-                        * Mỗi sản phẩm được chọn sẽ được tạo một bảng NPL riêng (dùng chung cho mọi
-                        màu sắc và kích cỡ).
-                      </span>
-                    </div>
                   </div>
                 )}
               </div>
+              )}
             </div>
           )}
 
@@ -1443,11 +1336,13 @@ export function BomCreateWizardModal({ open, onClose }: BomCreateWizardModalProp
                 {bomType === "fit" ? "FIT NPL (Mẫu Fit)" : "PO NPL (Sản phẩm PO)"}
               </span>
 
-              {/* Modern 5-Row Confirmation Card matching Mockup */}
+              <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                Sẽ tạo {bomType === "fit" ? selectedStyleIds.length : selectedProductIds.length} NPL
+              </p>
               <div className="divide-y divide-gray-100 overflow-hidden rounded-2xl border border-gray-200/90 bg-white shadow-2xs dark:divide-gray-800/80 dark:border-gray-800 dark:bg-gray-900/60">
                 {/* Row 1: Loại BOM */}
                 <div className="flex items-center justify-between gap-4 px-5 py-4 transition-colors hover:bg-gray-50/40 dark:hover:bg-gray-800/20">
-                  <div className="w-32 shrink-0 text-xs font-semibold text-gray-700 sm:w-44 dark:text-gray-300">
+                  <div className="w-32 shrink-0 text-sm font-semibold text-gray-700 sm:w-44 dark:text-gray-300">
                     Loại NPL
                   </div>
 
@@ -1456,14 +1351,9 @@ export function BomCreateWizardModal({ open, onClose }: BomCreateWizardModalProp
                       <Package className="h-6 w-6 stroke-[1.75]" />
                     </div>
                     <div className="min-w-0">
-                      <h4 className="text-xs font-bold text-gray-900 dark:text-white">
+                      <h4 className="text-sm font-bold text-gray-900 dark:text-white">
                         {bomType === "fit" ? "FIT NPL" : "PO NPL"}
                       </h4>
-                      <p className="mt-0.5 truncate text-[11px] text-gray-500 dark:text-gray-400">
-                        {bomType === "fit"
-                          ? "Tạo định mức cho mẫu chuẩn kỹ thuật (Style)"
-                          : "Tạo định mức cho sản phẩm PO"}
-                      </p>
                     </div>
                   </div>
 
@@ -1479,7 +1369,7 @@ export function BomCreateWizardModal({ open, onClose }: BomCreateWizardModalProp
 
                 {/* Row 2: Đơn hàng PO (hoặc Mẫu Fit) */}
                 <div className="flex items-center justify-between gap-4 px-5 py-4 transition-colors hover:bg-gray-50/40 dark:hover:bg-gray-800/20">
-                  <div className="w-32 shrink-0 text-xs font-semibold text-gray-700 sm:w-44 dark:text-gray-300">
+                  <div className="w-32 shrink-0 text-sm font-semibold text-gray-700 sm:w-44 dark:text-gray-300">
                     {bomType === "fit" ? "Mẫu Fit (Style)" : "Đơn hàng PO"}
                   </div>
 
@@ -1495,7 +1385,7 @@ export function BomCreateWizardModal({ open, onClose }: BomCreateWizardModalProp
                       {bomType === "fit" ? (
                         selectedStyles.length === 1 ? (
                           <>
-                            <h4 className="text-xs font-bold text-gray-900 dark:text-white">
+                            <h4 className="text-sm font-bold text-gray-900 dark:text-white">
                               {selectedStyles[0]?.styleCode || "—"}
                             </h4>
                             <p className="mt-0.5 truncate text-[11px] text-gray-500 dark:text-gray-400">
@@ -1504,7 +1394,7 @@ export function BomCreateWizardModal({ open, onClose }: BomCreateWizardModalProp
                           </>
                         ) : (
                           <>
-                            <h4 className="text-xs font-bold text-gray-900 dark:text-white">
+                            <h4 className="text-sm font-bold text-gray-900 dark:text-white">
                               {selectedStyles.length} mẫu Fit
                             </h4>
                             <p
@@ -1517,7 +1407,7 @@ export function BomCreateWizardModal({ open, onClose }: BomCreateWizardModalProp
                         )
                       ) : (
                         <>
-                          <h4 className="text-xs font-bold text-gray-900 dark:text-white">
+                          <h4 className="text-sm font-bold text-gray-900 dark:text-white">
                             {selectedPoIds.length} đơn hàng
                           </h4>
                           <p
@@ -1545,8 +1435,8 @@ export function BomCreateWizardModal({ open, onClose }: BomCreateWizardModalProp
                   </button>
                 </div>
 
-                {/* Row 3: Sản phẩm tạo BOM */}
-                <div className="flex items-center justify-between gap-4 px-5 py-4 transition-colors hover:bg-gray-50/40 dark:hover:bg-gray-800/20">
+                {/* Fit styles are already listed above; PO needs its separate product list. */}
+                <div className={`${bomType === "fit" ? "hidden" : "flex"} items-center justify-between gap-4 px-5 py-4 transition-colors hover:bg-gray-50/40 dark:hover:bg-gray-800/20`}>
                   <div className="w-32 shrink-0 text-xs font-semibold text-gray-700 sm:w-44 dark:text-gray-300">
                     {bomType === "fit" ? "Mẫu Fit tạo NPL" : "Sản phẩm tạo NPL"}
                   </div>
@@ -1673,13 +1563,21 @@ export function BomCreateWizardModal({ open, onClose }: BomCreateWizardModalProp
                 <div className="flex flex-col gap-3.5 px-5 py-4 transition-colors hover:bg-gray-50/40 dark:hover:bg-gray-800/20">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div className="w-32 shrink-0 sm:w-44">
-                      <div className="text-xs font-semibold text-gray-700 dark:text-gray-300">
+                      <div className="text-sm font-semibold text-gray-700 dark:text-gray-300">
                         Hạn hoàn thành
                       </div>
-                      <div className="mt-0.5 text-[11px] text-gray-400">
-                        Ngày & giờ hoàn thành NPL
-                      </div>
                     </div>
+
+                    {deadlineMode === "common" && !isEditingDeadline && (
+                      <div className="flex min-w-0 flex-1 items-center gap-3">
+                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-600 dark:bg-gray-800 dark:text-gray-400">
+                          <Calendar className="h-5 w-5 stroke-[1.75]" />
+                        </div>
+                        <span className="text-sm font-medium text-gray-900 dark:text-white">
+                          {formatDisplayDate(deadline)}
+                        </span>
+                      </div>
+                    )}
 
                     {/* Mode switch for multi-PO */}
                     {bomType === "po" && selectedPoIds.length > 1 && (
@@ -1737,7 +1635,7 @@ export function BomCreateWizardModal({ open, onClose }: BomCreateWizardModalProp
 
                   {/* Common Deadline View / Edit */}
                   {deadlineMode === "common" ? (
-                    <div className="flex items-center gap-3">
+                    <div className={isEditingDeadline ? "flex items-center gap-3" : "hidden"}>
                       <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-600 dark:bg-gray-800 dark:text-gray-400">
                         <Calendar className="h-5 w-5 stroke-[1.75]" />
                       </div>
@@ -1942,7 +1840,7 @@ export function BomCreateWizardModal({ open, onClose }: BomCreateWizardModalProp
 
                 {/* Row 5: Ghi chú */}
                 <div className="flex items-center justify-between gap-4 px-5 py-4 transition-colors hover:bg-gray-50/40 dark:hover:bg-gray-800/20">
-                  <div className="w-32 shrink-0 text-xs font-semibold text-gray-700 sm:w-44 dark:text-gray-300">
+                  <div className="w-32 shrink-0 text-sm font-semibold text-gray-700 sm:w-44 dark:text-gray-300">
                     Ghi chú
                   </div>
 

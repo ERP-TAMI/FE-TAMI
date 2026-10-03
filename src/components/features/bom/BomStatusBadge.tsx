@@ -1,4 +1,28 @@
 import { BOM_STATUS_CONFIG } from "@/lib/bomAccess";
+import {
+  BADGE_AMBER,
+  BADGE_BASE,
+  BADGE_GREEN,
+  BADGE_NEUTRAL,
+  BADGE_RED,
+} from "@/components/features/audit/auditShared";
+
+const STATUS_BADGE_COLORS: Record<string, string> = {
+  wait_nvkh: BADGE_NEUTRAL,
+  Draft: BADGE_NEUTRAL,
+  wait_rd: BADGE_AMBER,
+  Wait_RD: BADGE_AMBER,
+  wait_tpkh_confirm: BADGE_AMBER,
+  Wait_TP_Approve: BADGE_AMBER,
+  wait_accounting: BADGE_AMBER,
+  Wait_Price: BADGE_AMBER,
+  wait_sa_approve: BADGE_AMBER,
+  Wait_SA_Approve: BADGE_AMBER,
+  closed: BADGE_GREEN,
+  Approved: BADGE_GREEN,
+  discontinued: BADGE_RED,
+  Locked: BADGE_RED,
+};
 
 interface BomStatusBadgeProps {
   status: string;
@@ -6,20 +30,14 @@ interface BomStatusBadgeProps {
 }
 
 export function BomStatusBadge({ status, showDot = true }: BomStatusBadgeProps) {
-  const cfg = BOM_STATUS_CONFIG[status] ?? {
-    label: status,
-    shortLabel: status,
-    classes:
-      "border-gray-200/60 bg-gray-50/60 text-gray-500 dark:border-gray-800 dark:bg-gray-800/40 dark:text-gray-400",
-    dotClass: "bg-gray-400",
-  };
+  const cfg = BOM_STATUS_CONFIG[status];
 
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium leading-none ${cfg.classes}`}
+      className={`${BADGE_BASE} ${STATUS_BADGE_COLORS[status] ?? BADGE_NEUTRAL} inline-flex items-center gap-1.5`}
     >
-      {showDot && <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${cfg.dotClass}`} />}
-      {cfg.label}
+      {showDot && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-current opacity-80" />}
+      {cfg?.label ?? status}
     </span>
   );
 }

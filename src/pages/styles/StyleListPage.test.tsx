@@ -1,9 +1,10 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { BrowserRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import StyleListPage from "./StyleListPage";
 import { stylesApi } from "@/api/stylesApi";
+import { useAuthStore } from "@/store/authStore";
 
 vi.mock("@/api/stylesApi", () => ({
   stylesApi: {
@@ -17,6 +18,22 @@ vi.mock("@/api/stylesApi", () => ({
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
+  useAuthStore.setState({ user: null });
+});
+
+beforeEach(() => {
+  useAuthStore.setState({
+    user: {
+      id: "user-1",
+      email: "user@example.com",
+      fullName: "Test User",
+      phone: null,
+      roleCode: "TPKH",
+      roleName: "Trưởng phòng Kế hoạch",
+      permissions: ["master_data.styles.view", "master_data.styles.manage"],
+      purchaseOrderMode: "FULL_ACCESS",
+    },
+  });
 });
 
 function renderPage() {
@@ -60,11 +77,33 @@ describe("StyleListPage", () => {
     renderPage();
 
     expect(screen.getByRole("heading", { name: "Mẫu Fit", level: 1 })).toBeTruthy();
+    const breadcrumb = screen.getByRole("navigation", { name: "Điều hướng phân cấp" });
+    expect(breadcrumb.textContent).toContain("Quản lý Mẫu Fit");
+    expect(breadcrumb.textContent).toContain("Mẫu Fit");
 
     await waitFor(() => {
       expect(screen.getByText("FIT-2026-001")).toBeTruthy();
       expect(screen.getByText("Áo Polo Nam")).toBeTruthy();
     });
+  });
+
+  it("uses one search field for style code, name, and product line", async () => {
+    vi.mocked(stylesApi.getStyles).mockResolvedValue({
+      data: mockStyles,
+      meta: { total: 1, page: 1, limit: 10, totalPages: 1 },
+    });
+
+    renderPage();
+
+    const search = screen.getByPlaceholderText("Tìm theo mã, tên mẫu hoặc dòng sản phẩm...");
+    fireEvent.change(search, { target: { value: "Áo Polo" } });
+
+    await waitFor(() => {
+      expect(stylesApi.getStyles).toHaveBeenLastCalledWith(
+        expect.objectContaining({ search: "Áo Polo" }),
+      );
+    });
+    expect(vi.mocked(stylesApi.getStyles).mock.lastCall?.[0]).not.toHaveProperty("category");
   });
 
   it("renders empty state when no styles found", async () => {
@@ -78,6 +117,30 @@ describe("StyleListPage", () => {
     await waitFor(() => {
       expect(screen.getByText("Không tìm thấy Mẫu Fit nào")).toBeTruthy();
     });
+  });
+
+  it("does not show create controls without the style-manage permission", async () => {
+    useAuthStore.setState({
+      user: {
+        id: "user-2",
+        email: "nvkh@example.com",
+        fullName: "NVKH",
+        phone: null,
+        roleCode: "NVKH",
+        roleName: "Nhân viên Kế hoạch",
+        permissions: ["master_data.styles.view"],
+        purchaseOrderMode: "FULL_ACCESS",
+      },
+    });
+    vi.mocked(stylesApi.getStyles).mockResolvedValueOnce({
+      data: [],
+      meta: { total: 0, page: 1, limit: 10, totalPages: 1 },
+    });
+
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText("Không tìm thấy Mẫu Fit nào")).toBeTruthy());
+    expect(screen.queryByRole("button", { name: /Tạo Mẫu Fit Mới/ })).toBeNull();
   });
 
   it("renders error state when API request fails", async () => {

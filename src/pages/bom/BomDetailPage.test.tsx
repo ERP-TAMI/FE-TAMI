@@ -30,6 +30,7 @@ const hooks = vi.hoisted(() => ({
   createRevision: { isPending: false, mutateAsync: vi.fn() },
   copyFit: { isPending: false, mutateAsync: vi.fn() },
   discontinueBom: { isPending: false, mutateAsync: vi.fn() },
+  restoreBom: { isPending: false, mutateAsync: vi.fn() },
   mockNavigate: vi.fn(),
   mockUser: { roleCode: "TPKH", fullName: "Trưởng phòng KH" } as {
     roleCode: string;
@@ -80,6 +81,7 @@ vi.mock("@/hooks/useBoms", () => ({
   useCreateBomRevision: () => hooks.createRevision,
   useCopyFitToPoBom: () => hooks.copyFit,
   useDiscontinueBom: () => hooks.discontinueBom,
+  useRestoreBom: () => hooks.restoreBom,
 }));
 
 vi.mock("@/components/features/audit/EntityHistoryButton", () => ({
@@ -573,7 +575,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       expect(screen.getAllByText("$150,000.0000").length).toBeGreaterThan(0);
     });
 
-    it("hides PO NPL write actions for SA in READ_ONLY mode on direct detail", () => {
+    it("shows PO NPL write actions for SA regardless of legacy mode", () => {
       hooks.mockUser = {
         roleCode: "SA",
         fullName: "Giám đốc điều hành",
@@ -587,11 +589,10 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
         </BrowserRouter>,
       );
 
-      expect(screen.queryByText("Sửa thông tin")).toBeNull();
-      expect(screen.queryByRole("button", { name: "Thao tác khác" })).toBeNull();
+      expect(screen.getByText("Sửa thông tin")).toBeTruthy();
     });
 
-    it("hides PO NPL approval for SA in READ_ONLY mode", () => {
+    it("shows PO NPL approval for SA regardless of legacy mode", () => {
       hooks.mockUser = {
         roleCode: "SA",
         fullName: "Giám đốc điều hành",
@@ -608,7 +609,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
         </BrowserRouter>,
       );
 
-      expect(screen.queryByText("Phê duyệt NPL")).toBeNull();
+      expect(screen.getByText("Phê duyệt NPL")).toBeTruthy();
     });
 
     it.each([
@@ -894,7 +895,7 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       expect(screen.getAllByText("Phụ liệu may").length).toBeGreaterThan(0);
     });
 
-    it("exports the materials list to CSV when 'Xuất Excel' is clicked", () => {
+    it("exports the materials list as a real XLSX file when 'Xuất Excel' is clicked", async () => {
       const createObjectURL = vi.fn().mockReturnValue("blob:mock-url");
       const revokeObjectURL = vi.fn();
       vi.stubGlobal("URL", { ...URL, createObjectURL, revokeObjectURL });
@@ -907,9 +908,10 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
 
       fireEvent.click(screen.getByRole("button", { name: /Xuất Excel/ }));
 
-      expect(createObjectURL).toHaveBeenCalledTimes(1);
+      await waitFor(() => expect(createObjectURL).toHaveBeenCalledTimes(1));
       const blob = createObjectURL.mock.calls[0][0] as Blob;
-      expect(blob.type).toContain("text/csv");
+      expect(blob.type).toBe("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+      expect(blob.size).toBeGreaterThan(0);
       expect(revokeObjectURL).toHaveBeenCalledWith("blob:mock-url");
 
       vi.unstubAllGlobals();
@@ -1091,11 +1093,15 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       expect(payload.lines[2].lineId).toBeUndefined();
     });
 
-    it("33. Accounting and SA never see the edit button at wait_nvkh", () => {
+    it("33. Accounting cannot edit at wait_nvkh; SA can", () => {
       for (const roleCode of ["ACCOUNTING", "SA"]) {
         hooks.mockUser = { roleCode, fullName: roleCode };
         const { unmount } = renderPage();
-        expect(screen.queryByRole("button", { name: /Chỉnh sửa/ })).toBeNull();
+        if (roleCode === "SA") {
+          expect(screen.getByRole("button", { name: /Chỉnh sửa/ })).toBeTruthy();
+        } else {
+          expect(screen.queryByRole("button", { name: /Chỉnh sửa/ })).toBeNull();
+        }
         unmount();
       }
     });
@@ -1226,12 +1232,12 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
       });
     });
 
-    it("41. SA at wait_sa_approve has read-only access (no edit button)", () => {
+    it("41. SA at wait_sa_approve can edit active revision lines", () => {
       hooks.mockUser = { roleCode: "SA", fullName: "Ban Giám Đốc" };
       const waitSaBom = { ...mockPoBom, status: "wait_sa_approve" as const };
       hooks.useBom.mockReturnValue({ data: waitSaBom, isLoading: false });
       renderPage();
-      expect(screen.queryByRole("button", { name: /Chỉnh sửa/ })).toBeNull();
+      expect(screen.getByRole("button", { name: /Chỉnh sửa/ })).toBeTruthy();
       expect(screen.queryByTestId(/^unit-cost-input-/)).toBeNull();
     });
 

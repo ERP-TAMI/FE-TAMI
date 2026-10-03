@@ -52,14 +52,10 @@ export function canEditTechnicalLines(
   isHistorical = false,
 ): boolean {
   if (!user?.roleCode || isHistorical) return false;
-  if (
-    status === "closed" ||
-    status === "discontinued" ||
-    status === "wait_sa_approve" ||
-    status === "wait_accounting"
-  )
-    return false;
+  if (status === "closed" || status === "discontinued") return false;
   const role = user.roleCode.toLowerCase().trim();
+  if (role === "sa") return true;
+  if (status === "wait_sa_approve" || status === "wait_accounting") return false;
   if (status === "wait_nvkh") return role === "nvkh" || role === "tpkh";
   if (status === "wait_rd") return role === "rd";
   if (status === "wait_tpkh_confirm") return role === "tpkh";
@@ -74,7 +70,7 @@ export function canEditUnitCost(
   if (!user?.roleCode || isHistorical) return false;
   if (status !== "wait_accounting") return false;
   const role = user.roleCode.toLowerCase().trim();
-  return role === "accounting";
+  return role === "accounting" || role === "sa";
 }
 
 export function canAddBomLine(
@@ -122,6 +118,7 @@ export function canForwardBom(
   if (status === "closed" || status === "discontinued" || status === "wait_sa_approve")
     return false;
   const role = user.roleCode.toLowerCase().trim();
+  if (role === "sa") return true;
 
   switch (status) {
     case "wait_nvkh":
@@ -145,6 +142,7 @@ export function canRejectBom(
   if (!user?.roleCode || isHistorical) return false;
   if (status === "wait_nvkh" || status === "closed" || status === "discontinued") return false;
   const role = user.roleCode.toLowerCase().trim();
+  if (role === "sa") return true;
 
   switch (status) {
     case "wait_rd":
@@ -178,6 +176,15 @@ export function canDiscontinueBom(
   if (!user?.roleCode || isHistorical) return false;
   const status = typeof bomOrStatus === "string" ? bomOrStatus : bomOrStatus?.status;
   if (status === "discontinued") return false;
+  const role = user.roleCode.toLowerCase().trim();
+  return role === "sa" || role === "tpkh";
+}
+
+export function canRestoreBom(
+  user: AuthUser | { roleCode?: string } | null,
+  isHistorical = false,
+): boolean {
+  if (!user?.roleCode || isHistorical) return false;
   const role = user.roleCode.toLowerCase().trim();
   return role === "sa" || role === "tpkh";
 }

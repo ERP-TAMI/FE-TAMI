@@ -42,6 +42,7 @@ import SizeChartListPage from "@/pages/masters/SizeChartListPage";
 import UsersPage from "@/pages/admin/UsersPage";
 import StyleListPage from "@/pages/styles/StyleListPage";
 import StyleDetailPage from "@/pages/styles/StyleDetailPage";
+import DocumentLibraryPage from "@/pages/documents/DocumentLibraryPage";
 import AuditLogPage from "@/pages/audit/AuditLogPage";
 import ProfilePage from "@/pages/account/ProfilePage";
 import ForbiddenPage from "@/pages/ForbiddenPage";
@@ -139,6 +140,7 @@ export function AppRoutes() {
             </Route>
             <Route path="profile" element={<ProfilePage />} />
             <Route path="styles" element={<StyleListPage />} />
+            <Route path="documents" element={<DocumentLibraryPage />} />
             <Route path="styles/:id/detail" element={<StyleDetailPage />} />
             <Route path="styles/:id/operation-steps" element={<StyleDetailPage />} />
             <Route path="styles/:id/steps" element={<StyleDetailPage />} />

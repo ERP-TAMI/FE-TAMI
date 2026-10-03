@@ -2,6 +2,7 @@ import type { QueryBomsParams, QueryBomStatsParams } from "@/types/bom";
 
 export const bomKeys = {
   all: ["boms"] as const,
+  createTargets: () => [...bomKeys.all, "create-targets"] as const,
   lists: () => [...bomKeys.all, "list"] as const,
   list: (params: QueryBomsParams = {}) => [...bomKeys.lists(), params] as const,
   statsAll: () => [...bomKeys.all, "stats"] as const,
