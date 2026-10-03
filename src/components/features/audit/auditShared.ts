@@ -16,7 +16,7 @@ export const BADGE_AMBER =
   "bg-amber-50 text-amber-800 ring-amber-600/20 dark:bg-amber-950/40 dark:text-amber-300 dark:ring-amber-400/20";
 
 export const BADGE_BASE =
-  "inline-block max-w-full truncate rounded-md px-2 py-1 align-middle text-xs leading-none font-medium whitespace-nowrap ring-1 ring-inset";
+  "inline-flex max-w-full items-center gap-1.5 truncate rounded-md px-2 py-1 text-xs leading-none font-medium whitespace-nowrap ring-1 ring-inset";
 
 export const CONTROL_CLASS =
   "h-9 rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-700 outline-none focus:border-brand-400 focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200";

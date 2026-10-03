@@ -10,6 +10,7 @@ import {
   AlertOctagon,
   History,
   Pencil,
+  Unlock,
 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import type { BomDetail, RevisionListItem } from "@/types/bom";
@@ -21,6 +22,7 @@ import {
   canApproveBom,
   canCreateRevision,
   canDiscontinueBom,
+  canRestoreBom,
   canCopyFitBom,
   canEditHeader,
   getForwardActionInfo,
@@ -43,6 +45,7 @@ interface BomDetailHeaderProps {
   onOpenCreateRevisionModal: () => void;
   onOpenCopyFitModal: () => void;
   onOpenDiscontinueModal: () => void;
+  onOpenRestoreConfirm: () => void;
 }
 
 export function BomDetailHeader({
@@ -59,6 +62,7 @@ export function BomDetailHeader({
   onOpenCreateRevisionModal,
   onOpenCopyFitModal,
   onOpenDiscontinueModal,
+  onOpenRestoreConfirm,
 }: BomDetailHeaderProps) {
   const user = useAuthStore((state) => state.user);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -87,6 +91,7 @@ export function BomDetailHeader({
   const showApprove = !readOnly && canApproveBom(user, currentStatus, isHistorical);
   const showCreateRevision = !readOnly && canCreateRevision(user, currentStatus, isHistorical);
   const showDiscontinue = !readOnly && canDiscontinueBom(user, currentStatus, isHistorical);
+  const showRestore = !readOnly && isDiscontinued && canRestoreBom(user, isHistorical);
   const showCopyFit = !readOnly && canCopyFitBom(user, bom, isHistorical);
 
   const forwardInfo = getForwardActionInfo(currentStatus);
@@ -283,6 +288,17 @@ export function BomDetailHeader({
               <span>Ngừng sử dụng</span>
             </button>
           ) : null}
+
+          {showRestore && (
+            <button
+              type="button"
+              onClick={onOpenRestoreConfirm}
+              className="text-theme-xs inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 font-semibold text-emerald-700 shadow-2xs transition-colors hover:bg-emerald-100 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-300 dark:hover:bg-emerald-950/60"
+            >
+              <Unlock className="h-3.5 w-3.5" />
+              <span>Mở khóa NPL</span>
+            </button>
+          )}
 
           {/* Workflow Action: Reject */}
           {showReject && (

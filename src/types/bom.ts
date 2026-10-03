@@ -180,6 +180,10 @@ export interface DiscontinueBomPayload {
   expectedRowVersion: number;
 }
 
+export interface RestoreBomPayload {
+  expectedRowVersion: number;
+}
+
 export interface SaveBomLineRow {
   lineId?: string;
   materialId?: string;

@@ -103,6 +103,11 @@ export const bomsApi = {
     return res.data;
   },
 
+  async restoreBom(id: string, payload: import("@/types/bom").RestoreBomPayload): Promise<BomDetail> {
+    const res = await apiClient.post<BomDetail>(`/boms/${id}/restore`, payload);
+    return res.data;
+  },
+
   async saveLines(
     id: string,
     payload: import("@/types/bom").SaveBomLinesPayload,
