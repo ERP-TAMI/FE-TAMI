@@ -1627,7 +1627,7 @@ export default function PoProductDetailPage({
           steps={mappedSteps}
           cmBaseDays={product.as3bCmBaseDays || 30}
           canEdit={!isReadOnly}
-          canExport={!readOnlyManagement}
+          canExport
           onEditingChange={setIsOperationStepsEditing}
           onSave={handleSaveSteps}
           imageUrl={imageUrl}
@@ -1675,7 +1675,7 @@ export default function PoProductDetailPage({
           poId={poId}
           productId={productId}
           readOnly={isReadOnly}
-          canDownload={!readOnlyManagement}
+          canDownload
         />
       )}
 
@@ -1779,7 +1779,7 @@ export default function PoProductDetailPage({
                     key={doc.documentId}
                     doc={doc}
                     canEdit={!isReadOnly}
-                    canDownload={!readOnlyManagement}
+                    canDownload
                     onUploadVersion={handleOpenUploadVersion}
                     onDelete={handleUnlinkDocument}
                     onPreview={handlePreviewDoc}
@@ -1844,7 +1844,7 @@ export default function PoProductDetailPage({
                     key={doc.documentId}
                     doc={doc}
                     canEdit={!isReadOnly}
-                    canDownload={!readOnlyManagement}
+                    canDownload
                     onUploadVersion={handleOpenUploadVersion}
                     onDelete={handleUnlinkDocument}
                     onPreview={handlePreviewDoc}
@@ -1909,7 +1909,7 @@ export default function PoProductDetailPage({
                     key={doc.documentId}
                     doc={doc}
                     canEdit={!isReadOnly}
-                    canDownload={!readOnlyManagement}
+                    canDownload
                     onUploadVersion={handleOpenUploadVersion}
                     onDelete={handleUnlinkDocument}
                     onPreview={handlePreviewDoc}
