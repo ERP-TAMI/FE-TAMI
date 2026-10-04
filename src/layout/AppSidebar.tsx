@@ -107,7 +107,11 @@ export default function AppSidebar() {
       onMouseEnter={() => !isExpanded && setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      <div className={`flex py-8 ${showLabels ? "justify-start" : "lg:justify-center"}`}>
+      <div
+        className={`mb-4 flex h-[69px] shrink-0 items-center ${
+          showLabels ? "justify-start" : "lg:justify-center"
+        }`}
+      >
         <NavLink to="/dashboard" aria-label="TAMI ERP dashboard">
           {showLabels ? (
             <>
