@@ -115,15 +115,15 @@ export default function AppSidebar() {
                 className="dark:hidden"
                 src="/images/logo/logo.svg"
                 alt="TAMI ERP"
-                width={150}
-                height={40}
+                width={120}
+                height={32}
               />
               <img
                 className="hidden dark:block"
                 src="/images/logo/logo-dark.svg"
                 alt="TAMI ERP"
-                width={150}
-                height={40}
+                width={120}
+                height={32}
               />
             </>
           ) : (
