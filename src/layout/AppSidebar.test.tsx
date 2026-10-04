@@ -46,6 +46,26 @@ describe("AppSidebar", () => {
     expect(screen.getByRole("link", { name: "Kho tài liệu" })).toBeTruthy();
   });
 
+  it("auto-expands the group for the current route, and still lets the user collapse it", () => {
+    setPermissions(["master_data.styles.view"]);
+    render(
+      <MemoryRouter initialEntries={["/styles"]}>
+        <SidebarProvider>
+          <AppSidebar />
+        </SidebarProvider>
+      </MemoryRouter>,
+    );
+
+    // Landing directly on a child route expands its group automatically.
+    expect(screen.getByRole("link", { name: "Mẫu Fit" })).toBeTruthy();
+
+    // Collapsing must stick even while still on one of that group's pages
+    // (previously it snapped back open because "active route" forced it open).
+    fireEvent.click(screen.getByRole("button", { name: "Quản lý Mẫu Fit" }));
+
+    expect(screen.queryByRole("link", { name: "Mẫu Fit" })).toBeNull();
+  });
+
   it("shows only the Fit sections the user can view", () => {
     setPermissions(["master_data.styles.view"]);
     renderSidebar();
