@@ -1,5 +1,4 @@
 import AccountMenu from "@/layout/AccountMenu";
-import HeaderSearch from "@/layout/HeaderSearch";
 import { useSidebar } from "@/context/SidebarContext";
 import { ThemeToggleButton } from "@/components/shared/ThemeToggleButton";
 
@@ -36,7 +35,6 @@ export default function AppHeader() {
               />
             </svg>
           </button>
-          <HeaderSearch />
         </div>
         <div className="flex shrink-0 items-center gap-3 sm:gap-4">
           <ThemeToggleButton />
