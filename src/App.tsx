@@ -15,6 +15,7 @@ import ManagementPoOverviewPage from "@/pages/management/ManagementPoOverviewPag
 import { ManagementRoute } from "@/routes/ManagementRoute";
 import { ItRoute } from "@/routes/ItRoute";
 import { UserManagementRoute } from "@/routes/UserManagementRoute";
+import { AuditLogRedirect } from "@/routes/AuditLogRedirect";
 import { AuditLogRoute } from "@/routes/AuditLogRoute";
 import { UserManagementAlias } from "@/routes/UserManagementAlias";
 import { PurchaseOrderModuleRoute } from "@/routes/PurchaseOrderModuleRoute";
@@ -121,6 +122,9 @@ export function AppRoutes() {
               <Route element={<UserManagementRoute />}>
                 <Route path="users" element={<UsersPage />} />
               </Route>
+              <Route element={<AuditLogRoute />}>
+                <Route path="audit-log" element={<AuditLogPage />} />
+              </Route>
             </Route>
           </Route>
           <Route path="it" element={<ItRoute />}>
@@ -130,6 +134,9 @@ export function AppRoutes() {
               <Route path="profile" element={<ProfilePage />} />
               <Route element={<UserManagementRoute />}>
                 <Route path="users" element={<UsersPage />} />
+              </Route>
+              <Route element={<AuditLogRoute />}>
+                <Route path="audit-log" element={<AuditLogPage />} />
               </Route>
             </Route>
           </Route>
@@ -172,9 +179,7 @@ export function AppRoutes() {
             <Route path="masters/stages/groups" element={<StagesHubPage />} />
             <Route path="masters/workshops" element={<WorkshopListPage />} />
             <Route path="masters/size-charts" element={<SizeChartListPage />} />
-            <Route element={<AuditLogRoute />}>
-              <Route path="audit-log" element={<AuditLogPage />} />
-            </Route>
+            <Route path="audit-log" element={<AuditLogRedirect />} />
           </Route>
           <Route element={<UserManagementRoute />}>
             <Route path="admin" element={<UserManagementAlias />} />

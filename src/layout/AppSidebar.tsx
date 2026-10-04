@@ -6,7 +6,6 @@ import { useAuthStore } from "@/store/authStore";
 import {
   canAccessBusinessDashboard,
   canAccessEditablePurchaseOrderModule,
-  canViewAuditLog,
 } from "@/lib/areaAccess";
 
 type NavChild = {
@@ -55,7 +54,6 @@ const ALL_NAV_ITEMS: NavItem[] = [
       { name: "Bảng Size", path: "/masters/size-charts" },
     ],
   },
-  { name: "Nhật ký hệ thống", path: "/audit-log", icon: <ListIcon /> },
 ];
 
 export default function AppSidebar() {
@@ -81,7 +79,6 @@ export default function AppSidebar() {
 
       if (item.path === "/dashboard" && !canAccessBusinessDashboard(user)) continue;
       if (item.path === "/po" && !canAccessEditablePurchaseOrderModule(user)) continue;
-      if (item.path === "/audit-log" && !canViewAuditLog(user)) continue;
       visibleItems.push(item);
     }
     return visibleItems;
