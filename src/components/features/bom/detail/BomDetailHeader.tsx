@@ -10,6 +10,7 @@ import {
   History,
   Pencil,
   Unlock,
+  Trash2,
 } from "lucide-react";
 import type { BomDetail, RevisionListItem } from "@/types/bom";
 import { BomTypeBadge } from "../BomTypeBadge";
@@ -21,6 +22,7 @@ import {
   canCreateRevision,
   canDiscontinueBom,
   canRestoreBom,
+  canDeleteBom,
   canCopyFitBom,
   canEditHeader,
   getForwardActionInfo,
@@ -44,6 +46,7 @@ interface BomDetailHeaderProps {
   onOpenCopyFitModal: () => void;
   onOpenDiscontinueModal: () => void;
   onOpenRestoreConfirm: () => void;
+  onOpenDeleteConfirm: () => void;
 }
 
 export function BomDetailHeader({
@@ -61,6 +64,7 @@ export function BomDetailHeader({
   onOpenCopyFitModal,
   onOpenDiscontinueModal,
   onOpenRestoreConfirm,
+  onOpenDeleteConfirm,
 }: BomDetailHeaderProps) {
   const user = useAuthStore((state) => state.user);
   const currentStatus = isHistorical
@@ -77,6 +81,7 @@ export function BomDetailHeader({
   const showCreateRevision = !readOnly && canCreateRevision(user, currentStatus, isHistorical);
   const showDiscontinue = !readOnly && canDiscontinueBom(user, currentStatus, isHistorical);
   const showRestore = !readOnly && isDiscontinued && canRestoreBom(user, isHistorical);
+  const showDelete = !readOnly && isDiscontinued && canDeleteBom(user, isHistorical);
   const showCopyFit = !readOnly && canCopyFitBom(user, bom, isHistorical);
 
   const forwardInfo = getForwardActionInfo(currentStatus);
@@ -241,6 +246,17 @@ export function BomDetailHeader({
             >
               <Unlock className="h-3.5 w-3.5" />
               <span>Mở khóa NPL</span>
+            </button>
+          )}
+
+          {showDelete && (
+            <button
+              type="button"
+              onClick={onOpenDeleteConfirm}
+              className="text-theme-xs inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-red-200 bg-red-50 px-3 py-2 font-semibold text-red-700 shadow-2xs transition-colors hover:bg-red-100 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-400 dark:hover:bg-red-950/60"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              <span>Xóa NPL</span>
             </button>
           )}
 
