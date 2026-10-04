@@ -16,6 +16,7 @@ import type {
   UpdateBomPayload,
   DiscontinueBomPayload,
   RestoreBomPayload,
+  DeleteBomPayload,
   SaveBomLinesPayload,
   SaveBomCostsPayload,
   PromoteRevisionPayload,
@@ -138,6 +139,17 @@ export function useRestoreBom(bomId: string) {
     mutationFn: (payload: RestoreBomPayload) => bomsApi.restoreBom(bomId, payload),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: bomKeys.detail(bomId) });
+      void queryClient.invalidateQueries({ queryKey: bomKeys.lists() });
+      void queryClient.invalidateQueries({ queryKey: bomKeys.statsAll() });
+    },
+  });
+}
+
+export function useDeleteBom(bomId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: DeleteBomPayload) => bomsApi.deleteBom(bomId, payload),
+    onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: bomKeys.lists() });
       void queryClient.invalidateQueries({ queryKey: bomKeys.statsAll() });
     },

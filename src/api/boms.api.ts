@@ -108,6 +108,10 @@ export const bomsApi = {
     return res.data;
   },
 
+  async deleteBom(id: string, payload: import("@/types/bom").DeleteBomPayload): Promise<void> {
+    await apiClient.delete(`/boms/${id}`, { data: payload });
+  },
+
   async saveLines(
     id: string,
     payload: import("@/types/bom").SaveBomLinesPayload,

@@ -184,6 +184,10 @@ export interface RestoreBomPayload {
   expectedRowVersion: number;
 }
 
+export interface DeleteBomPayload {
+  expectedRowVersion: number;
+}
+
 export interface SaveBomLineRow {
   lineId?: string;
   materialId?: string;

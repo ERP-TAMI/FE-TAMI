@@ -189,6 +189,16 @@ export function canRestoreBom(
   return role === "sa" || role === "tpkh";
 }
 
+/** Hard delete is only ever offered once the BOM is already discontinued — the caller gates on that. */
+export function canDeleteBom(
+  user: AuthUser | { roleCode?: string } | null,
+  isHistorical = false,
+): boolean {
+  if (!user?.roleCode || isHistorical) return false;
+  const role = user.roleCode.toLowerCase().trim();
+  return role === "sa" || role === "tpkh";
+}
+
 export function canCreateRevision(
   user: AuthUser | { roleCode?: string } | null,
   status: string,

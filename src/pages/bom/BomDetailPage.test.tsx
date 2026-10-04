@@ -31,6 +31,7 @@ const hooks = vi.hoisted(() => ({
   copyFit: { isPending: false, mutateAsync: vi.fn() },
   discontinueBom: { isPending: false, mutateAsync: vi.fn() },
   restoreBom: { isPending: false, mutateAsync: vi.fn() },
+  deleteBom: { isPending: false, mutateAsync: vi.fn() },
   mockNavigate: vi.fn(),
   mockUser: { roleCode: "TPKH", fullName: "Trưởng phòng KH" } as {
     roleCode: string;
@@ -82,6 +83,7 @@ vi.mock("@/hooks/useBoms", () => ({
   useCopyFitToPoBom: () => hooks.copyFit,
   useDiscontinueBom: () => hooks.discontinueBom,
   useRestoreBom: () => hooks.restoreBom,
+  useDeleteBom: () => hooks.deleteBom,
 }));
 
 vi.mock("@/components/features/audit/EntityHistoryButton", () => ({
@@ -1707,6 +1709,97 @@ describe("BomDetailPage Component Tests (PR-09)", () => {
 
       const submitBtn = screen.getByText("Xác nhận ngừng sử dụng");
       expect((submitBtn as HTMLButtonElement).disabled).toBe(true);
+    });
+  });
+
+  // ==========================================
+  // Category 8b: Delete Action (only once discontinued)
+  // ==========================================
+  describe("Category 8b: Delete Action", () => {
+    const discBom: BomDetail = {
+      ...mockFitBom,
+      status: "discontinued",
+      discontinuedAt: "2026-09-18T12:00:00.000Z",
+      discontinuedReason: "Khách hàng hủy mã hàng",
+    };
+
+    it("Delete action is hidden while the NPL is still active (not yet discontinued)", () => {
+      hooks.mockUser = { roleCode: "TPKH", fullName: "TPKH" };
+      hooks.useBom.mockReturnValue({ data: mockFitBom, isLoading: false, refetch: vi.fn() });
+      render(
+        <BrowserRouter>
+          <BomDetailPage />
+        </BrowserRouter>,
+      );
+      expect(screen.queryByText("Xóa NPL")).toBeNull();
+    });
+
+    it("TPKH can delete a discontinued NPL after confirming", async () => {
+      hooks.mockUser = { roleCode: "TPKH", fullName: "TPKH" };
+      hooks.useBom.mockReturnValue({ data: discBom, isLoading: false, refetch: vi.fn() });
+      render(
+        <BrowserRouter>
+          <BomDetailPage />
+        </BrowserRouter>,
+      );
+
+      fireEvent.click(screen.getByText("Xóa NPL"));
+      expect(screen.getByText(/Xóa hẳn NPL/i)).toBeTruthy();
+
+      fireEvent.click(screen.getByRole("button", { name: "Xóa NPL" }));
+
+      await waitFor(() => {
+        expect(hooks.deleteBom.mutateAsync).toHaveBeenCalledWith({
+          expectedRowVersion: discBom.rowVersion,
+        });
+        expect(hooks.mockNavigate).toHaveBeenCalledWith("/bom");
+      });
+    });
+
+    it("SA can delete a discontinued NPL", () => {
+      hooks.mockUser = { roleCode: "SA", fullName: "Ban Giám Đốc" };
+      hooks.useBom.mockReturnValue({ data: discBom, isLoading: false, refetch: vi.fn() });
+      render(
+        <BrowserRouter>
+          <BomDetailPage />
+        </BrowserRouter>,
+      );
+      expect(screen.getByText("Xóa NPL")).toBeTruthy();
+    });
+
+    it("NVKH cannot delete a discontinued NPL (action hidden)", () => {
+      hooks.mockUser = { roleCode: "NVKH", fullName: "NVKH" };
+      hooks.useBom.mockReturnValue({ data: discBom, isLoading: false, refetch: vi.fn() });
+      render(
+        <BrowserRouter>
+          <BomDetailPage />
+        </BrowserRouter>,
+      );
+      expect(screen.queryByText("Xóa NPL")).toBeNull();
+    });
+
+    it("shows a specific error message when the backend refuses deletion (409 stale version)", async () => {
+      hooks.mockUser = { roleCode: "TPKH", fullName: "TPKH" };
+      hooks.useBom.mockReturnValue({ data: discBom, isLoading: false, refetch: vi.fn() });
+      hooks.deleteBom.mutateAsync.mockRejectedValueOnce({
+        response: { status: 409 },
+      });
+      render(
+        <BrowserRouter>
+          <BomDetailPage />
+        </BrowserRouter>,
+      );
+
+      fireEvent.click(screen.getByText("Xóa NPL"));
+      fireEvent.click(screen.getByRole("button", { name: "Xóa NPL" }));
+
+      await waitFor(() => {
+        expect(hooks.mockToast.showToast).toHaveBeenCalledWith(
+          expect.stringContaining("Dữ liệu đã bị thay đổi"),
+          "error",
+        );
+        expect(hooks.mockNavigate).not.toHaveBeenCalledWith("/bom");
+      });
     });
   });
 

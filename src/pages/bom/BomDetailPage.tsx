@@ -14,6 +14,7 @@ import {
   useCopyFitToPoBom,
   useDiscontinueBom,
   useRestoreBom,
+  useDeleteBom,
 } from "@/hooks/useBoms";
 import { useToast } from "@/hooks/useToast";
 import { Toast } from "@/components/shared";
@@ -99,6 +100,7 @@ export default function BomDetailPage() {
   const copyFitMutation = useCopyFitToPoBom(id || "");
   const discontinueMutation = useDiscontinueBom(id || "");
   const restoreMutation = useRestoreBom(id || "");
+  const deleteMutation = useDeleteBom(id || "");
 
   // Modal States
   const [isEditHeaderOpen, setIsEditHeaderOpen] = useState(false);
@@ -109,6 +111,7 @@ export default function BomDetailPage() {
   const [isApproveModalOpen, setIsApproveModalOpen] = useState(false);
   const [isDiscontinueModalOpen, setIsDiscontinueModalOpen] = useState(false);
   const [isRestoreConfirmOpen, setIsRestoreConfirmOpen] = useState(false);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [isCreateRevModalOpen, setIsCreateRevModalOpen] = useState(false);
   const [isCopyFitModalOpen, setIsCopyFitModalOpen] = useState(false);
   const [diffModalRevId, setDiffModalRevId] = useState<string | null>(null);
@@ -303,6 +306,23 @@ export default function BomDetailPage() {
     }
   };
 
+  const handleDelete = async () => {
+    try {
+      await deleteMutation.mutateAsync({ expectedRowVersion: bom.rowVersion });
+      showToast("Đã xóa NPL", "success");
+      navigate("/bom");
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { status?: number; data?: { message?: string } } };
+      if (axiosErr?.response?.status === 409) {
+        showToast("Dữ liệu đã bị thay đổi, hệ thống đang tải lại...", "error");
+        setIsDeleteConfirmOpen(false);
+        refetchBom();
+      } else {
+        showToast(axiosErr?.response?.data?.message || "Không thể xóa NPL", "error");
+      }
+    }
+  };
+
   const handleCreateRevision = async (changeReason: string) => {
     try {
       await createRevisionMutation.mutateAsync({ changeReason });
@@ -377,6 +397,7 @@ export default function BomDetailPage() {
           onOpenCopyFitModal={() => setIsCopyFitModalOpen(true)}
           onOpenDiscontinueModal={() => setIsDiscontinueModalOpen(true)}
           onOpenRestoreConfirm={() => setIsRestoreConfirmOpen(true)}
+          onOpenDeleteConfirm={() => setIsDeleteConfirmOpen(true)}
         />
 
         {/* 2. Workflow State Stepper */}
@@ -513,6 +534,18 @@ export default function BomDetailPage() {
         isSubmitting={restoreMutation.isPending}
         onConfirm={handleRestore}
         onClose={() => setIsRestoreConfirmOpen(false)}
+      />
+
+      <ConfirmDialog
+        open={isDeleteConfirmOpen && !isReadOnlyPoBom}
+        title="Xóa NPL"
+        description={`Xóa hẳn NPL "${bom.bomCode}"? Toàn bộ phiên bản và dòng vật tư của NPL này sẽ bị xóa vĩnh viễn, không thể khôi phục.`}
+        confirmLabel="Xóa NPL"
+        variant="danger"
+        closeOnClickOutside
+        isSubmitting={deleteMutation.isPending}
+        onConfirm={handleDelete}
+        onClose={() => setIsDeleteConfirmOpen(false)}
       />
 
       <BomCreateRevisionModal
