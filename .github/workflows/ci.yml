@@ -4,6 +4,10 @@ on:
   pull_request:
     branches: [dev, main]
   workflow_call:
+    inputs:
+      publish_artifact:
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -63,6 +67,18 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
+        env:
+          VITE_API_BASE_URL: /api
+          VITE_APP_NAME: TAMI ERP
+      - name: Record release commit
+        run: node -e "require('fs').writeFileSync('dist/release.json', JSON.stringify({commit:process.env.GITHUB_SHA}))"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: inputs.publish_artifact
+        with:
+          name: frontend-${{ github.sha }}
+          path: dist/
+          if-no-files-found: error
+          retention-days: 1
 
   security:
     name: Security scan

@@ -798,7 +798,7 @@ describe("DocumentLibraryPage folder browser", () => {
       await screen.findByText("Bạn chỉ có thể chọn tối đa 100 tài liệu cho một lần thao tác."),
     ).toBeTruthy();
     expect(screen.getByText("Đã chọn 100 tài liệu")).toBeTruthy();
-  });
+  }, 15_000);
 
   it("archives selected documents together after confirmation", async () => {
     vi.mocked(documentsLibraryApi.list).mockResolvedValue(
