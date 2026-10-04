@@ -46,6 +46,17 @@ describe("LoginPage", () => {
     );
   });
 
+  it("starts with empty credentials", () => {
+    render(
+      <MemoryRouter>
+        <LoginPage />
+      </MemoryRouter>,
+    );
+
+    expect((screen.getByLabelText("Email") as HTMLInputElement).value).toBe("");
+    expect((screen.getByLabelText("Mật khẩu") as HTMLInputElement).value).toBe("");
+  });
+
   it("can show and hide the password with an eye control", () => {
     render(
       <MemoryRouter>
