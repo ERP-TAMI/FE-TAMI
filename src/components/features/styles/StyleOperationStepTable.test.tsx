@@ -73,6 +73,7 @@ const mockSteps: StyleOperationStepItem[] = [
 describe("StyleOperationStepTable", () => {
   afterEach(() => {
     cleanup();
+    vi.clearAllMocks();
     vi.restoreAllMocks();
   });
 
