@@ -30,6 +30,19 @@ const defaultApiErrorMessages: Record<string, string> = {
   PASSWORD_SETUP_REQUIRED: "Bạn cần hoàn tất thiết lập mật khẩu trước.",
 };
 
+// The backend's global exception filter assigns one of these two codes as a
+// fallback whenever an exception carries no explicit business `code` — a
+// framework-level rejection (an expired/malformed JWT never reaching our own
+// guards, or a truly unhandled 500). Its `message` is then not one of our own
+// curated, user-facing strings — a bare "Unauthorized", or the safe generic
+// "Internal server error" the filter substitutes on purpose so it never
+// leaks a raw DB/stack message — so showing it as-is would be an unhelpful
+// English surprise. Every *other* code is always paired with a specific
+// message written for the person reading it (see every `ConflictException`,
+// `NotFoundException`, `ForbiddenException`, ... in the backend), so prefer
+// that real message over the generic one instead of guessing it's unsafe.
+const PREFERS_GENERIC_MESSAGE = new Set(["UNAUTHORIZED", "INTERNAL_SERVER_ERROR"]);
+
 export function getApiError(
   error: unknown,
   fallback: string,
@@ -49,9 +62,9 @@ export function getApiError(
       : undefined;
   const message =
     overrides?.[code] ??
-    (code === "VALIDATION_ERROR" || code === "BAD_REQUEST"
-      ? serverMessage ?? defaultApiErrorMessages[code]
-      : defaultApiErrorMessages[code] ?? (Array.isArray(rawMessage) ? serverMessage : undefined));
+    (PREFERS_GENERIC_MESSAGE.has(code)
+      ? defaultApiErrorMessages[code]
+      : (serverMessage ?? defaultApiErrorMessages[code]));
 
   const lockedUntil = error.response?.data?.lockedUntil;
   return {
