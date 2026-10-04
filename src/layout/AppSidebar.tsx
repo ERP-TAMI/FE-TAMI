@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { BoxCubeIcon, ChevronDownIcon, GridIcon, ListIcon, PageIcon } from "@/icons";
 import { useSidebar } from "@/context/SidebarContext";
@@ -60,7 +60,15 @@ export default function AppSidebar() {
   const { isExpanded, isMobileOpen, isHovered, setIsHovered } = useSidebar();
   const location = useLocation();
   const user = useAuthStore((state) => state.user);
-  const [openGroups, setOpenGroups] = useState<Set<string>>(new Set());
+  const [openGroups, setOpenGroups] = useState<Set<string>>(() => {
+    const initial = new Set<string>();
+    for (const item of ALL_NAV_ITEMS) {
+      if (item.children?.some((child) => location.pathname.startsWith(child.path))) {
+        initial.add(item.name);
+      }
+    }
+    return initial;
+  });
   const showLabels = isExpanded || isHovered || isMobileOpen;
 
   const navItems = useMemo(() => {
@@ -94,6 +102,18 @@ export default function AppSidebar() {
 
   const isChildActive = (item: NavItem) =>
     item.children?.some((child) => location.pathname.startsWith(child.path)) ?? false;
+
+  // Expand the group a direct link/navigation lands on, without fighting the
+  // user's own toggle: this only ever adds a group, and only when the route
+  // actually changes, so collapsing a group while still on one of its pages
+  // (the bug this fixes) sticks instead of snapping back open every render.
+  useEffect(() => {
+    const activeGroup = ALL_NAV_ITEMS.find((item) =>
+      item.children?.some((child) => location.pathname.startsWith(child.path)),
+    );
+    if (!activeGroup) return;
+    setOpenGroups((prev) => (prev.has(activeGroup.name) ? prev : new Set(prev).add(activeGroup.name)));
+  }, [location.pathname]);
 
   return (
     <aside
@@ -142,7 +162,7 @@ export default function AppSidebar() {
         </p>
         {navItems.map((item) => {
           if (item.children) {
-            const isOpen = openGroups.has(item.name) || isChildActive(item);
+            const isOpen = openGroups.has(item.name);
             return (
               <div key={item.name}>
                 <button
