@@ -63,16 +63,33 @@ export default function AccountMenu({ area }: { area: "management" | "employee" 
         aria-expanded={open}
         aria-controls="account-actions"
         onClick={() => setOpen(!open)}
-        className="focus-visible:outline-brand-500 flex items-center gap-2 rounded-lg p-1 text-gray-900 focus-visible:outline-2 dark:text-white"
+        className="focus-visible:outline-brand-500 flex h-11 items-center gap-3 rounded-full text-gray-900 focus-visible:outline-2 dark:text-white"
       >
         <span
           aria-hidden="true"
-          className="bg-brand-500 flex h-10 w-10 shrink-0 items-center justify-center rounded-full font-semibold text-white"
+          className="bg-brand-500 flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-base leading-none font-semibold text-white"
         >
           {user.fullName.charAt(0).toUpperCase()}
         </span>
-        <span className="hidden max-w-40 truncate text-sm sm:block">{user.fullName}</span>
-        <span aria-hidden="true">⌄</span>
+        <span className="hidden max-w-40 truncate text-sm leading-none font-medium sm:block">
+          {user.fullName}
+        </span>
+        <svg
+          aria-hidden="true"
+          viewBox="0 0 20 20"
+          fill="none"
+          className={`hidden h-5 w-5 shrink-0 text-gray-500 transition-transform sm:block dark:text-gray-400 ${
+            open ? "rotate-180" : ""
+          }`}
+        >
+          <path
+            d="m5 7.5 5 5 5-5"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
       </button>
       {open && (
         <div

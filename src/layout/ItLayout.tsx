@@ -91,7 +91,7 @@ function ItLayoutContent() {
           )}
           {canViewAuditLog(user) && (
             <NavLink
-              to="/audit-log"
+              to="/it/audit-log"
               aria-label="Nhật ký hệ thống"
               onClick={() => {
                 if (isMobileOpen) toggleMobileSidebar();

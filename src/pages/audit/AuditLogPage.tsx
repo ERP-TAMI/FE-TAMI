@@ -2,6 +2,8 @@ import { Fragment, useEffect, useState, type ReactNode } from "react";
 import { ChevronRight, RefreshCw, Search, ScrollText } from "lucide-react";
 import { PageHeader, Pagination } from "@/components/shared";
 import PageMeta from "@/components/shared/PageMeta";
+import { getLandingPath } from "@/lib/areaAccess";
+import { useAuthStore } from "@/store/authStore";
 import { USER_ROLE_OPTIONS } from "@/components/features/user-management/userRoleOptions";
 import {
   BADGE_AMBER,
@@ -294,6 +296,7 @@ function LogDetail({ log }: { log: HttpAuditLog }) {
 const COLUMN_COUNT = 8;
 
 export default function AuditLogPage() {
+  const user = useAuthStore((state) => state.user);
   const [emailSearch, setEmailSearch] = useState("");
   const [debouncedEmail, setDebouncedEmail] = useState("");
   const [action, setAction] = useState("");
@@ -341,7 +344,7 @@ export default function AuditLogPage() {
     <>
       <PageMeta title="Nhật ký hệ thống | TAMI ERP" description="Nhật ký hoạt động hệ thống" />
       <PageHeader
-        breadcrumb={[{ label: "Dashboard", to: "/dashboard" }, { label: "Nhật ký hệ thống" }]}
+        breadcrumb={[{ label: "Trang chủ", to: getLandingPath(user) }, { label: "Nhật ký hệ thống" }]}
         title="Nhật ký hệ thống"      />
 
       <div className="mt-4 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-theme-xs dark:border-gray-800 dark:bg-gray-900">

@@ -6,7 +6,6 @@ import { useAuthStore } from "@/store/authStore";
 import {
   canAccessBusinessDashboard,
   canAccessEditablePurchaseOrderModule,
-  canViewAuditLog,
 } from "@/lib/areaAccess";
 
 type NavChild = {
@@ -55,7 +54,6 @@ const ALL_NAV_ITEMS: NavItem[] = [
       { name: "Bảng Size", path: "/masters/size-charts" },
     ],
   },
-  { name: "Nhật ký hệ thống", path: "/audit-log", icon: <ListIcon /> },
 ];
 
 export default function AppSidebar() {
@@ -81,7 +79,6 @@ export default function AppSidebar() {
 
       if (item.path === "/dashboard" && !canAccessBusinessDashboard(user)) continue;
       if (item.path === "/po" && !canAccessEditablePurchaseOrderModule(user)) continue;
-      if (item.path === "/audit-log" && !canViewAuditLog(user)) continue;
       visibleItems.push(item);
     }
     return visibleItems;
@@ -107,7 +104,11 @@ export default function AppSidebar() {
       onMouseEnter={() => !isExpanded && setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      <div className={`flex py-8 ${showLabels ? "justify-start" : "lg:justify-center"}`}>
+      <div
+        className={`mb-4 flex h-[69px] shrink-0 items-center ${
+          showLabels ? "justify-start" : "lg:justify-center"
+        }`}
+      >
         <NavLink to="/dashboard" aria-label="TAMI ERP dashboard">
           {showLabels ? (
             <>
@@ -115,15 +116,15 @@ export default function AppSidebar() {
                 className="dark:hidden"
                 src="/images/logo/logo.svg"
                 alt="TAMI ERP"
-                width={150}
-                height={40}
+                width={120}
+                height={32}
               />
               <img
                 className="hidden dark:block"
                 src="/images/logo/logo-dark.svg"
                 alt="TAMI ERP"
-                width={150}
-                height={40}
+                width={120}
+                height={32}
               />
             </>
           ) : (
