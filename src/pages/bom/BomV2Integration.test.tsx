@@ -35,6 +35,7 @@ const hooks = vi.hoisted(() => ({
   useCopyFit: { isPending: false, mutateAsync: vi.fn() },
   useDiscontinueBom: { isPending: false, mutateAsync: vi.fn() },
   useRestoreBom: { isPending: false, mutateAsync: vi.fn() },
+  useDeleteBom: { isPending: false, mutateAsync: vi.fn() },
   refetchBom: vi.fn(),
   useBomAggregate: vi.fn(),
   refetchAggregate: vi.fn(),
@@ -132,6 +133,7 @@ vi.mock("@/hooks/useBoms", () => ({
   useCopyFitToPoBom: () => hooks.useCopyFit,
   useDiscontinueBom: () => hooks.useDiscontinueBom,
   useRestoreBom: () => hooks.useRestoreBom,
+  useDeleteBom: () => hooks.useDeleteBom,
   useBomAggregate: (params?: unknown) => hooks.useBomAggregate(params),
 }));
 

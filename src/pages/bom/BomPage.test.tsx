@@ -22,6 +22,7 @@ const hooks = vi.hoisted(() => ({
   createBom: { isPending: false, error: null, mutateAsync: vi.fn() },
   discontinueBom: { isPending: false, error: null, mutateAsync: vi.fn() },
   restoreBom: { isPending: false, mutateAsync: vi.fn() },
+  deleteBom: { isPending: false, mutateAsync: vi.fn() },
   useStyles: vi.fn(),
   usePurchaseOrders: vi.fn(),
   usePoProducts: vi.fn(),
@@ -102,6 +103,7 @@ vi.mock("@/hooks/useBoms", () => ({
   useCreateBom: () => hooks.createBom,
   useDiscontinueBom: () => hooks.discontinueBom,
   useRestoreBom: () => hooks.restoreBom,
+  useDeleteBom: () => hooks.deleteBom,
 }));
 
 vi.mock("@/hooks/useStyles", () => ({
