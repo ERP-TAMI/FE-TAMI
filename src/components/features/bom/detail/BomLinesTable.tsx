@@ -41,6 +41,8 @@ interface BomLinesTableProps {
   onMove: (key: string, delta: -1 | 1) => void;
 }
 
+const EXPORT_FONT = "Arial";
+
 async function exportRowsToXlsx(
   rows: DraftLine[],
   bomCode: string,
@@ -57,80 +59,109 @@ async function exportRowsToXlsx(
     ...(canViewCost ? ["Đơn giá ($)", "Thành tiền ($)"] : []),
     "Ghi chú",
   ];
-  const numericHeaders = new Set(["Định mức", "Đơn giá ($)", "Thành tiền ($)"]);
-  const body = rows.map((row, idx) => [
-    idx + 1,
-    row.materialGroup || "",
-    row.materialCode || "",
-    row.materialName,
-    row.unit,
-    formatYield(parseDecimal(row.consumption)),
-    ...(canViewCost
-      ? [
-          parseDecimal(row.unitCost) != null ? formatUSD(parseDecimal(row.unitCost)) : "",
-          row.lineCost != null ? formatUSD(row.lineCost) : "",
-        ]
-      : []),
-    row.note || "",
-  ]);
+  const columnCount = headers.length;
+  const consumptionCol = headers.indexOf("Định mức") + 1;
+  const unitCostCol = canViewCost ? headers.indexOf("Đơn giá ($)") + 1 : -1;
+  const lineCostCol = canViewCost ? headers.indexOf("Thành tiền ($)") + 1 : -1;
+  const rightAlignedCols = new Set([consumptionCol, unitCostCol, lineCostCol].filter((i) => i > 0));
+  const mediumBorder = { style: "medium" as const };
 
   const workbook = new ExcelJS.Workbook();
   workbook.creator = "TAMI ERP";
   workbook.subject = `Danh sách nguyên liệu NPL ${bomCode}`;
   const worksheet = workbook.addWorksheet("Nguyên liệu");
-  const columnCount = headers.length;
-  const thinBorder = { style: "thin" as const, color: { argb: "FFD0D5DD" } };
 
-  // Dòng 1: tiêu đề (mã NPL/PO - khách hàng), gộp ô theo chiều ngang.
+  // Dòng 1: tiêu đề (mã NPL/PO - khách hàng), gộp ô theo chiều ngang — font/màu
+  // giống mẫu costsheet tham khảo (Arial 10 đậm, nền xanh nhạt).
   const titleRow = worksheet.addRow([exportTitle || bomCode]);
   worksheet.mergeCells(1, 1, 1, columnCount);
-  titleRow.height = 22;
   const titleCell = titleRow.getCell(1);
-  titleCell.font = { bold: true, size: 12 };
-  titleCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFBDD7EE" } };
-  titleCell.alignment = { vertical: "middle" };
+  titleCell.font = { name: EXPORT_FONT, size: 10, bold: true };
+  titleCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFB4C7E7" } };
+  titleCell.alignment = { horizontal: "left", vertical: "middle" };
 
-  // Dòng 2: header cột.
+  // Dòng 2: header cột — nền trắng, chữ đen đậm canh giữa, không dùng màu
+  // thương hiệu xanh đậm như các bảng khác trong app.
   const headerRow = worksheet.addRow(headers);
-  headerRow.font = { bold: true, color: { argb: "FFFFFFFF" } };
-  headerRow.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF465FFF" } };
+  headerRow.eachCell((cell) => {
+    cell.font = { name: EXPORT_FONT, size: 11, bold: true };
+    cell.alignment = { horizontal: "center", vertical: "middle" };
+  });
 
-  worksheet.addRows(body);
+  // Dữ liệu: ghi số thật kèm numFmt (không ghi chuỗi đã format sẵn như "$0.0173")
+  // để Excel tự canh phải/định dạng đúng kiểu, giống mẫu costsheet tham khảo.
+  // Ô trống khi chưa có dữ liệu (chưa tới bước Accounting) thay vì "$0.0000".
+  rows.forEach((row, idx) => {
+    const consumption = parseDecimal(row.consumption);
+    const unitCost = parseDecimal(row.unitCost);
+    const values: (string | number)[] = [
+      idx + 1,
+      row.materialGroup || "",
+      row.materialCode || "",
+      row.materialName,
+      row.unit,
+      consumption != null && consumption > 0 ? consumption : "-",
+    ];
+    if (canViewCost) {
+      values.push(unitCost != null ? unitCost : "");
+      values.push(row.lineCost != null ? row.lineCost : "");
+    }
+    values.push(row.note || "");
 
-  worksheet.columns = headers.map((header) => ({
-    width: Math.min(36, Math.max(12, header.length + 4)),
+    const dataRow = worksheet.addRow(values);
+    dataRow.eachCell((cell, colNumber) => {
+      cell.font = { name: EXPORT_FONT, size: 11 };
+      if (typeof cell.value === "number") {
+        if (colNumber === consumptionCol) cell.numFmt = "0.00";
+        if (colNumber === unitCostCol) cell.numFmt = '"$"#,##0.0000';
+        if (colNumber === lineCostCol) cell.numFmt = "$#,##0.0000_);[Red]($#,##0.0000)";
+      }
+      cell.alignment = rightAlignedCols.has(colNumber)
+        ? { horizontal: "right", vertical: "middle" }
+        : { vertical: "middle" };
+    });
+  });
+
+  worksheet.columns = headers.map((header, idx) => ({
+    width:
+      idx === headers.indexOf("Nguyên liệu")
+        ? 34
+        : Math.min(36, Math.max(12, header.length + 4)),
   }));
 
-  // Viền + canh phải cho các cột số, áp dụng từ header tới hết dữ liệu.
-  const lastDataRow = 2 + body.length;
-  for (let r = 2; r <= lastDataRow; r += 1) {
-    const row = worksheet.getRow(r);
-    headers.forEach((header, colIdx) => {
-      const cell = row.getCell(colIdx + 1);
-      cell.border = { top: thinBorder, left: thinBorder, bottom: thinBorder, right: thinBorder };
-      if (r > 2 && numericHeaders.has(header)) {
-        cell.alignment = { horizontal: "right" };
-      }
-    });
-  }
-
-  // Dòng tổng cộng (SUB TOTAL), giống costsheet tham khảo: label ngay trước cột
-  // Thành tiền, giá trị là tổng Thành tiền của mọi dòng.
+  // Dòng tổng cộng (SUB TOTAL), giống costsheet tham khảo: label cỡ chữ nhỏ hơn
+  // (9, đậm) ngay trước cột Thành tiền, giá trị là tổng Thành tiền mọi dòng.
+  let lastRow = 1 + rows.length;
   if (canViewCost) {
     const totalCost = rows.reduce((sum, row) => sum + (row.lineCost ?? 0), 0);
-    const totalColIndex = headers.indexOf("Thành tiền ($)") + 1;
-    const labelColIndex = totalColIndex - 1;
     worksheet.addRow([]);
     const subtotalRow = worksheet.addRow([]);
-    const labelCell = subtotalRow.getCell(labelColIndex);
+    const labelCell = subtotalRow.getCell(lineCostCol - 1);
     labelCell.value = "SUB TOTAL";
-    labelCell.font = { bold: true };
-    labelCell.border = { top: { style: "thin" } };
-    labelCell.alignment = { horizontal: "right" };
-    const totalCell = subtotalRow.getCell(totalColIndex);
-    totalCell.value = formatUSD(totalCost);
-    totalCell.font = { bold: true };
-    totalCell.border = { top: { style: "thin" } };
+    labelCell.font = { name: EXPORT_FONT, size: 9, bold: true };
+    labelCell.alignment = { horizontal: "right", vertical: "middle" };
+    const totalCell = subtotalRow.getCell(lineCostCol);
+    totalCell.value = totalCost;
+    totalCell.numFmt = "$#,##0.0000_);[Red]($#,##0.0000)";
+    totalCell.font = { name: EXPORT_FONT, size: 11, bold: true };
+    totalCell.alignment = { horizontal: "right", vertical: "middle" };
+    lastRow = subtotalRow.number;
+  }
+
+  // Viền ngoài (khung dày vừa) bao quanh toàn bảng — giống mẫu tham khảo, chỉ
+  // viền mép ngoài, không kẻ lưới từng ô.
+  for (let r = 1; r <= lastRow; r += 1) {
+    const row = worksheet.getRow(r);
+    for (let c = 1; c <= columnCount; c += 1) {
+      const cell = row.getCell(c);
+      cell.border = {
+        ...cell.border,
+        ...(r === 1 ? { top: mediumBorder } : {}),
+        ...(r === lastRow ? { bottom: mediumBorder } : {}),
+        ...(c === 1 ? { left: mediumBorder } : {}),
+        ...(c === columnCount ? { right: mediumBorder } : {}),
+      };
+    }
   }
 
   worksheet.views = [{ state: "frozen", ySplit: 2 }];
