@@ -21,6 +21,8 @@ type EditableField = "consumption" | "unitCost" | "note";
 interface BomLinesTableProps {
   rows: DraftLine[];
   bomCode: string;
+  /** Tiêu đề hiển thị ở dòng đầu file Excel xuất ra, vd "3475852BO- BEALLS OUTLET". Mặc định dùng bomCode. */
+  exportTitle?: string;
   mode: BomDraftMode;
   canEdit: boolean;
   isEditing: boolean;
@@ -39,54 +41,121 @@ interface BomLinesTableProps {
   onMove: (key: string, delta: -1 | 1) => void;
 }
 
-async function exportRowsToXlsx(rows: DraftLine[], bomCode: string, canViewCost: boolean) {
-  const headers = [
-    "#",
-    "Nhóm",
-    "Mã",
-    "Nguyên liệu",
-    "ĐVT",
-    "Định mức",
-    ...(canViewCost ? ["Đơn giá ($)", "Thành tiền ($)"] : []),
-    "Ghi chú",
-  ];
-  const body = rows.map((row, idx) => [
-    idx + 1,
-    row.materialGroup || "",
-    row.materialCode || "",
-    row.materialName,
-    row.unit,
-    formatYield(parseDecimal(row.consumption)),
-    ...(canViewCost
-      ? [
-          parseDecimal(row.unitCost) != null ? formatUSD(parseDecimal(row.unitCost)) : "",
-          row.lineCost != null ? formatUSD(row.lineCost) : "",
-        ]
-      : []),
-    row.note || "",
-  ]);
+const EXPORT_FONT = "Arial";
+
+async function exportRowsToXlsx(
+  rows: DraftLine[],
+  bomCode: string,
+  canViewCost: boolean,
+  exportTitle?: string,
+) {
+  // Khớp y chang cột của mẫu costsheet tham khảo: chỉ Tên NPL / YIELD / UNIT PX
+  // / FIN COST — bỏ #, Nhóm, Mã, ĐVT, Ghi chú (không dùng tới / luôn trống trong
+  // thực tế) và đổi tên cột số sang tiếng Anh như mẫu.
+  const headers = ["", "YIELD", ...(canViewCost ? ["UNIT PX", "FIN COST"] : [])];
+  const columnCount = headers.length;
+  const consumptionCol = 2;
+  const unitCostCol = canViewCost ? 3 : -1;
+  const lineCostCol = canViewCost ? 4 : -1;
+  const rightAlignedCols = new Set([consumptionCol, unitCostCol, lineCostCol].filter((i) => i > 0));
+  const mediumBorder = { style: "medium" as const };
 
   const workbook = new ExcelJS.Workbook();
   workbook.creator = "TAMI ERP";
   workbook.subject = `Danh sách nguyên liệu NPL ${bomCode}`;
   const worksheet = workbook.addWorksheet("Nguyên liệu");
-  worksheet.addRow(headers);
-  worksheet.addRows(body);
-  worksheet.columns = headers.map((header, index) => ({
-    header,
-    key: `column${index}`,
-    width: Math.min(36, Math.max(12, header.length + 4)),
-  }));
-  worksheet.getRow(1).font = { bold: true, color: { argb: "FFFFFFFF" } };
-  worksheet.getRow(1).fill = {
-    type: "pattern",
-    pattern: "solid",
-    fgColor: { argb: "FF465FFF" },
-  };
-  worksheet.views = [{ state: "frozen", ySplit: 1 }];
+
+  // Dòng 1: tiêu đề (mã NPL/PO - khách hàng), gộp ô theo chiều ngang — font/màu
+  // giống mẫu costsheet tham khảo (Arial 10 đậm, nền xanh nhạt).
+  const titleRow = worksheet.addRow([exportTitle || bomCode]);
+  worksheet.mergeCells(1, 1, 1, columnCount);
+  const titleCell = titleRow.getCell(1);
+  titleCell.font = { name: EXPORT_FONT, size: 10, bold: true };
+  titleCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFB4C7E7" } };
+  titleCell.alignment = { horizontal: "left", vertical: "middle" };
+
+  // Dòng 2: header cột — nền trắng, chữ đen đậm canh giữa, không dùng màu
+  // thương hiệu xanh đậm như các bảng khác trong app.
+  const headerRow = worksheet.addRow(headers);
+  headerRow.eachCell((cell) => {
+    cell.font = { name: EXPORT_FONT, size: 11, bold: true };
+    cell.alignment = { horizontal: "center", vertical: "middle" };
+  });
+
+  // Dữ liệu: ghi số thật kèm numFmt (không ghi chuỗi đã format sẵn như "$0.0173")
+  // để Excel tự canh phải/định dạng đúng kiểu, giống mẫu costsheet tham khảo.
+  // Ô trống khi chưa có dữ liệu (chưa tới bước Accounting) thay vì "$0.0000".
+  rows.forEach((row) => {
+    const consumption = parseDecimal(row.consumption);
+    const unitCost = parseDecimal(row.unitCost);
+    const values: (string | number)[] = [
+      row.materialName,
+      consumption != null && consumption > 0 ? consumption : "-",
+    ];
+    if (canViewCost) {
+      values.push(unitCost != null ? unitCost : "");
+      values.push(row.lineCost != null ? row.lineCost : "");
+    }
+
+    const dataRow = worksheet.addRow(values);
+    dataRow.eachCell((cell, colNumber) => {
+      cell.font = { name: EXPORT_FONT, size: 11 };
+      if (typeof cell.value === "number") {
+        if (colNumber === consumptionCol) cell.numFmt = "0.00";
+        if (colNumber === unitCostCol) cell.numFmt = '"$"#,##0.0000';
+        if (colNumber === lineCostCol) cell.numFmt = "$#,##0.0000_);[Red]($#,##0.0000)";
+      }
+      cell.alignment = rightAlignedCols.has(colNumber)
+        ? { horizontal: "right", vertical: "middle" }
+        : { vertical: "middle" };
+    });
+  });
+
+  // Độ rộng cột lấy theo mẫu tham khảo (A=33.9, B=8.4, C/D=10.3) — nới rộng hơn
+  // một chút ở 2 cột tiền (14 thay vì 10.3) vì đơn giá thực tế trong hệ thống có
+  // thể lên tới hàng triệu, 10.3 sẽ bị tràn thành "###" như lúc trước.
+  const columnWidths = [33.9, 8.4, 14, 14];
+  worksheet.columns = headers.map((_, idx) => ({ width: columnWidths[idx] }));
+
+  // Dòng tổng cộng (SUB TOTAL), giống costsheet tham khảo: label cỡ chữ nhỏ hơn
+  // (9, đậm) ngay trước cột Thành tiền, giá trị là tổng Thành tiền mọi dòng.
+  let lastRow = 1 + rows.length;
+  if (canViewCost) {
+    const totalCost = rows.reduce((sum, row) => sum + (row.lineCost ?? 0), 0);
+    worksheet.addRow([]);
+    const subtotalRow = worksheet.addRow([]);
+    const labelCell = subtotalRow.getCell(lineCostCol - 1);
+    labelCell.value = "SUB TOTAL";
+    labelCell.font = { name: EXPORT_FONT, size: 9, bold: true };
+    labelCell.alignment = { horizontal: "right", vertical: "middle" };
+    const totalCell = subtotalRow.getCell(lineCostCol);
+    totalCell.value = totalCost;
+    totalCell.numFmt = "$#,##0.0000_);[Red]($#,##0.0000)";
+    totalCell.font = { name: EXPORT_FONT, size: 11, bold: true };
+    totalCell.alignment = { horizontal: "right", vertical: "middle" };
+    lastRow = subtotalRow.number;
+  }
+
+  // Viền ngoài (khung dày vừa) bao quanh toàn bảng — giống mẫu tham khảo, chỉ
+  // viền mép ngoài, không kẻ lưới từng ô.
+  for (let r = 1; r <= lastRow; r += 1) {
+    const row = worksheet.getRow(r);
+    for (let c = 1; c <= columnCount; c += 1) {
+      const cell = row.getCell(c);
+      cell.border = {
+        ...cell.border,
+        ...(r === 1 ? { top: mediumBorder } : {}),
+        ...(r === lastRow ? { bottom: mediumBorder } : {}),
+        ...(c === 1 ? { left: mediumBorder } : {}),
+        ...(c === columnCount ? { right: mediumBorder } : {}),
+      };
+    }
+  }
+
+  worksheet.views = [{ state: "frozen", ySplit: 2 }];
   worksheet.autoFilter = {
-    from: { row: 1, column: 1 },
-    to: { row: 1, column: headers.length },
+    from: { row: 2, column: 1 },
+    to: { row: 2, column: columnCount },
   };
 
   const buffer = await workbook.xlsx.writeBuffer();
@@ -305,6 +374,7 @@ const LineRow = memo(function LineRow({
 export function BomLinesTable({
   rows,
   bomCode,
+  exportTitle,
   mode,
   canEdit,
   isEditing,
@@ -416,7 +486,7 @@ export function BomLinesTable({
           {rows.length > 0 && !isEditing && (
             <button
               type="button"
-              onClick={() => void exportRowsToXlsx(rows, bomCode, canViewCost)}
+              onClick={() => void exportRowsToXlsx(rows, bomCode, canViewCost, exportTitle)}
               className="text-theme-sm inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-blue-200/80 bg-white px-3.5 py-2 font-semibold text-blue-600 shadow-2xs transition-colors hover:bg-blue-50 dark:border-blue-800 dark:bg-gray-900 dark:text-blue-400"
             >
               <Download className="h-4 w-4" />

@@ -16,6 +16,8 @@ const UNSAVED_MESSAGE =
 interface BomLinesEditorProps {
   bomId: string;
   bomCode: string;
+  /** Tiêu đề dòng đầu khi xuất Excel NPL, vd "3475852BO- BEALLS OUTLET". Mặc định dùng bomCode. */
+  exportTitle?: string;
   rowVersion: number;
   lines: BomLineItem[];
   readOnly?: boolean;
@@ -36,6 +38,7 @@ interface BomLinesEditorProps {
 export function BomLinesEditor({
   bomId,
   bomCode,
+  exportTitle,
   rowVersion,
   lines,
   readOnly = false,
@@ -114,6 +117,7 @@ export function BomLinesEditor({
       <BomLinesTable
         rows={draft.rows}
         bomCode={bomCode}
+        exportTitle={exportTitle}
         mode={mode}
         canEdit={canEdit}
         isEditing={draft.isEditing}
