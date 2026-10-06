@@ -49,20 +49,14 @@ async function exportRowsToXlsx(
   canViewCost: boolean,
   exportTitle?: string,
 ) {
-  const headers = [
-    "#",
-    "Nhóm",
-    "Mã",
-    "Nguyên liệu",
-    "ĐVT",
-    "Định mức",
-    ...(canViewCost ? ["Đơn giá ($)", "Thành tiền ($)"] : []),
-    "Ghi chú",
-  ];
+  // Khớp y chang cột của mẫu costsheet tham khảo: chỉ Tên NPL / YIELD / UNIT PX
+  // / FIN COST — bỏ #, Nhóm, Mã, ĐVT, Ghi chú (không dùng tới / luôn trống trong
+  // thực tế) và đổi tên cột số sang tiếng Anh như mẫu.
+  const headers = ["", "YIELD", ...(canViewCost ? ["UNIT PX", "FIN COST"] : [])];
   const columnCount = headers.length;
-  const consumptionCol = headers.indexOf("Định mức") + 1;
-  const unitCostCol = canViewCost ? headers.indexOf("Đơn giá ($)") + 1 : -1;
-  const lineCostCol = canViewCost ? headers.indexOf("Thành tiền ($)") + 1 : -1;
+  const consumptionCol = 2;
+  const unitCostCol = canViewCost ? 3 : -1;
+  const lineCostCol = canViewCost ? 4 : -1;
   const rightAlignedCols = new Set([consumptionCol, unitCostCol, lineCostCol].filter((i) => i > 0));
   const mediumBorder = { style: "medium" as const };
 
@@ -91,22 +85,17 @@ async function exportRowsToXlsx(
   // Dữ liệu: ghi số thật kèm numFmt (không ghi chuỗi đã format sẵn như "$0.0173")
   // để Excel tự canh phải/định dạng đúng kiểu, giống mẫu costsheet tham khảo.
   // Ô trống khi chưa có dữ liệu (chưa tới bước Accounting) thay vì "$0.0000".
-  rows.forEach((row, idx) => {
+  rows.forEach((row) => {
     const consumption = parseDecimal(row.consumption);
     const unitCost = parseDecimal(row.unitCost);
     const values: (string | number)[] = [
-      idx + 1,
-      row.materialGroup || "",
-      row.materialCode || "",
       row.materialName,
-      row.unit,
       consumption != null && consumption > 0 ? consumption : "-",
     ];
     if (canViewCost) {
       values.push(unitCost != null ? unitCost : "");
       values.push(row.lineCost != null ? row.lineCost : "");
     }
-    values.push(row.note || "");
 
     const dataRow = worksheet.addRow(values);
     dataRow.eachCell((cell, colNumber) => {
@@ -122,12 +111,11 @@ async function exportRowsToXlsx(
     });
   });
 
-  worksheet.columns = headers.map((header, idx) => ({
-    width:
-      idx === headers.indexOf("Nguyên liệu")
-        ? 34
-        : Math.min(36, Math.max(12, header.length + 4)),
-  }));
+  // Độ rộng cột lấy theo mẫu tham khảo (A=33.9, B=8.4, C/D=10.3) — nới rộng hơn
+  // một chút ở 2 cột tiền (14 thay vì 10.3) vì đơn giá thực tế trong hệ thống có
+  // thể lên tới hàng triệu, 10.3 sẽ bị tràn thành "###" như lúc trước.
+  const columnWidths = [33.9, 8.4, 14, 14];
+  worksheet.columns = headers.map((_, idx) => ({ width: columnWidths[idx] }));
 
   // Dòng tổng cộng (SUB TOTAL), giống costsheet tham khảo: label cỡ chữ nhỏ hơn
   // (9, đậm) ngay trước cột Thành tiền, giá trị là tổng Thành tiền mọi dòng.
