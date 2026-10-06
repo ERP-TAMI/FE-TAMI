@@ -170,6 +170,9 @@ export function PoProductBomTab({
       <BomLinesEditor
         bomId={bom.id}
         bomCode={bom.bomCode}
+        exportTitle={`${bom.purchaseOrder?.poCode || bom.bomCode}- ${
+          bom.purchaseOrder?.customerName || bom.style?.styleName || ""
+        }`}
         rowVersion={bom.rowVersion}
         lines={bom.lines || []}
         readOnly={readOnly || isProductLocked}

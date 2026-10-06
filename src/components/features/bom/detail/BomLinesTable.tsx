@@ -21,6 +21,8 @@ type EditableField = "consumption" | "unitCost" | "note";
 interface BomLinesTableProps {
   rows: DraftLine[];
   bomCode: string;
+  /** Tiêu đề hiển thị ở dòng đầu file Excel xuất ra, vd "3475852BO- BEALLS OUTLET". Mặc định dùng bomCode. */
+  exportTitle?: string;
   mode: BomDraftMode;
   canEdit: boolean;
   isEditing: boolean;
@@ -39,7 +41,12 @@ interface BomLinesTableProps {
   onMove: (key: string, delta: -1 | 1) => void;
 }
 
-async function exportRowsToXlsx(rows: DraftLine[], bomCode: string, canViewCost: boolean) {
+async function exportRowsToXlsx(
+  rows: DraftLine[],
+  bomCode: string,
+  canViewCost: boolean,
+  exportTitle?: string,
+) {
   const headers = [
     "#",
     "Nhóm",
@@ -50,6 +57,7 @@ async function exportRowsToXlsx(rows: DraftLine[], bomCode: string, canViewCost:
     ...(canViewCost ? ["Đơn giá ($)", "Thành tiền ($)"] : []),
     "Ghi chú",
   ];
+  const numericHeaders = new Set(["Định mức", "Đơn giá ($)", "Thành tiền ($)"]);
   const body = rows.map((row, idx) => [
     idx + 1,
     row.materialGroup || "",
@@ -70,23 +78,65 @@ async function exportRowsToXlsx(rows: DraftLine[], bomCode: string, canViewCost:
   workbook.creator = "TAMI ERP";
   workbook.subject = `Danh sách nguyên liệu NPL ${bomCode}`;
   const worksheet = workbook.addWorksheet("Nguyên liệu");
-  worksheet.addRow(headers);
+  const columnCount = headers.length;
+  const thinBorder = { style: "thin" as const, color: { argb: "FFD0D5DD" } };
+
+  // Dòng 1: tiêu đề (mã NPL/PO - khách hàng), gộp ô theo chiều ngang.
+  const titleRow = worksheet.addRow([exportTitle || bomCode]);
+  worksheet.mergeCells(1, 1, 1, columnCount);
+  titleRow.height = 22;
+  const titleCell = titleRow.getCell(1);
+  titleCell.font = { bold: true, size: 12 };
+  titleCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFBDD7EE" } };
+  titleCell.alignment = { vertical: "middle" };
+
+  // Dòng 2: header cột.
+  const headerRow = worksheet.addRow(headers);
+  headerRow.font = { bold: true, color: { argb: "FFFFFFFF" } };
+  headerRow.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF465FFF" } };
+
   worksheet.addRows(body);
-  worksheet.columns = headers.map((header, index) => ({
-    header,
-    key: `column${index}`,
+
+  worksheet.columns = headers.map((header) => ({
     width: Math.min(36, Math.max(12, header.length + 4)),
   }));
-  worksheet.getRow(1).font = { bold: true, color: { argb: "FFFFFFFF" } };
-  worksheet.getRow(1).fill = {
-    type: "pattern",
-    pattern: "solid",
-    fgColor: { argb: "FF465FFF" },
-  };
-  worksheet.views = [{ state: "frozen", ySplit: 1 }];
+
+  // Viền + canh phải cho các cột số, áp dụng từ header tới hết dữ liệu.
+  const lastDataRow = 2 + body.length;
+  for (let r = 2; r <= lastDataRow; r += 1) {
+    const row = worksheet.getRow(r);
+    headers.forEach((header, colIdx) => {
+      const cell = row.getCell(colIdx + 1);
+      cell.border = { top: thinBorder, left: thinBorder, bottom: thinBorder, right: thinBorder };
+      if (r > 2 && numericHeaders.has(header)) {
+        cell.alignment = { horizontal: "right" };
+      }
+    });
+  }
+
+  // Dòng tổng cộng (SUB TOTAL), giống costsheet tham khảo: label ngay trước cột
+  // Thành tiền, giá trị là tổng Thành tiền của mọi dòng.
+  if (canViewCost) {
+    const totalCost = rows.reduce((sum, row) => sum + (row.lineCost ?? 0), 0);
+    const totalColIndex = headers.indexOf("Thành tiền ($)") + 1;
+    const labelColIndex = totalColIndex - 1;
+    worksheet.addRow([]);
+    const subtotalRow = worksheet.addRow([]);
+    const labelCell = subtotalRow.getCell(labelColIndex);
+    labelCell.value = "SUB TOTAL";
+    labelCell.font = { bold: true };
+    labelCell.border = { top: { style: "thin" } };
+    labelCell.alignment = { horizontal: "right" };
+    const totalCell = subtotalRow.getCell(totalColIndex);
+    totalCell.value = formatUSD(totalCost);
+    totalCell.font = { bold: true };
+    totalCell.border = { top: { style: "thin" } };
+  }
+
+  worksheet.views = [{ state: "frozen", ySplit: 2 }];
   worksheet.autoFilter = {
-    from: { row: 1, column: 1 },
-    to: { row: 1, column: headers.length },
+    from: { row: 2, column: 1 },
+    to: { row: 2, column: columnCount },
   };
 
   const buffer = await workbook.xlsx.writeBuffer();
@@ -305,6 +355,7 @@ const LineRow = memo(function LineRow({
 export function BomLinesTable({
   rows,
   bomCode,
+  exportTitle,
   mode,
   canEdit,
   isEditing,
@@ -416,7 +467,7 @@ export function BomLinesTable({
           {rows.length > 0 && !isEditing && (
             <button
               type="button"
-              onClick={() => void exportRowsToXlsx(rows, bomCode, canViewCost)}
+              onClick={() => void exportRowsToXlsx(rows, bomCode, canViewCost, exportTitle)}
               className="text-theme-sm inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-blue-200/80 bg-white px-3.5 py-2 font-semibold text-blue-600 shadow-2xs transition-colors hover:bg-blue-50 dark:border-blue-800 dark:bg-gray-900 dark:text-blue-400"
             >
               <Download className="h-4 w-4" />

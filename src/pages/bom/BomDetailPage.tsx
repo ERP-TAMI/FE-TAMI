@@ -455,6 +455,9 @@ export default function BomDetailPage() {
           <BomLinesEditor
             bomId={bom.id}
             bomCode={bom.bomCode}
+            exportTitle={`${bom.purchaseOrder?.poCode || bom.bomCode}- ${
+              bom.purchaseOrder?.customerName || bom.style?.styleName || ""
+            }`}
             rowVersion={bom.rowVersion}
             lines={displayLines}
             readOnly={isReadOnlyPoBom}
