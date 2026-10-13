@@ -1,8 +1,10 @@
 import { Navigate, Outlet, useLocation } from "react-router-dom";
+import { getLandingPath } from "@/lib/areaAccess";
 import { useAuthStore } from "@/store/authStore";
 
 export function ProtectedRoute() {
   const status = useAuthStore((state) => state.status);
+  const user = useAuthStore((state) => state.user);
   const location = useLocation();
 
   if (status === "idle" || status === "loading") {
@@ -19,6 +21,14 @@ export function ProtectedRoute() {
 
   if (status === "unauthenticated") {
     return <Navigate to="/login" replace state={{ from: location }} />;
+  }
+
+  if (user?.mustChangePassword && location.pathname !== "/force-password-change") {
+    return <Navigate to="/force-password-change" replace state={{ from: location }} />;
+  }
+
+  if (!user?.mustChangePassword && location.pathname === "/force-password-change") {
+    return <Navigate to={getLandingPath(user)} replace />;
   }
 
   return <Outlet />;

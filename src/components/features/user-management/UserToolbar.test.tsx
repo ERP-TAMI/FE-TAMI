@@ -23,7 +23,9 @@ describe("UserToolbar", () => {
     expect(screen.getByRole("button", { name: "Hoạt động" }).className).toContain(
       "border-gray-200",
     );
-    expect(screen.queryByRole("button", { name: "Vô hiệu hóa" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Vô hiệu hóa" }).className).toContain(
+      "cursor-pointer",
+    );
   });
 
   it("keeps the status filter interaction unchanged", () => {

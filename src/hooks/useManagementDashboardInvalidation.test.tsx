@@ -147,7 +147,7 @@ const cases: Array<
   ],
   [
     "reset password",
-    (m) => m.resetPassword.mutateAsync("user"),
+    (m) => m.resetPassword.mutateAsync({ id: "user", temporaryPassword: "Temp-Pass-482!" }),
     () => {
       vi.spyOn(userManagementApi, "resetPassword").mockResolvedValue(
         {} as Awaited<ReturnType<typeof userManagementApi.resetPassword>>,

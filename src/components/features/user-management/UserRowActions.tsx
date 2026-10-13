@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ComponentType, type SVGProps } from "react";
 import { createPortal } from "react-dom";
+import { UserX, Trash2 } from "lucide-react";
 import { EnvelopeIcon, LockIcon, MoreDotIcon, UnlockIcon } from "@/icons";
 import type { UserListItem } from "@/types/user-management";
 import type { UserAccountAction } from "./UserAccountActionDialog";
@@ -19,14 +20,23 @@ function accountMenuItems(
   user: UserListItem,
   onAccountAction: (action: UserAccountAction) => void,
 ): MenuItem[] {
-  if (user.accountStatus === "inactive") return [];
+  if (user.accountStatus === "inactive") {
+    return [
+      {
+        key: "delete",
+        label: "Xóa người dùng",
+        icon: Trash2,
+        onSelect: () => onAccountAction("delete"),
+      },
+    ];
+  }
 
   const items: MenuItem[] = [];
 
-  if (user.accountStatus === "active" && !user.passwordSetupRequired) {
+  if (user.accountStatus === "active" || user.accountStatus === "pending_setup") {
     items.push({
       key: "reset",
-      label: "Đặt lại mật khẩu",
+      label: "Đặt mật khẩu tạm",
       icon: LockIcon,
       onSelect: () => onAccountAction("reset"),
     });
@@ -57,6 +67,14 @@ function accountMenuItems(
       onSelect: () => onAccountAction("lock"),
     });
   }
+
+  items.push({
+    key: "deactivate",
+    label: "Vô hiệu hóa",
+    icon: UserX,
+    separatorBefore: items.length > 0,
+    onSelect: () => onAccountAction("deactivate"),
+  });
 
   return items;
 }
@@ -159,7 +177,7 @@ export function UserRowActions({
         aria-label={`Mở thao tác cho ${user.fullName}`}
         aria-haspopup="menu"
         aria-expanded={open}
-        className="focus-visible:ring-brand-500/30 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 transition-colors hover:border-gray-300 hover:bg-gray-50 hover:text-gray-700 focus:outline-none focus-visible:ring-2 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200"
+        className="focus-visible:ring-brand-500/30 inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 transition-colors hover:border-gray-300 hover:bg-gray-50 hover:text-gray-700 focus:outline-none focus-visible:ring-2 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200"
         onClick={() => (open ? closeMenu() : openMenu())}
         onKeyDown={(event) => {
           if (event.key === "ArrowDown" && !open) {
@@ -195,7 +213,7 @@ export function UserRowActions({
                     type="button"
                     role="menuitem"
                     disabled={item.disabled}
-                    className="focus-visible:ring-brand-500/30 flex min-h-9 w-full items-center gap-2.5 rounded-md px-3 py-2 text-left text-sm text-gray-700 transition-colors hover:bg-gray-100 focus:outline-none focus-visible:ring-2 disabled:cursor-wait disabled:opacity-50 dark:text-gray-200 dark:hover:bg-gray-700"
+                    className="focus-visible:ring-brand-500/30 flex min-h-9 w-full cursor-pointer items-center gap-2.5 rounded-md px-3 py-2 text-left text-sm text-gray-700 transition-colors hover:bg-gray-100 focus:outline-none focus-visible:ring-2 disabled:cursor-wait disabled:opacity-50 dark:text-gray-200 dark:hover:bg-gray-700"
                     onClick={() => {
                       closeMenu();
                       item.onSelect();

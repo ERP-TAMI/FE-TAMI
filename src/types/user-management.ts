@@ -1,6 +1,6 @@
 export type UserRoleCode = "SA" | "TPKH" | "NVKH" | "RD" | "ACCOUNTING" | "IT";
-export type EditableUserAccountStatus = "active" | "locked";
-export type UserAccountStatus = EditableUserAccountStatus | "pending_setup" | "inactive";
+export type EditableUserAccountStatus = "active" | "locked" | "inactive";
+export type UserAccountStatus = EditableUserAccountStatus | "pending_setup";
 export type PasswordSetupEmailStatus = "pending" | "sent" | "failed";
 export type AccountLockEmailStatus = "pending" | "sent" | "failed";
 
@@ -50,7 +50,7 @@ export type InvitationResponse = { invitationStatus: "sent" | "failed" };
 export type AccountStatusResponse = { user: UserListItem };
 export type PasswordResetResponse = {
   user: UserListItem;
-  invitationStatus: "pending";
+  temporaryPasswordEmailStatus: "sent" | "failed";
 };
 
 export type UserListParams = {

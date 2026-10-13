@@ -9,6 +9,7 @@ export type AuthUser = {
   roleName: string;
   permissions: string[];
   purchaseOrderMode: PurchaseOrderMode;
+  mustChangePassword?: boolean;
 };
 
 export type PurchaseOrderMode = "READ_ONLY" | "FULL_ACCESS";

@@ -11,6 +11,7 @@ export const authUserSchema = z.object({
   roleName: z.string(),
   permissions: z.array(z.string()),
   purchaseOrderMode: purchaseOrderModeSchema,
+  mustChangePassword: z.boolean().optional(),
 });
 
 export const authResponseSchema = z.object({

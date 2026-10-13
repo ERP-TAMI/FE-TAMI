@@ -26,6 +26,7 @@ import { ScrollToTop } from "@/components/shared/ScrollToTop";
 import { ProtectedRoute } from "@/routes/ProtectedRoute";
 import { useAuthBootstrap } from "@/hooks/useAuthBootstrap";
 import LoginPage from "@/pages/auth/LoginPage";
+import ForcePasswordChangePage from "@/pages/auth/ForcePasswordChangePage";
 import SetPasswordPage from "@/pages/auth/SetPasswordPage";
 import ForgotPasswordPage from "@/pages/auth/ForgotPasswordPage";
 import ResetPasswordPage from "@/pages/auth/ResetPasswordPage";
@@ -99,6 +100,7 @@ export function AppRoutes() {
           }
         />
         <Route element={AUTH_GUARD_ENABLED ? <ProtectedRoute /> : <Outlet />}>
+          <Route path="force-password-change" element={<ForcePasswordChangePage />} />
           <Route path="management" element={<ManagementRoute />}>
             <Route element={<ManagementLayout />}>
               <Route index element={<Navigate to="dashboard" replace />} />
