@@ -4,13 +4,14 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { ProtectedRoute } from "./ProtectedRoute";
 import { useAuthStore } from "@/store/authStore";
 
-function renderProtected() {
+function renderProtected(initialPath = "/dashboard") {
   return render(
-    <MemoryRouter initialEntries={["/dashboard"]}>
+    <MemoryRouter initialEntries={[initialPath]}>
       <Routes>
         <Route path="/login" element={<div>Login screen</div>} />
         <Route element={<ProtectedRoute />}>
           <Route path="/dashboard" element={<div>Dashboard content</div>} />
+          <Route path="/force-password-change" element={<div>Change password screen</div>} />
         </Route>
       </Routes>
     </MemoryRouter>,
@@ -52,11 +53,55 @@ describe("ProtectedRoute", () => {
         roleName: "Quản trị hệ thống",
         permissions: [],
         purchaseOrderMode: "READ_ONLY",
+        mustChangePassword: false,
       },
       accessToken: "token",
     });
     renderProtected();
 
     expect(screen.getByText("Dashboard content")).toBeTruthy();
+  });
+
+  it("redirects temporary-password sessions to the forced password page", () => {
+    useAuthStore.setState({
+      status: "authenticated",
+      user: {
+        id: "11111111-1111-1111-1111-111111111111",
+        email: "sa@tami.test",
+        fullName: "Quản trị hệ thống",
+        phone: null,
+        roleCode: "SA",
+        roleName: "Quản trị hệ thống",
+        permissions: [],
+        purchaseOrderMode: "READ_ONLY",
+        mustChangePassword: true,
+      },
+      accessToken: "token",
+    });
+    renderProtected();
+
+    expect(screen.getByText("Change password screen")).toBeTruthy();
+    expect(screen.queryByText("Dashboard content")).toBeNull();
+  });
+
+  it("allows a temporary-password session to reach its password page", () => {
+    useAuthStore.setState({
+      status: "authenticated",
+      user: {
+        id: "11111111-1111-1111-1111-111111111111",
+        email: "sa@tami.test",
+        fullName: "Quản trị hệ thống",
+        phone: null,
+        roleCode: "SA",
+        roleName: "Quản trị hệ thống",
+        permissions: [],
+        purchaseOrderMode: "READ_ONLY",
+        mustChangePassword: true,
+      },
+      accessToken: "token",
+    });
+    renderProtected("/force-password-change");
+
+    expect(screen.getByText("Change password screen")).toBeTruthy();
   });
 });

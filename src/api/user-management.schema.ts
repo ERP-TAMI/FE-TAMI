@@ -43,7 +43,7 @@ export const accountStatusResponseSchema = z.object({
 
 export const passwordResetResponseSchema = z.object({
   user: userListItemSchema,
-  invitationStatus: z.literal("pending"),
+  temporaryPasswordEmailStatus: z.enum(["sent", "failed"]),
 });
 
 export const userListResponseSchema = z.object({

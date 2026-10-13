@@ -25,7 +25,7 @@ const LOGIN_ERROR_OVERRIDES: Record<string, string> = {
 const NETWORK_ERROR_MESSAGE =
   "Không thể kết nối máy chủ. Vui lòng kiểm tra kết nối mạng và thử lại.";
 
-type LocationState = { from?: { pathname: string } };
+type LocationState = { from?: { pathname: string }; passwordChanged?: boolean };
 
 export default function LoginPage() {
   const { register, handleSubmit, formState } = useForm<FormValues>({
@@ -39,7 +39,8 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const redirectTo = (location.state as LocationState | null)?.from?.pathname;
+  const locationState = location.state as LocationState | null;
+  const redirectTo = locationState?.from?.pathname;
 
   const submit = async (values: FormValues) => {
     setServerError(undefined);
@@ -82,6 +83,11 @@ export default function LoginPage() {
             </p>
           </div>
           <form className="space-y-5" onSubmit={handleSubmit(submit)} noValidate>
+            {locationState?.passwordChanged && (
+              <Alert variant="info" title="Đổi mật khẩu thành công">
+                Vui lòng đăng nhập lại bằng mật khẩu mới.
+              </Alert>
+            )}
             {serverError && (
               <Alert variant="error" title="Không thể đăng nhập">
                 {serverError.message}

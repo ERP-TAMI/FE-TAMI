@@ -3,7 +3,7 @@ import apiClient from "@/lib/apiClient";
 import { userManagementApi } from "./user-management.api";
 
 vi.mock("@/lib/apiClient", () => ({
-  default: { get: vi.fn(), post: vi.fn(), patch: vi.fn() },
+  default: { get: vi.fn(), post: vi.fn(), patch: vi.fn(), delete: vi.fn() },
 }));
 
 const response = {
@@ -155,20 +155,26 @@ describe("userManagementApi", () => {
   it("updates account status with its reason and requests an admin password reset", async () => {
     const target = response.data[0];
     vi.mocked(apiClient.patch).mockResolvedValue({ data: { user: target } });
-    vi.mocked(apiClient.post).mockResolvedValue({
-      data: { user: { ...target, accountStatus: "pending_setup" }, invitationStatus: "pending" },
-    });
+    const temporaryPasswordResult = {
+      user: { ...target, accountStatus: "pending_setup" },
+      temporaryPasswordEmailStatus: "sent",
+    };
+    vi.mocked(apiClient.post).mockResolvedValue({ data: temporaryPasswordResult });
 
     await userManagementApi.updateAccountStatus(target.id, {
       accountStatus: "locked",
       reason: "Nghi ngờ lộ tài khoản",
     });
-    await userManagementApi.resetPassword(target.id);
+    await userManagementApi.resetPassword(target.id, "Temp-Pass-482!");
 
     expect(apiClient.patch).toHaveBeenCalledWith(`/system/users/${target.id}/account-status`, {
       accountStatus: "locked",
       reason: "Nghi ngờ lộ tài khoản",
     });
-    expect(apiClient.post).toHaveBeenCalledWith(`/system/users/${target.id}/password-reset`);
+    expect(apiClient.post).toHaveBeenCalledWith(`/system/users/${target.id}/password-reset`, {
+      temporaryPassword: "Temp-Pass-482!",
+    });
+    await userManagementApi.delete(target.id);
+    expect(apiClient.delete).toHaveBeenCalledWith(`/system/users/${target.id}`);
   });
 });

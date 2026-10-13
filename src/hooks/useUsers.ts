@@ -63,7 +63,20 @@ export function useUpdateUserStatus() {
 export function useResetUserPassword() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => userManagementApi.resetPassword(id),
+    mutationFn: ({ id, temporaryPassword }: { id: string; temporaryPassword: string }) =>
+      userManagementApi.resetPassword(id, temporaryPassword),
+    onSuccess: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: userManagementKeys.all }),
+        queryClient.invalidateQueries({ queryKey: managementDashboardKeys.summaries() }),
+      ]),
+  });
+}
+
+export function useDeleteUser() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => userManagementApi.delete(id),
     onSuccess: () =>
       Promise.all([
         queryClient.invalidateQueries({ queryKey: userManagementKeys.all }),

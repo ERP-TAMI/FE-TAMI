@@ -11,6 +11,7 @@ const hooks = vi.hoisted(() => ({
   useResendPasswordSetup: vi.fn(),
   useUpdateUserStatus: vi.fn(),
   useResetUserPassword: vi.fn(),
+  useDeleteUser: vi.fn(),
 }));
 
 vi.mock("@/hooks/useUsers", () => hooks);
@@ -54,6 +55,7 @@ describe("UsersPage", () => {
     hooks.useResendPasswordSetup.mockReturnValue({ mutateAsync: vi.fn(), isPending: false });
     hooks.useUpdateUserStatus.mockReturnValue({ mutateAsync: vi.fn(), isPending: false });
     hooks.useResetUserPassword.mockReturnValue({ mutateAsync: vi.fn(), isPending: false });
+    hooks.useDeleteUser.mockReturnValue({ mutateAsync: vi.fn(), isPending: false });
     useAuthStore.setState({
       status: "authenticated",
       accessToken: "test-token",
@@ -83,6 +85,49 @@ describe("UsersPage", () => {
     expect(screen.getByText("it@tami.test")).toBeTruthy();
     expect(screen.getByText("Công nghệ thông tin")).toBeTruthy();
     expect(within(screen.getByRole("table")).getByText("Đang hoạt động")).toBeTruthy();
+  });
+
+  it("sets and emails the temporary password entered by the administrator", async () => {
+    const reset = vi.fn().mockResolvedValue({
+      user: { ...user, accountStatus: "pending_setup", passwordSetupRequired: true },
+      temporaryPasswordEmailStatus: "sent",
+    });
+    hooks.useResetUserPassword.mockReturnValue({ mutateAsync: reset, isPending: false });
+    renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: `Mở thao tác cho ${user.fullName}` }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Đặt mật khẩu tạm" }));
+    fireEvent.change(screen.getByLabelText("Mật khẩu tạm"), {
+      target: { value: "Temp-Pass-482!" },
+    });
+    fireEvent.change(screen.getByLabelText("Xác nhận mật khẩu tạm"), {
+      target: { value: "Temp-Pass-482!" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Đặt mật khẩu và gửi email" }));
+
+    await waitFor(() =>
+      expect(reset).toHaveBeenCalledWith({ id: user.id, temporaryPassword: "Temp-Pass-482!" }),
+    );
+    expect(
+      await screen.findByText("Đã đặt mật khẩu tạm và gửi tài khoản, mật khẩu đến email người dùng."),
+    ).toBeTruthy();
+  });
+
+  it("deletes a user after they have been deactivated", async () => {
+    const inactive = { ...user, accountStatus: "inactive" as const };
+    hooks.useUsers.mockReturnValue(
+      result({ data: { data: [inactive], meta: { total: 1, page: 1, limit: 10, totalPages: 1 } } }),
+    );
+    const remove = vi.fn().mockResolvedValue(undefined);
+    hooks.useDeleteUser.mockReturnValue({ mutateAsync: remove, isPending: false });
+    renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: `Mở thao tác cho ${inactive.fullName}` }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Xóa người dùng" }));
+    fireEvent.click(screen.getByRole("button", { name: "Xóa người dùng" }));
+
+    await waitFor(() => expect(remove).toHaveBeenCalledWith(inactive.id));
+    expect(await screen.findByText("Đã xóa người dùng.")).toBeTruthy();
   });
 
   it("lets the backend deliver a pending invitation without a duplicate resend", async () => {

@@ -1,4 +1,4 @@
-import { Search, Users, CircleDot, ShieldCheck, Lock, KeyRound } from "lucide-react";
+import { Search, Users, CircleDot, ShieldCheck, Lock, KeyRound, UserX } from "lucide-react";
 import { Input, Select } from "@/components/shared";
 import type { UserAccountStatus, UserRoleCode } from "@/types/user-management";
 import { USER_ROLE_OPTIONS } from "./userRoleOptions";
@@ -23,6 +23,7 @@ const statusOptions: Array<{
   { key: "active", label: "Hoạt động", icon: ShieldCheck },
   { key: "locked", label: "Bị khóa", icon: Lock },
   { key: "pending_setup", label: "Chờ mật khẩu", icon: KeyRound },
+  { key: "inactive", label: "Vô hiệu hóa", icon: UserX },
 ];
 
 export function UserToolbar({
@@ -80,7 +81,7 @@ export function UserToolbar({
                 type="button"
                 aria-pressed={status === option.key}
                 onClick={() => onStatusChange(option.key)}
-                className={`text-theme-xs focus-visible:ring-brand-500/20 inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-lg border px-3 font-medium whitespace-nowrap transition-colors focus-visible:ring-3 focus-visible:outline-none ${
+                className={`text-theme-xs focus-visible:ring-brand-500/20 inline-flex h-9 shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-lg border px-3 font-medium whitespace-nowrap transition-colors focus-visible:ring-3 focus-visible:outline-none ${
                   status === option.key
                     ? "border-brand-200 bg-brand-50 text-brand-600 dark:border-brand-500/30 dark:bg-brand-500/15 dark:text-brand-400"
                     : "border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-400 dark:hover:border-gray-600 dark:hover:text-white"

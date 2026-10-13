@@ -53,8 +53,13 @@ export const userManagementApi = {
     const response = await apiClient.patch(`${resource}/${id}/account-status`, input);
     return accountStatusResponseSchema.parse(response.data);
   },
-  async resetPassword(id: string): Promise<PasswordResetResponse> {
-    const response = await apiClient.post(`${resource}/${id}/password-reset`);
+  async resetPassword(id: string, temporaryPassword: string): Promise<PasswordResetResponse> {
+    const response = await apiClient.post(`${resource}/${id}/password-reset`, {
+      temporaryPassword,
+    });
     return passwordResetResponseSchema.parse(response.data);
+  },
+  async delete(id: string): Promise<void> {
+    await apiClient.delete(`${resource}/${id}`);
   },
 };

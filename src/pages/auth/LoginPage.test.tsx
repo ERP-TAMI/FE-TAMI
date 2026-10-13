@@ -57,6 +57,19 @@ describe("LoginPage", () => {
     expect((screen.getByLabelText("Mật khẩu") as HTMLInputElement).value).toBe("");
   });
 
+  it("confirms a successful password change and asks the user to sign in again", () => {
+    render(
+      <MemoryRouter
+        initialEntries={[{ pathname: "/login", state: { passwordChanged: true } }]}
+      >
+        <LoginPage />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText("Đổi mật khẩu thành công")).toBeTruthy();
+    expect(screen.getByText("Vui lòng đăng nhập lại bằng mật khẩu mới.")).toBeTruthy();
+  });
+
   it("can show and hide the password with an eye control", () => {
     render(
       <MemoryRouter>

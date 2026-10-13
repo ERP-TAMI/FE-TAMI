@@ -43,19 +43,31 @@ describe("UserAccountActionDialog", () => {
     await waitFor(() => expect(onConfirm).toHaveBeenCalledWith("Nghi ngờ lộ tài khoản"));
   });
 
-  it("clearly warns that password reset revokes current access", () => {
+  it("requires an administrator-chosen temporary password and confirmation", async () => {
+    const onConfirm = vi.fn();
     render(
       <UserAccountActionDialog
         action="reset"
         user={target}
         isSubmitting={false}
         onClose={vi.fn()}
-        onConfirm={vi.fn()}
+        onConfirm={onConfirm}
       />,
     );
 
-    expect(screen.getByText(/mật khẩu hiện tại và tất cả phiên đăng nhập/i)).toBeTruthy();
-    expect(screen.queryByRole("textbox")).toBeNull();
+    fireEvent.change(screen.getByLabelText("Mật khẩu tạm"), {
+      target: { value: "Temp-Pass-482!" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Đặt mật khẩu và gửi email" }));
+    expect(await screen.findByText("Mật khẩu xác nhận không khớp.")).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("Xác nhận mật khẩu tạm"), {
+      target: { value: "Temp-Pass-482!" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Đặt mật khẩu và gửi email" }));
+    await waitFor(() =>
+      expect(onConfirm).toHaveBeenCalledWith({ temporaryPassword: "Temp-Pass-482!" }),
+    );
+    expect(screen.getByText(/mật khẩu hiện tại và các phiên đăng nhập/i)).toBeTruthy();
   });
 
   it("requires a fresh reason when resending a lock email", async () => {

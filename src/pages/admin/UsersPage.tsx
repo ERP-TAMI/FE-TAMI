@@ -12,6 +12,7 @@ import {
 } from "@/components/features/user-management/UserAccountActionDialog";
 import {
   useCreateUser,
+  useDeleteUser,
   useResendPasswordSetup,
   useResetUserPassword,
   useUpdateUser,
@@ -47,6 +48,7 @@ export default function UsersPage() {
   const resend = useResendPasswordSetup();
   const updateStatus = useUpdateUserStatus();
   const resetPassword = useResetUserPassword();
+  const deleteUser = useDeleteUser();
   const { toast, showToast, hideToast } = useToast();
   const users = useUsers({
     search: debouncedSearch,
@@ -144,18 +146,35 @@ export default function UsersPage() {
     }
   };
 
-  const submitAccountAction = async (reason?: string) => {
+  const submitAccountAction = async (submission?: string | { temporaryPassword: string }) => {
     if (!accountAction) return;
     setAccountActionError(undefined);
     try {
       if (accountAction.action === "reset") {
-        await resetPassword.mutateAsync(accountAction.user.id);
-        showToast("Đã thu hồi mật khẩu cũ. Email đặt mật khẩu đang được gửi.", "success");
+        const temporaryPassword =
+          typeof submission === "object" ? submission.temporaryPassword : undefined;
+        if (!temporaryPassword) return;
+        const result = await resetPassword.mutateAsync({
+          id: accountAction.user.id,
+          temporaryPassword,
+        });
+        const emailWasSent = result.temporaryPasswordEmailStatus === "sent";
+        showToast(
+          emailWasSent
+            ? "Đã đặt mật khẩu tạm và gửi tài khoản, mật khẩu đến email người dùng."
+            : "Đã đặt mật khẩu tạm nhưng gửi email thất bại. Hãy đặt mật khẩu mới để gửi lại.",
+          emailWasSent ? "success" : "error",
+        );
+      } else if (accountAction.action === "delete") {
+        await deleteUser.mutateAsync(accountAction.user.id);
+        showToast("Đã xóa người dùng.", "success");
       } else {
+        const reason = typeof submission === "string" ? submission : undefined;
         const statusByAction = {
           lock: "locked",
           unlock: "active",
           "resend-lock-email": "locked",
+          deactivate: "inactive",
         } as const;
         await updateStatus.mutateAsync({
           id: accountAction.user.id,
@@ -165,6 +184,7 @@ export default function UsersPage() {
           lock: "Đã khóa tài khoản. Email thông báo đang được gửi.",
           unlock: "Đã mở khóa tài khoản.",
           "resend-lock-email": "Đã ghi nhận gửi lại email khóa tài khoản.",
+          deactivate: "Đã vô hiệu hóa tài khoản và thu hồi các phiên đăng nhập.",
         }[accountAction.action];
         showToast(successMessage, "success");
       }
@@ -281,7 +301,9 @@ export default function UsersPage() {
         <UserAccountActionDialog
           action={accountAction.action}
           user={accountAction.user}
-          isSubmitting={updateStatus.isPending || resetPassword.isPending}
+          isSubmitting={
+            updateStatus.isPending || resetPassword.isPending || deleteUser.isPending
+          }
           serverError={accountActionError}
           onClose={() => setAccountAction(null)}
           onConfirm={(reason) => void submitAccountAction(reason)}

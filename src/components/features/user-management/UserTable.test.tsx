@@ -64,7 +64,8 @@ describe("UserTable", () => {
     );
     expect(actions.getByRole("menuitem", { name: "Mở khóa" })).toBeTruthy();
     expect(actions.queryByRole("menuitem", { name: /email/i })).toBeNull();
-    expect(actions.queryByRole("menuitem", { name: "Đặt lại mật khẩu" })).toBeNull();
+    expect(actions.queryByRole("menuitem", { name: "Đặt mật khẩu tạm" })).toBeNull();
+    expect(actions.getByRole("menuitem", { name: "Vô hiệu hóa" })).toBeTruthy();
   });
 
   it("shows a failed lock-email warning and offers resend", () => {
@@ -126,7 +127,7 @@ describe("UserTable", () => {
       screen.getByRole("menu", { name: `Thao tác với ${user.fullName}` }),
     );
     expect(pendingActions.getByRole("menuitem", { name: "Khóa tài khoản" })).toBeTruthy();
-    expect(pendingActions.queryByRole("menuitem", { name: "Đặt lại mật khẩu" })).toBeNull();
+    expect(pendingActions.getByRole("menuitem", { name: "Đặt mật khẩu tạm" })).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: `Mở thao tác cho ${lockedUser.fullName}` }));
     const lockedActions = within(
@@ -135,11 +136,10 @@ describe("UserTable", () => {
     expect(lockedActions.getByRole("menuitem", { name: "Mở khóa" })).toBeTruthy();
     expect(lockedActions.queryByRole("menuitem", { name: "Đặt lại mật khẩu" })).toBeNull();
     expect(lockedActions.queryByRole("menuitem", { name: "Khóa tài khoản" })).toBeNull();
-    expect(lockedActions.queryByRole("menuitem", { name: "Vô hiệu hóa" })).toBeNull();
+    expect(lockedActions.getByRole("menuitem", { name: "Vô hiệu hóa" })).toBeTruthy();
 
-    expect(
-      screen.queryByRole("button", { name: `Mở thao tác cho ${inactiveUser.fullName}` }),
-    ).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: `Mở thao tác cho ${inactiveUser.fullName}` }));
+    expect(screen.getByRole("menuitem", { name: "Xóa người dùng" })).toBeTruthy();
   });
 
   it("runs an account action from the overflow menu and then closes it", () => {
