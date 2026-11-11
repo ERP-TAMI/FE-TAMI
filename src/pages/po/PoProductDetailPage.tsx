@@ -435,6 +435,9 @@ export default function PoProductDetailPage({
     setEditMaterialNote(product.materialNote || "");
     setEditDeadline(product.deadline ? product.deadline.split("T")[0] : "");
     setEditCmBaseDays(product.as3bCmBaseDays || 30);
+    if (colorsLoaded) {
+      setEditColors(JSON.parse(JSON.stringify(productColors)));
+    }
     setEditFieldErrors({});
     setIsEditModalOpen(true);
   };
@@ -515,6 +518,7 @@ export default function PoProductDetailPage({
       .map((c) => ({
         id: c.id,
         colorName: c.colorName.trim(),
+        ratio: c.ratio?.trim() ? c.ratio.trim() : null,
         sizes: (c.sizes || [])
           .filter((s) => s.sizeLabel.trim().length > 0)
           .map((s) => ({
@@ -537,6 +541,9 @@ export default function PoProductDetailPage({
                 materialNote: editMaterialNote.trim() || undefined,
                 deadline: editDeadline || undefined,
                 as3bCmBaseDays: Number(editCmBaseDays) || 30,
+                ...(colorsLoaded && cleanColors.length > 0
+                  ? { colors: cleanColors }
+                  : {}),
               },
       });
       showToast(
@@ -1320,21 +1327,58 @@ export default function PoProductDetailPage({
                 )}
               </dl>
 
-              {/* Liên kết nhanh sang Tab 2: Bảng size */}
-              <div className="flex items-center justify-between gap-3 px-5 py-4">
-                <div className="min-w-0">
-                  <span className="text-sm font-semibold text-gray-900 dark:text-white">Màu sắc &amp; Kích cỡ</span>
-                  <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">
-                    {productColors.length} màu · {uniqueSizes.length} size · {productTotalQuantity.toLocaleString()} pcs
-                  </span>
+              {/* Liên kết nhanh sang Tab 2: Bảng size + Hiển thị tỷ lệ từng màu */}
+              <div className="px-5 py-4 space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <span className="text-sm font-semibold text-gray-900 dark:text-white">Màu sắc &amp; Kích cỡ</span>
+                    <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">
+                      {productColors.length} màu · {uniqueSizes.length} size · {productTotalQuantity.toLocaleString()} pcs
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0">
+                    {!isReadOnly && colorsLoaded && productColors.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={handleOpenColorsModal}
+                        className="text-xs font-semibold text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white hover:underline cursor-pointer"
+                      >
+                        Chỉnh sửa màu &amp; tỷ lệ
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => handleTabChange("sizes")}
+                      className="text-sm font-semibold text-brand-600 hover:underline cursor-pointer"
+                    >
+                      Xem Bảng size →
+                    </button>
+                  </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => handleTabChange("sizes")}
-                  className="shrink-0 text-sm font-semibold text-brand-600 hover:underline cursor-pointer"
-                >
-                  Xem Bảng size →
-                </button>
+
+                {colorsLoaded && productColors.length > 0 && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {productColors.map((color, idx) => (
+                      <div
+                        key={color.id || idx}
+                        className="flex items-center justify-between gap-2 rounded-lg border border-gray-100 bg-gray-50/70 px-3 py-2 text-xs dark:border-gray-800 dark:bg-gray-800/50"
+                      >
+                        <span className="font-semibold text-gray-800 dark:text-gray-200 truncate">
+                          {color.colorName}
+                        </span>
+                        <span className="shrink-0 text-gray-500 dark:text-gray-400">
+                          Tỷ lệ:{" "}
+                          <span
+                            data-testid={`product-color-ratio-${color.colorName}`}
+                            className="font-mono font-semibold text-gray-900 dark:text-white"
+                          >
+                            {color.ratio?.trim() ? color.ratio : "-"}
+                          </span>
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Chất liệu & đặc điểm */}
@@ -1422,6 +1466,7 @@ export default function PoProductDetailPage({
                     <tr>
                       <th className="px-5 py-3.5 w-12 text-center">STT</th>
                       <th className="px-4 py-3.5">Phối màu</th>
+                      <th className="px-4 py-3.5 text-center">Tỷ lệ</th>
                       {uniqueSizes.map((size) => (
                         <th key={size} className="px-3 py-3.5 text-center font-mono font-bold text-gray-800 dark:text-gray-200">
                           {size}
@@ -1443,6 +1488,9 @@ export default function PoProductDetailPage({
                           <td className="px-5 py-3.5 text-center font-mono text-gray-400">{idx + 1}</td>
                           <td className="px-4 py-3.5 font-semibold text-gray-900 dark:text-white">
                             {color.colorName}
+                          </td>
+                          <td className="px-4 py-3.5 text-center font-mono text-gray-700 dark:text-gray-300">
+                            {color.ratio?.trim() ? color.ratio : "-"}
                           </td>
                           {uniqueSizes.map((size) => {
                             const sizeItem = (color.sizes || []).find((s) => s.sizeLabel === size);
@@ -1468,7 +1516,7 @@ export default function PoProductDetailPage({
                   </tbody>
                   <tfoot className="border-t-2 border-gray-200 bg-gray-50/90 font-semibold dark:border-gray-700 dark:bg-gray-800/80">
                     <tr>
-                      <td colSpan={2} className="px-5 py-3.5 text-gray-900 dark:text-white uppercase text-[11px] tracking-wider">
+                      <td colSpan={3} className="px-5 py-3.5 text-gray-900 dark:text-white uppercase text-[11px] tracking-wider">
                         Tổng cộng theo Size
                       </td>
                       {uniqueSizes.map((size) => (
@@ -2061,6 +2109,44 @@ export default function PoProductDetailPage({
                 placeholder="Nhập chất liệu, thành phần sợi, lưu ý may hoặc đặc điểm của sản phẩm..."
               />
             </div>
+
+            {colorsLoaded && editColors.length > 0 && (
+              <div className="space-y-2">
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">
+                  Tỷ lệ theo màu
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  {editColors.map((color, colorIdx) => (
+                    <div
+                      key={color.id || colorIdx}
+                      className="flex items-center justify-between gap-2 rounded-lg border border-gray-200 bg-gray-50/60 px-3 py-2 dark:border-gray-700 dark:bg-gray-800/60"
+                    >
+                      <span className="text-xs font-semibold text-gray-800 dark:text-gray-200 truncate">
+                        {color.colorName}
+                      </span>
+                      <input
+                        type="text"
+                        maxLength={100}
+                        aria-label={`Tỷ lệ màu ${color.colorName}`}
+                        value={color.ratio ?? ""}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setEditColors((prev) =>
+                            prev.map((item, idx) =>
+                              idx === colorIdx
+                                ? { ...item, ratio: val === "" ? null : val }
+                                : item,
+                            ),
+                          );
+                        }}
+                        placeholder="-"
+                        className="h-8 w-28 shrink-0 rounded-md border border-gray-300 bg-white px-2.5 text-xs font-mono text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             </>
             )}
 

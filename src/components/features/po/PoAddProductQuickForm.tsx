@@ -319,6 +319,7 @@ export function PoAddProductQuickForm({
       .map((c) => ({
         id: c.id,
         colorName: c.colorName.trim(),
+        ratio: c.ratio?.trim() ? c.ratio.trim() : null,
         sizes: (c.sizes || [])
           .filter((s) => s.sizeLabel.trim().length > 0)
           .map((s) => ({
