@@ -54,6 +54,7 @@ export function ProductColorSizeEditor({
       {
         id: generateTempId("color"),
         colorName: "",
+        ratio: null,
         sizes: [
           { sizeLabel: "S", quantity: 0 },
           { sizeLabel: "M", quantity: 0 },
@@ -72,6 +73,7 @@ export function ProductColorSizeEditor({
     const newColor: ProductColorItem = {
       id: generateTempId("color"),
       colorName: "",
+      ratio: null,
       sizes: [
         { sizeLabel: "S", quantity: 0 },
         { sizeLabel: "M", quantity: 0 },
@@ -196,8 +198,8 @@ export function ProductColorSizeEditor({
             key={colorKey}
             className="rounded-xl border border-gray-200 bg-white p-3.5 dark:border-gray-800 dark:bg-gray-900 space-y-3"
           >
-            {/* Tên màu + xóa — trên 1 hàng */}
-            <div className="flex items-center gap-2.5">
+            {/* Tên màu + Tỷ lệ + xóa — trên 1 hàng */}
+            <div className="flex flex-wrap sm:flex-nowrap items-center gap-2.5">
               <input
                 type="text"
                 disabled={disabled}
@@ -209,6 +211,21 @@ export function ProductColorSizeEditor({
                     ? "border-error-400 focus:border-error-500 focus:ring-error-500 dark:border-error-500"
                     : "border-gray-300 focus:border-brand-500 focus:ring-brand-500 dark:border-gray-700"
                 }`}
+              />
+
+              <input
+                type="text"
+                maxLength={100}
+                disabled={disabled}
+                aria-label={`Tỷ lệ màu ${color.colorName || colorIdx + 1}`}
+                value={color.ratio ?? ""}
+                onChange={(e) =>
+                  handleUpdateColor(colorIdx, {
+                    ratio: e.target.value === "" ? null : e.target.value,
+                  })
+                }
+                placeholder="Tỷ lệ — VD: 1:2:1, 30%..."
+                className="w-40 sm:w-48 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-900 placeholder:text-gray-400 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
               />
 
               {allowMultipleColors && displayedColors.length > 1 && !disabled && (

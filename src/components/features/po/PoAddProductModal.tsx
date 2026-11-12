@@ -241,6 +241,7 @@ export function PoAddProductModal({
     colors.some(
       (c) =>
         c.colorName.trim() !== "" ||
+        Boolean(c.ratio?.trim()) ||
         (c.sizes || []).some((s) => Number(s.quantity) > 0),
     ) ||
     selectedPoDocIds.length > 0;
@@ -378,6 +379,7 @@ export function PoAddProductModal({
       .map((c) => ({
         id: c.id,
         colorName: c.colorName.trim(),
+        ratio: c.ratio?.trim() ? c.ratio.trim() : null,
         sizes: (c.sizes || [])
           .filter((s) => s.sizeLabel.trim().length > 0)
           .map((s) => ({
@@ -1194,6 +1196,10 @@ export function PoAddProductModal({
                           className="inline-flex items-center gap-1 rounded-md border border-brand-200 bg-brand-50 px-2.5 py-1 text-sm font-semibold text-brand-700 dark:border-brand-800 dark:bg-brand-950/40 dark:text-brand-300"
                         >
                           <span>{c.colorName}</span>
+                          <span className="text-gray-400">·</span>
+                          <span className="text-xs text-gray-600 dark:text-gray-300">
+                            Tỷ lệ: {c.ratio?.trim() ? c.ratio.trim() : "-"}
+                          </span>
                           <span className="text-gray-400">·</span>
                           <span className="font-mono">
                             {(c.sizes || []).reduce((s, x) => s + (Number(x.quantity) || 0), 0)} pcs
