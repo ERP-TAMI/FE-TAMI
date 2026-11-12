@@ -6,9 +6,12 @@ import type { ReactElement } from "react";
 import PoProductDetailPage from "./PoProductDetailPage";
 
 function render(ui: ReactElement) {
-  return rtlRender(
-    <QueryClientProvider client={new QueryClient()}>{ui}</QueryClientProvider>,
-  );
+  const queryClient = new QueryClient();
+  return rtlRender(ui, {
+    wrapper: ({ children }) => (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    ),
+  });
 }
 
 const hooks = vi.hoisted(() => ({
@@ -145,7 +148,7 @@ describe("PoProductDetailPage - Color Ratio (TAMI-125)", () => {
     expect(screen.getByText("30%")).toBeTruthy();
   });
 
-  it("allows editing one color's ratio from the Product Info modal and saving without altering other colors' ratios", async () => {
+  it("allows editing one color's ratio from the Product Info modal and sends only changed colorRatios without colors", async () => {
     renderProductDetail("/po/po-1/products/prod-1");
 
     fireEvent.click(screen.getByRole("button", { name: /Chỉnh sửa$/i }));
@@ -171,40 +174,174 @@ describe("PoProductDetailPage - Color Ratio (TAMI-125)", () => {
       expect(mutateAsyncMock).toHaveBeenCalledTimes(1);
     });
 
-    expect(mutateAsyncMock).toHaveBeenCalledWith({
+    const calledArg = mutateAsyncMock.mock.calls[0][0];
+    expect(calledArg).toEqual({
       id: "po-1",
       productId: "prod-1",
       input: expect.objectContaining({
         productCode: "SP-001",
         productName: "Áo Polo Nam",
+        colorRatios: [{ id: "c-2", ratio: "2:2:1" }],
+      }),
+    });
+    expect(calledArg.input).not.toHaveProperty("colors");
+  });
+
+  it("does not send colors or overwrite concurrent color/size updates when saving Product Info metadata", async () => {
+    const view = renderProductDetail("/po/po-1/products/prod-1");
+
+    fireEvent.click(screen.getByRole("button", { name: /Chỉnh sửa$/i }));
+
+    // Another user updates quantities and adds a new color while this modal is open
+    hooks.useProductColors.mockReturnValue({
+      data: {
         colors: [
           {
             id: "c-1",
             colorName: "Đen",
             ratio: "1:2:1",
             sizes: [
-              { sizeLabel: "M", quantity: 10 },
-              { sizeLabel: "L", quantity: 20 },
+              { sizeLabel: "M", quantity: 99 },
+              { sizeLabel: "L", quantity: 120 },
             ],
           },
+          ...mockColorsData.colors.slice(1),
           {
-            id: "c-2",
-            colorName: "Trắng",
-            ratio: "2:2:1",
-            sizes: [
-              { sizeLabel: "M", quantity: 15 },
-              { sizeLabel: "L", quantity: 25 },
-            ],
-          },
-          {
-            id: "c-3",
-            colorName: "Xanh Navy",
-            ratio: "30%",
-            sizes: [{ sizeLabel: "M", quantity: 30 }],
+            id: "c-4",
+            colorName: "Đỏ",
+            ratio: "4:1",
+            sizes: [{ sizeLabel: "S", quantity: 40 }],
           },
         ],
-      }),
+        totalQuantity: 329,
+      },
+      isLoading: false,
+      isError: false,
     });
+    view.rerender(
+      <MemoryRouter initialEntries={["/po/po-1/products/prod-1"]}>
+        <Routes>
+          <Route path="/po/:id/products/:productId/:tab?" element={<PoProductDetailPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    const nameInput = screen.getByDisplayValue("Áo Polo Nam");
+    fireEvent.change(nameInput, { target: { value: "Áo Polo Nam Mới" } });
+    fireEvent.click(screen.getByRole("button", { name: "Lưu thay đổi" }));
+
+    await waitFor(() => {
+      expect(mutateAsyncMock).toHaveBeenCalledTimes(1);
+    });
+
+    const calledArg = mutateAsyncMock.mock.calls[0][0];
+    expect(calledArg.input.productName).toBe("Áo Polo Nam Mới");
+    expect(calledArg.input).not.toHaveProperty("colors");
+    expect(calledArg.input).not.toHaveProperty("colorRatios");
+  });
+
+  it("prompts unsaved changes confirmation when closing the Product Info modal after editing only a color ratio", async () => {
+    renderProductDetail("/po/po-1/products/prod-1");
+
+    fireEvent.click(screen.getByRole("button", { name: /Chỉnh sửa$/i }));
+
+    const blackRatioInput = screen.getByLabelText("Tỷ lệ màu Đen") as HTMLInputElement;
+    fireEvent.change(blackRatioInput, { target: { value: "9:1" } });
+
+    fireEvent.click(screen.getByRole("button", { name: "Hủy" }));
+
+    expect(screen.getByText("Bạn có thay đổi chưa được lưu")).toBeTruthy();
+
+    // Keep editing -> preserves draft
+    fireEvent.click(screen.getByRole("button", { name: "Tiếp tục chỉnh sửa" }));
+    expect((screen.getByLabelText("Tỷ lệ màu Đen") as HTMLInputElement).value).toBe("9:1");
+
+    // Discard changes -> closes modal
+    fireEvent.click(screen.getByRole("button", { name: "Hủy" }));
+    fireEvent.click(screen.getByRole("button", { name: "Bỏ thay đổi" }));
+
+    await waitFor(() => {
+      expect(screen.queryByLabelText("Tỷ lệ màu Đen")).toBeNull();
+    });
+  });
+
+  it("initializes color ratio inputs when colors finish loading after modal opens and preserves user edits across refetches", async () => {
+    hooks.useProductColors.mockReturnValue({
+      data: undefined,
+      isLoading: true,
+      isError: false,
+    });
+
+    const view = renderProductDetail("/po/po-1/products/prod-1");
+
+    fireEvent.click(screen.getByRole("button", { name: /Chỉnh sửa$/i }));
+    expect(screen.getByText("Đang tải danh sách màu...")).toBeTruthy();
+    expect(screen.queryByLabelText("Tỷ lệ màu Đen")).toBeNull();
+
+    // Colors finish loading while modal is already open
+    hooks.useProductColors.mockReturnValue({
+      data: mockColorsData,
+      isLoading: false,
+      isError: false,
+    });
+    view.rerender(
+      <MemoryRouter initialEntries={["/po/po-1/products/prod-1"]}>
+        <Routes>
+          <Route path="/po/:id/products/:productId/:tab?" element={<PoProductDetailPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    const blackRatioInput = screen.getByLabelText("Tỷ lệ màu Đen") as HTMLInputElement;
+    expect(blackRatioInput.value).toBe("1:2:1");
+    expect((screen.getByLabelText("Tỷ lệ màu Trắng") as HTMLInputElement).value).toBe("");
+
+    // User edits "Đen" ratio
+    fireEvent.change(blackRatioInput, { target: { value: "9:1" } });
+    expect((screen.getByLabelText("Tỷ lệ màu Đen") as HTMLInputElement).value).toBe("9:1");
+
+    // Background refetch brings updated sizes + a newly added color, and must NOT overwrite user's "9:1" draft
+    hooks.useProductColors.mockReturnValue({
+      data: {
+        colors: [
+          {
+            ...mockColorsData.colors[0],
+            sizes: [{ sizeLabel: "M", quantity: 88 }],
+          },
+          mockColorsData.colors[1],
+          mockColorsData.colors[2],
+          {
+            id: "c-4",
+            colorName: "Đỏ",
+            ratio: "5:1",
+            sizes: [{ sizeLabel: "S", quantity: 20 }],
+          },
+        ],
+        totalQuantity: 178,
+      },
+      isLoading: false,
+      isError: false,
+    });
+    view.rerender(
+      <MemoryRouter initialEntries={["/po/po-1/products/prod-1"]}>
+        <Routes>
+          <Route path="/po/:id/products/:productId/:tab?" element={<PoProductDetailPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect((screen.getByLabelText("Tỷ lệ màu Đen") as HTMLInputElement).value).toBe("9:1");
+    expect((screen.getByLabelText("Tỷ lệ màu Đỏ") as HTMLInputElement).value).toBe("5:1");
+
+    fireEvent.click(screen.getByRole("button", { name: "Lưu thay đổi" }));
+
+    await waitFor(() => {
+      expect(mutateAsyncMock).toHaveBeenCalledTimes(1);
+    });
+
+    const calledArg = mutateAsyncMock.mock.calls[0][0];
+    expect(calledArg.input.colorRatios).toEqual([{ id: "c-1", ratio: "9:1" }]);
+    expect(calledArg.input).not.toHaveProperty("colors");
   });
 
   it("allows editing color ratios via 'Chỉnh sửa màu & tỷ lệ' on the Product Info tab", async () => {

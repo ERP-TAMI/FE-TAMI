@@ -225,6 +225,10 @@ export interface UpdatePoProductInput {
     ratio?: string | null;
     sizes: Array<{ sizeLabel: string; quantity: number }>;
   }>;
+  colorRatios?: Array<{
+    id: string;
+    ratio: string | null;
+  }>;
 }
 
 export interface ProductOperationStep {

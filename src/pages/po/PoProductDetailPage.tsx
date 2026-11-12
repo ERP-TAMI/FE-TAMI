@@ -75,7 +75,10 @@ function formatDateTime(dateStr: string | null | undefined): string {
   })}`;
 }
 
-
+function normalizeRatioDraft(value?: string | null): string | null {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : null;
+}
 
 export default function PoProductDetailPage({
   readOnlyManagement = false,
@@ -257,13 +260,81 @@ export default function PoProductDetailPage({
   const isPoLocked = po?.status === "closed" || po?.status === "cancelled";
   const isReadOnly = isProductLocked || isPoLocked || readOnlyManagement;
 
-  // Màu & size dùng ở tab Thông tin (tóm tắt) và tab Bảng size (bảng sửa).
-  const { data: colorsData } = useProductColors(poId, productId, {
-    enabled: activeTab === "general" || activeTab === "sizes",
-  });
+  // Modal edit basic product info (phong cách StyleFormModal)
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editMode, setEditMode] = useState<"info" | "colors">("info");
+  const [editProductCode, setEditProductCode] = useState("");
+  const [editProductName, setEditProductName] = useState("");
+  const [editCategory, setEditCategory] = useState("");
+  const [editMaterialNote, setEditMaterialNote] = useState("");
+  const [editDeadline, setEditDeadline] = useState("");
+  const [editCmBaseDays, setEditCmBaseDays] = useState(30);
+  const [editColors, setEditColors] = useState<ProductColorItem[]>([]);
+  const [baselineColorRatios, setBaselineColorRatios] = useState<
+    Record<string, string>
+  >({});
+  const [editColorRatios, setEditColorRatios] = useState<
+    Record<string, string>
+  >({});
+  const [editFieldErrors, setEditFieldErrors] = useState<{
+    productCode?: string;
+    productName?: string;
+    colors?: string;
+  }>({});
+  const editProductCodeInputRef = useRef<HTMLInputElement>(null);
+  const editProductNameInputRef = useRef<HTMLInputElement>(null);
+  const editColorsCardRef = useRef<HTMLDivElement>(null);
+
+  const closeEditModal = useCallback(() => {
+    setIsEditModalOpen(false);
+    setBaselineColorRatios({});
+    setEditColorRatios({});
+  }, []);
+
+  // Màu & size dùng ở tab Thông tin (tóm tắt), tab Bảng size (bảng sửa) và khi mở modal Chỉnh sửa.
+  const { data: colorsData, isError: isColorsError } = useProductColors(
+    poId,
+    productId,
+    {
+      enabled:
+        activeTab === "general" || activeTab === "sizes" || isEditModalOpen,
+    },
+  );
   const colorsLoaded = colorsData !== undefined;
   const productColors = useMemo(() => colorsData?.colors ?? [], [colorsData]);
   const productTotalQuantity = colorsData?.totalQuantity ?? 0;
+
+  const prevProductIdRef = useRef(productId);
+  useEffect(() => {
+    if (prevProductIdRef.current !== productId) {
+      prevProductIdRef.current = productId;
+      closeEditModal();
+    }
+  }, [productId, closeEditModal]);
+
+  // Khi mở modal trước lúc dữ liệu màu tải xong (hoặc khi refetch thêm màu mới),
+  // khởi tạo baseline cho các màu người dùng chưa gõ sửa mà không ghi đè bản nháp.
+  useEffect(() => {
+    if (!isEditModalOpen || editMode !== "info" || !colorsLoaded) return;
+    setBaselineColorRatios((prev) => {
+      let next: Record<string, string> | null = null;
+      for (const color of productColors) {
+        if (!color.id || color.id in editColorRatios) continue;
+        const serverRatio = color.ratio ?? "";
+        if (!(color.id in prev) || prev[color.id] !== serverRatio) {
+          if (!next) next = { ...prev };
+          next[color.id] = serverRatio;
+        }
+      }
+      return next ?? prev;
+    });
+  }, [
+    isEditModalOpen,
+    editMode,
+    colorsLoaded,
+    productColors,
+    editColorRatios,
+  ]);
 
   // Tab Bảng màu chỉ cần ảnh purpose=color_card — lọc ngay từ BE, không kéo
   // về rồi lọc ở FE (tránh ký lại URL cho mọi phiên bản của tài liệu khác).
@@ -298,25 +369,6 @@ export default function PoProductDetailPage({
   const uploadProductDocMutation = useUploadProductDocument();
   const uploadVersionMutation = useUploadProductDocumentVersion();
   const uploadImage = useUploadImage();
-
-  // Modal edit basic product info (phong cách StyleFormModal)
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [editMode, setEditMode] = useState<"info" | "colors">("info");
-  const [editProductCode, setEditProductCode] = useState("");
-  const [editProductName, setEditProductName] = useState("");
-  const [editCategory, setEditCategory] = useState("");
-  const [editMaterialNote, setEditMaterialNote] = useState("");
-  const [editDeadline, setEditDeadline] = useState("");
-  const [editCmBaseDays, setEditCmBaseDays] = useState(30);
-  const [editColors, setEditColors] = useState<ProductColorItem[]>([]);
-  const [editFieldErrors, setEditFieldErrors] = useState<{
-    productCode?: string;
-    productName?: string;
-    colors?: string;
-  }>({});
-  const editProductCodeInputRef = useRef<HTMLInputElement>(null);
-  const editProductNameInputRef = useRef<HTMLInputElement>(null);
-  const editColorsCardRef = useRef<HTMLDivElement>(null);
 
   // Local state for image handling (phong cách GeneralTab)
   const [imageUrl, setImageUrl] = useState<string | null>(null);
@@ -424,8 +476,8 @@ export default function PoProductDetailPage({
     return map;
   }, [productColors]);
 
-  // Nút "Chỉnh sửa" chỉ sửa thông tin chung, không đụng màu/size — màu chỉ
-  // được tải ở tab Thông tin/Bảng size, gửi kèm từ tab khác sẽ xoá màu cũ.
+  // Nút "Chỉnh sửa" sửa thông tin chung và chỉ gửi cập nhật riêng cột ratio của
+  // những màu thật sự đổi — tuyệt đối không gửi lại cơ cấu colors/sizes cũ.
   const handleOpenEditModal = () => {
     if (!product || isReadOnly) return;
     setEditMode("info");
@@ -436,8 +488,17 @@ export default function PoProductDetailPage({
     setEditDeadline(product.deadline ? product.deadline.split("T")[0] : "");
     setEditCmBaseDays(product.as3bCmBaseDays || 30);
     if (colorsLoaded) {
-      setEditColors(JSON.parse(JSON.stringify(productColors)));
+      const initialBaseline: Record<string, string> = {};
+      for (const color of productColors) {
+        if (color.id) {
+          initialBaseline[color.id] = color.ratio ?? "";
+        }
+      }
+      setBaselineColorRatios(initialBaseline);
+    } else {
+      setBaselineColorRatios({});
     }
+    setEditColorRatios({});
     setEditFieldErrors({});
     setIsEditModalOpen(true);
   };
@@ -527,6 +588,20 @@ export default function PoProductDetailPage({
           })),
       }));
 
+    const changedColorRatios =
+      editMode === "info" && colorsLoaded
+        ? productColors.flatMap((color) => {
+            if (!color.id || !(color.id in editColorRatios)) return [];
+            const baseline = normalizeRatioDraft(
+              color.id in baselineColorRatios
+                ? baselineColorRatios[color.id]
+                : color.ratio,
+            );
+            const next = normalizeRatioDraft(editColorRatios[color.id]);
+            return next !== baseline ? [{ id: color.id, ratio: next }] : [];
+          })
+        : [];
+
     try {
       await updateProductMutation.mutateAsync({
         id: poId,
@@ -541,8 +616,8 @@ export default function PoProductDetailPage({
                 materialNote: editMaterialNote.trim() || undefined,
                 deadline: editDeadline || undefined,
                 as3bCmBaseDays: Number(editCmBaseDays) || 30,
-                ...(colorsLoaded && cleanColors.length > 0
-                  ? { colors: cleanColors }
+                ...(changedColorRatios.length > 0
+                  ? { colorRatios: changedColorRatios }
                   : {}),
               },
       });
@@ -551,7 +626,7 @@ export default function PoProductDetailPage({
           ? "Đã cập nhật màu & size thành công."
           : "Đã cập nhật thông tin sản phẩm thành công.",
       );
-      setIsEditModalOpen(false);
+      closeEditModal();
     } catch (err: unknown) {
       const apiErr = getApiError(err, "Cập nhật sản phẩm thất bại.");
       showToast(apiErr.message, "error");
@@ -837,6 +912,16 @@ export default function PoProductDetailPage({
   };
 
   // Click ra ngoài / Hủy / Esc: có thay đổi chưa lưu thì hỏi lại trước khi đóng.
+  const isInfoRatioDirty =
+    colorsLoaded &&
+    productColors.some((color) => {
+      if (!color.id || !(color.id in editColorRatios)) return false;
+      const baseline =
+        color.id in baselineColorRatios
+          ? baselineColorRatios[color.id]
+          : (color.ratio ?? "");
+      return editColorRatios[color.id] !== baseline;
+    });
   const isEditDirty =
     isEditModalOpen &&
     Boolean(product) &&
@@ -847,10 +932,9 @@ export default function PoProductDetailPage({
         editCategory !== (product!.category || "") ||
         editMaterialNote !== (product!.materialNote || "") ||
         editDeadline !== (product!.deadline ? product!.deadline.split("T")[0] : "") ||
-        Number(editCmBaseDays) !== (product!.as3bCmBaseDays || 30));
-  const editGuard = useDiscardChangesGuard(isEditDirty, () =>
-    setIsEditModalOpen(false),
-  );
+        Number(editCmBaseDays) !== (product!.as3bCmBaseDays || 30) ||
+        isInfoRatioDirty);
+  const editGuard = useDiscardChangesGuard(isEditDirty, closeEditModal);
   const lockGuard = useDiscardChangesGuard(lockReason.trim() !== "", () => {
     setLockReason("");
     setIsLockModalOpen(false);
@@ -2110,40 +2194,74 @@ export default function PoProductDetailPage({
               />
             </div>
 
-            {colorsLoaded && editColors.length > 0 && (
+            {!colorsLoaded && !isColorsError && (
+              <div className="space-y-2">
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">
+                  Tỷ lệ theo màu
+                </label>
+                <p className="rounded-lg border border-dashed border-gray-200 bg-gray-50/60 px-3 py-2 text-xs text-gray-500 dark:border-gray-700 dark:bg-gray-800/60 dark:text-gray-400">
+                  Đang tải danh sách màu...
+                </p>
+              </div>
+            )}
+
+            {!colorsLoaded && isColorsError && (
+              <div className="space-y-2">
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">
+                  Tỷ lệ theo màu
+                </label>
+                <p className="rounded-lg border border-dashed border-amber-200 bg-amber-50/60 px-3 py-2 text-xs text-amber-700 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-300">
+                  Không tải được danh sách màu. Bạn vẫn có thể lưu thông tin chung.
+                </p>
+              </div>
+            )}
+
+            {colorsLoaded && productColors.length > 0 && (
               <div className="space-y-2">
                 <label className="block text-xs font-medium text-gray-700 dark:text-gray-300">
                   Tỷ lệ theo màu
                 </label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  {editColors.map((color, colorIdx) => (
-                    <div
-                      key={color.id || colorIdx}
-                      className="flex items-center justify-between gap-2 rounded-lg border border-gray-200 bg-gray-50/60 px-3 py-2 dark:border-gray-700 dark:bg-gray-800/60"
-                    >
-                      <span className="text-xs font-semibold text-gray-800 dark:text-gray-200 truncate">
-                        {color.colorName}
-                      </span>
-                      <input
-                        type="text"
-                        maxLength={100}
-                        aria-label={`Tỷ lệ màu ${color.colorName}`}
-                        value={color.ratio ?? ""}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setEditColors((prev) =>
-                            prev.map((item, idx) =>
-                              idx === colorIdx
-                                ? { ...item, ratio: val === "" ? null : val }
-                                : item,
-                            ),
-                          );
-                        }}
-                        placeholder="-"
-                        className="h-8 w-28 shrink-0 rounded-md border border-gray-300 bg-white px-2.5 text-xs font-mono text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                      />
-                    </div>
-                  ))}
+                  {productColors.map((color, colorIdx) => {
+                    const colorId = color.id;
+                    const ratioValue =
+                      colorId && colorId in editColorRatios
+                        ? editColorRatios[colorId]
+                        : (color.ratio ?? "");
+                    return (
+                      <div
+                        key={colorId || colorIdx}
+                        className="flex items-center justify-between gap-2 rounded-lg border border-gray-200 bg-gray-50/60 px-3 py-2 dark:border-gray-700 dark:bg-gray-800/60"
+                      >
+                        <span className="text-xs font-semibold text-gray-800 dark:text-gray-200 truncate">
+                          {color.colorName}
+                        </span>
+                        <input
+                          type="text"
+                          maxLength={100}
+                          aria-label={`Tỷ lệ màu ${color.colorName}`}
+                          value={ratioValue}
+                          disabled={!colorId}
+                          onChange={(e) => {
+                            if (!colorId) return;
+                            const val = e.target.value;
+                            const initialVal = color.ratio ?? "";
+                            setBaselineColorRatios((prev) =>
+                              colorId in prev
+                                ? prev
+                                : { ...prev, [colorId]: initialVal },
+                            );
+                            setEditColorRatios((prev) => ({
+                              ...prev,
+                              [colorId]: val,
+                            }));
+                          }}
+                          placeholder="-"
+                          className="h-8 w-28 shrink-0 rounded-md border border-gray-300 bg-white px-2.5 text-xs font-mono text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                        />
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}
